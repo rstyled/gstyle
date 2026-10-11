@@ -55,7 +55,7 @@ func TestClonePairProfileUnknownFacts(t *testing.T) {
 }
 
 func TestClonePairProfileUnavailable(t *testing.T) {
-	for _, profile := range []CloneProfile{CompatBaseProfile, "", "unknown"} {
+	for _, profile := range []CloneProfile{CompatBaseProfile, "compat.ccgraph.strict/0.1.0", "", "unknown"} {
 		if err := EvaluateClonePairs(profile, nil, nil, func(ClonePairEvidence) error { return nil }); err == nil {
 			t.Fatalf("profile %q must not execute", profile)
 		}

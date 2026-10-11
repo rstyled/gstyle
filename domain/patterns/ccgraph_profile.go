@@ -32,7 +32,7 @@ type clonePairInputs struct {
 // known nine-feature facts and names. It does not change the report default.
 func EvaluateClonePairs(profile CloneProfile, graphs map[string]*MiningGraph, names map[string]string, emit func(ClonePairEvidence) error) error {
 	if profile != CycloPairProfile {
-		return fmt.Errorf("clone profile %q is unavailable: compat policies and fixtures remain unresolved", profile)
+		return fmt.Errorf("clone profile %q is unavailable for mining views: strict imported graphs use domain/ccgraph.Evaluate", profile)
 	}
 	if emit == nil {
 		return fmt.Errorf("clone pair evidence sink is required")
