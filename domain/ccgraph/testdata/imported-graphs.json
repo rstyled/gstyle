@@ -1,0 +1,72 @@
+{
+  "profile": "compat.ccgraph.strict/0.1.0",
+  "input_scope": "projected_stage_inputs",
+  "functions": [
+    {
+      "Key": "b",
+      "Name": "same",
+      "References": 0,
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Role": "return",
+          "Type": "unit",
+          "Variadic": false
+        }
+      ],
+      "PointerWidth": 64,
+      "Graph": {
+        "Nodes": [
+          {
+            "ID": "d",
+            "Label": "DECL"
+          },
+          {
+            "ID": "r",
+            "Label": "OTHER"
+          }
+        ],
+        "Edges": [
+          {
+            "From": "d",
+            "To": "r",
+            "Family": "data"
+          }
+        ]
+      }
+    },
+    {
+      "Key": "a",
+      "Name": "same",
+      "References": 0,
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Role": "return",
+          "Type": "unit",
+          "Variadic": false
+        }
+      ],
+      "PointerWidth": 64,
+      "Graph": {
+        "Nodes": [
+          {
+            "ID": "d",
+            "Label": "DECL"
+          },
+          {
+            "ID": "r",
+            "Label": "OTHER"
+          }
+        ],
+        "Edges": [
+          {
+            "From": "d",
+            "To": "r",
+            "Family": "data"
+          }
+        ]
+      }
+    }
+  ]
+}

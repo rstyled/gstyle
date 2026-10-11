@@ -13,7 +13,7 @@ package patterns
 // Chop computes the statements on the dependence path from source to sink
 // within a PDG. source and sink are PDG node indices.
 // Returns the node indices in the chop, sorted.
-func Chop(pdg *Pdg, source, sink int) []int {
+func Chop(pdg *MiningGraph, source, sink int) []int {
 	fwd := forwardSlice(pdg, source)
 	bwd := backwardSlice(pdg, sink)
 	// Intersection.
@@ -27,14 +27,11 @@ func Chop(pdg *Pdg, source, sink int) []int {
 }
 
 // forwardSlice returns all nodes reachable from start via dependence edges.
-func forwardSlice(pdg *Pdg, start int) map[int]bool {
+func forwardSlice(pdg *MiningGraph, start int) map[int]bool {
 	visited := map[int]bool{start: true}
 	queue := []int{start}
 	// Build adjacency list.
-	adj := map[int][]int{}
-	for _, e := range pdg.Edges {
-		adj[e.From] = append(adj[e.From], e.To)
-	}
+	adj := abstractionAdjacency(pdg, false)
 	for len(queue) > 0 {
 		n := queue[0]
 		queue = queue[1:]
@@ -49,14 +46,11 @@ func forwardSlice(pdg *Pdg, start int) map[int]bool {
 }
 
 // backwardSlice returns all nodes that can reach target via dependence edges.
-func backwardSlice(pdg *Pdg, target int) map[int]bool {
+func backwardSlice(pdg *MiningGraph, target int) map[int]bool {
 	visited := map[int]bool{target: true}
 	queue := []int{target}
 	// Build reverse adjacency list.
-	radj := map[int][]int{}
-	for _, e := range pdg.Edges {
-		radj[e.To] = append(radj[e.To], e.From)
-	}
+	radj := abstractionAdjacency(pdg, true)
 	for len(queue) > 0 {
 		n := queue[0]
 		queue = queue[1:]
@@ -72,7 +66,7 @@ func backwardSlice(pdg *Pdg, target int) map[int]bool {
 
 // ChopLines is a convenience wrapper that returns source lines instead of
 // node indices.
-func ChopLines(pdg *Pdg, source, sink int) []int {
+func ChopLines(pdg *MiningGraph, source, sink int) []int {
 	nodes := Chop(pdg, source, sink)
 	lines := make([]int, len(nodes))
 	for i, n := range nodes {
