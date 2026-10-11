@@ -308,4 +308,15 @@ cyclo patterns --format pdg-json . > pdg.json
 Writes a JSON array with one compat draft 0.1.0 document per function. Export skips
 pattern mining and preserves extraction limits as explicit evidence. The existing
 `patterns --format json` option still writes the pattern report.
-See [the PDG export contract](docs/pdg/README.md#json-export) for storage and validation details.
+The schema lives in [rstyled/compat](https://github.com/rstyled/compat/blob/e1d08c2500e4184444fed70c9d9d1df206ac6962/schemas/pdg.schema.json).
+To check the export fixture against a compat checkout, install Python `jsonschema`
+and run:
+
+```sh
+COMPAT_PDG_SCHEMA=/path/to/compat/schemas/pdg.schema.json go test ./adapters/pdgjson -run TestExportMatchesCompatSchema -count=1
+```
+
+The schema test skips when no path is set. Tests and export do not fetch schemas.
+Scope IDs use relative paths and lexical byte ranges; they stay deterministic for
+unchanged source and extraction root. Dependencies remain approximate; structural
+schema validity does not establish compat extraction or matching conformance.

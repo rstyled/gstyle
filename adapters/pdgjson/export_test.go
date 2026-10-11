@@ -139,9 +139,13 @@ func TestExportRejectsInvalidInputAndReturnsWriterError(t *testing.T) {
 	}
 }
 
-// Optional external validation checks the complete fixture against the pinned
-// schema, rather than reimplementing schema rules in the Go tests.
+// Optional validation uses the upstream schema supplied by the caller.
+// Tests do not fetch network resources or maintain a schema copy.
 func TestExportMatchesCompatSchema(t *testing.T) {
+	schema := os.Getenv("COMPAT_PDG_SCHEMA")
+	if schema == "" {
+		t.Skip("set COMPAT_PDG_SCHEMA to compat/schemas/pdg.schema.json for schema validation")
+	}
 	python, err := exec.LookPath("python3")
 	if err != nil {
 		t.Skip("python3 is needed for external schema validation")
@@ -159,7 +163,18 @@ func TestExportMatchesCompatSchema(t *testing.T) {
 	if err := os.WriteFile(path, output.Bytes(), 0600); err != nil {
 		t.Fatal(err)
 	}
-	command := exec.Command(python, "../../docs/pdg/validate-export.py", path)
+	command := exec.Command(python, "-c", `
+import json, sys
+from jsonschema import Draft202012Validator
+with open(sys.argv[1]) as stream:
+    schema = json.load(stream)
+Draft202012Validator.check_schema(schema)
+validator = Draft202012Validator(schema)
+with open(sys.argv[2]) as stream:
+    documents = json.load(stream)
+for document in documents:
+    validator.validate(document)
+`, schema, path)
 	if out, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("schema validation: %v\n%s", err, out)
 	}

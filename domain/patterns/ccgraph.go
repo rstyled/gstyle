@@ -11,7 +11,7 @@ import (
 
 // Cyclo's CCGraph-style adaptation combines characteristic/name admission,
 // WL verification. It returns connected groups, not
-// paper-level accepted pairs. See docs/pdg/README.md.
+// paper-level accepted pairs. See docs/papers.md.
 
 // Thresholds from the paper (Zou et al., ASE 2020).
 const (
@@ -123,7 +123,7 @@ type ccPairJob struct{ a, b string }
 
 // ccPairFilters contains immutable pair inputs shared by striped workers.
 // Algorithm 1 admits a numerical match before trying the string fallback.
-// The paper prose and swapped threshold symbols are ambiguous; see docs/pdg/README.md.
+// The paper prose and swapped threshold symbols are ambiguous; see docs/papers.md.
 type ccPairFilters struct {
 	vecs   [][]float64
 	names  [][]rune
