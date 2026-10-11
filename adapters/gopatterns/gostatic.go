@@ -530,7 +530,7 @@ func parseCycloAllowKinds(text string) []string {
 // isPatternKind reports whether s is a known pattern kind ID.
 func isPatternKind(s string) bool {
 	switch s {
-	case "nilerr", "forcetypeassert", "typednil":
+	case "nilerr", "forcetypeassert", "typednil", "chop", "thin_slice", "barrier_slice", "parameterize", "ccgraph_clone":
 		return true
 	}
 	return false

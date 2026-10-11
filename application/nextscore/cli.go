@@ -17,6 +17,10 @@ func Run(ctx context.Context, args []string, output io.Writer) error {
 		return err
 	}
 	if len(report.Candidates) == 0 {
+		if len(report.Suppressed) > 0 {
+			fmt.Fprintf(output, "No active pattern candidates; %d reviewed or already-abstracted items remain.\n", len(report.Suppressed))
+			return nil
+		}
 		fmt.Fprintln(output, "No pattern candidates. Codebase is clean.")
 		return nil
 	}
@@ -56,6 +60,11 @@ func computeScore(report *patterns.PatternsReport) int {
 		// Severity weight: score 0.8 deducts 8 points, 0.4 deducts 4, etc.
 		deduction := int(float64(c.ScoreMilli) / 100)
 		score -= deduction
+	}
+	for _, reviewed := range report.Suppressed {
+		if reviewed.Candidate != nil {
+			score -= int(reviewed.Candidate.ScoreMilli / 100)
+		}
 	}
 	if score < 0 {
 		score = 0

@@ -312,11 +312,12 @@ type FixSpec struct {
 	Definitions []string `json:"definitions,omitempty"`
 }
 
-// Suppressed is a pattern that looks like a candidate but is already
-// abstracted: listed separately, never dropped.
+// Suppressed retains an already-abstracted pattern or an explicitly reviewed
+// candidate. Reviewed candidates keep their full evidence and score.
 type Suppressed struct {
-	Reason string
-	Sites  []Site
+	Reason    string
+	Sites     []Site
+	Candidate *Candidate `json:",omitempty"`
 }
 
 // Mined is the layer-2 result: ranked candidates and suppressions.

@@ -298,3 +298,17 @@ go run ./examples/cyclo-hunt path/to/input.go
 
 See [the Cyclo checker guide](examples/cyclo-hunt/README.md) for its supported inputs
 and checks. The exploratory fixture generators have been removed.
+
+### Reviewed structural patterns
+
+Function doc comments can record an accepted structural finding:
+
+```go
+//lint:ignore chop, thin_slice one cohesive operation
+```
+
+The supported structural review kinds are `chop`, `thin_slice`,
+`barrier_slice`, `parameterize`, and `ccgraph_clone`. A non-empty reason is
+required at every site of a multi-function candidate. Reviewed candidates
+remain in the separate suppressed list with their original evidence and score.
+They leave the active inbox but still count toward the score.

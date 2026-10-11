@@ -150,6 +150,7 @@ func funcFactsOf(fp gopatterns.FuncPdg) *patterns.FuncFacts {
 		TypedNilHits:        fp.TypedNilHits,
 		ErrorCheckSites:     fp.ErrorCheckSites,
 		SuppressedKinds:     fp.SuppressedKinds,
+		ReviewReasons:       fp.ReviewReasons,
 		Params:              fp.Params,
 	}
 }

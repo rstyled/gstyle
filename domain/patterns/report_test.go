@@ -91,7 +91,7 @@ func TestTextRendersCandidateAndSuppressed(t *testing.T) {
 		"    src/dog.go:3  Dog.Bark",
 		"  counter evidence:",
 		"    - Cat::meow has extra logging",
-		"1 suppressed (already abstracted)",
+		"1 suppressed (reviewed or already abstracted)",
 		"  already abstracted by trait Speaker (src/dog.go:3  Dog.Speak)",
 	} {
 		if !strings.Contains(out, want) {
@@ -110,7 +110,7 @@ func TestSuppressedListedSeparately(t *testing.T) {
 		}},
 	}
 	out := Text(report)
-	if !strings.Contains(out, "1 suppressed (already abstracted)") {
+	if !strings.Contains(out, "1 suppressed (reviewed or already abstracted)") {
 		t.Fatalf("suppressed section missing:\n%s", out)
 	}
 	js, err := JSON(report)

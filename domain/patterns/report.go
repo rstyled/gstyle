@@ -88,6 +88,7 @@ func Run(facts []*FuncFacts, options Options) PatternsReport {
 		sortMined(&mined)
 	}
 	addSingleFunctionCandidates(&mined, prepared, options)
+	applyPatternReviews(&mined, prepared)
 	report := Build(groups, options.MinScoreMilli, options.Top)
 	report.Candidates = keepCandidates(mined.Candidates, options.MinScoreMilli, options.Top)
 	report.Suppressed = mined.Suppressed
@@ -229,7 +230,7 @@ func Text(report *PatternsReport) string {
 		for i := range report.Suppressed {
 			lines[i] = suppressedText(&report.Suppressed[i])
 		}
-		parts = append(parts, fmt.Sprintf("%d suppressed (already abstracted)\n%s",
+		parts = append(parts, fmt.Sprintf("%d suppressed (reviewed or already abstracted)\n%s",
 			len(lines), strings.Join(lines, "\n")))
 	}
 	return strings.Join(parts, "\n\n")

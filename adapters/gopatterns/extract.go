@@ -33,6 +33,7 @@ type FuncPdg struct {
 	// SuppressedKinds are pattern kinds suppressed via //lint:ignore or
 	// // cyclo-allow on this function.
 	SuppressedKinds []string
+	ReviewReasons   map[string]string
 	Pdg             patterns.Pdg
 	// AstTypes is the multiset of AST node type names for the function
 	// body (see patterns.AstNodeMultiset). Used by the CCGraph Stage 0
@@ -264,6 +265,7 @@ func extractFunc(pkg *packages.Package, fn *ast.FuncDecl, path string, ctx extra
 		Line:            pos.Line,
 		EndLine:         end.Line,
 		SuppressedKinds: findSuppressedKinds(fn),
+		ReviewReasons:   findPatternReviews(fn),
 		Pdg:             patterns.Pdg{Nodes: b.nodes, Edges: b.edges},
 		AstTypes:        patterns.AstNodeMultiset(fn),
 		SelfTy:          selfTy,

@@ -25,6 +25,7 @@ type FuncFacts struct {
 	// SuppressedKinds are pattern kinds suppressed via //lint:ignore or
 	// // cyclo-allow on this function.
 	SuppressedKinds []string
+	ReviewReasons   map[string]string
 	// Pdg is the function's program dependence graph. Nil means the body
 	// was not extracted (filtered out of mining, like rstyle's pdg: None).
 	Pdg *Pdg

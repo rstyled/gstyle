@@ -130,6 +130,8 @@ Suppressions use ` + "`// cyclo-allow(rule_a, rule_b): reason`" + ` above a func
 
 Bug-pattern warnings are advisory. ` + "`nilerr`" + ` requires explicit nil in every error result of the error branch; propagating an error in another result is valid. ` + "`typednil`" + ` requires a concrete nil value or a stable zero-valued local boxed into an interface. Unknown constructor results, parameters, and mutable bindings are omitted; absence of a warning does not prove nil safety. Interface suggestions describe normalized signature shapes, not Go declarations; preserve the concrete parameter and result types.
 
+Reviewed structural findings can use a function doc comment such as ` + "`//lint:ignore chop, thin_slice one cohesive operation`" + `. Supported review kinds are chop, thin_slice, barrier_slice, parameterize, and ccgraph_clone. A non-empty reason is required at every site of a multi-function candidate. Reviewed candidates retain their full evidence in the separate suppressed list and still count toward the score. Zero active candidates means an empty inbox; it does not mean zero reviewed exceptions.
+
 **Patterns vs quality:** ` + "`cyclo fix`" + ` handles mechanical patterns automatically. ` + "`cyclo check`" + ` findings (side_effect_density, mutated_targets, etc.) are design smells — they need your judgment to refactor. The check tells you *where* to look; you decide *how* to restructure. Don't try to auto-fix quality findings.
 
 ## Reduce a bug reproducer
