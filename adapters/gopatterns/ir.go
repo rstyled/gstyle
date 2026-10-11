@@ -13,6 +13,7 @@ import (
 )
 
 type irBuilder struct {
+	sourceFilename                                      string
 	attributes                                          []pdg.Attributes
 	outputs                                             []pdg.Ref
 	pool                                                *pdg.Builder
@@ -30,7 +31,8 @@ type irBuilder struct {
 func newIRBuilder(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.Builder) *irBuilder {
 	b := &irBuilder{
 		pool: pool, info: pkg.TypesInfo, fset: pkg.Fset,
-		symbols: map[types.Object]pdg.Ref{}, nodes: map[ast.Node]pdg.Ref{},
+		sourceFilename: pkg.Fset.PositionFor(fn.Pos(), false).Filename,
+		symbols:        map[types.Object]pdg.Ref{}, nodes: map[ast.Node]pdg.Ref{},
 		writeNames: map[*ast.Ident]bool{},
 	}
 	b.policy = pool.Policy("cyclo.abstraction", "0.1.0")
@@ -123,13 +125,6 @@ func (b *irBuilder) symbol(id *ast.Ident, role pdg.Role) pdg.Ref {
 	})
 	b.symbols[obj] = ref
 	return ref
-}
-
-func (b *irBuilder) scope(obj types.Object) pdg.Text {
-	if obj.Parent() == nil {
-		return b.graph.Function.ID
-	}
-	return b.pool.Text("scope:" + strconv.Itoa(int(obj.Parent().Pos())))
 }
 
 func (b *irBuilder) definition(node, symbol pdg.Ref) {

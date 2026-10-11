@@ -34,6 +34,15 @@ Measured amd64 hot records are 44 bytes per node and 56 per edge. `Compact`
 removes excess capacity. Construction maps, ASTs and compiler objects are not
 retained. Builders have one owner; shared tables and lists are immutable by convention.
 
+Scope IDs use `scope:<root-relative-path>:lexical:<start-byte>:<end-byte>`.
+Paths use `/`; ranges use zero-based physical file bytes with an exclusive end.
+The same source and extraction root give the same scope IDs across runs,
+checkout locations and file-loading order. Edits that move a scope change its ID.
+Package scopes use `scope:package:<import-path>`; the predeclared universe uses
+`scope:universe`. Objects without a parent scope use `scope:unbound:<import-path>`
+(or `universe`); this is a missing-scope marker, not a claim of lexical membership.
+IDs are interned metadata and do not enter clone-matching labels.
+
 The producer records source byte spans, typed interfaces, distinct syntactic
 definitions, reads/writes and call targets. Unresolved memory targets remain
 unknown; shared storage is not invented. Data edges use approximate first-binding
