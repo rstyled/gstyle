@@ -15,6 +15,7 @@ import (
 	"github.com/shanejonas/cyclo/adapters/sqlite"
 	"github.com/shanejonas/cyclo/application"
 	"github.com/shanejonas/cyclo/application/bugreducer"
+	"github.com/shanejonas/cyclo/application/graphmatch"
 	"github.com/shanejonas/cyclo/application/nextscore"
 	"github.com/shanejonas/cyclo/application/patterncheck"
 	"github.com/shanejonas/cyclo/application/patternfix"
@@ -50,7 +51,7 @@ func commandExitCode(args []string, err error) int {
 			return 1
 		}
 		return 2
-	case "patterns":
+	case "patterns", "match-graphs":
 		return 2
 	case "fix":
 		return 2
@@ -96,6 +97,8 @@ func runSubcommand(ctx context.Context, args []string, output io.Writer) error {
 // runSubcommand under the complexity ceiling.
 func runSubcommandExtra(ctx context.Context, args []string, output io.Writer) error {
 	switch args[0] {
+	case "match-graphs":
+		return graphmatch.Run(ctx, args[1:], output)
 	case "next":
 		return nextscore.Run(ctx, args[1:], output)
 	case "score":

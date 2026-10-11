@@ -56,7 +56,11 @@ expensive kernel computation.
 parameter strings, size filters, and the paper's exact matching policies are not
 yet reproduced. Go reference bindings and approximate must-precede execution
 edges supply two of the numerical features. The shared contract is tracked in [compat PR #8](https://github.com/rstyled/compat/pull/8). These local policies do not
-establish compat conformance or reproduction of the original paper.
+establish compat conformance or reproduction of the original paper. The separately named
+`match-graphs` command now implements imported projected-stage matching against
+`compat.ccgraph.strict/0.1.0` at revision `04d9aa0`; its shared stage fixtures test
+projection, features, interfaces, directed WL, scoring and boundaries. It does
+not validate native extraction or reproduce the original CCGraph tool.
 
 **What cyclo adds:** AST bypass, parallel pair checks, shared IR label hashes,
 cached vector norms, a safe WL upper bound, and bounded match batches. These

@@ -299,6 +299,28 @@ go run ./examples/cyclo-hunt path/to/input.go
 See [the Cyclo checker guide](examples/cyclo-hunt/README.md) for its supported inputs
 and checks. The exploratory fixture generators have been removed.
 
+## Match imported graphs against compat's strict profile
+
+```sh
+cyclo match-graphs --input domain/ccgraph/testdata/imported-graphs.json
+go test ./domain/ccgraph -run TestCompat -count=1
+```
+
+The command accepts the separate projected-stage input format shown in that
+example. It streams JSON Lines with exact pair-stage traces and a final summary.
+Matching uses `compat.ccgraph.strict/0.1.0`, pinned to [compat revision 04d9aa0](https://github.com/rstyled/compat/tree/04d9aa0db8b1f8e4a3fcad16622e2a4e3bc3e53f).
+The 39 concrete upstream stage cases run offline from a hash-checked fixture copy.
+Configuration overrides use exact decimal strings, for example
+`--config thresholds.json` with `{"final_threshold":"0.95"}`. An optional
+`--timeout 30s` stops resource use with an incomplete-run diagnostic; it never
+shortens WL depth or silently truncates pairs.
+
+This is imported-graph matching, not certification of native Go extraction.
+Native PDG exports require a separate CFG/source/evidence validator before strict
+matching. The existing `patterns` matcher remains the Cyclo adaptation. Pair
+results do not establish semantic equivalence or safe refactoring. Required
+unknown facts are diagnosed; cancellation or output failure leaves an incomplete run.
+
 ## Export the compat PDG IR
 
 ```sh

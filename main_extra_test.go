@@ -11,6 +11,20 @@ import (
 	"time"
 )
 
+func TestImportedGraphCommandDispatch(t *testing.T) {
+	var output bytes.Buffer
+	err := run([]string{"match-graphs", "--input", "domain/ccgraph/testdata/imported-graphs.json"}, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output.String(), `"type":"pair"`) || !strings.Contains(output.String(), `"Complete":true`) {
+		t.Fatal(output.String())
+	}
+	if code := commandExitCode([]string{"match-graphs"}, os.ErrNotExist); code != 2 {
+		t.Fatalf("hard failure exit code=%d", code)
+	}
+}
+
 func TestSkillFlagPrintsAnAgentSkillWithoutStartingTheTUI(t *testing.T) {
 	var output bytes.Buffer
 	err := run([]string{"--skill"}, &output)
