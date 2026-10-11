@@ -22,7 +22,7 @@ type irBuilder struct {
 	fset                                                *token.FileSet
 	symbols                                             map[types.Object]pdg.Ref
 	nodes                                               map[ast.Node]pdg.Ref
-	writeNames                                          map[*ast.Ident]bool
+	writeTargets                                        map[ast.Node]bool
 	stack                                               []ast.Node
 	policy, sourceEvidence, sourceOrigin                pdg.Ref
 	executionPolicy, executionEvidence, executionOrigin pdg.Ref
@@ -33,7 +33,7 @@ func newIRBuilder(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pd
 		pool: pool, info: pkg.TypesInfo, fset: pkg.Fset,
 		sourceFilename: pkg.Fset.PositionFor(fn.Pos(), false).Filename,
 		symbols:        map[types.Object]pdg.Ref{}, nodes: map[ast.Node]pdg.Ref{},
-		writeNames: map[*ast.Ident]bool{},
+		writeTargets: map[ast.Node]bool{},
 	}
 	b.policy = pool.Policy("cyclo.abstraction", "0.1.0")
 	b.sourceEvidence = pool.Evidence(pdg.Approximated, "Operation identified in typed source; dependency completeness is separate.", b.policy)

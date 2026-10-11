@@ -31,10 +31,7 @@ func forwardSlice(pdg *MiningGraph, start int) map[int]bool {
 	visited := map[int]bool{start: true}
 	queue := []int{start}
 	// Build adjacency list.
-	adj := map[int][]int{}
-	for _, e := range pdg.Edges {
-		adj[e.From] = append(adj[e.From], e.To)
-	}
+	adj := abstractionAdjacency(pdg, false)
 	for len(queue) > 0 {
 		n := queue[0]
 		queue = queue[1:]
@@ -53,10 +50,7 @@ func backwardSlice(pdg *MiningGraph, target int) map[int]bool {
 	visited := map[int]bool{target: true}
 	queue := []int{target}
 	// Build reverse adjacency list.
-	radj := map[int][]int{}
-	for _, e := range pdg.Edges {
-		radj[e.To] = append(radj[e.To], e.From)
-	}
+	radj := abstractionAdjacency(pdg, true)
 	for len(queue) > 0 {
 		n := queue[0]
 		queue = queue[1:]

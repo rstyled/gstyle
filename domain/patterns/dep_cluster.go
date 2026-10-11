@@ -92,10 +92,7 @@ func stronglyConnected(pdg *MiningGraph) [][]int {
 // newTarjan creates a Tarjan state for the PDG.
 func newTarjan(pdg *MiningGraph) *tarjan {
 	n := len(pdg.Nodes)
-	adj := make([][]int, n)
-	for _, e := range pdg.Edges {
-		adj[e.From] = append(adj[e.From], e.To)
-	}
+	adj := abstractionAdjacency(pdg, false)
 	t := &tarjan{
 		adj:     adj,
 		index:   make([]int, n),

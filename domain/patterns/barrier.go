@@ -30,10 +30,7 @@ func barrierSliceSet(pdg *MiningGraph, seed int, barriers map[int]bool) map[int]
 	visited := map[int]bool{seed: true}
 	queue := []int{seed}
 	// Build reverse adjacency list.
-	radj := map[int][]int{}
-	for _, e := range pdg.Edges {
-		radj[e.To] = append(radj[e.To], e.From)
-	}
+	radj := abstractionAdjacency(pdg, true)
 	for len(queue) > 0 {
 		n := queue[0]
 		queue = queue[1:]

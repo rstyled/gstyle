@@ -120,6 +120,8 @@ func Canonicalize(pdg *MiningGraph, rules Rules) *MiningGraph {
 		{rules.Cmp, compareClass},
 	}
 	out := clonePdg(pdg)
+	// The abstraction projection must precede every normalization step.
+	out.Edges = slices.DeleteFunc(out.Edges, func(edge PdgEdge) bool { return !abstractionEdge(edge) })
 	for _, s := range steps {
 		if s.on {
 			out = s.step(out)

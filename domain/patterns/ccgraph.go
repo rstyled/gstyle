@@ -544,7 +544,7 @@ func vectorNorms(vecs [][]float64) []float64 {
 }
 
 func (f ccPairFilters) cosine(i, j int) float64 {
-	if f.norms[i] == 0 || f.norms[j] == 0 {
+	if len(f.vecs[i]) != len(f.vecs[j]) || f.norms[i] == 0 || f.norms[j] == 0 {
 		return 0
 	}
 	return dot(f.vecs[i], f.vecs[j]) / (f.norms[i] * f.norms[j])

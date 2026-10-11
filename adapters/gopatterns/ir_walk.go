@@ -127,7 +127,11 @@ func (b *irBuilder) assignment(n *ast.AssignStmt) {
 	}
 	id := b.addNode(n, category, attrs)
 	for _, lhs := range n.Lhs {
-		b.write(id, lhs)
+		if n.Tok == token.ASSIGN || n.Tok == token.DEFINE {
+			b.write(id, lhs)
+			continue
+		}
+		b.modify(id, lhs)
 	}
 }
 
@@ -140,7 +144,7 @@ func (b *irBuilder) declaration(n *ast.ValueSpec) {
 
 func (b *irBuilder) increment(n *ast.IncDecStmt) {
 	id := b.addNode(n, pdg.Assignment, pdg.Attributes{WriteForm: b.pool.Text(n.Tok.String())})
-	b.write(id, n.X)
+	b.modify(id, n.X)
 }
 
 func (b *irBuilder) rangeOperation(n *ast.RangeStmt) {
@@ -154,10 +158,11 @@ func (b *irBuilder) rangeOperation(n *ast.RangeStmt) {
 }
 
 func (b *irBuilder) write(node pdg.Ref, expr ast.Expr) {
+	expr = unparen(expr)
+	b.writeTargets[expr] = true
 	access := pdg.Access{UnresolvedReason: b.pool.Text("Memory target and aliases are unresolved.")}
 	if id, ok := expr.(*ast.Ident); ok {
 		if id.Name == "_" {
-			b.writeNames[id] = true
 			return
 		}
 		access = b.variableWrite(id)
@@ -170,8 +175,18 @@ func (b *irBuilder) write(node pdg.Ref, expr ast.Expr) {
 	}
 }
 
+// Read-modify-write operations read the same target they write. The access
+// remains unresolved for memory targets; no alias or reaching-definition claim.
+func (b *irBuilder) modify(node pdg.Ref, expr ast.Expr) {
+	b.write(node, expr)
+	attrs := &b.attributes[b.graph.Nodes[node-1].Attributes-1]
+	if len(attrs.Writes) == 0 {
+		return
+	}
+	attrs.Reads = append(attrs.Reads, attrs.Writes[len(attrs.Writes)-1])
+}
+
 func (b *irBuilder) variableWrite(id *ast.Ident) pdg.Access {
-	b.writeNames[id] = true
 	symbol := b.symbol(id, pdg.LocalRole)
 	if symbol == 0 {
 		return pdg.Access{UnresolvedReason: b.pool.Text("Write binding is unresolved.")}
@@ -180,7 +195,7 @@ func (b *irBuilder) variableWrite(id *ast.Ident) pdg.Access {
 }
 
 func (b *irBuilder) read(id *ast.Ident) {
-	if b.writeNames[id] || b.selectorName(id) {
+	if b.writeTargets[id] || b.selectorName(id) {
 		return
 	}
 	obj, ok := b.info.Uses[id].(*types.Var)
@@ -206,6 +221,9 @@ func (b *irBuilder) selectorName(id *ast.Ident) bool {
 }
 
 func (b *irBuilder) memoryRead(n ast.Node, operator string) {
+	if b.writeTargets[n] {
+		return
+	}
 	b.addNode(n, pdg.Read, pdg.Attributes{
 		Operator: b.pool.Known(operator),
 		Reads:    []pdg.Access{{UnresolvedReason: b.pool.Text("Memory target and aliases are unresolved.")}},

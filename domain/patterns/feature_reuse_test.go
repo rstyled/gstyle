@@ -121,3 +121,14 @@ func TestPairBatchTransfersDistinctBuffers(t *testing.T) {
 		}
 	}
 }
+
+func TestCachedCosineHandlesDifferentFeatureDimensions(t *testing.T) {
+	vectors := [][]float64{{1, 0, 0, 0, 0, 0, 0}, {1, 0, 0, 0, 0, 0, 0, 0, 0}}
+	filters := ccPairFilters{vecs: vectors, norms: vectorNorms(vectors)}
+	if got := filters.cosine(1, 0); got != 0 {
+		t.Fatalf("incompatible vectors have cosine %f", got)
+	}
+	if got := ccCandidatePairs(vectors, []string{"same", "same"}, make([]astShape, 2)); !got.has(0, 1) {
+		t.Fatal("mixed dimensions lose name fallback")
+	}
+}
