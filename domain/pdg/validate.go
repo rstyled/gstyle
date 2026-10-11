@@ -58,6 +58,16 @@ func (v *validator) fact(f Fact) {
 	v.require(f.Status <= NotApplicable, "invalid fact status")
 }
 
+func (v *validator) boolean(f BooleanFact) {
+	v.require(f.Status <= NotApplicable, "invalid boolean fact status")
+	if f.Status == Known {
+		v.require(f.Reason == 0, "known boolean has unavailable reason")
+		return
+	}
+	v.require(!f.Value, "unavailable boolean has a value")
+	v.text(f.Reason, true)
+}
+
 func (v *validator) unique(ids []Text) {
 	seen := make(map[Text]bool, len(ids))
 	for _, id := range ids {
@@ -149,7 +159,7 @@ func (v *validator) parameters(params []Parameter) {
 func (v *validator) parameter(p Parameter) {
 	v.fact(p.Name)
 	v.fact(p.Type)
-	v.fact(p.Variadic)
+	v.boolean(p.Variadic)
 	v.ref(p.Symbol, len(v.g.Symbols), false)
 	v.require(p.Role == ParameterRole || p.Role == ReceiverRole || p.Role == CaptureRole || p.Role == ReturnRole || p.Role == OutputRole, "invalid parameter role")
 	v.extensions(p.Extensions)

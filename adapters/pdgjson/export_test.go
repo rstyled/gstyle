@@ -23,7 +23,7 @@ func exportFixture(t *testing.T) *pdg.Graph {
 		Tables: b.Tables, Profile: policy,
 		Producer:    pdg.Producer{Name: b.Text("test"), Version: b.Text("1"), Language: b.Text("go"), LanguageVersion: b.Missing(pdg.Unknown, "Unknown Go version."), Configuration: b.Text(`{"flag":true}`)},
 		Sources:     []pdg.Source{{ID: b.Text("src"), Path: b.Text("a.go"), ContentIdentity: b.Missing(pdg.Unknown, "Not hashed.")}},
-		Function:    pdg.Function{ID: b.Text("f"), Name: b.Known(""), QualifiedName: b.Known("pkg.f"), Span: pdg.Span{Source: 1, End: 10}, Interface: evidence, ReferenceCount: pdg.CountFact{Status: pdg.Known, Policy: policy}, Inputs: []pdg.Parameter{{Name: b.Known("arg"), Type: b.Known("*int"), Variadic: b.Known("false"), Symbol: 1}}},
+		Function:    pdg.Function{ID: b.Text("f"), Name: b.Known(""), QualifiedName: b.Known("pkg.f"), Span: pdg.Span{Source: 1, End: 10}, Interface: evidence, ReferenceCount: pdg.CountFact{Status: pdg.Known, Policy: policy}, Inputs: []pdg.Parameter{{Name: b.Known("arg"), Type: b.Known("*int"), Variadic: pdg.BooleanFact{Status: pdg.Known}, Symbol: 1}}},
 		Symbols:     []pdg.Symbol{{ID: b.Text("s"), Scope: b.Text("scope"), Name: b.Known("arg"), Type: b.Known("*int"), Role: pdg.ParameterRole}},
 		Locations:   []pdg.Location{{ID: b.Text("heap"), Abstraction: b.Text("test-region"), Description: b.Text("Storage."), Evidence: evidence}},
 		Definitions: []pdg.Definition{{ID: b.Text("def"), Node: 1, Symbol: 1, Location: 1}},

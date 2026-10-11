@@ -23,7 +23,7 @@ func (x exporter) count(c pdg.CountFact) object {
 	return object{"status": "known", "value": c.Value, "policy": x.profile(c.Policy)}
 }
 func (x exporter) parameter(p pdg.Parameter) object {
-	out := object{"position": p.Position, "role": roleNames[p.Role], "name": x.fact(p.Name), "type": x.fact(p.Type), "variadic": x.fact(p.Variadic)}
+	out := object{"position": p.Position, "role": roleNames[p.Role], "name": x.fact(p.Name), "type": x.fact(p.Type), "variadic": x.boolean(p.Variadic)}
 	x.optionalSymbol(out, p.Symbol)
 	x.extensions(out, "extensions", p.Extensions)
 	return out

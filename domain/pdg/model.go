@@ -24,6 +24,14 @@ type Fact struct {
 	Status Status
 }
 
+// BooleanFact occupies the same space as Fact and distinguishes known false
+// from unavailable evidence without interning a boolean spelling.
+type BooleanFact struct {
+	Reason Text
+	Status Status
+	Value  bool
+}
+
 type Profile struct{ ID, Version Text }
 type Capability struct {
 	Description Text
@@ -79,11 +87,12 @@ const (
 )
 
 type Parameter struct {
-	Name, Type, Variadic Fact // variadic is a string fact in draft 0.1.0.
-	Symbol               Ref
-	Position             uint32
-	Role                 Role
-	Extensions           []Extension
+	Name, Type Fact
+	Variadic   BooleanFact
+	Symbol     Ref
+	Position   uint32
+	Role       Role
+	Extensions []Extension
 }
 
 type CountFact struct {

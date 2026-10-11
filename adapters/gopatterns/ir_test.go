@@ -129,8 +129,8 @@ func TestIRInterfacesAndSharedTypes(t *testing.T) {
 	if g.Function.Inputs[1].Type.Value != g.Function.Inputs[2].Type.Value {
 		t.Fatal("type strings are not interned")
 	}
-	if pool.Tables.Text(g.Function.Inputs[3].Variadic.Value) != "true" {
-		t.Fatal("variadic string fact lost")
+	if !g.Function.Inputs[3].Variadic.Value || g.Function.Inputs[3].Variadic.Status != pdg.Known {
+		t.Fatal("variadic boolean fact lost")
 	}
 	if pool.Tables.Text(g.Function.QualifiedName.Value) != pool.Tables.Text(g.Function.ID) {
 		t.Fatal("method identity lost")

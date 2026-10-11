@@ -36,6 +36,22 @@ func TestValidGraphAndUnknownEvidence(t *testing.T) {
 	}
 }
 
+func TestBooleanFactsHaveNoStorageGrowth(t *testing.T) {
+	if unsafe.Sizeof(BooleanFact{}) != unsafe.Sizeof(Fact{}) {
+		t.Fatal("boolean facts enlarge compact interfaces")
+	}
+}
+
+func TestInvalidBooleanEvidenceIsRejected(t *testing.T) {
+	for _, fact := range []BooleanFact{{}, {Status: Supported}, {Status: Unknown, Value: true}, {Status: Known, Reason: 1}} {
+		g, b := fixture()
+		g.Function.Inputs = []Parameter{{Name: b.Known("x"), Type: b.Known("int"), Role: ParameterRole, Variadic: fact}}
+		if err := Validate(g); err == nil {
+			t.Fatalf("accepted %+v", fact)
+		}
+	}
+}
+
 func TestRejectInvalidIR(t *testing.T) {
 	cases := []struct {
 		name   string

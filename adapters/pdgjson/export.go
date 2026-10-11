@@ -35,6 +35,13 @@ func (x exporter) fact(f pdg.Fact) object {
 	return object{"status": statusNames[f.Status], key: x.text(f.Value)}
 }
 
+func (x exporter) boolean(f pdg.BooleanFact) object {
+	if f.Status == pdg.Known {
+		return object{"status": "known", "value": f.Value}
+	}
+	return object{"status": statusNames[f.Status], "reason": x.text(f.Reason)}
+}
+
 var statusNames = [...]string{"unknown", "known", "unsupported", "not_applicable", "supported", "approximated"}
 var roleNames = [...]string{"parameter", "local", "global", "capture", "receiver", "output", "other", "return"}
 var categoryNames = [...]string{"declaration", "read", "assignment", "computation", "control", "call", "entry", "formal_input", "return", "formal_output", "exit", "merge", "memory_summary", "other"}
