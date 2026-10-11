@@ -46,22 +46,26 @@ func EvaluateClonePairs(profile CloneProfile, graphs map[string]*MiningGraph, na
 
 func prepareClonePairs(graphs map[string]*MiningGraph, names map[string]string) (*clonePairInputs, error) {
 	ids := ccSortableIDs(graphs)
-	inputs := &clonePairInputs{ids: ids, names: make([]string, len(ids)), wls: make([]*Wl, len(ids))}
-	inputs.filters.vecs = make([][]float64, len(ids))
+	shortNames := make([]string, len(ids))
+	vectors := make([][]float64, len(ids))
+	wls := make([]*Wl, len(ids))
 	for i, id := range ids {
 		if err := validateClonePairInput(id, graphs[id], names); err != nil {
 			return nil, err
 		}
-		inputs.names[i] = shortName(names[id])
-		inputs.filters.vecs[i] = characteristicVector(graphs[id])
-		inputs.wls[i] = NewWlLight(graphs[id], inputs.filters.vecs[i])
+		shortNames[i] = shortName(names[id])
+		vectors[i] = characteristicVector(graphs[id])
+		wls[i] = NewWlLight(graphs[id], vectors[i])
 	}
-	inputs.filters.norms = vectorNorms(inputs.filters.vecs)
+	inputs := &clonePairInputs{
+		ids: ids, names: shortNames, wls: wls,
+		filters: ccPairFilters{vecs: vectors, norms: vectorNorms(vectors)},
+	}
 	return inputs, nil
 }
 
 func validateClonePairInput(id string, graph *MiningGraph, names map[string]string) error {
-	if graph.Paper == nil || !graph.Paper.ReferenceKnown {
+	if graph == nil || graph.Paper == nil || !graph.Paper.ReferenceKnown {
 		return fmt.Errorf("function %q requires known nine-feature facts", id)
 	}
 	if _, ok := names[id]; !ok {
@@ -82,14 +86,16 @@ func (in *clonePairInputs) evaluate(profile CloneProfile, emit func(ClonePairEvi
 }
 
 func (in *clonePairInputs) evidence(profile CloneProfile, i, j int) ClonePairEvidence {
-	e := ClonePairEvidence{Profile: profile, Left: in.ids[i], Right: in.ids[j], Numerical: in.filters.cosine(i, j)}
-	e.Name = jaroWinkler(in.names[i], in.names[j])
-	e.Admitted = e.Numerical >= charVecThreshold || e.Name >= ccStage2NameThreshold
-	if !e.Admitted {
-		return e
+	numerical := in.filters.cosine(i, j)
+	name := jaroWinkler(in.names[i], in.names[j])
+	admitted := numerical >= charVecThreshold || name >= ccStage2NameThreshold
+	var score uint32
+	if admitted {
+		score = SimilarityMilli(in.wls[i], in.wls[j])
 	}
-	e.WLMilli = SimilarityMilli(in.wls[i], in.wls[j])
-	e.WLKnown = true
-	e.Accepted = e.WLMilli >= ccMatchThreshold
-	return e
+	return ClonePairEvidence{
+		Profile: profile, Left: in.ids[i], Right: in.ids[j],
+		Numerical: numerical, Name: name, Admitted: admitted,
+		WLKnown: admitted, WLMilli: score, Accepted: admitted && score >= ccMatchThreshold,
+	}
 }

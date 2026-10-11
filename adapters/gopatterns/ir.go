@@ -92,6 +92,8 @@ func (b *irBuilder) addNode(n ast.Node, category pdg.Category, attrs pdg.Attribu
 	return b.appendNode(n, category, attrs)
 }
 
+// appendNode publishes the node, span, attributes and AST lookup together.
+// Their references must stay aligned during construction.
 func (b *irBuilder) appendNode(n ast.Node, category pdg.Category, attrs pdg.Attributes) pdg.Ref {
 	id := pdg.Ref(len(b.graph.Nodes) + 1)
 	b.graph.Spans = append(b.graph.Spans, b.span(n))
@@ -127,6 +129,7 @@ func (b *irBuilder) symbol(id *ast.Ident, role pdg.Role) pdg.Ref {
 	return ref
 }
 
+// definition updates both the definition table and its owner backreference.
 func (b *irBuilder) definition(node, symbol pdg.Ref) {
 	if symbol == 0 {
 		return

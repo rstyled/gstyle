@@ -92,7 +92,7 @@ func ccGraphGroups(pdgs map[string]*MiningGraph, names map[string]string, astTyp
 	// candidate-set lookups in Stage 4.
 	idToIndex := ccIDIndex(ids)
 	parent := ccMakeParent(ids)
-	ccUnionSimilar(ids, candidates, idToIndex, sim, parent)
+	newCCPairMatcher(ids, candidates, idToIndex, sim).union(parent)
 	return groupsOfTwoOrMore(parent)
 }
 
@@ -257,57 +257,58 @@ func ccBuildNeighborhoodWLs(ids []string, candidates *ccPairs, pdgs map[string]*
 	return out
 }
 
-// ccUnionSimilar unions admitted pairs that pass all
-// filters including WL similarity. The WL kernel checks are striped
-// across a worker pool; unions are applied sequentially afterwards.
-// Union order cannot affect the final groups (groupsOfTwoOrMore
-// normalizes via find), so the output matches the sequential version.
-// idToIndex maps function IDs to positions in the sorted ids slice,
-// for candidate-set lookups.
-func ccUnionSimilar(cluster []string, candidates *ccPairs, idToIndex map[string]int, sim func(a, b int) bool, parent map[string]string) {
-	indices := make([]int, len(cluster))
-	for i, id := range cluster {
+// ccPairMatcher owns aligned, immutable inputs shared by its striped workers.
+// Accepted pairs arrive in bounded batches; only the consumer mutates parents.
+type ccPairMatcher struct {
+	ids        []string
+	indices    []int
+	candidates *ccPairs
+	similar    func(a, b int) bool
+}
+
+func newCCPairMatcher(ids []string, candidates *ccPairs, idToIndex map[string]int, similar func(a, b int) bool) ccPairMatcher {
+	indices := make([]int, len(ids))
+	for i, id := range ids {
 		indices[i] = idToIndex[id]
 	}
-	workers := min(runtime.NumCPU(), len(cluster))
+	return ccPairMatcher{ids: ids, indices: indices, candidates: candidates, similar: similar}
+}
+
+func (m ccPairMatcher) union(parent map[string]string) {
+	workers := min(runtime.NumCPU(), len(m.ids))
 	found := make(chan []ccPairJob, workers)
 	var wg sync.WaitGroup
-	for w := 0; w < workers; w++ {
+	for worker := 0; worker < workers; worker++ {
 		wg.Add(1)
-		go func(w int) {
+		go func(worker int) {
 			defer wg.Done()
-			ccSimilarStripes(cluster, candidates, indices, sim, w, workers, found)
-		}(w)
+			m.stripe(worker, workers, found)
+		}(worker)
 	}
 	go func() {
 		wg.Wait()
 		close(found)
 	}()
 	for pairs := range found {
-		for _, p := range pairs {
-			union(parent, p.a, p.b)
+		for _, pair := range pairs {
+			union(parent, pair.a, pair.b)
 		}
 	}
 }
 
-// ccSimilarStripes streams bounded batches of cluster pairs (outer index striped by
-// worker) passing the candidate-set and WL-similarity filters. The sim
-// closure is the Stage 4 kernel: standard WL or neighborhood-augmented WL,
-// selected by the caller. idToIndex maps function IDs to positions in the
-// sorted ids slice, for candidate-set lookups.
-func ccSimilarStripes(cluster []string, candidates *ccPairs, indices []int, sim func(a, b int) bool, worker, workers int, found chan<- []ccPairJob) {
+func (m ccPairMatcher) stripe(worker, workers int, found chan<- []ccPairJob) {
 	batch := ccPairBatch{pairs: make([]ccPairJob, 0, 64), found: found}
 	defer batch.flush()
-	for i := worker; i < len(cluster); i += workers {
-		for j := i + 1; j < len(cluster); j++ {
-			a, b := indices[i], indices[j]
-			if !candidates.has(a, b) {
+	for i := worker; i < len(m.ids); i += workers {
+		for j := i + 1; j < len(m.ids); j++ {
+			a, b := m.indices[i], m.indices[j]
+			if !m.candidates.has(a, b) {
 				continue
 			}
-			if !sim(a, b) {
+			if !m.similar(a, b) {
 				continue
 			}
-			batch.add(ccPairJob{a: cluster[i], b: cluster[j]})
+			batch.add(ccPairJob{a: m.ids[i], b: m.ids[j]})
 		}
 	}
 }

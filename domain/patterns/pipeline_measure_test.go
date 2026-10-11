@@ -122,7 +122,7 @@ func measureVerification(ids []string, candidates *ccPairs, wls map[string]*Wl, 
 	// untimed pass; no atomic counters enter the hot similarity loop.
 	sim := func(a, b int) bool { return similarityAtLeast(aligned[a], aligned[b], ccMatchThreshold) }
 	for _, cluster := range clusters {
-		ccUnionSimilar(cluster, candidates, indexes, sim, parent)
+		newCCPairMatcher(cluster, candidates, indexes, sim).union(parent)
 	}
 	return groupsOfTwoOrMore(parent)
 }

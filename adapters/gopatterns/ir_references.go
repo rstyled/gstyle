@@ -1,15 +1,16 @@
 package gopatterns
 
 import (
-	"github.com/shanejonas/cyclo/domain/pdg"
 	"go/types"
+
+	"github.com/shanejonas/cyclo/domain/pdg"
 )
 
 // Count distinct recorded variable bindings, not uses, aliases or locations.
 // Go's reference-bearing value kinds define the language-specific policy.
 func (b *irBuilder) references() {
 	policy := b.pool.Policy("cyclo.go-reference-bindings", "1")
-	count := pdg.CountFact{Status: pdg.Known, Policy: policy}
+	var count uint64
 	for object := range b.symbols {
 		variable, ok := referenceVariable(object)
 		if !ok {
@@ -17,18 +18,17 @@ func (b *irBuilder) references() {
 		}
 		typ := types.Unalias(variable.Type())
 		if _, generic := typ.(*types.TypeParam); generic {
-			count.Status = pdg.Unknown
-			count.Reason = b.pool.Text("Reference classification of a type parameter is unresolved.")
-			continue
+			b.graph.Function.ReferenceCount = pdg.CountFact{
+				Status: pdg.Unknown, Policy: policy,
+				Reason: b.pool.Text("Reference classification of a type parameter is unresolved."),
+			}
+			return
 		}
 		if referenceType(typ) {
-			count.Value++
+			count++
 		}
 	}
-	if count.Status != pdg.Known {
-		count.Value = 0
-	}
-	b.graph.Function.ReferenceCount = count
+	b.graph.Function.ReferenceCount = pdg.CountFact{Status: pdg.Known, Policy: policy, Value: count}
 }
 
 func referenceType(typ types.Type) bool {

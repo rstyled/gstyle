@@ -9,58 +9,61 @@ import (
 )
 
 func (b *irBuilder) interfaces(fn *ast.FuncDecl) {
-	b.fields(fn.Recv, pdg.ReceiverRole, false)
-	b.fields(fn.Type.Params, pdg.ParameterRole, false)
-	b.fields(fn.Type.Results, pdg.ReturnRole, true)
+	b.fields(fn.Recv, pdg.ReceiverRole)
+	b.fields(fn.Type.Params, pdg.ParameterRole)
+	b.fields(fn.Type.Results, pdg.ReturnRole)
 }
 
-func (b *irBuilder) fields(fields *ast.FieldList, role pdg.Role, output bool) {
+func (b *irBuilder) fields(fields *ast.FieldList, role pdg.Role) {
 	if fields == nil {
 		return
 	}
 	for _, field := range fields.List {
-		b.field(field, role, output)
+		b.field(field, role)
 	}
 }
 
-func (b *irBuilder) field(field *ast.Field, role pdg.Role, output bool) {
+func (b *irBuilder) field(field *ast.Field, role pdg.Role) {
 	if len(field.Names) == 0 {
-		b.parameter(field, nil, role, output)
+		b.parameter(field, nil, role)
 		return
 	}
 	for _, name := range field.Names {
-		b.parameter(field, name, role, output)
+		b.parameter(field, name, role)
 	}
 }
 
-func (b *irBuilder) parameter(field *ast.Field, name *ast.Ident, role pdg.Role, output bool) {
-	params := &b.graph.Function.Inputs
+// parameter keeps interface positions and formal operation nodes in one step.
+func (b *irBuilder) parameter(field *ast.Field, name *ast.Ident, role pdg.Role) {
+	output := role == pdg.ReturnRole
 	category := pdg.FormalInput
+	position := len(b.graph.Function.Inputs)
 	if output {
-		params = &b.graph.Function.Outputs
 		category = pdg.FormalOutput
+		position = len(b.graph.Function.Outputs)
 	}
-	param := b.parameterFacts(field, name, role)
-	param.Position = uint32(len(*params))
-	*params = append(*params, param)
-	attrs := pdg.Attributes{Position: pdg.Position(param.Position + 1)}
+	param := b.parameterFacts(field, name, role, uint32(position))
+	if output {
+		b.graph.Function.Outputs = append(b.graph.Function.Outputs, param)
+	} else {
+		b.graph.Function.Inputs = append(b.graph.Function.Inputs, param)
+	}
+	var symbols []pdg.Ref
 	if param.Symbol != 0 {
-		attrs.Symbols = []pdg.Ref{param.Symbol}
+		symbols = []pdg.Ref{param.Symbol}
 	}
+	attrs := pdg.Attributes{Position: pdg.Position(param.Position + 1), Symbols: symbols}
 	node := b.appendNode(field, category, attrs)
 	if output {
 		b.outputs = append(b.outputs, node)
 	}
-	if !output || name != nil {
-		b.definition(node, param.Symbol)
-	}
-
+	b.definition(node, param.Symbol)
 }
 
-func (b *irBuilder) parameterFacts(field *ast.Field, name *ast.Ident, role pdg.Role) pdg.Parameter {
+func (b *irBuilder) parameterFacts(field *ast.Field, name *ast.Ident, role pdg.Role, position uint32) pdg.Parameter {
 	_, variadic := field.Type.(*ast.Ellipsis)
 	p := pdg.Parameter{
-		Role: role, Name: b.pool.Known(""), Type: b.typeFact(field.Type),
+		Position: position, Role: role, Name: b.pool.Known(""), Type: b.typeFact(field.Type),
 		Variadic: b.pool.Known(strconv.FormatBool(variadic)),
 	}
 	if name != nil {

@@ -15,19 +15,19 @@ type baseLabelKey struct {
 type baseLabelCache struct{ hashes map[baseLabelKey]uint64 }
 
 func baseKey(n PdgNode) baseLabelKey {
-	key := baseLabelKey{kind: n.Kind}
 	switch n.Kind {
 	case Call:
-		key.shape = n.SigClass
-		key.scope = callScope(n.CalleeID)
+		return baseLabelKey{kind: Call, shape: n.SigClass, scope: callScope(n.CalleeID)}
 	case Lit:
-		key.shape = n.LitKind
+		return baseLabelKey{kind: Lit, shape: n.LitKind}
 	case Op:
-		key.shape, _, _ = strings.Cut(n.Detail, ":")
+		operator, _, _ := strings.Cut(n.Detail, ":")
+		return baseLabelKey{kind: Op, shape: operator}
 	case Param:
-		key.shape = n.TyClass
+		return baseLabelKey{kind: Param, shape: n.TyClass}
+	default:
+		return baseLabelKey{kind: n.Kind}
 	}
-	return key
 }
 
 func sharedBaseLabels(facts []*FuncFacts) *baseLabelCache {

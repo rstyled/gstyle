@@ -115,12 +115,13 @@ func (b *attributeBuilder) accessList(list []Access) Ref {
 }
 
 func accessKey(list []Access) string {
-	data := make([]byte, 0, len(list)*16)
-	for _, value := range list {
-		data = binary.LittleEndian.AppendUint32(data, uint32(value.Symbol))
-		data = binary.LittleEndian.AppendUint32(data, uint32(value.Location))
-		data = binary.LittleEndian.AppendUint32(data, uint32(value.UnresolvedReason))
-		data = binary.LittleEndian.AppendUint32(data, uint32(value.Position))
+	data := make([]byte, len(list)*16)
+	for i, value := range list {
+		record := data[i*16 : (i+1)*16]
+		binary.LittleEndian.PutUint32(record[0:4], uint32(value.Symbol))
+		binary.LittleEndian.PutUint32(record[4:8], uint32(value.Location))
+		binary.LittleEndian.PutUint32(record[8:12], uint32(value.UnresolvedReason))
+		binary.LittleEndian.PutUint32(record[12:16], uint32(value.Position))
 	}
 	return string(data)
 }

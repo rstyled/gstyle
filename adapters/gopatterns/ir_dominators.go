@@ -1,6 +1,10 @@
 package gopatterns
 
-import "golang.org/x/tools/go/cfg"
+import (
+	"slices"
+
+	"golang.org/x/tools/go/cfg"
+)
 
 // Immediate dominators use reverse postorder and predecessor intersection.
 // All arrays and predecessor lists are temporary and linear in CFG size.
@@ -11,20 +15,16 @@ type executionDominators struct {
 }
 
 func newExecutionDominators(graph *cfg.CFG) *executionDominators {
-	d := &executionDominators{rank: make([]int, len(graph.Blocks)), idom: make([]int, len(graph.Blocks)), predecessors: make([][]int, len(graph.Blocks))}
+	d := &executionDominators{rank: make([]int, len(graph.Blocks)), idom: make([]int, len(graph.Blocks)), predecessors: executionPredecessors(graph)}
 	seen := make([]bool, len(graph.Blocks))
 	d.postorder(graph.Blocks[0], seen)
 	for i := range d.idom {
 		d.idom[i] = -1
 	}
-	for i := range len(d.order) / 2 {
-		j := len(d.order) - 1 - i
-		d.order[i], d.order[j] = d.order[j], d.order[i]
-	}
+	slices.Reverse(d.order)
 	for i, index := range d.order {
 		d.rank[index] = i
 	}
-	d.predecessors = executionPredecessors(graph)
 	d.idom[0] = 0
 	for d.update() {
 	}

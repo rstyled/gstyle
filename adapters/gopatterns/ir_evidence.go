@@ -26,13 +26,14 @@ var irCapabilities = map[string]struct {
 }
 
 func (b *irBuilder) capabilities() {
-	for _, name := range pdg.RequiredCapabilities {
+	capabilities := make([]pdg.NamedCapability, len(pdg.RequiredCapabilities))
+	for i, name := range pdg.RequiredCapabilities {
 		c := irCapabilities[name]
-
-		b.graph.Capabilities = append(b.graph.Capabilities, pdg.NamedCapability{
+		capabilities[i] = pdg.NamedCapability{
 			Name: b.pool.Text(name), Evidence: b.pool.Evidence(c.status, c.description, b.policy),
-		})
+		}
 	}
+	b.graph.Capabilities = capabilities
 	b.graph.Conformance = []pdg.Conformance{{
 		Profile: b.policy, Status: pdg.NonConformant,
 		Reasons: []pdg.Text{b.pool.Text("Dependency analysis and the shared extraction profile are incomplete.")},
