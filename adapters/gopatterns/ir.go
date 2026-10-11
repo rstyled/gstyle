@@ -13,19 +13,19 @@ import (
 )
 
 type irBuilder struct {
-	sourceFilename                                      string
-	attributes                                          []pdg.Attributes
-	outputs                                             []pdg.Ref
-	pool                                                *pdg.Builder
-	graph                                               pdg.Graph
-	info                                                *types.Info
-	fset                                                *token.FileSet
-	symbols                                             map[types.Object]pdg.Ref
-	nodes                                               map[ast.Node]pdg.Ref
-	writeTargets                                        map[ast.Node]bool
-	stack                                               []ast.Node
-	policy, sourceEvidence, sourceOrigin                pdg.Ref
-	executionPolicy, executionEvidence, executionOrigin pdg.Ref
+	sourceFilename                       string
+	attributes                           []pdg.Attributes
+	outputs                              []pdg.Ref
+	pool                                 *pdg.Builder
+	graph                                pdg.Graph
+	info                                 *types.Info
+	fset                                 *token.FileSet
+	symbols                              map[types.Object]pdg.Ref
+	nodes                                map[ast.Node]pdg.Ref
+	writeTargets                         map[ast.Node]bool
+	stack                                []ast.Node
+	policy, sourceEvidence, sourceOrigin pdg.Ref
+	executionEvidence, executionOrigin   pdg.Ref
 }
 
 func newIRBuilder(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.Builder) *irBuilder {
@@ -36,8 +36,8 @@ func newIRBuilder(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pd
 		writeTargets: map[ast.Node]bool{},
 	}
 	b.policy = pool.Policy("cyclo.abstraction", "0.1.0")
-	b.sourceEvidence = pool.Evidence(pdg.Approximated, "Operation identified in typed source; dependency completeness is separate.", b.policy)
-	b.sourceOrigin = pool.Origin(pdg.SourceOrigin, "Go source operation; abstraction lowering is approximate.", b.policy)
+	b.sourceEvidence = pool.Evidence(pdg.Approximated, "Operation identified in typed source; dependency completeness is separate.")
+	b.sourceOrigin = pool.Origin(pdg.SourceOrigin, "Go source operation; abstraction lowering is approximate.")
 	b.header(pkg, fn, path)
 	return b
 }
@@ -58,7 +58,7 @@ func (b *irBuilder) header(pkg *packages.Package, fn *ast.FuncDecl, path string)
 		Sources: []pdg.Source{{ID: p.Text(path), Path: p.Text(path), ContentIdentity: p.Missing(pdg.Unknown, "Source content digest is not computed.")}},
 		Function: pdg.Function{
 			ID: identity, Name: p.Known(fn.Name.Name), QualifiedName: qualified, Span: b.span(fn),
-			Interface:      p.Evidence(pdg.Supported, "Complete typed function interface.", b.policy),
+			Interface:      p.Evidence(pdg.Supported, "Complete typed function interface."),
 			ReferenceCount: pdg.CountFact{Status: pdg.Unknown, Reason: p.Text("Reference-count policy is not selected.")},
 		},
 	}

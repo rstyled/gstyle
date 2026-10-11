@@ -9,7 +9,6 @@ import (
 // Count distinct recorded variable bindings, not uses, aliases or locations.
 // Go's reference-bearing value kinds define the language-specific policy.
 func (b *irBuilder) references() {
-	policy := b.pool.Policy("cyclo.go-reference-bindings", "1")
 	var count uint64
 	for object := range b.symbols {
 		variable, ok := referenceVariable(object)
@@ -19,7 +18,7 @@ func (b *irBuilder) references() {
 		typ := types.Unalias(variable.Type())
 		if _, generic := typ.(*types.TypeParam); generic {
 			b.graph.Function.ReferenceCount = pdg.CountFact{
-				Status: pdg.Unknown, Policy: policy,
+				Status: pdg.Unknown,
 				Reason: b.pool.Text("Reference classification of a type parameter is unresolved."),
 			}
 			return
@@ -28,7 +27,7 @@ func (b *irBuilder) references() {
 			count++
 		}
 	}
-	b.graph.Function.ReferenceCount = pdg.CountFact{Status: pdg.Known, Policy: policy, Value: count}
+	b.graph.Function.ReferenceCount = pdg.CountFact{Status: pdg.Known, Value: count}
 }
 
 func referenceType(typ types.Type) bool {

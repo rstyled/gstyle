@@ -81,7 +81,7 @@ func (x exporter) access(a pdg.Access) object {
 }
 func (x exporter) edge(e pdg.Edge) object {
 	kinds := [...]string{"data", "control", "execution"}
-	out := object{"id": x.text(e.ID), "source": x.text(x.g.Nodes[e.Source-1].ID), "target": x.text(x.g.Nodes[e.Target-1].ID), "kind": kinds[e.Kind], "subkind": x.text(e.Subkind), "policy": x.profile(e.Policy), "evidence": x.capability(e.Evidence), "provenance": x.provenance(e.Provenance)}
+	out := object{"id": x.text(e.ID), "source": x.text(x.g.Nodes[e.Source-1].ID), "target": x.text(x.g.Nodes[e.Target-1].ID), "kind": kinds[e.Kind], "subkind": x.text(e.Subkind), "evidence": x.capability(e.Evidence), "provenance": x.provenance(e.Provenance)}
 	x.edgeFacts(out, e)
 	x.annotations(out, e.Annotations)
 	return out

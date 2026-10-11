@@ -51,9 +51,8 @@ func TestReturnValuesReachEachFormalOutput(t *testing.T) {
 					t.Fatal("duplicate result transfer")
 				}
 				found[edge.Source][edge.Position] = true
-				policy := g.Tables.Policies[edge.Policy-1]
 				evidence := g.Tables.Evidence[edge.Evidence-1]
-				if g.Tables.Text(policy.ID) != "cyclo.go-return-values" || evidence.Policy != edge.Policy || evidence.Status != pdg.Approximated || edge.Definition != 0 {
+				if evidence.Status != pdg.Approximated || edge.Definition != 0 {
 					t.Fatal("return edge overstates dependency precision")
 				}
 			}

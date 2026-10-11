@@ -9,8 +9,8 @@ import (
 func fixture() (*Graph, *Builder) {
 	b := NewBuilder()
 	policy := b.Policy("fixture", "1")
-	evidence := b.Evidence(Supported, "Fixture operation.", policy)
-	origin := b.Origin(SourceOrigin, "Fixture source.", policy)
+	evidence := b.Evidence(Supported, "Fixture operation.")
+	origin := b.Origin(SourceOrigin, "Fixture source.")
 	g := &Graph{
 		Tables: b.Tables, Profile: policy,
 		Producer: Producer{Name: b.Text("fixture"), Version: b.Text("1"), Language: b.Text("go"), LanguageVersion: b.Known("1.26"), Configuration: b.Text("{}")},
@@ -21,7 +21,7 @@ func fixture() (*Graph, *Builder) {
 		Spans: []Span{{Source: 1, Start: 10, End: 13}},
 	}
 	for _, name := range RequiredCapabilities {
-		g.Capabilities = append(g.Capabilities, NamedCapability{Name: b.Text(name), Evidence: b.Evidence(Unknown, "Fixture does not certify extraction.", 0)})
+		g.Capabilities = append(g.Capabilities, NamedCapability{Name: b.Text(name), Evidence: b.Evidence(Unknown, "Fixture does not certify extraction.")})
 	}
 	return g, b
 }
@@ -66,9 +66,9 @@ func TestRejectInvalidIR(t *testing.T) {
 		{"unknown without reason", func(g *Graph, _ *Builder) { g.Function.Name = Fact{} }},
 		{"bad config", func(g *Graph, b *Builder) { g.Producer.Configuration = b.Text("[]") }},
 		{"broken edge", func(g *Graph, b *Builder) {
-			g.Edges = []Edge{{ID: b.Text("e"), Subkind: b.Text("operand"), Source: 1, Target: 2, Policy: g.Profile, Evidence: 1, Provenance: 1}}
+			g.Edges = []Edge{{ID: b.Text("e"), Subkind: b.Text("operand"), Source: 1, Target: 2, Evidence: 1, Provenance: 1}}
 		}},
-		{"reason required", func(g *Graph, _ *Builder) { g.Conformance = []Conformance{{Profile: g.Profile, Status: NonConformant}} }},
+		{"reason required", func(g *Graph, _ *Builder) { g.Conformance = Conformance{Status: NonConformant} }},
 		{"unknown extension preserved", func(g *Graph, b *Builder) {
 			g.Extensions = []Extension{{Name: b.Text("not-namespaced"), Value: b.Text("{}")}}
 		}},
@@ -86,7 +86,7 @@ func TestRejectInvalidIR(t *testing.T) {
 
 func TestMemoryLocationAndParallelEdges(t *testing.T) {
 	g, b := fixture()
-	g.Locations = []Location{{ID: b.Text("heap"), Abstraction: b.Text("may-alias"), Description: b.Text("Possible target."), Evidence: b.Evidence(Approximated, "May alias.", g.Profile)}}
+	g.Locations = []Location{{ID: b.Text("heap"), Abstraction: b.Text("may-alias"), Description: b.Text("Possible target."), Evidence: b.Evidence(Approximated, "May alias.")}}
 	g.Definitions = []Definition{{ID: b.Text("d1"), Node: 1, Location: 1}}
 	attrs := []Attributes{{Defines: []Ref{1}, Writes: []Access{{Location: 1}}, Reads: []Access{{UnresolvedReason: b.Text("Unknown target.")}}}}
 	g.Nodes[0].Attributes = 1
@@ -94,8 +94,8 @@ func TestMemoryLocationAndParallelEdges(t *testing.T) {
 		t.Fatal(err)
 	}
 	g.Edges = []Edge{
-		{ID: b.Text("e1"), Source: 1, Target: 1, Kind: Data, Subkind: b.Text("may-def-use"), Location: 1, Definition: 1, Policy: g.Profile, Evidence: 1, Provenance: 1, Position: 1, LoopCarried: 2},
-		{ID: b.Text("e2"), Source: 1, Target: 1, Kind: Data, Subkind: b.Text("may-def-use"), Location: 1, Definition: 1, Policy: g.Profile, Evidence: 1, Provenance: 1, Position: 2, LoopCarried: 2},
+		{ID: b.Text("e1"), Source: 1, Target: 1, Kind: Data, Subkind: b.Text("may-def-use"), Location: 1, Definition: 1, Evidence: 1, Provenance: 1, Position: 1, LoopCarried: 2},
+		{ID: b.Text("e2"), Source: 1, Target: 1, Kind: Data, Subkind: b.Text("may-def-use"), Location: 1, Definition: 1, Evidence: 1, Provenance: 1, Position: 2, LoopCarried: 2},
 	}
 	if err := Validate(g); err != nil {
 		t.Fatal(err)
@@ -109,9 +109,9 @@ func TestSharedTablesAndRecordSize(t *testing.T) {
 	b := NewBuilder()
 	for range 10000 {
 		b.Known("map[string]*example.Record")
-		policy := b.Policy("extraction", "1")
-		b.Evidence(Supported, "Typed source.", policy)
-		b.Origin(SourceOrigin, "Source operation.", policy)
+		b.Policy("extraction", "1")
+		b.Evidence(Supported, "Typed source.")
+		b.Origin(SourceOrigin, "Source operation.")
 	}
 	if len(b.Tables.Strings) != 5 || len(b.Tables.Policies) != 1 || len(b.Tables.Evidence) != 1 || len(b.Tables.Provenance) != 1 {
 		t.Fatalf("metadata not shared: %+v", b.Tables)
@@ -125,7 +125,7 @@ func TestSharedTablesAndRecordSize(t *testing.T) {
 func TestExtensionsAndDetailedProvenance(t *testing.T) {
 	g, b := fixture()
 	g.Extensions = []Extension{{Name: b.Text("rstyle:ownership"), Value: b.Text(`{"future_field":[1,"unknown"]}`)}}
-	g.Nodes[0].Provenance = b.AddProvenance(Provenance{Origin: Projection, Description: b.Text("Projected input."), Policy: g.Profile, Nodes: []Text{b.Text("external-node")}, Spans: []Span{{Source: 1, End: 3}}})
+	g.Nodes[0].Provenance = b.AddProvenance(Provenance{Origin: Projection, Description: b.Text("Projected input."), Nodes: []Text{b.Text("external-node")}, Spans: []Span{{Source: 1, End: 3}}})
 	if err := Validate(g); err != nil {
 		t.Fatal(err)
 	}
@@ -139,9 +139,9 @@ func BenchmarkSharedMetadata(b *testing.B) {
 		pool := NewBuilder()
 		for range 10000 {
 			pool.Known("map[string]*example.Record")
-			policy := pool.Policy("extraction", "1")
-			pool.Evidence(Supported, "Typed source.", policy)
-			pool.Origin(SourceOrigin, "Source operation.", policy)
+			pool.Policy("extraction", "1")
+			pool.Evidence(Supported, "Typed source.")
+			pool.Origin(SourceOrigin, "Source operation.")
 		}
 	}
 	b.ReportAllocs()

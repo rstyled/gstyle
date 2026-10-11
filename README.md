@@ -308,7 +308,11 @@ cyclo patterns --format pdg-json . > pdg.json
 Writes a JSON array with one compat draft 0.1.0 document per function. Export skips
 pattern mining and preserves extraction limits as explicit evidence. The existing
 `patterns --format json` option still writes the pattern report.
-The schema lives in [rstyled/compat](https://github.com/rstyled/compat/blob/04d9aa0db8b1f8e4a3fcad16622e2a4e3bc3e53f/schemas/pdg.schema.json).
+The schema lives in [rstyled/compat](https://github.com/rstyled/compat/blob/56edd6bb804b10edaf9bbc2343d69e5e298d8c1a/schemas/pdg.schema.json).
+The root extraction profile governs counts, dependencies, capabilities and
+provenance. Records have no separate policy fields; conformance is one assessment
+of the root profile. Cyclo's native reference count still counts recorded
+reference-bearing bindings; it is not the strict matcher's retained-read count.
 To check the export fixture against a compat checkout, install Python `jsonschema`
 and run:
 

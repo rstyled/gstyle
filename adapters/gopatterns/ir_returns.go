@@ -14,22 +14,21 @@ func (b *irBuilder) returnValues(body *ast.BlockStmt) {
 	if len(b.outputs) == 0 {
 		return
 	}
-	policy := b.pool.Policy("cyclo.go-return-values", "1")
 	description := "Syntactic transfer from an explicit return to its formal output slot; reaching definitions, deferred result writes and exceptional exits are not modeled."
-	evidence := b.pool.Evidence(pdg.Approximated, description, policy)
-	origin := b.pool.Origin(pdg.Analysis, description, policy)
+	evidence := b.pool.Evidence(pdg.Approximated, description)
+	origin := b.pool.Origin(pdg.Analysis, description)
 	ast.Inspect(body, func(n ast.Node) bool {
 		if _, closure := n.(*ast.FuncLit); closure {
 			return false
 		}
 		if ret, ok := n.(*ast.ReturnStmt); ok {
-			b.returnSlots(ret, policy, evidence, origin)
+			b.returnSlots(ret, evidence, origin)
 		}
 		return true
 	})
 }
 
-func (b *irBuilder) returnSlots(ret *ast.ReturnStmt, policy, evidence, origin pdg.Ref) {
+func (b *irBuilder) returnSlots(ret *ast.ReturnStmt, evidence, origin pdg.Ref) {
 	node := b.nodes[ret]
 	if len(ret.Results) == 0 {
 		b.namedReturnReads(node)
@@ -38,7 +37,7 @@ func (b *irBuilder) returnSlots(ret *ast.ReturnStmt, policy, evidence, origin pd
 		b.graph.Edges = append(b.graph.Edges, pdg.Edge{
 			ID:     b.pool.Text("e" + strconv.Itoa(len(b.graph.Edges)+1)),
 			Source: node, Target: output, Kind: pdg.Data, Subkind: b.pool.Text("return-value"),
-			Position: pdg.Position(position + 1), Policy: policy, Evidence: evidence, Provenance: origin,
+			Position: pdg.Position(position + 1), Evidence: evidence, Provenance: origin,
 		})
 	}
 }

@@ -75,7 +75,7 @@ func TestIRBranchesNeverClaimReachingDefinitionCompleteness(t *testing.T) {
 			t.Fatalf("unsupported dependency emitted: %+v", edge)
 		}
 	}
-	if g.Conformance[0].Status != pdg.NonConformant {
+	if g.Conformance.Status != pdg.NonConformant {
 		t.Fatal("incomplete extraction claims conformance")
 	}
 }

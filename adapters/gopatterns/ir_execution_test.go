@@ -58,7 +58,7 @@ func TestReferenceBindingsAreDistinctTypedVariables(t *testing.T) {
  }`
 	g := parseIR(t, source, pdg.NewBuilder())
 	count := g.Function.ReferenceCount
-	if count.Status != pdg.Known || count.Value != 8 || count.Policy == 0 {
+	if count.Status != pdg.Known || count.Value != 8 {
 		t.Fatalf("count=%+v", count)
 	}
 	if err := pdg.Validate(&g); err != nil {

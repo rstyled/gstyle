@@ -31,7 +31,6 @@ type Builder struct {
 
 type provenanceKey struct {
 	Description Text
-	Policy      Ref
 	Origin      Origin
 }
 
@@ -73,8 +72,8 @@ func (b *Builder) Policy(id, version string) Ref {
 	return ref
 }
 
-func (b *Builder) Evidence(status Status, description string, policy Ref) Ref {
-	c := Capability{Status: status, Description: b.Text(description), Policy: policy}
+func (b *Builder) Evidence(status Status, description string) Ref {
+	c := Capability{Status: status, Description: b.Text(description)}
 	if ref, ok := b.evidence[c]; ok {
 		return ref
 	}
@@ -86,12 +85,12 @@ func (b *Builder) Evidence(status Status, description string, policy Ref) Ref {
 
 // Origin interns provenance without per-item lists. Detailed transformation
 // provenance can be appended separately with AddProvenance.
-func (b *Builder) Origin(origin Origin, description string, policy Ref) Ref {
-	key := provenanceKey{Origin: origin, Description: b.Text(description), Policy: policy}
+func (b *Builder) Origin(origin Origin, description string) Ref {
+	key := provenanceKey{Origin: origin, Description: b.Text(description)}
 	if ref, ok := b.origins[key]; ok {
 		return ref
 	}
-	ref := b.AddProvenance(Provenance{Origin: origin, Description: key.Description, Policy: policy})
+	ref := b.AddProvenance(Provenance{Origin: origin, Description: key.Description})
 	b.origins[key] = ref
 	return ref
 }

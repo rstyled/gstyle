@@ -30,14 +30,14 @@ func (b *irBuilder) capabilities() {
 	for i, name := range pdg.RequiredCapabilities {
 		c := irCapabilities[name]
 		capabilities[i] = pdg.NamedCapability{
-			Name: b.pool.Text(name), Evidence: b.pool.Evidence(c.status, c.description, b.policy),
+			Name: b.pool.Text(name), Evidence: b.pool.Evidence(c.status, c.description),
 		}
 	}
 	b.graph.Capabilities = capabilities
-	b.graph.Conformance = []pdg.Conformance{{
-		Profile: b.policy, Status: pdg.NonConformant,
+	b.graph.Conformance = pdg.Conformance{
+		Status:  pdg.NonConformant,
 		Reasons: []pdg.Text{b.pool.Text("Dependency analysis and the shared extraction profile are incomplete.")},
-	}}
+	}
 	b.graph.Diagnostics = []pdg.Diagnostic{{
 		Code: b.pool.Text("pdg.incomplete-dependencies"), Severity: pdg.Warning,
 		Message: b.pool.Text("Operation facts are available; dependency absence must not be treated as independence."),

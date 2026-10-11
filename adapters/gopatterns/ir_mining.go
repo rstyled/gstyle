@@ -59,9 +59,9 @@ func (b *irBuilder) miningEdge(from, to, position int, kind pdg.EdgeKind) {
 	b.graph.Edges = append(b.graph.Edges, pdg.Edge{
 		ID:     b.pool.Text("e" + strconv.Itoa(len(b.graph.Edges)+1)),
 		Source: pdg.Ref(from + 1), Target: pdg.Ref(to + 1), Kind: kind,
-		Subkind: b.pool.Text(subkind), Position: pdg.Position(position + 1), Policy: b.policy,
-		Evidence:   b.pool.Evidence(pdg.Approximated, description, b.policy),
-		Provenance: b.pool.Origin(pdg.Analysis, description, b.policy),
+		Subkind: b.pool.Text(subkind), Position: pdg.Position(position + 1),
+		Evidence:   b.pool.Evidence(pdg.Approximated, description),
+		Provenance: b.pool.Origin(pdg.Analysis, description),
 	})
 }
 
@@ -79,7 +79,7 @@ func (b *builder) markSynthetic(node *pdg.Node, kind patterns.NodeKind) {
 		return
 	}
 	node.Synthetic = true
-	node.Provenance = b.ir.pool.Origin(pdg.Desugaring, "Cyclo abstraction lowering of source operations.", b.ir.policy)
+	node.Provenance = b.ir.pool.Origin(pdg.Desugaring, "Cyclo abstraction lowering of source operations.")
 }
 
 func syntheticMiningNode(kind patterns.NodeKind, origin ast.Node) bool {

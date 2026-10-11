@@ -7,7 +7,7 @@ func (x exporter) extractionEvidence() object {
 	for _, c := range x.g.Capabilities {
 		capabilities[x.text(c.Name)] = x.capability(c.Evidence)
 	}
-	return object{"capabilities": capabilities, "diagnostics": mapItems(x.g.Diagnostics, x.diagnostic), "conformance": mapItems(x.g.Conformance, x.conformance)}
+	return object{"capabilities": capabilities, "diagnostics": mapItems(x.g.Diagnostics, x.diagnostic), "conformance": x.conformance(x.g.Conformance)}
 }
 func (x exporter) diagnostic(d pdg.Diagnostic) object {
 	severity := [...]string{"info", "warning", "error"}
@@ -21,5 +21,5 @@ func (x exporter) diagnostic(d pdg.Diagnostic) object {
 }
 func (x exporter) conformance(c pdg.Conformance) object {
 	states := [...]string{"not_evaluated", "conformant", "non_conformant"}
-	return object{"profile": x.profile(c.Profile), "status": states[c.Status], "reasons": x.texts(c.Reasons)}
+	return object{"status": states[c.Status], "reasons": x.texts(c.Reasons)}
 }

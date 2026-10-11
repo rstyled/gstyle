@@ -49,13 +49,7 @@ var categoryNames = [...]string{"declaration", "read", "assignment", "computatio
 func (x exporter) capability(r pdg.Ref) object {
 	c := x.g.Tables.Evidence[r-1]
 	out := object{"status": statusNames[c.Status], "description": x.text(c.Description)}
-	x.optionalProfile(out, "policy", c.Policy)
 	return out
-}
-func (x exporter) optionalProfile(out object, key string, r pdg.Ref) {
-	if r != 0 {
-		out[key] = x.profile(r)
-	}
 }
 func (x exporter) span(s pdg.Span) object {
 	return object{"source_id": x.text(x.g.Sources[s.Source-1].ID), "start": s.Start, "end": s.End}
@@ -96,7 +90,6 @@ func (x exporter) provenance(r pdg.Ref) object {
 	p := x.g.Tables.Provenance[r-1]
 	origins := [...]string{"source", "desugaring", "macro_expansion", "analysis", "projection"}
 	out := object{"origin": origins[p.Origin], "description": x.text(p.Description)}
-	x.optionalProfile(out, "policy", p.Policy)
 	if len(p.Nodes) > 0 {
 		out["origin_node_ids"] = x.texts(p.Nodes)
 	}

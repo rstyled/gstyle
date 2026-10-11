@@ -85,7 +85,6 @@ func (v *validator) tables() {
 	}
 	for _, c := range v.g.Tables.Evidence {
 		v.text(c.Description, true)
-		v.ref(c.Policy, len(v.g.Tables.Policies), false)
 		v.require(c.Status >= Unsupported && c.Status <= Approximated || c.Status == Unknown, "invalid capability status")
 	}
 	for _, p := range v.g.Tables.Provenance {
@@ -97,7 +96,6 @@ func (v *validator) provenance(p Provenance) {
 	v.text(p.Description, false)
 	v.require(p.Description != 0, "provenance description is required")
 	v.require(p.Origin <= Projection, "invalid provenance origin")
-	v.ref(p.Policy, len(v.g.Tables.Policies), false)
 	for _, id := range p.Nodes {
 		v.text(id, true)
 	}
@@ -141,7 +139,6 @@ func (v *validator) function() {
 func (v *validator) count(c CountFact) {
 	v.require(c.Status <= NotApplicable, "invalid count status")
 	if c.Status == Known {
-		v.ref(c.Policy, len(v.g.Tables.Policies), true)
 		return
 	}
 	v.text(c.Reason, true)
@@ -346,7 +343,6 @@ func (v *validator) edge(e Edge) {
 	v.text(e.Subkind, true)
 	v.ref(e.Source, len(v.g.Nodes), true)
 	v.ref(e.Target, len(v.g.Nodes), true)
-	v.ref(e.Policy, len(v.g.Tables.Policies), true)
 	v.ref(e.Evidence, len(v.g.Tables.Evidence), true)
 	v.ref(e.Provenance, len(v.g.Tables.Provenance), true)
 	v.ref(e.Annotations, len(v.g.Annotations), false)
@@ -381,13 +377,11 @@ func (v *validator) results() {
 	for _, d := range v.g.Diagnostics {
 		v.diagnostic(d)
 	}
-	for _, c := range v.g.Conformance {
-		v.ref(c.Profile, len(v.g.Tables.Policies), true)
-		v.require(c.Status <= NonConformant, "invalid conformance status")
-		v.require(c.Status != NonConformant || len(c.Reasons) > 0, "non-conformance needs a reason")
-		for _, reason := range c.Reasons {
-			v.text(reason, true)
-		}
+	c := v.g.Conformance
+	v.require(c.Status <= NonConformant, "invalid conformance status")
+	v.require(c.Status != NonConformant || len(c.Reasons) > 0, "non-conformance needs a reason")
+	for _, reason := range c.Reasons {
+		v.text(reason, true)
 	}
 }
 

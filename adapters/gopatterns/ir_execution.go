@@ -69,7 +69,7 @@ func (b *irBuilder) executionEdge(from, to pdg.Ref) {
 	}
 	b.graph.Edges = append(b.graph.Edges, pdg.Edge{
 		ID: b.pool.Text("e" + strconv.Itoa(len(b.graph.Edges)+1)), Source: from, Target: to, Kind: pdg.Execution,
-		Subkind: b.pool.Text("must-precede"), Policy: b.executionPolicy,
+		Subkind:    b.pool.Text("must-precede"),
 		Evidence:   b.executionEvidence,
 		Provenance: b.executionOrigin,
 	})
@@ -118,9 +118,7 @@ func executionCondition(node ast.Node) ast.Node {
 }
 
 func (b *irBuilder) executionMetadata() {
-	policy := b.pool.Policy("cyclo.go-must-precede", "1")
 	description := "Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete."
-	b.executionPolicy = policy
-	b.executionEvidence = b.pool.Evidence(pdg.Approximated, description, policy)
-	b.executionOrigin = b.pool.Origin(pdg.Analysis, description, policy)
+	b.executionEvidence = b.pool.Evidence(pdg.Approximated, description)
+	b.executionOrigin = b.pool.Origin(pdg.Analysis, description)
 }

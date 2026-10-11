@@ -35,7 +35,6 @@ type BooleanFact struct {
 type Profile struct{ ID, Version Text }
 type Capability struct {
 	Description Text
-	Policy      Ref
 	Status      Status
 }
 
@@ -53,7 +52,6 @@ const (
 
 type Provenance struct {
 	Description Text
-	Policy      Ref
 	Nodes       []Text
 	Spans       []Span
 	Origin      Origin
@@ -98,7 +96,6 @@ type Parameter struct {
 type CountFact struct {
 	Value  uint64
 	Reason Text
-	Policy Ref
 	Status Status
 }
 
@@ -211,14 +208,14 @@ const (
 )
 
 type Edge struct {
-	ID, Subkind                               Text
-	Source, Target                            Ref
-	Policy, Evidence, Provenance, Annotations Ref
-	Symbol, Definition, Location              Ref
-	Outcome                                   Text
-	Position                                  Position
-	Kind                                      EdgeKind
-	LoopCarried                               uint8 // 0 unrecorded, 1 false, 2 true.
+	ID, Subkind                       Text
+	Source, Target                    Ref
+	Evidence, Provenance, Annotations Ref
+	Symbol, Definition, Location      Ref
+	Outcome                           Text
+	Position                          Position
+	Kind                              EdgeKind
+	LoopCarried                       uint8 // 0 unrecorded, 1 false, 2 true.
 }
 
 type Severity uint8
@@ -244,7 +241,6 @@ const (
 )
 
 type Conformance struct {
-	Profile Ref
 	Reasons []Text
 	Status  ConformanceStatus
 }
@@ -274,7 +270,7 @@ type Graph struct {
 	Annotations     [][]Extension
 	Capabilities    []NamedCapability
 	Diagnostics     []Diagnostic
-	Conformance     []Conformance
+	Conformance     Conformance
 	Extensions      []Extension
 }
 

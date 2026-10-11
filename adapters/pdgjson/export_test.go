@@ -17,13 +17,13 @@ func exportFixture(t *testing.T) *pdg.Graph {
 	t.Helper()
 	b := pdg.NewBuilder()
 	policy := b.Policy("test", "1")
-	evidence := b.Evidence(pdg.Approximated, "Approximate fixture.", policy)
-	origin := b.AddProvenance(pdg.Provenance{Origin: pdg.Projection, Description: b.Text("Derived."), Policy: policy, Nodes: []pdg.Text{b.Text("prior-node")}, Spans: []pdg.Span{{Source: 1, End: 1}}})
+	evidence := b.Evidence(pdg.Approximated, "Approximate fixture.")
+	origin := b.AddProvenance(pdg.Provenance{Origin: pdg.Projection, Description: b.Text("Derived."), Nodes: []pdg.Text{b.Text("prior-node")}, Spans: []pdg.Span{{Source: 1, End: 1}}})
 	g := &pdg.Graph{
 		Tables: b.Tables, Profile: policy,
 		Producer:    pdg.Producer{Name: b.Text("test"), Version: b.Text("1"), Language: b.Text("go"), LanguageVersion: b.Missing(pdg.Unknown, "Unknown Go version."), Configuration: b.Text(`{"flag":true}`)},
 		Sources:     []pdg.Source{{ID: b.Text("src"), Path: b.Text("a.go"), ContentIdentity: b.Missing(pdg.Unknown, "Not hashed.")}},
-		Function:    pdg.Function{ID: b.Text("f"), Name: b.Known(""), QualifiedName: b.Known("pkg.f"), Span: pdg.Span{Source: 1, End: 10}, Interface: evidence, ReferenceCount: pdg.CountFact{Status: pdg.Known, Policy: policy}, Inputs: []pdg.Parameter{{Name: b.Known("arg"), Type: b.Known("*int"), Variadic: pdg.BooleanFact{Status: pdg.Known}, Symbol: 1}}},
+		Function:    pdg.Function{ID: b.Text("f"), Name: b.Known(""), QualifiedName: b.Known("pkg.f"), Span: pdg.Span{Source: 1, End: 10}, Interface: evidence, ReferenceCount: pdg.CountFact{Status: pdg.Known}, Inputs: []pdg.Parameter{{Name: b.Known("arg"), Type: b.Known("*int"), Variadic: pdg.BooleanFact{Status: pdg.Known}, Symbol: 1}}},
 		Symbols:     []pdg.Symbol{{ID: b.Text("s"), Scope: b.Text("scope"), Name: b.Known("arg"), Type: b.Known("*int"), Role: pdg.ParameterRole}},
 		Locations:   []pdg.Location{{ID: b.Text("heap"), Abstraction: b.Text("test-region"), Description: b.Text("Storage."), Evidence: evidence}},
 		Definitions: []pdg.Definition{{ID: b.Text("def"), Node: 1, Symbol: 1, Location: 1}},
@@ -31,11 +31,11 @@ func exportFixture(t *testing.T) *pdg.Graph {
 		Spans:       []pdg.Span{{Source: 1, End: 5}},
 		Annotations: [][]pdg.Extension{{{Name: b.Text("test:future"), Value: b.Text(`{"items":[1,null]}`)}}},
 		Edges: []pdg.Edge{
-			{ID: b.Text("e1"), Source: 1, Target: 1, Kind: pdg.Data, Subkind: b.Text("flow"), Policy: policy, Evidence: evidence, Provenance: origin, Symbol: 1, Definition: 1, Location: 1, Position: 1, LoopCarried: 1},
-			{ID: b.Text("e2"), Source: 1, Target: 1, Kind: pdg.Execution, Subkind: b.Text("must-precede"), Policy: policy, Evidence: evidence, Provenance: origin, Position: 2, LoopCarried: 2},
+			{ID: b.Text("e1"), Source: 1, Target: 1, Kind: pdg.Data, Subkind: b.Text("flow"), Evidence: evidence, Provenance: origin, Symbol: 1, Definition: 1, Location: 1, Position: 1, LoopCarried: 1},
+			{ID: b.Text("e2"), Source: 1, Target: 1, Kind: pdg.Execution, Subkind: b.Text("must-precede"), Evidence: evidence, Provenance: origin, Position: 2, LoopCarried: 2},
 		},
 		Diagnostics: []pdg.Diagnostic{{Code: b.Text("test"), Message: b.Text("Incomplete."), Severity: pdg.Warning, Span: 1, Node: 1, Capability: b.Text("memory_aliases")}},
-		Conformance: []pdg.Conformance{{Profile: policy, Status: pdg.NonConformant, Reasons: []pdg.Text{b.Text("Incomplete.")}}},
+		Conformance: pdg.Conformance{Status: pdg.NonConformant, Reasons: []pdg.Text{b.Text("Incomplete.")}},
 		Extensions:  []pdg.Extension{{Name: b.Text("test:root"), Value: b.Text(`false`)}},
 	}
 	for _, name := range pdg.RequiredCapabilities {
@@ -70,7 +70,7 @@ func TestExportPreservesFactsReferencesAndOccurrences(t *testing.T) {
 		t.Fatalf("known empty name: %v", got)
 	}
 	count := function["reference_count"].(map[string]any)
-	if count["value"] != float64(0) || count["policy"] == nil {
+	if count["value"] != float64(0) || count["policy"] != nil {
 		t.Fatalf("known zero: %v", count)
 	}
 	edges := doc["edges"].([]any)
@@ -95,6 +95,21 @@ func TestExportPreservesFactsReferencesAndOccurrences(t *testing.T) {
 	after, _ := json.Marshal(g)
 	if !bytes.Equal(before, after) {
 		t.Fatal("export mutated compact graph")
+	}
+}
+
+func TestExportUsesOneExtractionProfile(t *testing.T) {
+	doc := exportedObject(t, exportFixture(t))
+	assessment := doc["extraction_evidence"].(map[string]any)["conformance"].(map[string]any)
+	if assessment["status"] != "non_conformant" || len(assessment["reasons"].([]any)) != 1 {
+		t.Fatalf("assessment lost: %v", assessment)
+	}
+	data, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(data, []byte(`"policy":`)) || bytes.Count(data, []byte(`"profile":`)) != 1 {
+		t.Fatalf("export selects more than one extraction profile: %s", data)
 	}
 }
 
