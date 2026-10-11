@@ -55,8 +55,7 @@ expensive kernel computation.
 **Fidelity:** Adapted. Admission uses numerical match OR name fallback. Full
 parameter strings, size filters, and the paper's exact matching policies are not
 yet reproduced. Go reference bindings and approximate must-precede execution
-edges supply two of the numerical features. See [the source audit](pdg/paper-audit.md)
-and [the profile contract](pdg/ccgraph-profile.md). These local policies do not
+edges supply two of the numerical features. See [the PDG contract and remaining work](pdg/README.md). These local policies do not
 establish compat conformance or reproduction of the original paper.
 
 **What cyclo adds:** AST bypass, parallel pair checks, shared IR label hashes,
@@ -327,7 +326,7 @@ and [DECKARD §3.3](https://web.cs.ucdavis.edu/~su/publications/icse07.pdf).
 expanded collisions into connected components and provided no pruning on the
 measured corpora. Clone detection now verifies every characteristic/name/AST-admitted
 pair with WL, without LSH. This is not a Gabel implementation.
-See the historical [LSH audit](pdg/lsh-audit.md) and [tuning results](pdg/lsh-tuning.md).
+See [the current PDG and matching boundary](pdg/README.md#matching-boundary-and-remaining-work).
 
 ---
 

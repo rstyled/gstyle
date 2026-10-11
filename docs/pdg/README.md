@@ -1,161 +1,96 @@
-# Compact PDG IR
+# Compact PDG IR and compat export
 
-`domain/pdg` is cyclo's canonical PDG. It covers the fields in compat's draft
-0.1.0 at commit `e1d08c2500e4184444fed70c9d9d1df206ac6962` (PR #8).
-`compat-0.1.0.schema.json` pins that contract. Optional JSON export expands
-the compact records into this schema; the normal analysis path keeps compact storage.
+Cyclo extracts one native `domain/pdg.Graph` per function. It represents the
+fields in [compat PR #8](https://github.com/rstyled/compat/pull/8), draft 0.1.0,
+pinned at `e1d08c2500e4184444fed70c9d9d1df206ac6962` in
+[compat-0.1.0.schema.json](compat-0.1.0.schema.json). Structural validity does
+not establish shared extraction or matching conformance.
 
-## JSON export
+## Export and validation
 
 ```sh
 cyclo patterns --format pdg-json . > pdg.json
-```
-
-The output is a JSON array. Each element is one function document conforming to
-the pinned compat draft's structural schema. Export includes source spans,
-interfaces, symbols, definitions, memory locations, nodes, typed edges,
-provenance, capability evidence, diagnostics, conformance records and extensions.
-It resolves table indexes to document IDs and text. Unknown facts retain their
-reasons; absent optional facts stay absent. Empty required collections are arrays.
-
-Export bypasses pattern mining, normalization, WL matching and its cache. The
-matching threshold does not affect export. `--cache` cannot be used with this
-format. Existing `--format json` still writes the pattern report.
-
-Native graphs are validated before output starts. Expanded JSON records are
-allocated for one function at a time; no extraction-wide expanded graph set is
-retained. Extraction still retains all compact function graphs. JSON repeats
-shared evidence as the schema requires, so the output file can be larger than the
-native IR. A write error or cancellation can leave partial output; discard it
-when the command fails. Structural validity does not establish semantic parity
-with Rust or CCGraph profile conformance.
-
-Validate every element with a Draft 2020-12 validator. The helper below uses the
-Python `jsonschema` package as a separate development tool, not a Cyclo dependency:
-
-```sh
 python3 docs/pdg/validate-export.py pdg.json
 ```
 
-## Storage
+Export writes a JSON array with one compat document per function. It includes
+sources, interfaces, symbols, definitions, memory locations, operations,
+dependencies, provenance, capability evidence, diagnostics and extensions.
+Unknown facts retain reasons; absent optional facts stay absent. Required empty
+collections are arrays. Normal `--format json` still writes the pattern report.
 
-- `Text` is a 32-bit reference to an extraction-wide string table. Names, full
-  types, facts, matching labels, original kinds and unknown reasons share storage.
-- `Ref` is a one-based 32-bit index; zero means absent. Known empty strings have
-  a nonzero Text ID. IDs identify graph items; they are not matching labels.
-- Policies, capability evidence and common provenance are shared across functions.
-  Construction maps and compiler objects are released after extraction.
-- Nodes are 44 bytes and edges are 56 bytes on the measured 64-bit system.
-  Nodes include an interned matching-label reference and a display line number.
-  Source spans use separate 12-byte records.
-- Sparse attributes are packed into shared records and lists within each graph.
-  Empty attributes use index zero. Scalar reads are facts on their owning
-  operations. Each read does not require a separate node.
-- `Compact` removes spare construction capacity when it exceeds one eighth of
-  the retained length. It preserves indexes, values and graph order.
-- Optional positions use position+1; zero means unrecorded. LoopCarried encodes
-  unrecorded/false/true as 0/1/2.
-- Namespaced extensions retain their JSON values as interned text. Extraction
-  does not marshal or retain a second JSON graph.
-- Shared tables and attribute lists are immutable by convention. Builders have
-  one owner and do not support concurrent writes.
+Native validation runs before export. The separate schema check requires Python
+`jsonschema`; it is not a Cyclo runtime dependency. Export skips mining, matching
+and its cache; `--cache` is rejected. Expanded records exist for one function at
+a time, while extraction retains the compact function graphs. JSON repeats shared
+evidence as required by the schema. Discard partial output if the command fails.
 
-## Extraction and matching
+## Storage and extraction
 
-`gopatterns.Extract` returns `FuncPdg.Pdg` as `pdg.Graph`. There is one production
-construction path, `buildGraph`. There is no separate `ExtractIR` entrypoint.
-The returned IR contains no AST, types.Info or types.Object references.
+Strings, full types, labels, policies, evidence and common provenance share
+interned storage across functions. Sparse attributes and lists are packed and
+deduplicated. Zero references mean absent; known empty strings have a text ID.
+Measured amd64 hot records are 44 bytes per node and 56 per edge. `Compact`
+removes excess capacity. Construction maps, ASTs and compiler objects are not
+retained. Builders have one owner; shared tables and lists are immutable by convention.
 
-`patterns.FuncFacts` carries this graph. `patterns.Run` derives a temporary
-`MiningGraph` view for the matcher. The view resolves the interned cyclo labels,
-remaps node indexes, preserves parallel edges and excludes nodes with no matching
-label. It includes data, lexical control and typed execution edges. CCGraph uses
-execution edges in WL; the abstraction kernel keeps its existing data/control
-profile. Both derive from the same native IR. No second graph is retained in it.
-Normalization, WL and alignment work on this temporary view.
+The producer records source byte spans, typed interfaces, distinct syntactic
+definitions, reads/writes and call targets. Unresolved memory targets remain
+unknown; shared storage is not invented. Data edges use approximate first-binding
+or syntactic dependencies, and control edges use approximate lexical nesting.
+They must not be treated as precise reaching-definition or post-dominator facts.
 
-The `cyclo.abstraction` profile preserves existing first-binding mining behavior.
-Its interned MatchLabels are separate from base IR categories, identity and
-provenance. Effects remain available for safety checks and do not enter WL labels.
-Synthetic abstraction operations carry desugaring provenance.
+`cyclo.go-must-precede/1` adds a sparse, approximate precedence basis from reachable
+statement order and dominance. CFG successor links are inputs, not dependencies.
+`cyclo.go-reference-bindings/1` counts distinct typed Go reference-bearing bindings;
+generic reference kinds remain unknown. `cyclo.go-return-values/1` links explicit
+returns to formal output slots, including tuple calls. Bare returns record reads
+of named results. Nested closure returns do not connect to the outer function.
+Deferred result writes and implicit/exceptional exits remain incomplete.
 
-The producer records source byte spans, full function interfaces and types,
-bindings, distinct syntactic definitions, read/write facts and call targets.
-`cyclo.go-return-values/1` connects each explicit return operation to every
-formal output slot, with result positions recorded on the edges. This covers
-multiple explicit values and a tuple-valued call. Bare returns record reads of
-named result bindings. Returns inside nested closures do not connect to the
-outer function. These edges are approximate: reaching definitions, deferred
-result writes, and implicit or exceptional exits remain incomplete. Output nodes
-remain outside the WL mining view; canonical data-edge counts include these new
-return links.
+## Matching boundary and remaining work
 
-Unknown memory targets stay unknown; the producer does not invent shared locations.
-First-binding edges are marked as approximate mining dependencies. They carry
-no reaching-definition references and must not be used as precise def-use facts.
-Lexical control edges are also marked approximate.
+Pattern mining derives a temporary `MiningGraph`; no legacy graph copy is stored
+in the IR. Labels are separate from base categories and IDs. The report route
+admits pairs by nine-feature cosine ≥ 0.9 OR short-name Jaro–Winkler ≥ 0.5, with
+an AST admission bypass and conservative handling of missing source facts.
+Every admitted pair receives WL verification at ≥ 900/1000, then accepted pairs
+form connected groups. LSH is removed. This remains a Cyclo adaptation of CCGraph.
 
-This provides the draft representation fields, with explicit analysis limits; it
-does not establish shared-profile conformance. Merge values,
-loop-carried definitions, precise reaching definitions, post-dominator control,
-closure captures, alias targets and exceptional/concurrent dependencies remain
-unsupported or unknown. Execution edges now form an approximate must-precede basis
-from statement order and dominance. CFG successor links are analysis inputs, not
-exported execution dependencies. Reference counts use distinct typed Go bindings;
-generic reference kinds remain unknown. All required capabilities are present;
-graphs carry non-conformance evidence and an incomplete-dependency diagnostic.
+The numerical order is declarations, assignments, controls, calls, other nodes,
+control edges, data edges, execution edges and reference bindings. Formal output
+nodes stay outside the WL view; canonical data-edge counts include return links.
+Light WL summaries retain histograms and node counts. Shared label hashes, cached
+norms, a safe similarity bound and bounded match batches limit repeated work.
 
-## Validation and measurement
+`cyclo.ccgraph-pairs/1` explicitly streams sorted unordered pair evidence without
+AST bypass or grouping; it requires known nine-feature facts and names.
+`compat.ccgraph-base/draft` is unavailable. Shared projection, parameter strings,
+size/admission gates, label/depth/weight/score policies and independent Rust/Go
+stage fixtures still need agreement. Reaching definitions, branch/loop merges,
+post-dominator control, captures, aliases and exceptional/concurrent dependencies
+also remain incomplete. Graph evidence states these limits.
 
-`pdg.Validate` checks facts, metadata, capabilities, IDs, references, definition
-ownership, span ordering, namespaced extensions and configuration shape. It
-preserves parallel edges and self edges. It does not prove source semantics,
-source-byte bounds without source content, or profile conformance. Validate IR
-from other producers before passing it to the matcher.
+## Measurements and checks
 
-Tests cover canonical extraction, shared storage, matching-view remapping,
-unchanged matching labels, indirect calls, unknown memory, definitions and
-compaction. Run `make check`, `make cognitive` and `make quality-gate`.
+Earlier extraction measurements show retained graph heap +33% and full extraction
+retained heap +17%, with substantially higher construction allocation volume.
+Interning limits retained duplicates; it does not make construction free.
 
-See [memory.md](memory.md) for measured costs and [memory-results.json](memory-results.json)
-for raw runs. Construction allocations and peak RSS remain higher than before;
-retained graph storage is bounded and does not duplicate a stored legacy graph.
+The latest Prometheus return-link comparison uses three fresh runs per mode and
+route, alternating order on commit `2213c3c192574b8a339acd336ea6385974a7567b`.
+The comparison disables only the return-link pass; both builds have no LSH and
+use the host Go cache, with output sent to `/dev/null`.
 
-## Review notes
+| Mode | Without return links | With return links | Peak RSS before → after |
+| --- | ---: | ---: | ---: |
+| Pattern analysis | 3.922 s | 4.010 s | 589.0 → 623.6 MiB |
+| PDG JSON export | 6.660 s | 6.686 s | 669.4 → 675.6 MiB |
 
-Graph construction updates several columns and related attribute records.
-Quality checks report some of these as mutation or aggregate findings. These
-updates construct one graph before publication. They remain visible without
-suppression. Edge identity is assigned in the constructor.
+These are medians, not general performance guarantees. Small timing differences
+can be run variation. Peak RSS is not retained IR storage. A failed cold-cache
+attempt that hit disk quota is excluded. Raw data and extended notes stay local.
 
-Make targets accept `QUALITY_TMP_DIR` (default `/tmp`). This permits checks when
-the host's `/tmp` quota is exhausted.
-
-See [matching.md](matching.md) for shared matching features, Docker timing and
-an exhaustive WL reference that measures the current candidate filters' recall.
-
-See [paper-audit.md](paper-audit.md) for the corrected candidate-admission rule,
-source ambiguity and remaining differences from CCGraph.
-
-The CCGraph numerical vector uses nine source features from canonical categories,
-including execution edges and reference bindings. It excludes entry/exit and output
-metadata nodes. It distinguishes assignment categories from arithmetic computations.
-Features are computed once per temporary matching view and survive normalization.
-Unknown generic reference counts cannot reject candidates and do not become
-known zeroes. WL cache format version 3 invalidates older matching computations.
-See [nine-features.md](nine-features.md) for policy details and measured costs.
-
-See [exhaustive-comparison.md](exhaustive-comparison.md) for the five-run
-comparison of filtered and exhaustive routing with the current IR and WL kernel.
-
-See [compat-audit.md](compat-audit.md) for the current upstream issues, PR snapshot,
-local readiness, and the remaining shared-profile work.
-
-See [ccgraph-profile.md](ccgraph-profile.md) for explicit pair evidence routing,
-preserved report defaults, and the unavailable compat base profile.
-
-See [performance-profile.md](performance-profile.md) for graph, WL, routing, CPU
-and allocation measurements on Cobra, Gin and Prometheus.
-
-See [return-link-timing.md](return-link-timing.md) for the final producer/export
-comparison with explicit return-to-output links.
+Run `make check`, `make cognitive` and `make quality-gate`. Extraction, dependency,
+packing, export and profile tests cover the new boundaries. Optional memory and
+profiling harnesses stay in tests. Schema tests use the separate Python validator.
