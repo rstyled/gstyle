@@ -146,3 +146,43 @@ func TestDeclarationOrderFileSelection(t *testing.T) {
 		}
 	}
 }
+
+func TestDeclarationOrderGroupedTypes(t *testing.T) {
+	src := []byte(`package example
+
+type (
+ First struct{}
+ Second struct{}
+)
+func (s Second) private() {}
+func (f First) Public() {}
+func NewSecond() Second { return Second{} }
+func (s Second) Public() {}
+func (f First) private() {}
+func helper() {}
+`)
+	out, err := ApplyFix(&patterns.FixSpec{Kind: patterns.DeclarationOrder, File: "example.go"}, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"First", "Second", "Public", "private", "NewSecond", "Public", "private", "helper"}
+	if got := declarationNames(t, out); !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if len(declarationNames(t, src)) != len(declarationNames(t, out)) {
+		t.Fatal("declaration count changed")
+	}
+}
+
+func TestDeclarationOrderWithoutFinalNewline(t *testing.T) {
+	src := []byte("package example\n\nfunc helper() {}\n\ntype Thing struct{}\n\nfunc (t Thing) private() {}\n\nfunc (t Thing) Public() {}")
+	spec := &patterns.FixSpec{Kind: patterns.DeclarationOrder, File: "example.go"}
+	out, err := ApplyFix(spec, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"Thing", "Public", "private", "helper"}
+	if got := declarationNames(t, out); !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+}

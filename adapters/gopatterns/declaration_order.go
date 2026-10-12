@@ -16,10 +16,11 @@ import (
 
 // declarationBlock keeps source text, including comments, with its declaration.
 type declarationBlock struct {
-	decl  ast.Decl
-	text  []byte
-	owner string
-	rank  int
+	decl   ast.Decl
+	text   []byte
+	owner  string
+	rank   int
+	anchor int
 }
 
 func findDeclarationOrders(pkg *packages.Package, root string, paths []string) []patterns.Candidate {
@@ -78,17 +79,17 @@ func applyDeclarationOrderFix(spec *patterns.FixSpec, src []byte) ([]byte, error
 		return src, nil
 	}
 	blocks, prefix, suffix := declarationBlocks(fset, file, src)
-	normalizeConstructorOwners(blocks, file)
 	ordered := orderDeclarationBlocks(blocks)
 	if sameDeclarationOrder(blocks, ordered) {
 		return src, nil
 	}
-	out := append([]byte{}, prefix...)
-	for _, block := range ordered {
-		out = append(out, block.text...)
+	parts := make([][]byte, len(ordered)+2)
+	parts[0] = prefix
+	for i, block := range ordered {
+		parts[i+1] = block.text
 	}
-	out = append(out, suffix...)
-	return format.Source(out)
+	parts[len(parts)-1] = suffix
+	return format.Source(bytes.Join(parts, []byte("\n")))
 }
 
 func hasCgoImport(file *ast.File) bool {
@@ -105,12 +106,12 @@ func declarationBlocks(fset *token.FileSet, file *ast.File, src []byte) ([]decla
 		return nil, src, nil
 	}
 	start := declarationStart(fset, file.Decls[0])
-	var blocks []declarationBlock
+	blocks := make([]declarationBlock, len(file.Decls))
 	cursor := start
-	for _, decl := range file.Decls {
+	for i, decl := range file.Decls {
 		end := declarationLineEnd(src, fset.Position(decl.End()).Offset)
 		owner, rank := declarationOwner(decl)
-		blocks = append(blocks, declarationBlock{decl: decl, text: src[cursor:end], owner: owner, rank: rank})
+		blocks[i] = declarationBlock{decl: decl, text: src[cursor:end], owner: owner, rank: rank}
 		cursor = end
 	}
 	return blocks, src[:start], src[cursor:]
@@ -169,87 +170,85 @@ func constructorOwner(fn *ast.FuncDecl) string {
 }
 
 func localTypeName(expr ast.Expr) string {
-	switch t := expr.(type) {
-	case *ast.Ident:
-		return t.Name
-	case *ast.StarExpr:
-		return localTypeName(t.X)
-	case *ast.IndexExpr:
-		return localTypeName(t.X)
-	case *ast.IndexListExpr:
-		return localTypeName(t.X)
+	for expr != nil {
+		if name, ok := expr.(*ast.Ident); ok {
+			return name.Name
+		}
+		expr = localTypeBase(expr)
 	}
 	return ""
 }
 
+func localTypeBase(expr ast.Expr) ast.Expr {
+	switch t := expr.(type) {
+	case *ast.StarExpr:
+		return t.X
+	case *ast.IndexExpr:
+		return t.X
+	case *ast.IndexListExpr:
+		return t.X
+	}
+	return nil
+}
+
+// Plan one stable order over a copy. There is no emitted-group state and
+// each declaration appears exactly once, including grouped type declarations.
 func orderDeclarationBlocks(blocks []declarationBlock) []declarationBlock {
-	groups := declarationGroups(blocks)
-	var out []declarationBlock
-	emitted := make(map[string]bool)
-	for _, block := range blocks {
-		if _, ok := block.decl.(*ast.FuncDecl); ok {
-			continue
-		}
-		out = append(out, block)
-		out = append(out, groupsAfterType(block.decl, groups, emitted)...)
+	anchors := declarationAnchors(blocks)
+	ordered := append([]declarationBlock(nil), blocks...)
+	for i, block := range blocks {
+		ordered[i] = plannedDeclaration(block, i, len(blocks), anchors)
 	}
-	out = append(out, remainingDeclarationGroups(blocks, groups, emitted)...)
-	out = append(out, freeDeclarationFunctions(blocks)...)
-	return out
+	sort.SliceStable(ordered, func(i, j int) bool {
+		if ordered[i].anchor != ordered[j].anchor {
+			return ordered[i].anchor < ordered[j].anchor
+		}
+		return ordered[i].rank < ordered[j].rank
+	})
+	return ordered
 }
 
-// Receiver types can live in another file. Preserve first-seen group order.
-func remainingDeclarationGroups(blocks []declarationBlock, groups map[string][]declarationBlock, emitted map[string]bool) []declarationBlock {
-	var out []declarationBlock
-	for _, block := range blocks {
-		if block.owner == "" || emitted[block.owner] {
-			continue
-		}
-		out = append(out, groups[block.owner]...)
-		emitted[block.owner] = true
+func plannedDeclaration(block declarationBlock, index, size int, anchors map[string]int) declarationBlock {
+	if block.rank < 0 {
+		return declarationBlock{decl: block.decl, text: block.text, rank: -1, anchor: index * (size + 1)}
 	}
-	return out
+	anchor, ok := anchors[block.owner]
+	rank := block.rank
+	if !ok {
+		anchor = 2 * size * (size + 1)
+		rank = 3
+	}
+	return declarationBlock{decl: block.decl, text: block.text, owner: block.owner, rank: rank, anchor: anchor}
 }
 
-func freeDeclarationFunctions(blocks []declarationBlock) []declarationBlock {
-	var out []declarationBlock
-	for _, block := range blocks {
-		if _, ok := block.decl.(*ast.FuncDecl); ok && block.owner == "" {
-			out = append(out, block)
+func declarationAnchors(blocks []declarationBlock) map[string]int {
+	anchors := make(map[string]int)
+	for i, block := range blocks {
+		for j, name := range declaredTypeNames(block.decl) {
+			anchors[name] = i*(len(blocks)+1) + j
 		}
 	}
-	return out
-}
-
-func declarationGroups(blocks []declarationBlock) map[string][]declarationBlock {
-	groups := make(map[string][]declarationBlock)
-	for _, block := range blocks {
-		if block.owner != "" {
-			groups[block.owner] = append(groups[block.owner], block)
+	for i, block := range blocks {
+		switch block.rank {
+		case 1, 2:
+			if _, exists := anchors[block.owner]; !exists {
+				anchors[block.owner] = (len(blocks) + i) * (len(blocks) + 1)
+			}
 		}
 	}
-	for owner, group := range groups {
-		sort.SliceStable(group, func(i, j int) bool { return group[i].rank < group[j].rank })
-		groups[owner] = group
-	}
-	return groups
+	return anchors
 }
 
-func groupsAfterType(decl ast.Decl, groups map[string][]declarationBlock, emitted map[string]bool) []declarationBlock {
+func declaredTypeNames(decl ast.Decl) []string {
 	gen, ok := decl.(*ast.GenDecl)
 	if !ok || gen.Tok != token.TYPE {
 		return nil
 	}
-	var out []declarationBlock
-	for _, spec := range gen.Specs {
-		name := spec.(*ast.TypeSpec).Name.Name
-		if emitted[name] {
-			continue
-		}
-		out = append(out, groups[name]...)
-		emitted[name] = true
+	names := make([]string, len(gen.Specs))
+	for i, spec := range gen.Specs {
+		names[i] = spec.(*ast.TypeSpec).Name.Name
 	}
-	return out
+	return names
 }
 
 func sameDeclarationOrder(a, b []declarationBlock) bool {
@@ -275,37 +274,6 @@ func separateDeclarationLines(fset *token.FileSet, file *ast.File) bool {
 		endLine = fset.Position(decl.End()).Line
 	}
 	return true
-}
-
-// A New-prefixed function must return a local named type, not a scalar or
-// an imported type. Methods identify types declared in another source file.
-func normalizeConstructorOwners(blocks []declarationBlock, file *ast.File) {
-	known := make(map[string]bool)
-	for _, decl := range file.Decls {
-		collectDeclarationTypes(decl, known)
-	}
-	for i := range blocks {
-		if blocks[i].rank == 0 && !known[blocks[i].owner] {
-			blocks[i].owner = ""
-			blocks[i].rank = 3
-		}
-	}
-}
-
-func collectDeclarationTypes(decl ast.Decl, known map[string]bool) {
-	switch d := decl.(type) {
-	case *ast.GenDecl:
-		if d.Tok != token.TYPE {
-			return
-		}
-		for _, spec := range d.Specs {
-			known[spec.(*ast.TypeSpec).Name.Name] = true
-		}
-	case *ast.FuncDecl:
-		if d.Recv != nil {
-			known[localTypeName(d.Recv.List[0].Type)] = true
-		}
-	}
 }
 
 func safeDeclarationOrder(fset *token.FileSet, file *ast.File, src []byte) bool {
