@@ -5,7 +5,7 @@ import (
 	"go/token"
 	"go/types"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
 // findErrorCheckSites finds call sites and tracks whether the error was checked.

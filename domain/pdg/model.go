@@ -186,7 +186,7 @@ type Attributes struct {
 	Extensions                        []Extension
 }
 
-// MatchLabel and Line belong to the cyclo matching profile, not base IR identity.
+// MatchLabel and Line belong to the gstyle matching profile, not base IR identity.
 type Node struct {
 	MatchLabel                        Ref
 	Line                              uint32
@@ -274,7 +274,7 @@ type Graph struct {
 	Extensions      []Extension
 }
 
-// MatchLabel preserves the versioned cyclo abstraction labels in a shared table.
+// MatchLabel preserves the versioned gstyle abstraction labels in a shared table.
 type MatchLabel struct {
 	Kind, TypeClass, SignatureClass, Callee, LiteralKind, Detail Text
 	Effects                                                      uint16

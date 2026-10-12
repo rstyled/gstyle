@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# verify-cyclo: launch/doctor/drive/cleanup helper for the verify-cyclo skill.
+# verify-gstyle: launch/doctor/drive/cleanup helper for the verify-gstyle skill.
 #
-#   verify-cyclo build <run-dir>            # build <run-dir>/cyclo from the repo
-#   verify-cyclo doctor <cyclo-bin>        # read-only readiness check
-#   verify-cyclo tui <cyclo-bin> <target-dir> <run-dir> [--wait N] [--keys KEYS]
+#   verify-gstyle build <run-dir>            # build <run-dir>/gstyle from the repo
+#   verify-gstyle doctor <gstyle-bin>        # read-only readiness check
+#   verify-gstyle tui <gstyle-bin> <target-dir> <run-dir> [--wait N] [--keys KEYS]
 #                                          # drive the TUI under script(1), save typescript
-#   verify-cyclo cleanup <run-dir>         # remove scratch + binary, keep evidence
+#   verify-gstyle cleanup <run-dir>         # remove scratch + binary, keep evidence
 #
 # <run-dir> layout:
-#   cyclo              the built binary (removed by cleanup)
+#   gstyle              the built binary (removed by cleanup)
 #   scratch/           throwaway state: isolated XDG_STATE_HOME, temp git repos (removed by cleanup)
 #   evidence/          proof artifacts (survives cleanup)
 set -euo pipefail
@@ -23,15 +23,15 @@ usage() {
 cmd_build() {
   local run_dir="$1"
   mkdir -p "$run_dir/scratch" "$run_dir/evidence"
-  (cd "$REPO" && go build -buildvcs=false -o "$run_dir/cyclo" .)
-  echo "built $run_dir/cyclo"
+  (cd "$REPO" && go build -buildvcs=false -o "$run_dir/gstyle" .)
+  echo "built $run_dir/gstyle"
 }
 
 cmd_doctor() {
   local bin="$1" fail=0
   [ -x "$bin" ] || { echo "doctor: FAIL: $bin is not executable"; fail=1; }
   if [ -x "$bin" ]; then
-    "$bin" check --help 2>&1 | grep -q "Usage: cyclo check" \
+    "$bin" check --help 2>&1 | grep -q "Usage: gstyle check" \
       || { echo "doctor: FAIL: check --help did not print usage"; fail=1; }
   fi
   command -v go >/dev/null || { echo "doctor: FAIL: go not on PATH (needed to load Go packages)"; fail=1; }
@@ -64,7 +64,7 @@ cmd_tui() {
 
 cmd_cleanup() {
   local run_dir="$1"
-  rm -rf "$run_dir/scratch" "$run_dir/cyclo"
+  rm -rf "$run_dir/scratch" "$run_dir/gstyle"
   echo "cleaned scratch and binary; evidence kept:"
   ls -la "$run_dir/evidence" 2>/dev/null || echo "(no evidence dir)"
 }

@@ -12,11 +12,11 @@ import (
 // TestProfileMatchingRoute excludes corpus decoding from CPU and allocation
 // snapshots. Profile runs are separate from the unprofiled timing runs.
 func TestProfileMatchingRoute(t *testing.T) {
-	prefix := os.Getenv("CYCLO_PROFILE_PREFIX")
+	prefix := os.Getenv("GSTYLE_PROFILE_PREFIX")
 	if prefix == "" {
 		t.Skip("opt-in matching profile")
 	}
-	data, err := os.ReadFile(os.Getenv("CYCLO_MATCH_CORPUS"))
+	data, err := os.ReadFile(os.Getenv("GSTYLE_MATCH_CORPUS"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,14 +77,14 @@ func writeMatchingHeap(t *testing.T, path string) {
 // TestMeasureWlStorage compares identical execution-aware WL computations.
 // Full mode retains temporary adjacency and rounds; light mode discards them.
 func TestMeasureWlStorage(t *testing.T) {
-	mode := os.Getenv("CYCLO_WL_STORAGE")
+	mode := os.Getenv("GSTYLE_WL_STORAGE")
 	if mode == "" {
 		t.Skip("opt-in WL storage")
 	}
 	if mode != "light" && mode != "full" {
 		t.Fatal("unknown WL storage mode")
 	}
-	data, err := os.ReadFile(os.Getenv("CYCLO_MATCH_CORPUS"))
+	data, err := os.ReadFile(os.Getenv("GSTYLE_MATCH_CORPUS"))
 	if err != nil {
 		t.Fatal(err)
 	}

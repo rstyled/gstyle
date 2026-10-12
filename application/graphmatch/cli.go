@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/shanejonas/cyclo/domain/ccgraph"
+	"github.com/rstyled/gstyle/domain/ccgraph"
 )
 
 type inputFile struct {
@@ -37,7 +37,7 @@ func Run(ctx context.Context, args []string, output io.Writer) error {
 		return err
 	}
 	if *path == "" || fs.NArg() != 0 {
-		return fmt.Errorf("usage: cyclo match-graphs --input graphs.json [--config thresholds.json]")
+		return fmt.Errorf("usage: gstyle match-graphs --input graphs.json [--config thresholds.json]")
 	}
 	return runDeadline(ctx, options{*path, *configPath, *timeout}, output)
 }

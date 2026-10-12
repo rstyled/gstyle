@@ -3,7 +3,7 @@ package application
 import (
 	"encoding/json"
 
-	"github.com/shanejonas/cyclo/domain"
+	"github.com/rstyled/gstyle/domain"
 )
 
 func qualitySummary(analysis *domain.QualityAnalysis) *domain.QualitySummary {

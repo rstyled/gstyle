@@ -239,14 +239,14 @@ func TestStrictLimitsAndMinimumStatements(t *testing.T) {
 func TestSuppressionsRequireReasonAndKnownRules(t *testing.T) {
 	f := fact("wide", 1)
 	f.Params = 10
-	for _, comment := range []string{"// cyclo-allow(fn_params)", "// cyclo-allow(fn_params): ", "// cyclo-allow(typo): legacy", "// cyclo-allow(invalid_suppression): legacy", "// cyclo-allow(): legacy"} {
+	for _, comment := range []string{"// gstyle-allow(fn_params)", "// gstyle-allow(fn_params): ", "// gstyle-allow(typo): legacy", "// gstyle-allow(invalid_suppression): legacy", "// gstyle-allow(): legacy"} {
 		f.PrecedingLine = comment
 		report := evaluate(t, f, DefaultConfig())
 		if len(report.Diagnostics) != 2 || report.Diagnostics[1].RuleID != "invalid_suppression" {
 			t.Fatalf("%s: %+v", comment, report.Diagnostics)
 		}
 	}
-	f.PrecedingLine = "// cyclo-allow(fn_params, fn_length): stable public API"
+	f.PrecedingLine = "// gstyle-allow(fn_params, fn_length): stable public API"
 	if len(evaluate(t, f, DefaultConfig()).Diagnostics) != 0 {
 		t.Fatal("valid suppression rejected")
 	}

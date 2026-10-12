@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/shanejonas/cyclo/adapters/reducer"
-	"github.com/shanejonas/cyclo/adapters/treesitter"
+	"github.com/rstyled/gstyle/adapters/reducer"
+	"github.com/rstyled/gstyle/adapters/treesitter"
 )
 
 type options struct {
@@ -23,7 +23,7 @@ type options struct {
 
 func main() {
 	settings := options{}
-	flag.StringVar(&settings.binary, "cyclo", "", "optional frozen Cyclo binary; default uses this checkout's analyzer")
+	flag.StringVar(&settings.binary, "gstyle", "", "optional frozen Gstyle binary; default uses this checkout's analyzer")
 	flag.StringVar(&settings.library, "go-parser", "", "Tree-sitter Go parser library, needed only for reduction")
 	flag.StringVar(&settings.output, "output", "", "new failure directory; default is a temporary directory")
 	flag.DurationVar(&settings.timeout, "timeout", 30*time.Second, "timeout per runtime and analysis check")
@@ -46,7 +46,7 @@ func run(ctx context.Context, settings options) error {
 	if err != nil {
 		return err
 	}
-	root, err := os.MkdirTemp("", "cyclo-quality-hunt-work-")
+	root, err := os.MkdirTemp("", "gstyle-quality-hunt-work-")
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func (check runner) reduceFailure(ctx context.Context, settings options, cases [
 
 func failureDirectory(path string) (string, error) {
 	if path == "" {
-		return os.MkdirTemp("", "cyclo-quality-hunt-failure-")
+		return os.MkdirTemp("", "gstyle-quality-hunt-failure-")
 	}
 	if err := os.Mkdir(path, 0700); err != nil {
 		return "", err

@@ -17,11 +17,11 @@ func pairFixture() map[string]*MiningGraph {
 
 func TestClonePairProfileIdenticalGraphs(t *testing.T) {
 	var evidence []ClonePairEvidence
-	err := EvaluateClonePairs(CycloPairProfile, pairFixture(), map[string]string{"a": "aaaa", "b": "zzzz"}, func(e ClonePairEvidence) error { evidence = append(evidence, e); return nil })
+	err := EvaluateClonePairs(GstylePairProfile, pairFixture(), map[string]string{"a": "aaaa", "b": "zzzz"}, func(e ClonePairEvidence) error { evidence = append(evidence, e); return nil })
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []ClonePairEvidence{{Profile: CycloPairProfile, Left: "a", Right: "b", Numerical: 1, Name: 0, Admitted: true, WLKnown: true, Accepted: true, WLMilli: 1000}}
+	want := []ClonePairEvidence{{Profile: GstylePairProfile, Left: "a", Right: "b", Numerical: 1, Name: 0, Admitted: true, WLKnown: true, Accepted: true, WLMilli: 1000}}
 	if len(evidence) == 1 && math.Abs(evidence[0].Numerical-1) < 1e-12 {
 		evidence[0].Numerical = 1
 	}
@@ -35,7 +35,7 @@ func TestClonePairProfileGateRejection(t *testing.T) {
 	graphs["a"].Paper.Counts = [9]float64{8}
 	graphs["b"].Paper.Counts = [9]float64{0, 8}
 	var got ClonePairEvidence
-	err := EvaluateClonePairs(CycloPairProfile, graphs, map[string]string{"a": "aaaa", "b": "zzzz"}, func(e ClonePairEvidence) error { got = e; return nil })
+	err := EvaluateClonePairs(GstylePairProfile, graphs, map[string]string{"a": "aaaa", "b": "zzzz"}, func(e ClonePairEvidence) error { got = e; return nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestClonePairProfileUnknownFacts(t *testing.T) {
 	graphs := pairFixture()
 	graphs["a"].Paper.ReferenceKnown = false
 	called := false
-	err := EvaluateClonePairs(CycloPairProfile, graphs, map[string]string{"a": "a", "b": "b"}, func(ClonePairEvidence) error { called = true; return nil })
+	err := EvaluateClonePairs(GstylePairProfile, graphs, map[string]string{"a": "a", "b": "b"}, func(ClonePairEvidence) error { called = true; return nil })
 	if err == nil || called {
 		t.Fatal("unknown required facts must fail before output")
 	}
@@ -64,7 +64,7 @@ func TestClonePairProfileUnavailable(t *testing.T) {
 
 func TestClonePairProfileSinkError(t *testing.T) {
 	stop := errors.New("stop")
-	err := EvaluateClonePairs(CycloPairProfile, pairFixture(), map[string]string{"a": "a", "b": "b"}, func(ClonePairEvidence) error { return stop })
+	err := EvaluateClonePairs(GstylePairProfile, pairFixture(), map[string]string{"a": "a", "b": "b"}, func(ClonePairEvidence) error { return stop })
 	if !errors.Is(err, stop) {
 		t.Fatalf("sink error lost: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestClonePairProfileNameFallback(t *testing.T) {
 	graphs["a"].Paper.Counts = [9]float64{8}
 	graphs["b"].Paper.Counts = [9]float64{0, 8}
 	var got ClonePairEvidence
-	err := EvaluateClonePairs(CycloPairProfile, graphs, map[string]string{"a": "same", "b": "same"}, func(e ClonePairEvidence) error { got = e; return nil })
+	err := EvaluateClonePairs(GstylePairProfile, graphs, map[string]string{"a": "same", "b": "same"}, func(e ClonePairEvidence) error { got = e; return nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestClonePairProfileWLThreshold(t *testing.T) {
 		graphs["a"].Paper = &PaperCharacteristics{Counts: [9]float64{0, 10}, ReferenceKnown: true}
 		graphs["b"].Paper = &PaperCharacteristics{Counts: [9]float64{0, float64(size)}, ReferenceKnown: true}
 		var got ClonePairEvidence
-		err := EvaluateClonePairs(CycloPairProfile, graphs, map[string]string{"a": "a", "b": "b"}, func(e ClonePairEvidence) error { got = e; return nil })
+		err := EvaluateClonePairs(GstylePairProfile, graphs, map[string]string{"a": "a", "b": "b"}, func(e ClonePairEvidence) error { got = e; return nil })
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -130,11 +130,11 @@ func TestClonePairProfileWLThreshold(t *testing.T) {
 }
 
 func TestClonePairProfileMissingSinkAndName(t *testing.T) {
-	if err := EvaluateClonePairs(CycloPairProfile, pairFixture(), nil, nil); err == nil {
+	if err := EvaluateClonePairs(GstylePairProfile, pairFixture(), nil, nil); err == nil {
 		t.Fatal("missing sink succeeds")
 	}
 	called := false
-	err := EvaluateClonePairs(CycloPairProfile, pairFixture(), map[string]string{"a": "a"}, func(ClonePairEvidence) error { called = true; return nil })
+	err := EvaluateClonePairs(GstylePairProfile, pairFixture(), map[string]string{"a": "a"}, func(ClonePairEvidence) error { called = true; return nil })
 	if err == nil || called {
 		t.Fatal("missing name must fail before output")
 	}

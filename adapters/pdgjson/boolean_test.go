@@ -3,7 +3,7 @@ package pdgjson
 import (
 	"testing"
 
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 func TestVariadicBooleanPreservesKnownAndUnknown(t *testing.T) {

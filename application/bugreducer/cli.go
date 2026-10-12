@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/charmbracelet/x/term"
-	"github.com/shanejonas/cyclo/adapters/reducer"
-	"github.com/shanejonas/cyclo/adapters/treesitter"
+	"github.com/rstyled/gstyle/adapters/reducer"
+	"github.com/rstyled/gstyle/adapters/treesitter"
 )
 
-const usage = `Usage: cyclo bug-reducer [--language lines|go] [--go-parser PATH] [--tui=false] [--output PATH] [--timeout 10s] INPUT -- CHECKER [ARGS...]
+const usage = `Usage: gstyle bug-reducer [--language lines|go] [--go-parser PATH] [--tui=false] [--output PATH] [--timeout 10s] INPUT -- CHECKER [ARGS...]
 
 Minimize an input while preserving a reproducible bug.
 The checker receives an absolute candidate file path as its last argument.

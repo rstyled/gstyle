@@ -68,7 +68,7 @@ func Aliases(p *int, flag bool, values []int) {
 	values = append(values, 3)
 }
 
-// cyclo-allow(fn_params): stable public interface
+// gstyle-allow(fn_params): stable public interface
 // Suppressed keeps its API.
 func Suppressed(a, b, c, d, e int) int { return a + b + c + d + e }
 

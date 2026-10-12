@@ -14,7 +14,7 @@ import (
 //
 // The goal is that no standard library call falls through to Unknown:
 // pure calls are None, effectful calls get their real kind. Unknown then
-// means "a call cyclo cannot see into" — third-party code or dynamic
+// means "a call gstyle cannot see into" — third-party code or dynamic
 // dispatch — which is a legitimate signal, not noise.
 type stdlibRule struct {
 	pkg   string

@@ -22,7 +22,7 @@ var (
 var paneTitles = [4]string{"Statistics", "Size over time", "Recent reductions", "Checker output"}
 
 func (m dashboard) View() tea.View {
-	header := dashboardAccent.Bold(true).Render("CYCLO / BUG REDUCER") + "  " + safeText(filepath.Base(m.options.input))
+	header := dashboardAccent.Bold(true).Render("GSTYLE / BUG REDUCER") + "  " + safeText(filepath.Base(m.options.input))
 	footer := "tab panes · j/k scroll · enter expand · q stop & save"
 	if m.result != nil {
 		footer = "tab panes · j/k scroll · enter expand · q close"
@@ -30,7 +30,7 @@ func (m dashboard) View() tea.View {
 	content := header + "\n" + m.workspace() + "\n" + dashboardMuted.Render(footer)
 	view := tea.NewView(strings.Join(fitLines(strings.Split(content, "\n"), m.width, m.height), "\n"))
 	view.AltScreen = true
-	view.WindowTitle = "cyclo · bug reducer"
+	view.WindowTitle = "gstyle · bug reducer"
 	return view
 }
 

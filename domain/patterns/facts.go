@@ -1,6 +1,6 @@
 package patterns
 
-import "github.com/shanejonas/cyclo/domain/pdg"
+import "github.com/rstyled/gstyle/domain/pdg"
 
 // ParamInfo is a function parameter's name and primitive type name
 // (e.g. {Name: "amount", Type: "int"}). Only basic types are recorded;
@@ -25,7 +25,7 @@ type FunctionFacts[G any] struct {
 	// EndLine is the function's closing line.
 	EndLine int
 	// SuppressedKinds are pattern kinds suppressed via //lint:ignore or
-	// // cyclo-allow on this function.
+	// // gstyle-allow on this function.
 	SuppressedKinds []string
 	// Pdg is the function's graph. Nil means the body
 	// was not extracted (filtered out of mining, like rstyle's pdg: None).

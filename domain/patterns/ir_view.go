@@ -1,6 +1,6 @@
 package patterns
 
-import "github.com/shanejonas/cyclo/domain/pdg"
+import "github.com/rstyled/gstyle/domain/pdg"
 
 // Run derives a temporary matching view from the canonical IR.
 func Run(facts []*FuncFacts, options Options) PatternsReport {

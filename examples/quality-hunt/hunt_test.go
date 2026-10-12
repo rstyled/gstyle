@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/domain/quality"
 )
 
 // This runs real generated Go programs and the checkout's typed analyzer. It

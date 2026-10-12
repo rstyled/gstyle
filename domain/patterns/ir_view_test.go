@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 func TestMiningViewRemapsNativeNodesAndKeepsParallelEdges(t *testing.T) {

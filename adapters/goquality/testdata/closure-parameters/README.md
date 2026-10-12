@@ -21,7 +21,7 @@ The structural run uses Tree-sitter CLI 0.26.9 with an installed Go parser.
 From the repository root, with a binary built before the closure parameter fix:
 
 ```sh
-cyclo bug-reducer --language go --go-parser /path/to/go.so --tui=false --timeout 30s --output /tmp/closure-reduced.go input.go -- python3 adapters/goquality/testdata/closure-parameters/check.py /path/to/affected-cyclo
+gstyle bug-reducer --language go --go-parser /path/to/go.so --tui=false --timeout 30s --output /tmp/closure-reduced.go input.go -- python3 adapters/goquality/testdata/closure-parameters/check.py /path/to/affected-gstyle
 ```
 
 Use `adapters/goquality/testdata/closure-parameters/input.go.txt` as `input.go`.

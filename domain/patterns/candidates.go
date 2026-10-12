@@ -295,7 +295,7 @@ type Candidate struct {
 
 // FixSpec carries the exact positions and parameters a fixer needs to
 // apply a candidate without re-detecting. It is JSON-serializable so
-// `cyclo patterns --format json` output can be piped to `cyclo fix`.
+// `gstyle patterns --format json` output can be piped to `gstyle fix`.
 type FixSpec struct {
 	Kind CandidateKind `json:"kind"`
 	// File is the path to the source file containing the pattern.

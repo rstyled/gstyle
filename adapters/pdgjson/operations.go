@@ -1,6 +1,6 @@
 package pdgjson
 
-import "github.com/shanejonas/cyclo/domain/pdg"
+import "github.com/rstyled/gstyle/domain/pdg"
 
 func (x exporter) node(n pdg.Node) object {
 	out := object{"id": x.text(n.ID), "category": categoryNames[n.Category], "original_kind": x.fact(n.OriginalKind), "synthetic": n.Synthetic, "attributes": x.attributes(x.g.NodeAttributes(n)), "provenance": x.provenance(n.Provenance), "evidence": x.capability(n.Evidence)}

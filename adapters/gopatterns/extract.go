@@ -1,5 +1,5 @@
 // Package gopatterns extracts the shared native PDG IR from typed Go source.
-// Cyclo's abstraction labels live in interned profile metadata. Pattern mining
+// Gstyle's abstraction labels live in interned profile metadata. Pattern mining
 // derives its temporary view from this graph through domain/patterns.Run.
 package gopatterns
 
@@ -13,8 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/domain/patterns"
+	"github.com/rstyled/gstyle/domain/pdg"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -26,7 +26,7 @@ type FuncPdg struct {
 	// EndLine is the function's closing line.
 	EndLine int
 	// SuppressedKinds are pattern kinds suppressed via //lint:ignore or
-	// // cyclo-allow on this function.
+	// // gstyle-allow on this function.
 	SuppressedKinds []string
 	Pdg             pdg.Graph
 	// AstTypes is the multiset of AST node type names for the function

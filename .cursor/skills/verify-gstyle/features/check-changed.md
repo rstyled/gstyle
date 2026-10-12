@@ -1,6 +1,6 @@
 # Changed-only findings
 
-`cyclo check --changed` filters findings to functions the git diff touches —
+`gstyle check --changed` filters findings to functions the git diff touches —
 the attention guide for agent loops: run it each iteration and only hear about
 what your own edits touched. The base defaults to the merge-base with
 `main`/`master` (falling back to their `origin/*` refs, then `HEAD`) and can
@@ -17,22 +17,22 @@ summaries. Exit 1 on filtered findings, so it works as a loop gate.
 
 ## How to get to it (user POV)
 
-- Run `cyclo check --changed` inside a git worktree after editing code.
-- Run `cyclo check --changed --base origin/main` to pin the comparison ref.
+- Run `gstyle check --changed` inside a git worktree after editing code.
+- Run `gstyle check --changed --base origin/main` to pin the comparison ref.
 
-## Driving it with verify-cyclo
+## Driving it with verify-gstyle
 
 Preconditions:
 
-- `verify-cyclo build "$RUN_DIR"` and `verify-cyclo doctor "$RUN_DIR/cyclo"`.
+- `verify-gstyle build "$RUN_DIR"` and `verify-gstyle doctor "$RUN_DIR/gstyle"`.
 - A temp git repo under `$RUN_DIR/scratch/changed-repo`: `git init`, a
   `go.mod`, and a committed `main.go` with two functions that each trip
   `fn_params` (5+ parameters), committed as the baseline.
 
 - **Narrowing.** Leave the baseline committed. Append a third function with
   7 parameters to `main.go` (uncommitted). Run
-  `"$RUN_DIR/cyclo" check "$REPO"` and confirm 3 findings. Run
-  `"$RUN_DIR/cyclo" check --changed "$REPO"`: stdout shows only the new
+  `"$RUN_DIR/gstyle" check "$REPO"` and confirm 3 findings. Run
+  `"$RUN_DIR/gstyle" check --changed "$REPO"`: stdout shows only the new
   function's finding (e.g. `main.go:6:1: fixture.touched: fn_params: 7 exceeds 4`),
   the summary still counts all functions (`4 functions; 1 findings;`), and the
   exit code is 1. Proof of narrowing is the full run's 3 findings versus the
@@ -58,5 +58,5 @@ Preconditions:
 - Findings are filtered, facts are not: a finding on a touched function that
   calls an untouched helper still carries the helper's effect summary. That is
   by design — assert the summary is complete, don't mistake it for leakage.
-- Never dogfood `--changed` against the cyclo repo unless the drive's point
+- Never dogfood `--changed` against the gstyle repo unless the drive's point
   is the current diff; fixture repos keep the gate's semantics under test.

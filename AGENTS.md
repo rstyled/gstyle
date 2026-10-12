@@ -13,7 +13,7 @@ takes the shortest path that compiles. These rules exist because an agent
 | An improvement PR must regenerate `quality-baseline.json` in the same PR | `internal/qualitygate` fails the build when any rule's excess rate improves past the 5% tolerance (`make quality-baseline` refreshes it) |
 | New stdlib packages must be classified for `side_effect_density` | `TestStdlibCoverage` in `domain/quality` fails if `go list std` reports an unclassified package |
 | Golden reports must be regenerated when behavior changes | `TestFixtureGoldenAndDoubleRun` fails; run with `-update` to refresh `adapters/goquality/testdata/sample/report.golden.json` |
-| Production code stays under the complexity ceilings | `make check` runs gocyclo (≤6) and gocognit (≤15); `cyclo-check` enforces ≤15 on both dimensions |
+| Production code stays under the complexity ceilings | `make check` runs gocyclo (≤6) and gocognit (≤15); `gstyle-check` enforces ≤15 on both dimensions |
 
 ## Working agreements
 

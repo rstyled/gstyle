@@ -2,7 +2,7 @@
 set -eu
 
 example_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-output_dir=$(mktemp -d "${TMPDIR:-/tmp}/cyclo-bug-reducer-demo.XXXXXX")
+output_dir=$(mktemp -d "${TMPDIR:-/tmp}/gstyle-bug-reducer-demo.XXXXXX")
 printf 'Demo output: %s/reduced.txt\n' "$output_dir"
 
 cd "$example_dir/../.."

@@ -7,7 +7,7 @@ import tempfile
 
 binary = str(pathlib.Path(sys.argv[1]).resolve())
 source = pathlib.Path(sys.argv[2]).read_bytes()
-with tempfile.TemporaryDirectory(prefix="cyclo-generic-array-") as directory:
+with tempfile.TemporaryDirectory(prefix="gstyle-generic-array-") as directory:
     root = pathlib.Path(directory)
     (root / "go.mod").write_text("module example.com/quality-repro\n\ngo 1.25.0\n")
     (root / "input.go").write_bytes(source)

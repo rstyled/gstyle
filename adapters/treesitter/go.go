@@ -1,4 +1,4 @@
-// Package treesitter parses Go using the Tree-sitter CLI, keeping Cyclo builds
+// Package treesitter parses Go using the Tree-sitter CLI, keeping Gstyle builds
 // independent of CGO. A configured Go grammar or an explicit parser library is required.
 package treesitter
 
@@ -11,7 +11,7 @@ import (
 	"os/exec"
 	"sort"
 
-	"github.com/shanejonas/cyclo/adapters/reducer"
+	"github.com/rstyled/gstyle/adapters/reducer"
 )
 
 type GoParser struct {
@@ -60,7 +60,7 @@ func (p GoParser) Deletions(source []byte) ([]reducer.Deletion, error) {
 }
 
 func (p GoParser) parse(source []byte) (node, bool, error) {
-	file, err := os.CreateTemp("", "cyclo-treesitter-*.go")
+	file, err := os.CreateTemp("", "gstyle-treesitter-*.go")
 	if err != nil {
 		return node{}, false, err
 	}

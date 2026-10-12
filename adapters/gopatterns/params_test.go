@@ -8,7 +8,7 @@ import (
 	"go/types"
 	"testing"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
 // checkFunc type-checks a single-function snippet and returns the FuncDecl

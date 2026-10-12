@@ -12,7 +12,7 @@ import (
 // "everything affects everything" spaghetti that resists testing and
 // comprehension.
 //
-// For cyclo: a dependence_cluster pattern flags functions whose PDG contains
+// For gstyle: a dependence_cluster pattern flags functions whose PDG contains
 // a large strongly-connected region — the code is a tangle. Linchpin
 // functions (whose removal would collapse the cluster) are the
 // highest-leverage refactoring targets.

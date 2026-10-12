@@ -7,8 +7,8 @@ import (
 	"go/types"
 	"strconv"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/domain/patterns"
+	"github.com/rstyled/gstyle/domain/pdg"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -35,7 +35,7 @@ func newIRBuilder(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pd
 		symbols:        map[types.Object]pdg.Ref{}, nodes: map[ast.Node]pdg.Ref{},
 		writeTargets: map[ast.Node]bool{},
 	}
-	b.policy = pool.Policy("cyclo.abstraction", "0.1.0")
+	b.policy = pool.Policy("gstyle.abstraction", "0.1.0")
 	b.sourceEvidence = pool.Evidence(pdg.Approximated, "Operation identified in typed source; dependency completeness is separate.")
 	b.sourceOrigin = pool.Origin(pdg.SourceOrigin, "Go source operation; abstraction lowering is approximate.")
 	b.header(pkg, fn, path)
@@ -52,7 +52,7 @@ func (b *irBuilder) header(pkg *packages.Package, fn *ast.FuncDecl, path string)
 	b.graph = pdg.Graph{
 		Tables: p.Tables, Profile: b.policy,
 		Producer: pdg.Producer{
-			Name: p.Text("cyclo"), Version: p.Text("pdg-ir-0.1.0"), Language: p.Text("go"),
+			Name: p.Text("gstyle"), Version: p.Text("pdg-ir-0.1.0"), Language: p.Text("go"),
 			LanguageVersion: p.Missing(pdg.Unknown, "Compiler language version is not recorded."), Configuration: p.Text("{}"),
 		},
 		Sources: []pdg.Source{{ID: p.Text(path), Path: p.Text(path), ContentIdentity: p.Missing(pdg.Unknown, "Source content digest is not computed.")}},

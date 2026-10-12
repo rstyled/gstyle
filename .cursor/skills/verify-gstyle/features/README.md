@@ -1,30 +1,30 @@
-# Cyclo verification map
+# Gstyle verification map
 
 This directory is the maintained source for verifying the user-facing behavior
-of cyclo. Read the index before driving the app, then use the matching feature
+of gstyle. Read the index before driving the app, then use the matching feature
 file as the recipe.
 
 ## Baseline preconditions
 
-- Build the binary with `verify-cyclo build "$RUN_DIR"` and require
-  `verify-cyclo doctor "$RUN_DIR/cyclo"` to report `doctor: ok`.
-- `go` is on `PATH` (cyclo shells out to the Go toolchain to load packages;
+- Build the binary with `verify-gstyle build "$RUN_DIR"` and require
+  `verify-gstyle doctor "$RUN_DIR/gstyle"` to report `doctor: ok`.
+- `go` is on `PATH` (gstyle shells out to the Go toolchain to load packages;
   without it every `check` drive exits 2 with `go command required`).
-- TUI drives run only under `verify-cyclo tui` (a `script(1)` PTY, 160x50),
+- TUI drives run only under `verify-gstyle tui` (a `script(1)` PTY, 160x50),
   with the helper's isolated `XDG_STATE_HOME`. Never drive the TUI against
   the operator's real annotation store.
 - `--changed` drives use a temp git repo created per run under
-  `$RUN_DIR/scratch`, with at least one commit. Never against the cyclo repo
+  `$RUN_DIR/scratch`, with at least one commit. Never against the gstyle repo
   itself unless the drive is explicitly dogfooding the current diff.
 - Keep every drive's evidence under `$RUN_DIR/evidence/` with the feature id
-  in the filename; `verify-cyclo cleanup` removes everything else.
+  in the filename; `verify-gstyle cleanup` removes everything else.
 
 ## Driving conventions
 
 - Headless commands (`check`, `--skill`, `bug-reducer --tui=false`) run as
   direct child processes with piped output. Pipe them: non-TTY stdout switches
   `check` and `bug-reducer` to their plain script-friendly output.
-- The TUI takes no piped stdin interaction beyond the keys `verify-cyclo tui`
+- The TUI takes no piped stdin interaction beyond the keys `verify-gstyle tui`
   injects; every TUI drive is a fresh `script(1)` session. Never two drives on
   one TUI instance.
 - Treat every command as literal. Keep quoted names and flags unchanged.
@@ -56,7 +56,7 @@ user-visible behavior. It then uses exactly four H2 sections in this order.
 
 1. `Sub-features` lists short IDs with one line for each behavior.
 2. `How to get to it (user POV)` lists every user entry point.
-3. `Driving it with verify-cyclo` starts with `Preconditions:` and uses
+3. `Driving it with verify-gstyle` starts with `Preconditions:` and uses
    labeled bullets that pair each user action with an exact command and
    observable result.
 4. `Gotchas` lists traps that can waste or invalidate a verification run.
@@ -70,13 +70,13 @@ handles, required state, commands, and observable proof.
   the TUI, the treemap panes, footer counts, pane/file switching, and refresh.
 - [Quality evidence](./quality-evidence.md) covers the `e` quality pane, the
   self-explaining finding arithmetic, and note annotations.
-- [Headless check](./check-headless.md) covers `cyclo check` in text/json/facts
-  formats, exit codes, `--config`, `--tests`, and `cyclo --skill`.
-- [Changed-only findings](./check-changed.md) covers `cyclo check --changed`
+- [Headless check](./check-headless.md) covers `gstyle check` in text/json/facts
+  formats, exit codes, `--config`, `--tests`, and `gstyle --skill`.
+- [Changed-only findings](./check-changed.md) covers `gstyle check --changed`
   narrowing findings to git-touched functions.
 - [Bug reducer](./bug-reducer.md) covers minimizing a reproducer with the
   checker contract and script-friendly output.
-- [Pattern mining](./patterns.md) covers `cyclo patterns`: the 18 pattern
+- [Pattern mining](./patterns.md) covers `gstyle patterns`: the 18 pattern
   kinds, detection-only kinds, and the miner's suppression rules.
-- [Pattern autofix](./fix.md) covers `cyclo fix`: dry-run vs `--apply`,
+- [Pattern autofix](./fix.md) covers `gstyle fix`: dry-run vs `--apply`,
   `--kind`, `--phased`, `--changed`, and idempotency.

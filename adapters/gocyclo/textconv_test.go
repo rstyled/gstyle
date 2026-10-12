@@ -9,8 +9,8 @@ import (
 func TestGitDiffUsesSourceInsteadOfTextConversion(t *testing.T) {
 	root := t.TempDir()
 	runGit(t, root, "init", "-b", "main")
-	runGit(t, root, "config", "user.email", "cyclo@example.com")
-	runGit(t, root, "config", "user.name", "Cyclo")
+	runGit(t, root, "config", "user.email", "gstyle@example.com")
+	runGit(t, root, "config", "user.name", "Gstyle")
 	runGit(t, root, "config", "diff.convert.textconv", "sed s/before/converted/g")
 	writeDiffFixture(t, filepath.Join(root, ".gitattributes"), "*.go diff=convert\n")
 	path := filepath.Join(root, "sample.go")

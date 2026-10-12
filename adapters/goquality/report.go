@@ -4,8 +4,8 @@ import (
 	"context"
 	"path/filepath"
 
-	"github.com/shanejonas/cyclo/domain"
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/domain"
+	"github.com/rstyled/gstyle/domain/quality"
 )
 
 type ComplexityAnalyzer interface {

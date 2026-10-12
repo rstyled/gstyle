@@ -6,13 +6,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
 // TestWriteMatchingCorpus freezes matching inputs for before/after runs.
 // It is an opt-in test artifact, not a graph export feature.
 func TestWriteMatchingCorpus(t *testing.T) {
-	root, output := os.Getenv("CYCLO_MATCH_ROOT"), os.Getenv("CYCLO_MATCH_CORPUS")
+	root, output := os.Getenv("GSTYLE_MATCH_ROOT"), os.Getenv("GSTYLE_MATCH_CORPUS")
 	if root == "" || output == "" {
 		t.Skip("opt-in matching corpus")
 	}

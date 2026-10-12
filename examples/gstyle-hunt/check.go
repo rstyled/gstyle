@@ -11,8 +11,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/shanejonas/cyclo/adapters/gocyclo"
-	"github.com/shanejonas/cyclo/domain"
+	"github.com/rstyled/gstyle/adapters/gocyclo"
+	"github.com/rstyled/gstyle/domain"
 )
 
 type expected struct {

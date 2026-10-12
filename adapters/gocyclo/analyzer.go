@@ -11,8 +11,8 @@ import (
 	"sort"
 	"strings"
 
-	cyclo "github.com/fzipp/gocyclo"
-	"github.com/shanejonas/cyclo/domain"
+	gstyle "github.com/fzipp/gocyclo"
+	"github.com/rstyled/gstyle/domain"
 	cognit "github.com/uudashr/gocognit"
 )
 
@@ -189,7 +189,7 @@ func analyzeFile(path string) (domain.File, error) {
 
 	fileSet = physicalFileSet(fileSet.File(parsed.Pos()))
 	literalNames := normalizeFunctionInitializers(parsed, fileSet)
-	stats := cyclo.AnalyzeASTFile(parsed, fileSet, nil)
+	stats := gstyle.AnalyzeASTFile(parsed, fileSet, nil)
 	nameFunctionLiterals(stats, literalNames)
 	cognitiveStats := cognitiveStatsByOffset(parsed, fileSet)
 	ranges := functionRanges(parsed, fileSet)

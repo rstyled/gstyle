@@ -1,4 +1,4 @@
-// Command qualitygate enforces cyclo's quality guardrails in CI without
+// Command qualitygate enforces gstyle's quality guardrails in CI without
 // punishing growth.
 //
 // A checked-in baseline records each rule's total excess per 1,000 functions
@@ -10,7 +10,7 @@
 //
 // Usage:
 //
-//	cyclo check --format json . > facts.json
+//	gstyle check --format json . > facts.json
 //	qualitygate --baseline quality-baseline.json --facts facts.json
 //
 // Regenerate the baseline after a change legitimately moves the numbers:

@@ -1,6 +1,6 @@
 package domain
 
-import "github.com/shanejonas/cyclo/domain/quality"
+import "github.com/rstyled/gstyle/domain/quality"
 
 type Report struct {
 	Root             string

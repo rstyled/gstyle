@@ -8,7 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/shanejonas/cyclo/domain"
+	"github.com/rstyled/gstyle/domain"
 )
 
 func TestViewUsesAlternateScreen(t *testing.T) {
@@ -27,8 +27,8 @@ func TestViewEnablesMouseWheelEvents(t *testing.T) {
 
 func TestViewUsesCycloName(t *testing.T) {
 	view := (Model{width: 120}).View()
-	if view.WindowTitle != "cyclo" {
-		t.Fatalf("window title = %q, want cyclo", view.WindowTitle)
+	if view.WindowTitle != "gstyle" {
+		t.Fatalf("window title = %q, want gstyle", view.WindowTitle)
 	}
 }
 
@@ -40,7 +40,7 @@ func TestHeaderKeepsTheControlPortVisible(t *testing.T) {
 	}
 
 	header := ansi.Strip(model.header(model.width))
-	if !strings.Contains(header, "CYCLO") || !strings.Contains(header, "RPC :54321") {
+	if !strings.Contains(header, "GSTYLE") || !strings.Contains(header, "RPC :54321") {
 		t.Fatalf("header hides the control port: %q", header)
 	}
 }

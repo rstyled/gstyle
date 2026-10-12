@@ -32,9 +32,9 @@ Before production changes:
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-rework-red-cache go test ./... -count=1
 --- FAIL: TestGoRunLaunchesTUI (0.02s)
     main_extra_test.go:32: go run . failed: exit status 1
-        github.com/shanejonas/cyclomatic-complexity-tui: no non-test Go files in /home/shanejonas/code/github.com/shanejonas/cyclomatic-complexity-tui
+        github.com/rstyled/gstyle: no non-test Go files in /home/shanejonas/code/github.com/rstyled/gstyle
 FAIL
-FAIL github.com/shanejonas/cyclomatic-complexity-tui
+FAIL github.com/rstyled/gstyle
 --- FAIL: TestLongReportRootKeepsFilenameAndCoordinates (0.00s)
     view_extra_test.go:40: file row lost the filename
 --- FAIL: TestNarrowViewUsesTerminalCellWidth (0.00s)
@@ -43,7 +43,7 @@ FAIL github.com/shanejonas/cyclomatic-complexity-tui
     --- FAIL: TestNarrowViewUsesTerminalCellWidth/combining_character (0.00s)
         view_extra_test.go:76: file row width = 9, want 10
 FAIL
-FAIL github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui
+FAIL github.com/rstyled/gstyle/adapters/inbound/tui
 FAIL
 ```
 
@@ -64,23 +64,23 @@ $ GOCACHE=/tmp/cyclomatic-complexity-tui-rework-build-no-vcs-cache go build -bui
 (no output)
 
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-rework-test-cache go test ./... -count=1
-ok   github.com/shanejonas/cyclomatic-complexity-tui
-ok   github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui
-?    github.com/shanejonas/cyclomatic-complexity-tui/adapters/outbound/gocyclo [no test files]
-?    github.com/shanejonas/cyclomatic-complexity-tui/domain [no test files]
-ok   github.com/shanejonas/cyclomatic-complexity-tui/features
-?    github.com/shanejonas/cyclomatic-complexity-tui/ports [no test files]
+ok   github.com/rstyled/gstyle
+ok   github.com/rstyled/gstyle/adapters/inbound/tui
+?    github.com/rstyled/gstyle/adapters/outbound/gocyclo [no test files]
+?    github.com/rstyled/gstyle/domain [no test files]
+ok   github.com/rstyled/gstyle/features
+?    github.com/rstyled/gstyle/ports [no test files]
 
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-rework-vet-cache go vet ./...
 (no output)
 
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-rework-race-cache go test -race ./... -count=1
-ok   github.com/shanejonas/cyclomatic-complexity-tui
-ok   github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui
-?    github.com/shanejonas/cyclomatic-complexity-tui/adapters/outbound/gocyclo [no test files]
-?    github.com/shanejonas/cyclomatic-complexity-tui/domain [no test files]
-ok   github.com/shanejonas/cyclomatic-complexity-tui/features
-?    github.com/shanejonas/cyclomatic-complexity-tui/ports [no test files]
+ok   github.com/rstyled/gstyle
+ok   github.com/rstyled/gstyle/adapters/inbound/tui
+?    github.com/rstyled/gstyle/adapters/outbound/gocyclo [no test files]
+?    github.com/rstyled/gstyle/domain [no test files]
+ok   github.com/rstyled/gstyle/features
+?    github.com/rstyled/gstyle/ports [no test files]
 
 $ gofmt -d main.go main_extra_test.go adapters/inbound/tui/model.go adapters/inbound/tui/model_test.go adapters/inbound/tui/view.go adapters/inbound/tui/view_extra_test.go adapters/outbound/gocyclo/analyzer.go domain/report.go features/01-complexity-tui_test.go ports/analyzer.go
 (no output)
@@ -98,7 +98,7 @@ all modules verified
 
 ```text
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-rework-final-smoke-cache go run .
-CYCLO  10 files · 59 functions · Total 170 · Average 2.9
+GSTYLE  10 files · 59 functions · Total 170 · Average 2.9
 Files                     │ Functions                 │ Details
 › view.go                 │   (Model).fileLines · Co  │ view.go:83:1
 ...

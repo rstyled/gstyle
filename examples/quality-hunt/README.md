@@ -39,10 +39,10 @@ ownership patterns; generator expectation failures stop the run.
 The current checkout's analyzer is the default. To hunt against a saved build:
 
 ```sh
-go run ./examples/quality-hunt --cyclo /path/to/frozen-cyclo --go-parser /path/to/go.so --output /tmp/new-quality-failure
+go run ./examples/quality-hunt --gstyle /path/to/frozen-gstyle --go-parser /path/to/go.so --output /tmp/new-quality-failure
 ```
 
-The output directory must not exist. `--cyclo` takes a binary file path. A
+The output directory must not exist. `--gstyle` takes a binary file path. A
 mismatch exits nonzero and automatically invokes the Tree-sitter Go reducer,
 keeping only candidates that compile, preserve the expected runtime ownership
 behavior, retain the same mismatch, and remain equivalent under the generated
@@ -61,7 +61,7 @@ count. Recheck a saved directory without another reduction:
 
 ```sh
 go run ./examples/quality-hunt --recheck /tmp/new-quality-failure
-go run ./examples/quality-hunt --cyclo /path/to/frozen-cyclo --recheck /tmp/new-quality-failure
+go run ./examples/quality-hunt --gstyle /path/to/frozen-gstyle --recheck /tmp/new-quality-failure
 ```
 
 PASS exits 0. A confirmed mismatch, invalid candidate, timeout, or operational

@@ -56,7 +56,7 @@ func FixValueObjects(fset *token.FileSet, f *ast.File, src []byte) ([]byte, []Va
 		return src, nil, nil
 	}
 	// Save function doc comments before AST modification: format.Node on a
-	// modified AST can misplace them (e.g. moving a // cyclo-allow annotation
+	// modified AST can misplace them (e.g. moving a // gstyle-allow annotation
 	// into a rewritten return expression).
 	docComments := saveFuncDocs(f, fset, src)
 	fixes, structTexts := applyClumps(fset, f, clumps)

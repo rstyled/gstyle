@@ -20,8 +20,8 @@ failures, as well as a correct report.
 From the repository root, using a binary built before these aliasing fixes:
 
 ```sh
-python3 adapters/goquality/testdata/promoted-pointer/check.py /path/to/pre-fix-cyclo adapters/goquality/testdata/aliasing/indirect-reduced.go.txt
-cyclo bug-reducer --tui=false --timeout 30s --output /tmp/indirect-reduced.go.txt adapters/goquality/testdata/aliasing/indirect-input.go.txt -- python3 adapters/goquality/testdata/promoted-pointer/check.py /path/to/pre-fix-cyclo
+python3 adapters/goquality/testdata/promoted-pointer/check.py /path/to/pre-fix-gstyle adapters/goquality/testdata/aliasing/indirect-reduced.go.txt
+gstyle bug-reducer --tui=false --timeout 30s --output /tmp/indirect-reduced.go.txt adapters/goquality/testdata/aliasing/indirect-input.go.txt -- python3 adapters/goquality/testdata/promoted-pointer/check.py /path/to/pre-fix-gstyle
 ```
 
 The output path must not already exist. Replace `indirect` with `range` or

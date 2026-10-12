@@ -3,7 +3,7 @@ package patterns
 import (
 	"testing"
 
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/domain/quality"
 )
 
 // TestEffectBitsMapping verifies the Kind -> bitflag mapping.

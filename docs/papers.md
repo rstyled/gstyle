@@ -1,8 +1,8 @@
-# Research Papers Behind Cyclo
+# Research Papers Behind Gstyle
 
-The static analysis research that cyclo implements, with the key insight
-from each paper, what cyclo took from it, and how faithfully it was implemented.
-These are the "buried gold" papers — old work that modern compute (and cyclo's
+The static analysis research that gstyle implements, with the key insight
+from each paper, what gstyle took from it, and how faithfully it was implemented.
+These are the "buried gold" papers — old work that modern compute (and gstyle's
 PDG extractor) unlocks.
 
 ## Summary
@@ -26,7 +26,7 @@ PDG extractor) unlocks.
 **Fidelity levels:**
 
 - **Exact:** Implemented as the paper describes, with paper's thresholds/parameters.
-- **Adapted:** Core idea from the paper, modified for cyclo's architecture or Go.
+- **Adapted:** Core idea from the paper, modified for gstyle's architecture or Go.
 - **Inspired by:** Paper motivated the approach; implementation differs significantly.
 - **Not implemented:** No current implementation of the paper; any removed adaptation is documented below.
 
@@ -45,7 +45,7 @@ graph matching via the Weisfeiler-Lehman (WL) graph kernel, plus a two-stage
 filtering strategy using characteristic vectors to prune candidates before the
 expensive kernel computation.
 
-**The current pipeline in cyclo (adapted from the paper):**
+**The current pipeline in gstyle (adapted from the paper):**
 
 1. Build nine numerical PDG features: declaration, assignment, control, call and other node counts; control, data and execution edge counts; and reference-binding count.
 2. Admit a pair when feature cosine similarity is ≥ **0.9**, or short function-name Jaro-Winkler similarity is ≥ **0.5**. Missing source features or names permit conservative admission. The report route also admits pairs through its AST similarity bypass.
@@ -62,14 +62,14 @@ establish compat conformance or reproduction of the original paper. The separate
 projection, features, interfaces, directed WL, scoring and boundaries. It does
 not validate native extraction or reproduce the original CCGraph tool.
 
-**What cyclo adds:** AST bypass, parallel pair checks, shared IR label hashes,
+**What gstyle adds:** AST bypass, parallel pair checks, shared IR label hashes,
 cached vector norms, a safe WL upper bound, and bounded match batches. These
 additions are separate from the paper's algorithm. Removing LSH retains these
 filters; it does not enable exhaustive matching over all usable functions.
 
-**In cyclo:** `ccgraph_clone` pattern kind. `domain/patterns/ccgraph.go`, `domain/patterns/wl.go`.
+**In gstyle:** `ccgraph_clone` pattern kind. `domain/patterns/ccgraph.go`, `domain/patterns/wl.go`.
 
-**Note:** CCGraph replaced cyclo's earlier `semantic_clone` implementation (Komondoor & Horwitz style BFS subgraph enumeration), which caused 6-minute/4GB hangs on large codebases. The old code is deleted.
+**Note:** CCGraph replaced gstyle's earlier `semantic_clone` implementation (Komondoor & Horwitz style BFS subgraph enumeration), which caused 6-minute/4GB hangs on large codebases. The old code is deleted.
 
 ---
 
@@ -81,15 +81,15 @@ filters; it does not enable exhaustive matching over all usable functions.
 *consistently* modified. Inconsistent edits to clones are bugs — e.g., someone
 fixed a nil check in one copy but forgot the pasted copies.
 
-**How cyclo implements it:** Rebuilt on CCGraph groups (the original implementation
+**How gstyle implements it:** Rebuilt on CCGraph groups (the original implementation
 depended on the deleted BFS enumeration). Within each CCGraph clone group, compute
 pairwise WL similarity. If a pair scores in [900, 950) — above the clone threshold
 but below the "identical" range — it's flagged as suspiciously diverged.
 
 **Fidelity:** Adapted. The core "inconsistent edits to clones = bugs" idea is
-CP-Miner's; the divergence detection via WL similarity bands is cyclo's.
+CP-Miner's; the divergence detection via WL similarity bands is gstyle's.
 
-**In cyclo:** `inconsistent_clone` pattern kind (detection-only). `domain/patterns/inconsistent.go`.
+**In gstyle:** `inconsistent_clone` pattern kind (detection-only). `domain/patterns/inconsistent.go`.
 
 ---
 
@@ -102,14 +102,14 @@ CP-Miner's; the divergence detection via WL similarity bands is cyclo's.
 results are always closed." Found 16 confirmed bugs in Linux. The self-supervised
 version of every hand-written linter rule.
 
-**How cyclo implements it:** Mine rules of form `{A} → B` (if you call A, you
+**How gstyle implements it:** Mine rules of form `{A} → B` (if you call A, you
 usually also call B). Support ≥10%, confidence ≥90%. Violations are flagged as
 bugs.
 
 **Fidelity:** Adapted. Core frequent-itemset mining approach; thresholds tuned for
-cyclo's use case.
+gstyle's use case.
 
-**In cyclo:** `mined_rule` pattern kind. `domain/patterns/pr_miner.go`.
+**In gstyle:** `mined_rule` pattern kind. `domain/patterns/pr_miner.go`.
 
 ---
 
@@ -122,14 +122,14 @@ MUST beliefs (always true — violations are always bugs) vs. MAY beliefs
 (statistically true — violations ranked by deviation). You don't need to know the
 truth; a contradiction IS the bug. Engler commercialized this as Coverity.
 
-**How cyclo implements it:** Mine beliefs about error handling: if 95%+ of callers
+**How gstyle implements it:** Mine beliefs about error handling: if 95%+ of callers
 check a function's error return, the sites that don't are flagged. Uses a
 parent-tracking AST walker to detect `_` assignments and ignored results.
 
-**Fidelity:** Inspired by. The MUST/MAY belief distinction is Engler's; cyclo's
+**Fidelity:** Inspired by. The MUST/MAY belief distinction is Engler's; gstyle's
 implementation focuses specifically on error-handling beliefs.
 
-**In cyclo:** `deviant_behavior` pattern kind. `domain/patterns/deviant.go`, `adapters/gopatterns/errorcheck.go`.
+**In gstyle:** `deviant_behavior` pattern kind. `domain/patterns/deviant.go`, `adapters/gopatterns/errorcheck.go`.
 
 ---
 
@@ -142,14 +142,14 @@ bugs. But API preconditions are usually disjunctive: "check arg for null OR chec
 return for error" — not "check both." Alattin mines *alternative* (OR) patterns
 and only flags code that violates *all* alternatives. Cut false positives ~28%.
 
-**How cyclo implements it:** Disjunctive rules over call sets. Where PR-Miner mines
+**How gstyle implements it:** Disjunctive rules over call sets. Where PR-Miner mines
 "if you call A, you also call B", Alattin mines "if you call A, you call B OR C".
 The OR rule only fires when neither single rule meets the confidence threshold.
 
-**Fidelity:** Adapted. Core disjunctive mining idea; implemented on cyclo's PDG
+**Fidelity:** Adapted. Core disjunctive mining idea; implemented on gstyle's PDG
 call facts.
 
-**In cyclo:** `alattin_rule` pattern kind (detection-only). `domain/patterns/alattin.go`.
+**In gstyle:** `alattin_rule` pattern kind (detection-only). `domain/patterns/alattin.go`.
 
 ---
 
@@ -161,14 +161,14 @@ call facts.
 can't transitively pass through them. Unifies two ad-hoc practices: removing
 dependences from the graph, and dicing (removing known-good code from a slice).
 
-**How cyclo implements it:** `BarrierSlice(pdg, seed, barriers)` computes the
+**How gstyle implements it:** `BarrierSlice(pdg, seed, barriers)` computes the
 backward slice from a seed without traversing through barrier nodes. Use case:
 the agent marks reviewed code as a barrier, and the fault area shrinks each
 iteration.
 
-**Fidelity:** Adapted. Core barrier concept; implemented on cyclo's PDG.
+**Fidelity:** Adapted. Core barrier concept; implemented on gstyle's PDG.
 
-**In cyclo:** Library only (`domain/patterns/barrier.go`). Not yet wired as a CLI pattern kind.
+**In gstyle:** Library only (`domain/patterns/barrier.go`). Not yet wired as a CLI pattern kind.
 
 ---
 
@@ -181,7 +181,7 @@ resources that must be released on *every* path, including error paths. Error
 paths are where resource discipline breaks. The paper found 800+ error-handling
 mistakes in ~4M LOC of Java from pure static analysis.
 
-**How cyclo implements it:** Tracks resource acquisition (open, lock, allocate)
+**How gstyle implements it:** Tracks resource acquisition (open, lock, allocate)
 and verifies release (close, unlock, free) on all paths including error returns.
 Go's `defer` makes the common case easy; the analysis catches the cases where
 defer is missing or conditional.
@@ -189,7 +189,7 @@ defer is missing or conditional.
 **Fidelity:** Adapted. Core obligation-tracking idea; adapted for Go's error-handling
 idioms.
 
-**In cyclo:** `obligation` pattern kind (detection-only). `domain/patterns/obligation.go`.
+**In gstyle:** `obligation` pattern kind (detection-only). `domain/patterns/obligation.go`.
 
 ---
 
@@ -201,13 +201,13 @@ idioms.
 forward slice of the source with the backward slice of the sink. Answers "how does
 THIS input reach THAT output?" rather than "what affects X?"
 
-**How cyclo implements it:** `Chop(pdg, source, sink)`. For `check --changed`:
+**How gstyle implements it:** `Chop(pdg, source, sink)`. For `check --changed`:
 given changed lines (sources) and sinks (DB writes, network calls), show exactly
 the statements on the path between them.
 
-**Fidelity:** Adapted. Core chop definition; implemented on cyclo's PDG.
+**Fidelity:** Adapted. Core chop definition; implemented on gstyle's PDG.
 
-**In cyclo:** Library only (`domain/patterns/chop.go`).
+**In gstyle:** Library only (`domain/patterns/chop.go`).
 
 ---
 
@@ -220,14 +220,14 @@ that MIGHT affect a value — control dependences, heap plumbing. A *thin slice*
 includes only PRODUCER statements: the chain of assignments that compute and copy
 the value. 3-9x fewer statements; the buggy statement is still included.
 
-**How cyclo implements it:** `ThinSlice(pdg, seed)` follows only Data edges
+**How gstyle implements it:** `ThinSlice(pdg, seed)` follows only Data edges
 backward. When explaining a candidate, show the thin slice (5 lines) instead of
 the full dependence cone (50).
 
-**Fidelity:** Adapted. The paper has a more precise definition; cyclo uses a
+**Fidelity:** Adapted. The paper has a more precise definition; gstyle uses a
 heuristic (Data edges only).
 
-**In cyclo:** Library only (`domain/patterns/thin_slice.go`).
+**In gstyle:** Library only (`domain/patterns/thin_slice.go`).
 
 ---
 
@@ -241,14 +241,14 @@ clusters spanning 10%+ of the codebase. Big clusters = "everything affects
 everything" spaghetti. *Linchpin functions* are the ones whose removal collapses
 a cluster — highest-leverage refactoring targets.
 
-**How cyclo implements it:** Tarjan's SCC algorithm finds mutually-dependent
+**How gstyle implements it:** Tarjan's SCC algorithm finds mutually-dependent
 regions. Flags functions where 10+ statements are tangled, or 25%+ of the
 function is one cluster.
 
 **Fidelity:** Adapted. Core SCC-based cluster detection; thresholds chosen for
-cyclo.
+gstyle.
 
-**In cyclo:** `dependence_cluster` pattern kind (detection-only). `domain/patterns/dep_cluster.go`.
+**In gstyle:** `dependence_cluster` pattern kind (detection-only). `domain/patterns/dep_cluster.go`.
 
 ---
 
@@ -260,14 +260,14 @@ cyclo.
 A refactoring that moves code produces zero semantic diff; a one-line change
 that alters dependences is flagged as significant.
 
-**How cyclo implements it:** `SemanticDiff(old, new)` compares PDG structure
+**How gstyle implements it:** `SemanticDiff(old, new)` compares PDG structure
 hashes ignoring line numbers. For `check --changed`: pure refactors get a free
 pass; behavior changes get scrutiny.
 
-**Fidelity:** Inspired by. The "compare PDGs not text" idea; cyclo's implementation
+**Fidelity:** Inspired by. The "compare PDGs not text" idea; gstyle's implementation
 is simpler than Horwitz's full partitioning.
 
-**In cyclo:** Library only (`domain/patterns/semantic_diff.go`).
+**In gstyle:** Library only (`domain/patterns/semantic_diff.go`).
 
 ---
 
@@ -280,13 +280,13 @@ two similar fragments, formally derive the template + minimal parameter list.
 The *provably correct* way to extract a helper — not heuristics, but the
 most-specific generalization.
 
-**How cyclo implements it:** Drives the `parameterize` fixer. Instead of
+**How gstyle implements it:** Drives the `parameterize` fixer. Instead of
 heuristic diffing, anti-unification derives the exact template and holes, which
 become the extracted function's parameters. Respects variable renames.
 
 **Fidelity:** Exact. Standard anti-unification algorithm.
 
-**In cyclo:** `domain/patterns/antiunify.go`. Wired into the `parameterize` fixer.
+**In gstyle:** `domain/patterns/antiunify.go`. Wired into the `parameterize` fixer.
 
 ---
 
@@ -296,7 +296,7 @@ become the extracted function's parameters. Respects variable renames.
 
 Taint analysis doesn't come from a single paper — it's the standard
 source→propagator→sink framework from security-focused static analysis (SAST)
-engineering. Cyclo's implementation:
+engineering. Gstyle's implementation:
 
 - **Sources:** `r.URL.Query().Get()`, `r.FormValue()`, `os.Getenv()`, `io.ReadAll()`, etc.
 - **Propagators:** String concatenation, assignment, function returns (conservative)
@@ -310,7 +310,7 @@ and is NOT flagged. `db.Exec("... WHERE id = '" + userID + "'")` IS flagged.
 **Algorithm:** Intraprocedural forward dataflow along PDG data edges. Seed sources
 as tainted, propagate to fixpoint, flag sinks with tainted dangerous args.
 
-**In cyclo:** `domain/patterns/taint.go`. Wired into `cyclo patterns` CLI.
+**In gstyle:** `domain/patterns/taint.go`. Wired into `gstyle patterns` CLI.
 
 ---
 
@@ -326,7 +326,7 @@ use DECKARD vectors and size-partitioned LSH near-neighbor search. This is not
 whole-function WL vectorization. Sources: [Gabel §2.2–3.3](https://web.cs.ucdavis.edu/~su/publications/icse08-clone.pdf)
 and [DECKARD §3.3](https://web.cs.ucdavis.edu/~su/publications/icse07.pdf).
 
-**Status in cyclo:** Removed. The former whole-function WL/sign-hash adaptation
+**Status in gstyle:** Removed. The former whole-function WL/sign-hash adaptation
 expanded collisions into connected components and provided no pruning on the
 measured corpora. Clone detection now verifies every characteristic/name/AST-admitted
 pair with WL, without LSH. This is not a Gabel implementation.
@@ -358,16 +358,16 @@ invented the PDG. Everything above builds on this.
 
 ### Interprocedural Slicing — Horwitz, Reps & Binkley, 1988-1990
 
-System dependence graphs, precise interprocedural slicing. Cyclo's PDG is
+System dependence graphs, precise interprocedural slicing. Gstyle's PDG is
 currently intraprocedural; this is the path to cross-function analysis.
 
 ---
 
 ## The Thesis
 
-Cyclo is the AI's guide for attention and static analysis. These papers are the
+Gstyle is the AI's guide for attention and static analysis. These papers are the
 buried gold — old ideas that were right but too slow, too manual, or too
-academic to productize. Modern compute + cyclo's PDG extractor unlocks them.
+academic to productize. Modern compute + gstyle's PDG extractor unlocks them.
 
 The pattern: **static analysis tells the agent where to look; the agent decides
 what to do.** Detection is deterministic. Fixes are conservative. Attention is

@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
 // DDD structural extractors: aggregates, repositories, factories (Evans).

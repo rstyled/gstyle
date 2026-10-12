@@ -6,7 +6,7 @@ import (
 	"go/types"
 	"strings"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
 // gostaticanalysis extractors: nilerr, forcetypeassert, typednil.
@@ -490,8 +490,8 @@ func parseSuppressComment(text string) []string {
 	if strings.HasPrefix(text, "//lint:ignore") {
 		return parseLintIgnoreKinds(text)
 	}
-	if strings.HasPrefix(text, "// cyclo-allow(") {
-		return parseCycloAllowKinds(text)
+	if strings.HasPrefix(text, "// gstyle-allow(") {
+		return parseGstyleAllowKinds(text)
 	}
 	return nil
 }
@@ -510,9 +510,9 @@ func parseLintIgnoreKinds(text string) []string {
 	return kinds
 }
 
-// parseCycloAllowKinds extracts kinds from the legacy allowlist comment form.
-func parseCycloAllowKinds(text string) []string {
-	inner := strings.TrimPrefix(text, "// cyclo-allow(")
+// parseGstyleAllowKinds extracts kinds from the legacy allowlist comment form.
+func parseGstyleAllowKinds(text string) []string {
+	inner := strings.TrimPrefix(text, "// gstyle-allow(")
 	idx := strings.Index(inner, "):")
 	if idx < 0 {
 		return nil

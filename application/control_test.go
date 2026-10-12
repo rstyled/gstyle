@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/shanejonas/cyclo/application"
-	"github.com/shanejonas/cyclo/domain"
+	"github.com/rstyled/gstyle/application"
+	"github.com/rstyled/gstyle/domain"
 )
 
 func TestControlAPIAdvertisesItsRuntimeAddressAndMethods(t *testing.T) {
@@ -19,6 +19,10 @@ func TestControlAPIAdvertisesItsRuntimeAddressAndMethods(t *testing.T) {
 	if document["openrpc"] != "1.2.6" {
 		t.Fatalf("openrpc = %v, want 1.2.6", document["openrpc"])
 	}
+	info := document["info"].(map[string]any)
+	if info["version"] != "0.5.0" {
+		t.Fatalf("API version = %v, want 0.5.0 for unprefixed methods", info["version"])
+	}
 	servers := document["servers"].([]any)
 	local := servers[0].(map[string]any)
 	if local["url"] != server.URL() {
@@ -27,19 +31,19 @@ func TestControlAPIAdvertisesItsRuntimeAddressAndMethods(t *testing.T) {
 
 	want := []string{
 		"rpc.discover",
-		"cyclo.getState",
-		"cyclo.waitForChange",
-		"cyclo.getReport",
-		"cyclo.setFocus",
-		"cyclo.selectFile",
-		"cyclo.selectFunction",
-		"cyclo.scrollSource",
-		"cyclo.revealLines",
-		"cyclo.clearLineSelection",
-		"cyclo.annotateLines",
-		"cyclo.removeAnnotation",
-		"cyclo.refresh",
-		"cyclo.setDetailsView",
+		"getState",
+		"waitForChange",
+		"getReport",
+		"setFocus",
+		"selectFile",
+		"selectFunction",
+		"scrollSource",
+		"revealLines",
+		"clearLineSelection",
+		"annotateLines",
+		"removeAnnotation",
+		"refresh",
+		"setDetailsView",
 	}
 	if got := methodNames(document); !sameStrings(got, want) {
 		t.Fatalf("methods = %v, want %v", got, want)
@@ -56,10 +60,10 @@ func TestControlAPIAdvertisesItsRuntimeAddressAndMethods(t *testing.T) {
 func TestControlAPIReadsAndChangesTheLiveModel(t *testing.T) {
 	server, analyzer := startControlTestServer(t)
 
-	state := rpcResult(t, server.URL(), "cyclo.getState", nil)
+	state := rpcResult(t, server.URL(), "getState", nil)
 	assertSelection(t, state, "hot.go", "Branchy")
 	revision := state["revision"]
-	state = rpcResult(t, server.URL(), "cyclo.waitForChange", map[string]any{
+	state = rpcResult(t, server.URL(), "waitForChange", map[string]any{
 		"afterRevision": revision,
 		"timeoutMs":     0,
 	})
@@ -67,25 +71,25 @@ func TestControlAPIReadsAndChangesTheLiveModel(t *testing.T) {
 		t.Fatalf("zero-timeout wait revision = %v, want %v", state["revision"], revision)
 	}
 
-	state = rpcResult(t, server.URL(), "cyclo.setFocus", map[string]any{"pane": "functions"})
+	state = rpcResult(t, server.URL(), "setFocus", map[string]any{"pane": "functions"})
 	if state["focus"] != "functions" {
 		t.Fatalf("focus = %v, want functions", state["focus"])
 	}
 
-	state = rpcResult(t, server.URL(), "cyclo.selectFile", map[string]any{"index": 1})
+	state = rpcResult(t, server.URL(), "selectFile", map[string]any{"index": 1})
 	assertSelection(t, state, "calm.go", "Calm")
 
-	state = rpcResult(t, server.URL(), "cyclo.selectFile", map[string]any{"index": 0})
-	state = rpcResult(t, server.URL(), "cyclo.selectFunction", map[string]any{"index": 1})
+	state = rpcResult(t, server.URL(), "selectFile", map[string]any{"index": 0})
+	state = rpcResult(t, server.URL(), "selectFunction", map[string]any{"index": 1})
 	assertSelection(t, state, "hot.go", "Simple")
 
-	state = rpcResult(t, server.URL(), "cyclo.scrollSource", map[string]any{"lines": 2})
+	state = rpcResult(t, server.URL(), "scrollSource", map[string]any{"lines": 2})
 	selection := state["selection"].(map[string]any)
 	if selection["sourceOffset"] != float64(2) {
 		t.Fatalf("sourceOffset = %v, want 2", selection["sourceOffset"])
 	}
 
-	state = rpcResult(t, server.URL(), "cyclo.revealLines", map[string]any{"startLine": 2, "endLine": 3})
+	state = rpcResult(t, server.URL(), "revealLines", map[string]any{"startLine": 2, "endLine": 3})
 	if state["focus"] != "source" || state["visualSelectionActive"] != false {
 		t.Fatalf("reveal state = %v, want a non-visual source selection", state)
 	}
@@ -94,7 +98,7 @@ func TestControlAPIReadsAndChangesTheLiveModel(t *testing.T) {
 		t.Fatalf("lineSelection = %v, want lines 2-3", lineSelection)
 	}
 
-	annotationResult := rpcResult(t, server.URL(), "cyclo.annotateLines", map[string]any{
+	annotationResult := rpcResult(t, server.URL(), "annotateLines", map[string]any{
 		"startLine": 2, "endLine": 3, "message": "Flatten this branch",
 	})
 	annotation := annotationResult["annotation"].(map[string]any)
@@ -106,18 +110,18 @@ func TestControlAPIReadsAndChangesTheLiveModel(t *testing.T) {
 		t.Fatalf("annotations = %v, want one", state["annotations"])
 	}
 
-	state = rpcResult(t, server.URL(), "cyclo.clearLineSelection", nil)
+	state = rpcResult(t, server.URL(), "clearLineSelection", nil)
 	if _, ok := state["lineSelection"]; ok {
 		t.Fatalf("line selection was not cleared: %v", state)
 	}
-	state = rpcResult(t, server.URL(), "cyclo.removeAnnotation", map[string]any{
+	state = rpcResult(t, server.URL(), "removeAnnotation", map[string]any{
 		"annotationId": annotation["id"],
 	})
 	if len(state["annotations"].([]any)) != 0 {
 		t.Fatalf("annotations after removal = %v", state["annotations"])
 	}
 
-	report := rpcResult(t, server.URL(), "cyclo.getReport", nil)
+	report := rpcResult(t, server.URL(), "getReport", nil)
 	if report["functions"] != float64(3) {
 		t.Fatalf("report functions = %v, want 3", report["functions"])
 	}
@@ -140,7 +144,7 @@ func TestControlAPIReadsAndChangesTheLiveModel(t *testing.T) {
 		t.Fatalf("cognitive diagnostics = %v", firstFunction["cognitiveDiagnostics"])
 	}
 
-	state = rpcResult(t, server.URL(), "cyclo.refresh", nil)
+	state = rpcResult(t, server.URL(), "refresh", nil)
 	if analyzer.calls != 2 || state["refreshing"] != false {
 		t.Fatalf("refresh calls = %d, state = %v", analyzer.calls, state)
 	}
@@ -152,14 +156,16 @@ func TestControlAPIReadsAndChangesTheLiveModel(t *testing.T) {
 func TestControlAPIRejectsInvalidRequests(t *testing.T) {
 	server, _ := startControlTestServer(t)
 
-	errorObject := rpcError(t, server.URL(), "cyclo.selectFile", map[string]any{"index": 99})
+	errorObject := rpcError(t, server.URL(), "selectFile", map[string]any{"index": 99})
 	if errorObject["code"] != float64(-32602) {
 		t.Fatalf("error code = %v, want -32602", errorObject["code"])
 	}
 
-	errorObject = rpcError(t, server.URL(), "cyclo.nope", nil)
-	if errorObject["code"] != float64(-32601) {
-		t.Fatalf("error code = %v, want -32601", errorObject["code"])
+	for _, method := range []string{"nope", "cyclo.getState", "gstyle.getState"} {
+		errorObject = rpcError(t, server.URL(), method, nil)
+		if errorObject["code"] != float64(-32601) {
+			t.Fatalf("%s error code = %v, want -32601", method, errorObject["code"])
+		}
 	}
 }
 

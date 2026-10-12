@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
 // parseNamedFunc parses src and returns the named function.

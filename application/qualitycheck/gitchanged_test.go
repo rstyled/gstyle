@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shanejonas/cyclo/adapters/gitchanged"
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/adapters/gitchanged"
+	"github.com/rstyled/gstyle/domain/quality"
 )
 
 func TestTouchedFunctions(t *testing.T) {

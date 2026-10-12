@@ -11,11 +11,11 @@ import (
 
 // TestProfilePatternCLI profiles the complete read-only patterns command.
 func TestProfilePatternCLI(t *testing.T) {
-	prefix := os.Getenv("CYCLO_CLI_PROFILE")
+	prefix := os.Getenv("GSTYLE_CLI_PROFILE")
 	if prefix == "" {
 		t.Skip("opt-in complete CLI profile")
 	}
-	t.Chdir(os.Getenv("CYCLO_CLI_ROOT"))
+	t.Chdir(os.Getenv("GSTYLE_CLI_ROOT"))
 	runtime.GC()
 	writeCLIHeap(t, prefix+"-before.heap")
 	file, err := os.Create(prefix + ".cpu")

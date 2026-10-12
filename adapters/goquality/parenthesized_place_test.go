@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/domain/quality"
 )
 
 func TestReducedParenthesizedAssignmentKeepsMutationEffect(t *testing.T) {

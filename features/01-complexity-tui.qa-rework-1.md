@@ -54,7 +54,7 @@ $ go test -buildvcs=false ./... -run 'TestGoRunLaunchesTUI|TestLongReportRootKee
 === RUN   TestGoRunLaunchesTUI
 --- PASS: TestGoRunLaunchesTUI (0.16s)
 PASS
-ok  github.com/shanejonas/cyclomatic-complexity-tui 0.159s
+ok  github.com/rstyled/gstyle 0.159s
 === RUN   TestLongReportRootKeepsFilenameAndCoordinates
 --- PASS: TestLongReportRootKeepsFilenameAndCoordinates (0.00s)
 === RUN   TestNestedSourceLocationKeepsFilenameAndCoordinatesWhenNarrow
@@ -66,7 +66,7 @@ ok  github.com/shanejonas/cyclomatic-complexity-tui 0.159s
     --- PASS: TestNarrowViewUsesTerminalCellWidth/CJK (0.00s)
     --- PASS: TestNarrowViewUsesTerminalCellWidth/combining_character (0.00s)
 PASS
-ok  github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui 0.003s
+ok  github.com/rstyled/gstyle/adapters/inbound/tui 0.003s
 ```
 
 ## Commands Run
@@ -75,20 +75,20 @@ The harness's default Go cache is outside the writable workspace. The first broa
 
 ```text
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-qa-rework-full-cache go test ./... -count=1
-ok  github.com/shanejonas/cyclomatic-complexity-tui 0.254s
-ok  github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui 1.210s
-?   github.com/shanejonas/cyclomatic-complexity-tui/adapters/outbound/gocyclo [no test files]
-?   github.com/shanejonas/cyclomatic-complexity-tui/domain [no test files]
-ok  github.com/shanejonas/cyclomatic-complexity-tui/features 1.189s
-?   github.com/shanejonas/cyclomatic-complexity-tui/ports [no test files]
+ok  github.com/rstyled/gstyle 0.254s
+ok  github.com/rstyled/gstyle/adapters/inbound/tui 1.210s
+?   github.com/rstyled/gstyle/adapters/outbound/gocyclo [no test files]
+?   github.com/rstyled/gstyle/domain [no test files]
+ok  github.com/rstyled/gstyle/features 1.189s
+?   github.com/rstyled/gstyle/ports [no test files]
 
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-qa-rework-race-cache go test -buildvcs=false -race ./... -count=1
-ok  github.com/shanejonas/cyclomatic-complexity-tui 7.014s
-ok  github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui 7.677s
-?   github.com/shanejonas/cyclomatic-complexity-tui/adapters/outbound/gocyclo [no test files]
-?   github.com/shanejonas/cyclomatic-complexity-tui/domain [no test files]
-ok  github.com/shanejonas/cyclomatic-complexity-tui/features 7.705s
-?   github.com/shanejonas/cyclomatic-complexity-tui/ports [no test files]
+ok  github.com/rstyled/gstyle 7.014s
+ok  github.com/rstyled/gstyle/adapters/inbound/tui 7.677s
+?   github.com/rstyled/gstyle/adapters/outbound/gocyclo [no test files]
+?   github.com/rstyled/gstyle/domain [no test files]
+ok  github.com/rstyled/gstyle/features 7.705s
+?   github.com/rstyled/gstyle/ports [no test files]
 
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-qa-rework-vet-cache go vet ./...
 (no output)
@@ -110,12 +110,12 @@ $ GOCACHE=/tmp/cyclomatic-complexity-tui-qa-rework-build-novcs-cache go build -b
 (no output)
 
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-qa-rework-list-cache go list -buildvcs=false -f '{{.Name}} {{.ImportPath}}' . ./...
-main github.com/shanejonas/cyclomatic-complexity-tui
-tui github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui
-gocyclo github.com/shanejonas/cyclomatic-complexity-tui/adapters/outbound/gocyclo
-domain github.com/shanejonas/cyclomatic-complexity-tui/domain
-complexity_tui github.com/shanejonas/cyclomatic-complexity-tui/features
-ports github.com/shanejonas/cyclomatic-complexity-tui/ports
+main github.com/rstyled/gstyle
+tui github.com/rstyled/gstyle/adapters/inbound/tui
+gocyclo github.com/rstyled/gstyle/adapters/outbound/gocyclo
+domain github.com/rstyled/gstyle/domain
+complexity_tui github.com/rstyled/gstyle/features
+ports github.com/rstyled/gstyle/ports
 
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-qa-rework-complexity-cache go run -buildvcs=false github.com/fzipp/gocyclo/cmd/gocyclo -over 10 -ignore '_test.go' .
 (no output; exit 0)
@@ -139,7 +139,7 @@ $ file /tmp/cyclomatic-complexity-tui-qa-rework-bin
 /tmp/cyclomatic-complexity-tui-qa-rework-bin: ELF 64-bit LSB executable, x86-64, ...
 
 $ (sleep 3; printf q) | script -qfec 'stty cols 120 rows 24; exec go run -buildvcs=false .' /dev/null
-CYCLO  10 files · 59 functions · Total 170 · Average 2.9
+GSTYLE  10 files · 59 functions · Total 170 · Average 2.9
 Files                                  │ Functions                              │ Details
 › view.go · Total 47 · Peak 4          │   (Model).fileLines · Complexity 4     │ adapters/inbound/tui/view.go:83:1
   analyzer.go · Total 44 · Peak 9      │   (Model).functionLines · Complexity 4 │ tui
@@ -149,7 +149,7 @@ tab panes · j/k move · r refresh · q quit
 (exit 0)
 
 $ (sleep 2; printf q) | script -qfec 'stty cols 100 rows 20; exec /tmp/cyclomatic-complexity-tui-qa-rework-bin ./domain' /dev/null
-CYCLO  1 files · 0 functions · Total 0 · Average 0.0
+GSTYLE  1 files · 0 functions · Total 0 · Average 0.0
 Files                           │ Functions                       │ Details
 › report.go · Total 0 · Peak 0  │ No functions                    │ No function selected
 tab panes · j/k move · r refresh · q quit
@@ -202,9 +202,9 @@ $ GOCACHE=/tmp/cyclomatic-complexity-tui-qa-rework-red-cache go test ./... -coun
 
         exit status 1
 FAIL
-FAIL github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui 0.794s
-?    github.com/shanejonas/cyclomatic-complexity-tui/adapters/outbound/gocyclo [no test files]
-?    github.com/shanejonas/cyclomatic-complexity-tui/domain [no test files]
+FAIL github.com/rstyled/gstyle/adapters/inbound/tui 0.794s
+?    github.com/rstyled/gstyle/adapters/outbound/gocyclo [no test files]
+?    github.com/rstyled/gstyle/domain [no test files]
 --- FAIL: TestStartWithTheCurrentRepository (0.16s)
     01-complexity-tui_test.go:12: self-scan public TUI contract failed: exit status 1
         default scan paths = [], want [.]
@@ -228,8 +228,8 @@ FAIL github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui 0.794s
 
         exit status 1
 FAIL
-FAIL github.com/shanejonas/cyclomatic-complexity-tui/features 0.819s
-?    github.com/shanejonas/cyclomatic-complexity-tui/ports [no test files]
+FAIL github.com/rstyled/gstyle/features 0.819s
+?    github.com/rstyled/gstyle/ports [no test files]
 FAIL
 ```
 
@@ -237,12 +237,12 @@ GREEN after the isolated RED run:
 
 ```text
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-qa-rework-final-green-cache go test ./... -count=1
-ok  github.com/shanejonas/cyclomatic-complexity-tui 0.197s
-ok  github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui 0.900s
-?   github.com/shanejonas/cyclomatic-complexity-tui/adapters/outbound/gocyclo [no test files]
-?   github.com/shanejonas/cyclomatic-complexity-tui/domain [no test files]
-ok  github.com/shanejonas/cyclomatic-complexity-tui/features 0.900s
-?   github.com/shanejonas/cyclomatic-complexity-tui/ports [no test files]
+ok  github.com/rstyled/gstyle 0.197s
+ok  github.com/rstyled/gstyle/adapters/inbound/tui 0.900s
+?   github.com/rstyled/gstyle/adapters/outbound/gocyclo [no test files]
+?   github.com/rstyled/gstyle/domain [no test files]
+ok  github.com/rstyled/gstyle/features 0.900s
+?   github.com/rstyled/gstyle/ports [no test files]
 ```
 
 ## Edge Cases Probed

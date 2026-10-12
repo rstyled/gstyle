@@ -22,8 +22,8 @@ type exhaustiveDataset struct {
 // TestMeasureExhaustiveClones creates a reference for the fixed WL predicate.
 // It bypasses AST, vector and name exclusions and is not a semantic oracle.
 func TestMeasureExhaustiveClones(t *testing.T) {
-	path := os.Getenv("CYCLO_MATCH_CORPUS")
-	if path == "" || os.Getenv("CYCLO_MATCH_EXHAUSTIVE") != "1" {
+	path := os.Getenv("GSTYLE_MATCH_CORPUS")
+	if path == "" || os.Getenv("GSTYLE_MATCH_EXHAUSTIVE") != "1" {
 		t.Skip("opt-in exhaustive reference")
 	}
 	data, err := os.ReadFile(path)
@@ -68,7 +68,7 @@ func TestMeasureExhaustiveClones(t *testing.T) {
 	if !reflect.DeepEqual(CCGraphClonesWithAST(pdgs, names, asts), groupsOfTwoOrMore(parent)) {
 		t.Fatal("production groups differ from independently filtered full scores")
 	}
-	if output := os.Getenv("CYCLO_MATCH_DATASET"); output != "" {
+	if output := os.Getenv("GSTYLE_MATCH_DATASET"); output != "" {
 		encoded, err := json.Marshal(exhaustiveDataset{1, ccMatchThreshold, ids, pairs})
 		if err != nil {
 			t.Fatal(err)

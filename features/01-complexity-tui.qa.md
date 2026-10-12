@@ -42,18 +42,18 @@ $ diff -u <(sed '1s/^package complexity_tui_test$/package tui_test/' features/01
 (no output)
 
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-qa-test-cache go test ./... -count=1
-ok  github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui
-?   github.com/shanejonas/cyclomatic-complexity-tui/adapters/outbound/gocyclo [no test files]
-?   github.com/shanejonas/cyclomatic-complexity-tui/domain [no test files]
-ok  github.com/shanejonas/cyclomatic-complexity-tui/features
-?   github.com/shanejonas/cyclomatic-complexity-tui/ports [no test files]
+ok  github.com/rstyled/gstyle/adapters/inbound/tui
+?   github.com/rstyled/gstyle/adapters/outbound/gocyclo [no test files]
+?   github.com/rstyled/gstyle/domain [no test files]
+ok  github.com/rstyled/gstyle/features
+?   github.com/rstyled/gstyle/ports [no test files]
 
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-qa-race-cache go test -race ./... -count=1
-ok  github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui
-?   github.com/shanejonas/cyclomatic-complexity-tui/adapters/outbound/gocyclo [no test files]
-?   github.com/shanejonas/cyclomatic-complexity-tui/domain [no test files]
-ok  github.com/shanejonas/cyclomatic-complexity-tui/features
-?   github.com/shanejonas/cyclomatic-complexity-tui/ports [no test files]
+ok  github.com/rstyled/gstyle/adapters/inbound/tui
+?   github.com/rstyled/gstyle/adapters/outbound/gocyclo [no test files]
+?   github.com/rstyled/gstyle/domain [no test files]
+ok  github.com/rstyled/gstyle/features
+?   github.com/rstyled/gstyle/ports [no test files]
 
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-qa-vet-cache go vet ./...
 (no output)
@@ -68,14 +68,14 @@ $ GOCACHE=/tmp/cyclomatic-complexity-tui-qa-tidy-cache go mod tidy -diff
 (no output)
 
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-qa-entry-cache go run .
-no Go files in /home/shanejonas/code/github.com/shanejonas/cyclomatic-complexity-tui
+no Go files in /home/shanejonas/code/github.com/rstyled/gstyle
 
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-qa-list-cache go list -f '{{.Name}} {{.ImportPath}}' ./...
-tui github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui
-gocyclo github.com/shanejonas/cyclomatic-complexity-tui/adapters/outbound/gocyclo
-domain github.com/shanejonas/cyclomatic-complexity-tui/domain
-complexity_tui github.com/shanejonas/cyclomatic-complexity-tui/features
-ports github.com/shanejonas/cyclomatic-complexity-tui/ports
+tui github.com/rstyled/gstyle/adapters/inbound/tui
+gocyclo github.com/rstyled/gstyle/adapters/outbound/gocyclo
+domain github.com/rstyled/gstyle/domain
+complexity_tui github.com/rstyled/gstyle/features
+ports github.com/rstyled/gstyle/ports
 
 $ rg -n '^package main$' -g '*.go' .
 (no matches)
@@ -133,9 +133,9 @@ $ GOCACHE=/tmp/cyclomatic-complexity-tui-qa-red-stub-cache go test ./... -count=
 
         exit status 1
 FAIL
-FAIL github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui 0.817s
-?    github.com/shanejonas/cyclomatic-complexity-tui/adapters/outbound/gocyclo [no test files]
-?    github.com/shanejonas/cyclomatic-complexity-tui/domain [no test files]
+FAIL github.com/rstyled/gstyle/adapters/inbound/tui 0.817s
+?    github.com/rstyled/gstyle/adapters/outbound/gocyclo [no test files]
+?    github.com/rstyled/gstyle/domain [no test files]
 --- FAIL: TestStartWithTheCurrentRepository (0.16s)
     01-complexity-tui_test.go:12: self-scan public TUI contract failed: exit status 1
         default scan paths = [], want [.]
@@ -159,8 +159,8 @@ FAIL github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui 0.817s
 
         exit status 1
 FAIL
-FAIL github.com/shanejonas/cyclomatic-complexity-tui/features 0.809s
-?    github.com/shanejonas/cyclomatic-complexity-tui/ports [no test files]
+FAIL github.com/rstyled/gstyle/features 0.809s
+?    github.com/rstyled/gstyle/ports [no test files]
 FAIL
 ```
 
@@ -168,11 +168,11 @@ The shared implementation remained untouched. A fresh GREEN run after RED produc
 
 ```text
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-qa-final-green-cache go test ./... -count=1
-ok   github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui 0.910s
-?    github.com/shanejonas/cyclomatic-complexity-tui/adapters/outbound/gocyclo [no test files]
-?    github.com/shanejonas/cyclomatic-complexity-tui/domain [no test files]
-ok   github.com/shanejonas/cyclomatic-complexity-tui/features 0.901s
-?    github.com/shanejonas/cyclomatic-complexity-tui/ports [no test files]
+ok   github.com/rstyled/gstyle/adapters/inbound/tui 0.910s
+?    github.com/rstyled/gstyle/adapters/outbound/gocyclo [no test files]
+?    github.com/rstyled/gstyle/domain [no test files]
+ok   github.com/rstyled/gstyle/features 0.901s
+?    github.com/rstyled/gstyle/ports [no test files]
 ```
 
 ## Edge Cases Probed

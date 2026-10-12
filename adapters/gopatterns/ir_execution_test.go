@@ -1,7 +1,7 @@
 package gopatterns
 
 import (
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/domain/pdg"
 	"strings"
 	"testing"
 )

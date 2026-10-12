@@ -1,4 +1,4 @@
-//go:build cyclo_fixture
+//go:build gstyle_fixture
 
 package sample
 

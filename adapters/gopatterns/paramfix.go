@@ -10,7 +10,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
 // Fix is a single applied fix, implemented by GuardFix and ParamFix.

@@ -10,16 +10,16 @@ import (
 	"os/signal"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/shanejonas/cyclo/adapters/gocyclo"
-	"github.com/shanejonas/cyclo/adapters/goquality"
-	"github.com/shanejonas/cyclo/adapters/sqlite"
-	"github.com/shanejonas/cyclo/application"
-	"github.com/shanejonas/cyclo/application/bugreducer"
-	"github.com/shanejonas/cyclo/application/graphmatch"
-	"github.com/shanejonas/cyclo/application/nextscore"
-	"github.com/shanejonas/cyclo/application/patterncheck"
-	"github.com/shanejonas/cyclo/application/patternfix"
-	"github.com/shanejonas/cyclo/application/qualitycheck"
+	"github.com/rstyled/gstyle/adapters/gocyclo"
+	"github.com/rstyled/gstyle/adapters/goquality"
+	"github.com/rstyled/gstyle/adapters/sqlite"
+	"github.com/rstyled/gstyle/application"
+	"github.com/rstyled/gstyle/application/bugreducer"
+	"github.com/rstyled/gstyle/application/graphmatch"
+	"github.com/rstyled/gstyle/application/nextscore"
+	"github.com/rstyled/gstyle/application/patterncheck"
+	"github.com/rstyled/gstyle/application/patternfix"
+	"github.com/rstyled/gstyle/application/qualitycheck"
 )
 
 const defaultControlPort = 8197
@@ -150,7 +150,7 @@ func runTUI(options runOptions, output io.Writer) (result error) {
 }
 
 func parseRunOptions(args []string) (runOptions, error) {
-	flags := flag.NewFlagSet("cyclo", flag.ContinueOnError)
+	flags := flag.NewFlagSet("gstyle", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	controlPort := flags.Int("control-port", defaultControlPort, "localhost JSON-RPC control port")
 	config := flags.String("config", "", "quality TOML policy")
@@ -166,7 +166,7 @@ func parseRunOptions(args []string) (runOptions, error) {
 
 func writeSkill(args []string, output io.Writer) error {
 	if len(args) != 1 {
-		return errors.New("usage: cyclo --skill")
+		return errors.New("usage: gstyle --skill")
 	}
 	return application.WriteSkill(output)
 }

@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shanejonas/cyclo/adapters/goquality"
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/adapters/goquality"
+	"github.com/rstyled/gstyle/domain/quality"
 )
 
 var invalidCandidate = errors.New("candidate does not compile or run")

@@ -1,7 +1,7 @@
 # Pattern autofix
 
-`cyclo fix` applies deterministic AST transforms for the mechanical pattern
-kinds found by `cyclo patterns`. Dry-run by default (prints a diff); `--apply`
+`gstyle fix` applies deterministic AST transforms for the mechanical pattern
+kinds found by `gstyle patterns`. Dry-run by default (prints a diff); `--apply`
 writes the changes. No LLM, no tokens — pure static analysis. `--phased`
 re-mines between phases to a fixpoint; `--changed` scopes to git-touched
 functions; `--kind` selects one kind.
@@ -17,22 +17,22 @@ functions; `--kind` selects one kind.
 
 ## How to get to it (user POV)
 
-- Run `cyclo fix --kind specification .` to preview one kind.
-- Run `cyclo fix --kind specification --apply .` to write it.
-- Run `cyclo fix --phased --apply .` for interacting fixes.
-- Run `cyclo fix --changed --apply .` in a git repo to fix only your diff.
+- Run `gstyle fix --kind specification .` to preview one kind.
+- Run `gstyle fix --kind specification --apply .` to write it.
+- Run `gstyle fix --phased --apply .` for interacting fixes.
+- Run `gstyle fix --changed --apply .` in a git repo to fix only your diff.
 
-## Driving it with verify-cyclo
+## Driving it with verify-gstyle
 
-Preconditions: `verify-cyclo build "$RUN_DIR"` and `verify-cyclo doctor "$RUN_DIR/cyclo"` report ok; `go` on PATH.
+Preconditions: `verify-gstyle build "$RUN_DIR"` and `verify-gstyle doctor "$RUN_DIR/gstyle"` report ok; `go` on PATH. Run fixture commands from the fixture directory; absolute paths outside the current Go module do not load as packages.
 
-- Craft a fixture with a repeated boolean rule in two functions (see `patterns.md`). Save under `$RUN_DIR/scratch/fix/`.
-- Dry-run: `$RUN_DIR/cyclo fix --kind specification $RUN_DIR/scratch/fix` — assert stdout shows the diff, the fixture file is byte-identical afterward, exit 0.
-- Apply: `$RUN_DIR/cyclo fix --kind specification --apply $RUN_DIR/scratch/fix` — assert a `*Specification` type with `IsSatisfiedBy` was added after the imports (not inside the import block), both call sites rewritten, exit 0.
+- Craft a fixture with a repeated boolean rule in two `if` conditions (see `patterns.md`). Save under `$RUN_DIR/scratch/fix/`.
+- Dry-run: `$RUN_DIR/gstyle fix --kind specification $RUN_DIR/scratch/fix` — assert stdout shows the diff, the fixture file is byte-identical afterward, exit 0.
+- Apply: `$RUN_DIR/gstyle fix --kind specification --apply $RUN_DIR/scratch/fix` — assert the named predicate method `IsAgeOver18AndActive` was added to `User`, both conditions call it, and exit code is 0. No Specification struct is generated.
 - Build check: `go build ./...` in the fixture dir must succeed after apply.
 - Idempotency: run the apply command again — assert exit 0 and the file is byte-identical (no-op).
-- For `trait_method`: fixture with parallel `Speak()` methods on `Dog`/`Cat` in one package; assert the generated interface is gofmt-clean and the package builds.
-- For `--changed`: init a temp git repo in `$RUN_DIR/scratch`, commit a baseline, add an unfixed pattern in an uncommitted edit, run `$RUN_DIR/cyclo fix --changed --apply` — assert only the touched function was fixed.
+- For `trait_method`, first require an actual candidate from mining. Parallel methods alone do not guarantee one. When admitted, assert the generated interface is gofmt-clean and the package builds.
+- For `--changed`: init a temp git repo in `$RUN_DIR/scratch`, commit a baseline, add an unfixed pattern in an uncommitted edit, run `$RUN_DIR/gstyle fix --changed --apply` — assert only the touched function was fixed.
 - Save the before/after diff to `$RUN_DIR/evidence/fix-<id>.diff` with the command and exit code.
 
 ## Gotchas

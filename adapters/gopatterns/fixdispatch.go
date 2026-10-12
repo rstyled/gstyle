@@ -6,7 +6,7 @@ import (
 	"go/parser"
 	"go/token"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
 // fixApplier is a function that applies a FixSpec.

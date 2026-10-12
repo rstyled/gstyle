@@ -1,7 +1,7 @@
 package patterns
 
 import (
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/domain/pdg"
 	"math/rand"
 	"reflect"
 	"testing"

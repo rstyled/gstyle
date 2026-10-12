@@ -5,8 +5,8 @@ import (
 	"go/token"
 	"go/types"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/domain/patterns"
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 // enrich adds source facts to the same graph, including writes hidden by

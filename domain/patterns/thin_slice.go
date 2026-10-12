@@ -6,7 +6,7 @@ package patterns
 // plumbing. A thin slice includes only PRODUCER statements — the chain of
 // assignments that compute and copy the value to the seed.
 //
-// For cyclo: when flagging side_effect_density or explaining a candidate,
+// For gstyle: when flagging side_effect_density or explaining a candidate,
 // show the thin slice (5 lines) instead of the full dependence cone (50).
 // This is the "attention" part of "AI's guide for attention."
 

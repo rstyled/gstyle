@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/shanejonas/cyclo/domain"
+	"github.com/rstyled/gstyle/domain"
 	_ "modernc.org/sqlite"
 )
 
@@ -41,13 +41,13 @@ func Open(path string) (*Store, error) {
 func StatePath() (string, error) {
 	stateHome := os.Getenv("XDG_STATE_HOME")
 	if stateHome != "" {
-		return filepath.Join(stateHome, "cyclo", "annotations.db"), nil
+		return filepath.Join(stateHome, "gstyle", "annotations.db"), nil
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("find home directory: %w", err)
 	}
-	return filepath.Join(home, ".local", "state", "cyclo", "annotations.db"), nil
+	return filepath.Join(home, ".local", "state", "gstyle", "annotations.db"), nil
 }
 
 func (s *Store) Close() error {

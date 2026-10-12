@@ -2,15 +2,15 @@
 
 ## What this is
 
-Cyclo's neighborhood-augmented Weisfeiler-Lehman kernel
+Gstyle's neighborhood-augmented Weisfeiler-Lehman kernel
 (`domain/patterns/neighborhood_wl.go`). Inspired by multi-scale WL ideas in
-the literature (e.g. Kim & Oh's WLKS, ICLR 2025), but Cyclo's own adaptation:
+the literature (e.g. Kim & Oh's WLKS, ICLR 2025), but Gstyle's own adaptation:
 per-node k=1,2 neighborhoods with one WL refinement round, aggregated into
 histograms. Not the paper-exact WLKS algorithm.
 
 ## Setup
 
-- Corpus: cyclo `domain/patterns` package (648 functions with PDGs) and
+- Corpus: gstyle `domain/patterns` package (648 functions with PDGs) and
   `domain` (762 functions)
 - Same extraction for both; identical pipeline (Stages 1-3); only the Stage 4
   kernel differs

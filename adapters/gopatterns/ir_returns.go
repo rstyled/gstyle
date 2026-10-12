@@ -4,7 +4,7 @@ import (
 	"go/ast"
 	"strconv"
 
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 // returnValues links explicit returns to their function's result slots.

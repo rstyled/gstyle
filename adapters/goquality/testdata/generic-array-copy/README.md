@@ -14,7 +14,7 @@ It rejects unrelated compilation, runtime, and analysis failures.
 From the repository root, with a binary built before this fix:
 
 ```sh
-cyclo bug-reducer --language go --go-parser /path/to/go.so --tui=false --timeout 30s --output /tmp/generic-array-reduced.go adapters/goquality/testdata/generic-array-copy/input.go.txt -- python3 adapters/goquality/testdata/generic-array-copy/check.py /path/to/affected-cyclo
+gstyle bug-reducer --language go --go-parser /path/to/go.so --tui=false --timeout 30s --output /tmp/generic-array-reduced.go adapters/goquality/testdata/generic-array-copy/input.go.txt -- python3 adapters/goquality/testdata/generic-array-copy/check.py /path/to/affected-gstyle
 ```
 
 The output must not exist. The reduced input's checker exits 0 with the affected

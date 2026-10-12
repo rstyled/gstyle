@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/domain/quality"
 )
 
 func argsFacts(t *testing.T) []quality.Function {

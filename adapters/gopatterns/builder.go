@@ -5,8 +5,8 @@ import (
 	"go/token"
 	"go/types"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/domain/patterns"
+	"github.com/rstyled/gstyle/domain/quality"
 )
 
 // effectBits maps a quality.Kind to PdgNode effect bitflags. Pure (None)

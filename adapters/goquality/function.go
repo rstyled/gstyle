@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/shanejonas/cyclo/adapters/gopatterns"
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/adapters/gopatterns"
+	"github.com/rstyled/gstyle/domain/quality"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -308,7 +308,7 @@ func precedingSuppression(comments *ast.CommentGroup) string {
 	}
 	for index := len(comments.List) - 1; index >= 0; index-- {
 		text := comments.List[index].Text
-		if strings.Contains(text, "cyclo-allow") {
+		if strings.Contains(text, "gstyle-allow") {
 			return text
 		}
 	}

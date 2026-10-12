@@ -1,12 +1,12 @@
 # Headless check
 
-`cyclo check` extracts typed Go facts and evaluates the quality guardrails
+`gstyle check` extracts typed Go facts and evaluates the quality guardrails
 without the TUI: the agent-loop entry point. Text output lists one finding per
 line with its rule arithmetic; `--format json` emits the report
 (`schema_version` 1); `--format facts` exports the typed facts at schema
 version 2, which `--facts-in` re-evaluates (version 1 stays readable). Exit 0 means no findings (or facts exported), 1 means
-findings, 2 means analysis/config/IO failure. `cyclo --skill` prints the
-agent-facing operating skill for cyclo itself.
+findings, 2 means analysis/config/IO failure. `gstyle --skill` prints the
+agent-facing operating skill for gstyle itself.
 
 ## Sub-features
 
@@ -17,20 +17,20 @@ agent-facing operating skill for cyclo itself.
 - `check-exit-codes` distinguishes 0 (clean), 1 (findings), 2 (failure).
 - `check-config` applies a TOML policy via `--config`; `--tests` includes
   test files.
-- `skill-emit` prints the agent skill: YAML frontmatter with `name: cyclo`
+- `skill-emit` prints the agent skill: YAML frontmatter with `name: gstyle`
   and the operating guide.
 
 ## How to get to it (user POV)
 
-- Run `cyclo check .` (defaults to the current directory).
-- Run `cyclo check --format json ./domain` for the typed report.
-- Run `cyclo --skill` and hand the output to a coding agent.
+- Run `gstyle check .` (defaults to the current directory).
+- Run `gstyle check --format json ./domain` for the typed report.
+- Run `gstyle --skill` and hand the output to a coding agent.
 
-## Driving it with verify-cyclo
+## Driving it with verify-gstyle
 
 Preconditions:
 
-- `verify-cyclo build "$RUN_DIR"` and `verify-cyclo doctor "$RUN_DIR/cyclo"`.
+- `verify-gstyle build "$RUN_DIR"` and `verify-gstyle doctor "$RUN_DIR/gstyle"`.
 - A fixture dir under `$RUN_DIR/scratch/fixture` with `go.mod` and one file:
 
   ```go
@@ -42,7 +42,7 @@ Preconditions:
   ```
 
 - **Findings in text.** Run from inside the fixture dir:
-  `"$RUN_DIR/cyclo" check .`. Exit code is 1.
+  `"$RUN_DIR/gstyle" check .`. Exit code is 1.
   Stdout contains `main.go:3:1: fixture.add: fn_params: 5 exceeds 4` and a
   summary line like `2 functions; 1 findings;`. Stderr carries
   `quality guardrails exceeded`.
@@ -52,20 +52,20 @@ Preconditions:
   hidden from `PATH`). Exit code is 2 and stderr explains the failure
   (`go command required` / package load error).
 - **JSON report.** From the fixture dir, run
-  `"$RUN_DIR/cyclo" check --format json . > "$RUN_DIR/evidence/check.json"`.
+  `"$RUN_DIR/gstyle" check --format json . > "$RUN_DIR/evidence/check.json"`.
   Parse it: `schema_version` is 1, `diagnostics[0]` carries `rule_id`
   `fn_params`, `actual` 5, `limit` 4, `line` 3, `column` 1, and `message`
   `fn_params: 5 exceeds 4`.
-- **Facts export.** Run `"$RUN_DIR/cyclo" check --format facts .`
+- **Facts export.** Run `"$RUN_DIR/gstyle" check --format facts .`
   and confirm it exits 0 with `schema_version` 2 in the output and no
   findings evaluated. Re-evaluate with
-  `"$RUN_DIR/cyclo" check --facts-in "$RUN_DIR/evidence/check-facts.json"`
+  `"$RUN_DIR/gstyle" check --facts-in "$RUN_DIR/evidence/check-facts.json"`
   (no source paths — facts-in cannot be combined with them) and confirm the
   same finding is reported, exit 1.
-- **Agent skill.** Run `"$RUN_DIR/cyclo" --skill`. Stdout starts with
-  `---` frontmatter naming `name: cyclo` and describes the treemap, the
+- **Agent skill.** Run `"$RUN_DIR/gstyle" --skill`. Stdout starts with
+  `---` frontmatter naming `name: gstyle` and describes the treemap, the
   control API, and the headless check. Any extra argument (e.g.
-  `cyclo --skill extra`) prints a usage error and exits nonzero.
+  `gstyle --skill extra`) prints a usage error and exits nonzero.
 
 ## Gotchas
 

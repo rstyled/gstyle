@@ -3,7 +3,7 @@ package patterns
 import (
 	"strings"
 
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 // Keys contain exactly the fields used by label(), not identity or effects.
