@@ -14,11 +14,16 @@ func Run(facts []*FuncFacts, options Options) PatternsReport {
 		labels.attach(view.Pdg)
 		views = append(views, view)
 	}
+	options.semantic = nativeSemanticResults(mergeFacts(views))
+	for _, view := range views {
+		view.Canonical = nil
+	}
 	return RunMining(views, options)
 }
 
 func miningFacts(f *FuncFacts) *MiningFacts {
 	return &MiningFacts{
+		Canonical:           f.Pdg,
 		ID:                  f.ID,
 		Name:                f.Name,
 		Path:                f.Path,

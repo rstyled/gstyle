@@ -25,6 +25,7 @@ type BarrierSliceFinding struct {
 	FuncID    string
 	SliceSize int
 	SeedLine  int
+	SeedNode  string
 }
 
 // ThinSliceFinding is a function with a long producer chain feeding a
@@ -33,6 +34,7 @@ type ThinSliceFinding struct {
 	FuncID    string
 	SliceSize int
 	SeedLine  int
+	SeedNode  string
 }
 
 // ChopFinding is a function where the input-to-output dependence path
@@ -48,7 +50,8 @@ type ChopFinding struct {
 // handling. Flags functions where any return's slice is large.
 func FindBarrierSlices(facts []*MiningFacts) []BarrierSliceFinding {
 	var out []BarrierSliceFinding
-	for _, f := range facts {
+	for _, original := range facts {
+		f := semanticFact(original)
 		if f == nil || f.Pdg == nil {
 			continue
 		}
@@ -77,6 +80,7 @@ func barrierSlicesForFunc(f *MiningFacts) []BarrierSliceFinding {
 				FuncID:    f.ID,
 				SliceSize: size,
 				SeedLine:  n.Line,
+				SeedNode:  canonicalNodeID(f.Canonical, i),
 			})
 		}
 	}
@@ -87,7 +91,8 @@ func barrierSlicesForFunc(f *MiningFacts) []BarrierSliceFinding {
 // statement. Flags functions where any return's producer chain is long.
 func FindThinSlices(facts []*MiningFacts) []ThinSliceFinding {
 	var out []ThinSliceFinding
-	for _, f := range facts {
+	for _, original := range facts {
+		f := semanticFact(original)
 		if f == nil || f.Pdg == nil {
 			continue
 		}
@@ -112,6 +117,7 @@ func thinSlicesForFunc(f *MiningFacts) []ThinSliceFinding {
 				FuncID:    f.ID,
 				SliceSize: size,
 				SeedLine:  n.Line,
+				SeedNode:  canonicalNodeID(f.Canonical, i),
 			})
 		}
 	}
@@ -123,17 +129,12 @@ func thinSlicesForFunc(f *MiningFacts) []ThinSliceFinding {
 // where the chop is large.
 func FindChops(facts []*MiningFacts) []ChopFinding {
 	var out []ChopFinding
-	for _, f := range facts {
+	for _, original := range facts {
+		f := semanticFact(original)
 		if f == nil || f.Pdg == nil {
 			continue
 		}
-		chop := paramToReturnChop(f.Pdg)
-		if len(chop) >= minChopNodes {
-			out = append(out, ChopFinding{
-				FuncID:   f.ID,
-				ChopSize: len(chop),
-			})
-		}
+		out = append(out, chopsForFunc(f)...)
 	}
 	return out
 }
@@ -197,7 +198,7 @@ func paramReturnIndices(pdg *MiningGraph) (params, returns []int) {
 		switch n.Kind {
 		case Param:
 			params = append(params, i)
-		case Return:
+		case Return, NodeKind("formal_output"):
 			returns = append(returns, i)
 		}
 	}
@@ -216,9 +217,10 @@ func BarrierSliceCandidates(findings []BarrierSliceFinding, facts []*MiningFacts
 		}
 		out = append(out, Candidate{
 			Kind:       BarrierSliceKind,
+			Analysis:   analysisEvidence(f, BarrierSliceKind, fl.SeedNode),
 			ScoreMilli: sliceScore(fl.SliceSize),
 			Observation: fmt.Sprintf(
-				"return at line %d depends on %d statements (excluding error handling)",
+				"return at line %d has recorded dependencies on %d operations (excluding error handling)",
 				fl.SeedLine, fl.SliceSize,
 			),
 			Inference:        "a large happy-path dependence cone is hard to reason about; consider simplifying",
@@ -243,6 +245,7 @@ func ThinSliceCandidates(findings []ThinSliceFinding, facts []*MiningFacts) []Ca
 		}
 		out = append(out, Candidate{
 			Kind:       ThinSliceKind,
+			Analysis:   analysisEvidence(f, ThinSliceKind, fl.SeedNode),
 			ScoreMilli: sliceScore(fl.SliceSize),
 			Observation: fmt.Sprintf(
 				"return at line %d has a %d-node producer chain",
@@ -270,9 +273,10 @@ func ChopCandidates(findings []ChopFinding, facts []*MiningFacts) []Candidate {
 		}
 		out = append(out, Candidate{
 			Kind:       ChopKind,
+			Analysis:   analysisEvidence(f, ChopKind),
 			ScoreMilli: sliceScore(fl.ChopSize),
 			Observation: fmt.Sprintf(
-				"%d statements lie on the input-to-output path",
+				"%d operations lie on the input-to-output path",
 				fl.ChopSize,
 			),
 			Inference:        "when most of the function is on the input-output path, the logic is tightly coupled",
@@ -293,4 +297,12 @@ func sliceScore(size int) uint32 {
 		s = 800
 	}
 	return s
+}
+
+func chopsForFunc(f *MiningFacts) []ChopFinding {
+	chop := paramToReturnChop(f.Pdg)
+	if len(chop) < minChopNodes {
+		return nil
+	}
+	return []ChopFinding{{FuncID: f.ID, ChopSize: len(chop)}}
 }
