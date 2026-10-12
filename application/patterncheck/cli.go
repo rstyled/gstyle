@@ -92,6 +92,7 @@ func GetReport(ctx context.Context, args []string) (*patterns.PatternsReport, er
 	// that large temporary phase before allocating the mining graphs.
 	runtime.GC()
 	report := patterns.Run(toFacts(pdgs.Funcs), patterns.Options{
+		DeclarationOrders: pdgs.DeclarationOrders,
 		Params:            params,
 		AnemicModels:      pdgs.AnemicModels,
 		MissingIdentities: pdgs.MissingIdentities,

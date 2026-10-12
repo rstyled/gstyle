@@ -2,6 +2,9 @@ package patterncheck
 
 import (
 	"context"
+	"github.com/rstyled/gstyle/domain/patterns"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -105,5 +108,41 @@ func TestPatternsFindsTraitMethod(t *testing.T) {
 	}
 	if !strings.Contains(text, "sound") {
 		t.Fatalf("expected the sound method hole in the candidate, got:\n%s", text)
+	}
+}
+
+func TestPatternsReportsDeclarationOrder(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example\n\ngo 1.24\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	src := `package example
+
+type Service struct{}
+func helper() {}
+func (s *Service) run() {}
+func NewService() *Service { return &Service{} }
+func (s *Service) Run() {}
+`
+	if err := os.WriteFile(filepath.Join(dir, "service.go"), []byte(src), 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+	report, err := GetReport(context.Background(), []string{"."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := 0
+	for _, candidate := range report.Candidates {
+		if candidate.Kind != patterns.DeclarationOrder {
+			continue
+		}
+		count++
+		if candidate.FixSpec == nil || candidate.FixSpec.File != "service.go" {
+			t.Fatalf("missing fix: %+v", candidate)
+		}
+	}
+	if count != 1 {
+		t.Fatalf("want one declaration-order candidate, got %d", count)
 	}
 }

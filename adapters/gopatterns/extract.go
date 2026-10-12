@@ -77,7 +77,8 @@ type FuncPdg struct {
 // Extraction is the full result of package analysis: per-function PDGs
 // plus package-level type findings (anemic models).
 type Extraction struct {
-	Funcs []FuncPdg
+	DeclarationOrders []patterns.Candidate
+	Funcs             []FuncPdg
 	// AnemicModels are exported methodless structs with 3+ functions
 	// operating on their fields (DDD anemic domain model detection).
 	AnemicModels []patterns.AnemicModelHit
@@ -112,6 +113,7 @@ func Extract(ctx context.Context, root string, paths []string) (*Extraction, err
 		if err != nil {
 			return nil, err
 		}
+		out.DeclarationOrders = append(out.DeclarationOrders, findDeclarationOrders(pkg, abs, paths)...)
 		out.Funcs = append(out.Funcs, funcs...)
 		out.AnemicModels = append(out.AnemicModels, findAnemicModels(pkg, abs)...)
 		out.MissingIdentities = append(out.MissingIdentities, findMissingIdentities(pkg, abs)...)

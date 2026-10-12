@@ -41,6 +41,8 @@ import (
 type CandidateKind string
 
 const (
+	// DeclarationOrder groups constructors and methods before free functions.
+	DeclarationOrder CandidateKind = "declaration_order"
 	// TraitMethod proposes an interface from parallel methods.
 	TraitMethod CandidateKind = "trait_method"
 	// CapabilitySet proposes an interface from several parallel methods.
@@ -219,6 +221,7 @@ var FixKindOrder = []CandidateKind{
 	CapabilitySet,
 	GenericFn,
 	Parameterize,
+	DeclarationOrder,
 	// Detection-only kinds never produce FixSpecs; they sort last.
 	// Listed explicitly so the miner and fixer agree on the full order.
 	MutableIdentity,

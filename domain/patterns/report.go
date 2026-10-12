@@ -25,6 +25,8 @@ type PatternsReport struct {
 
 // Options selects what to show and what to pretend.
 type Options struct {
+	// DeclarationOrders are file-level source-order proposals.
+	DeclarationOrders []Candidate
 	// MinScoreMilli drops groups and candidates scoring below this.
 	MinScoreMilli uint32
 	// Top keeps only the first N groups and candidates (all when nil).
@@ -122,6 +124,7 @@ var singleFunctionBuilders = []singleFunctionBuilder{
 	{AnemicModel, func(prepared []*MiningFacts, options Options) []Candidate {
 		return anemicModelCandidates(options.AnemicModels, options.DomainServices)
 	}},
+	{DeclarationOrder, func(_ []*MiningFacts, options Options) []Candidate { return options.DeclarationOrders }},
 	{MutableIdentity, func(prepared []*MiningFacts, options Options) []Candidate { return mutableIdentityCandidates(prepared) }},
 	{Aggregate, func(prepared []*MiningFacts, options Options) []Candidate { return aggregateCandidates(prepared) }},
 	{Repository, func(prepared []*MiningFacts, options Options) []Candidate { return repositoryCandidates(prepared) }},
