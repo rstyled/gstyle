@@ -44,9 +44,9 @@ func TestDecodeAndByteRanges(t *testing.T) {
 }
 
 func TestGoParserIntegration(t *testing.T) {
-	library := os.Getenv("CYCLO_TEST_GO_PARSER")
+	library := os.Getenv("GSTYLE_TEST_GO_PARSER")
 	if library == "" {
-		t.Skip("set CYCLO_TEST_GO_PARSER to run against an installed Go grammar")
+		t.Skip("set GSTYLE_TEST_GO_PARSER to run against an installed Go grammar")
 	}
 	if _, err := exec.LookPath("tree-sitter"); err != nil {
 		t.Fatal(err)

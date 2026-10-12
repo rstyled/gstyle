@@ -218,7 +218,7 @@ func selfScan() error {
 	}
 
 	view := plain(model.View().Content)
-	if !containsAll(view, "CYCLO", "Files", "Functions", "Source") {
+	if !containsAll(view, "GSTYLE", "Files", "Functions", "Source") {
 		return fmt.Errorf("scan summary is incomplete:\n%s", view)
 	}
 

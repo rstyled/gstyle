@@ -17,11 +17,11 @@ import (
 // TestMeasurePDGMemory is opt-in. Run the compiled test binary in a fresh
 // process for each mode so peak RSS and process globals cannot cross runs.
 func TestMeasurePDGMemory(t *testing.T) {
-	mode := os.Getenv("CYCLO_PDG_MEMORY_MODE")
+	mode := os.Getenv("GSTYLE_PDG_MEMORY_MODE")
 	if mode == "" {
 		t.Skip("opt-in real-corpus measurement")
 	}
-	root, err := absRoot(os.Getenv("CYCLO_PDG_MEMORY_ROOT"))
+	root, err := absRoot(os.Getenv("GSTYLE_PDG_MEMORY_ROOT"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func memoryCounts(result any) (functions, nodes, edges int) {
 
 // TestValidatePDGCorpus checks the full IR outside the timed measurements.
 func TestValidatePDGCorpus(t *testing.T) {
-	root := os.Getenv("CYCLO_PDG_VALIDATE_ROOT")
+	root := os.Getenv("GSTYLE_PDG_VALIDATE_ROOT")
 	if root == "" {
 		t.Skip("opt-in corpus validation")
 	}

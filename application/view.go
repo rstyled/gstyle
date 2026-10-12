@@ -121,7 +121,7 @@ func (m Model) header(width int) string {
 	if root == "" {
 		root = strings.Join(m.paths, " ")
 	}
-	left := green.Bold(true).Render("CYCLO") + "  " + muted.Render(root)
+	left := green.Bold(true).Render("GSTYLE") + "  " + muted.Render(root)
 	summary := fmt.Sprintf(
 		"%d funcs · cc %.1f · cog %.1f",
 		m.report.Functions,

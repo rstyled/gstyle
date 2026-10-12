@@ -18,7 +18,7 @@ input. Use `tab` to change panes and `enter` to expand one.
 For a fast run without the dashboard:
 
 ```sh
-CYCLO_DEMO_DELAY=0 sh examples/bug-reducer/demo.sh --tui=false
+GSTYLE_DEMO_DELAY=0 sh examples/bug-reducer/demo.sh --tui=false
 ```
 
 For your own bug, replace the input and checker with real files. The checker

@@ -37,7 +37,7 @@ func storageMeasure(name string, work func()) storageStage {
 // TestMeasureGraphStorage keeps typed inputs, native graphs and matching views
 // live through separate GCs. Stages measure their marginal retained heap.
 func TestMeasureGraphStorage(t *testing.T) {
-	root := os.Getenv("CYCLO_STORAGE_ROOT")
+	root := os.Getenv("GSTYLE_STORAGE_ROOT")
 	if root == "" {
 		t.Skip("opt-in graph storage measurement")
 	}
@@ -47,7 +47,7 @@ func TestMeasureGraphStorage(t *testing.T) {
 		t.Fatal(err)
 	}
 	loadMS := float64(time.Since(started).Microseconds()) / 1000
-	prefix := os.Getenv("CYCLO_STORAGE_PROFILE")
+	prefix := os.Getenv("GSTYLE_STORAGE_PROFILE")
 	var profileFile *os.File
 	if prefix != "" {
 		writeStorageHeap(t, prefix+"-before.heap")

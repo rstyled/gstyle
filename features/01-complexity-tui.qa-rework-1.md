@@ -139,7 +139,7 @@ $ file /tmp/cyclomatic-complexity-tui-qa-rework-bin
 /tmp/cyclomatic-complexity-tui-qa-rework-bin: ELF 64-bit LSB executable, x86-64, ...
 
 $ (sleep 3; printf q) | script -qfec 'stty cols 120 rows 24; exec go run -buildvcs=false .' /dev/null
-CYCLO  10 files · 59 functions · Total 170 · Average 2.9
+GSTYLE  10 files · 59 functions · Total 170 · Average 2.9
 Files                                  │ Functions                              │ Details
 › view.go · Total 47 · Peak 4          │   (Model).fileLines · Complexity 4     │ adapters/inbound/tui/view.go:83:1
   analyzer.go · Total 44 · Peak 9      │   (Model).functionLines · Complexity 4 │ tui
@@ -149,7 +149,7 @@ tab panes · j/k move · r refresh · q quit
 (exit 0)
 
 $ (sleep 2; printf q) | script -qfec 'stty cols 100 rows 20; exec /tmp/cyclomatic-complexity-tui-qa-rework-bin ./domain' /dev/null
-CYCLO  1 files · 0 functions · Total 0 · Average 0.0
+GSTYLE  1 files · 0 functions · Total 0 · Average 0.0
 Files                           │ Functions                       │ Details
 › report.go · Total 0 · Peak 0  │ No functions                    │ No function selected
 tab panes · j/k move · r refresh · q quit

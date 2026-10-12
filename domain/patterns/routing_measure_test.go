@@ -13,7 +13,7 @@ import (
 // Opt-in full CCGraph route comparison. An exhaustive build uses a temporary
 // Go overlay; this test adds no production routing or CLI flags.
 func TestMeasureMatchingRoute(t *testing.T) {
-	path, method := os.Getenv("CYCLO_MATCH_CORPUS"), os.Getenv("CYCLO_MATCH_METHOD")
+	path, method := os.Getenv("GSTYLE_MATCH_CORPUS"), os.Getenv("GSTYLE_MATCH_METHOD")
 	if path == "" || method == "" {
 		t.Skip("opt-in routing measurement")
 	}

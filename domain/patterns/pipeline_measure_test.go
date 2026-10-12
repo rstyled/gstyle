@@ -39,7 +39,7 @@ func (m *pipelineMeasurement) stage(name string, work func()) {
 // It keeps instrumentation out of the normal matcher and reports pair counts
 // before grouping. Each measured run uses a fresh test process.
 func TestMeasureMatchingPipeline(t *testing.T) {
-	path := os.Getenv("CYCLO_MATCH_CORPUS")
+	path := os.Getenv("GSTYLE_MATCH_CORPUS")
 	if path == "" {
 		t.Skip("opt-in matching measurement")
 	}
@@ -100,7 +100,7 @@ func TestMeasureMatchingPipeline(t *testing.T) {
 		t.Fatal(err)
 	}
 	m.GroupDigest = fmt.Sprintf("%x", sha256.Sum256(data))
-	if os.Getenv("CYCLO_MATCH_VERIFY") == "1" {
+	if os.Getenv("GSTYLE_MATCH_VERIFY") == "1" {
 		actual := CCGraphClonesWithAST(pdgs, names, asts)
 		encoded, err := json.Marshal(actual)
 		if err != nil || fmt.Sprintf("%x", sha256.Sum256(encoded)) != m.GroupDigest {

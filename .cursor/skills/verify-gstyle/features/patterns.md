@@ -23,40 +23,31 @@ exit code is always 0 (informational, never a gate).
 
 Preconditions: `verify-gstyle build "$RUN_DIR"` and `verify-gstyle doctor "$RUN_DIR/gstyle"` report ok; `go` on PATH.
 
-- Craft a fixture with a known pattern: two types with parallel methods for `trait_method`. Use this exact shape (blank lines and method order matter to the miner):
+- Craft a repeated business rule in two `if` conditions (direct boolean return
+  expressions do not exercise this extractor):
   ```go
-  package main
+  package example
 
-  import "fmt"
+  type User struct { Age int; Active bool }
 
-  // Parallel types whose Speak methods differ only in the helper they call.
-  type Dog struct{ name string }
-
-  func (d Dog) Speak() string {
-      s := d.sound()
-      return fmt.Sprintf("%s says %s", d.name, s)
+  func Allowed(u User) bool {
+      if u.Age > 18 && u.Active { return true }
+      return false
   }
 
-  func (d Dog) sound() string { return "woof" }
-
-  type Cat struct{ name string }
-
-  func (c Cat) Speak() string {
-      s := c.sound()
-      return fmt.Sprintf("%s says %s", c.name, s)
-  }
-
-  func (c Cat) sound() string { return "meow" }
-
-  func main() {
-      fmt.Println(Dog{name: "rex"}.Speak())
-      fmt.Println(Cat{name: "tom"}.Speak())
+  func Eligible(u User) bool {
+      if u.Age > 18 && u.Active { return true }
+      return false
   }
   ```
-  Save under `$RUN_DIR/scratch/patterns/` with a `go.mod` (`module patterntest`, `go 1.21`).
-- Run `$RUN_DIR/gstyle patterns $RUN_DIR/scratch/patterns` and assert the output contains `trait_method` with both sites listed. Exit code is 0.
-- For a negative case, put the same-named methods on types in *different* packages; assert no `trait_method` candidate (cross-package collisions are skipped).
-- For `specification`, craft two functions with the same boolean rule (`u.Age > 18 && u.Active`); assert a `specification` candidate naming the type.
+  Save under `$RUN_DIR/scratch/patterns/` with a `go.mod` (`module fixture`,
+  `go 1.26.0`). Run from that directory; package loading uses the current module.
+- Run `(cd "$RUN_DIR/scratch/patterns" && "$RUN_DIR/gstyle" patterns --format json .)`.
+  Exit code is 0. The `candidates` array contains `Kind: "specification"`,
+  with both functions in `Sites`. Text output also names `specification`.
+- Parallel methods alone do not guarantee a `trait_method` candidate. Admission
+  thresholds and current grouping rules affect that result; do not use the old
+  Dog/Cat example as a fixed positive expectation.
 - For a two-variable rule (`c.x != first.x`), assert no `specification` candidate (would extract with a dangling reference).
 - Save stdout to `$RUN_DIR/evidence/patterns-<id>.txt` with the command and exit code.
 

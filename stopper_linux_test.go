@@ -17,7 +17,7 @@ import (
 )
 
 func TestReducerSubprocess(t *testing.T) {
-	if os.Getenv("CYCLO_REDUCER_SUBPROCESS") != "1" {
+	if os.Getenv("GSTYLE_REDUCER_SUBPROCESS") != "1" {
 		return
 	}
 	for index, arg := range os.Args {
@@ -41,7 +41,7 @@ func reducerSubprocess(t *testing.T, ctx context.Context, args ...string) *exec.
 		t.Fatal(err)
 	}
 	command := exec.CommandContext(ctx, executable, append([]string{"-test.run=^TestReducerSubprocess$", "--", "bug-reducer"}, args...)...)
-	command.Env = append(os.Environ(), "CYCLO_REDUCER_SUBPROCESS=1")
+	command.Env = append(os.Environ(), "GSTYLE_REDUCER_SUBPROCESS=1")
 	return command
 }
 
@@ -62,7 +62,7 @@ func terminateReduction(t *testing.T, source []byte) []byte {
 	if err != nil {
 		t.Fatal(err)
 	}
-	checker := "if [ ! -e \"$CYCLO_ACCEPTED\" ]; then\n : > \"$CYCLO_ACCEPTED\"\n exit 0\nfi\necho $$ > \"$CYCLO_CHECKER_PID\"\nexec sleep 60\n"
+	checker := "if [ ! -e \"$GSTYLE_ACCEPTED\" ]; then\n : > \"$GSTYLE_ACCEPTED\"\n exit 0\nfi\necho $$ > \"$GSTYLE_CHECKER_PID\"\nexec sleep 60\n"
 	err = os.WriteFile(script, []byte(checker), 0600)
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +71,7 @@ func terminateReduction(t *testing.T, source []byte) []byte {
 	defer cancel()
 	command := reducerSubprocess(t, ctx, "--timeout", "1m", input, "--", "sh", script)
 	pidPath := filepath.Join(root, "checker.pid")
-	command.Env = append(command.Env, "CYCLO_ACCEPTED="+filepath.Join(root, "accepted"), "CYCLO_CHECKER_PID="+pidPath)
+	command.Env = append(command.Env, "GSTYLE_ACCEPTED="+filepath.Join(root, "accepted"), "GSTYLE_CHECKER_PID="+pidPath)
 	var output bytes.Buffer
 	command.Stdout, command.Stderr = &output, &output
 	err = command.Start()

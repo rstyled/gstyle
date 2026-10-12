@@ -98,7 +98,7 @@ all modules verified
 
 ```text
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-rework-final-smoke-cache go run .
-CYCLO  10 files · 59 functions · Total 170 · Average 2.9
+GSTYLE  10 files · 59 functions · Total 170 · Average 2.9
 Files                     │ Functions                 │ Details
 › view.go                 │   (Model).fileLines · Co  │ view.go:83:1
 ...

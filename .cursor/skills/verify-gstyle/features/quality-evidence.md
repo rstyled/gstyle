@@ -45,6 +45,10 @@ Preconditions:
   `side_effect_density 5444 > 500: weight 49 over 9 statements (io 27, mutation 9, unknown 9, global 4)`.
   The same arithmetic appears in text output; unknown calls keep weight 1 and
   are attributed, not silently dropped.
+  For a short fixture, set `min_statements = 0` and
+  `[side_effect_density] max = 1` in a TOML policy and pass `--config`.
+  The default minimum-statement guard can omit a finding on a tiny function
+  even when its measured density is positive.
 - **Annotations persist.** Launch the TUI, move to a source line, press `v`,
   `a`, type a note, quit with `q`. Relaunch with `--keys 'q'` only; press
   nothing — instead run a second TUI drive with `--keys '[q'`: the typescript

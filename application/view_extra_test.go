@@ -40,7 +40,7 @@ func TestHeaderKeepsTheControlPortVisible(t *testing.T) {
 	}
 
 	header := ansi.Strip(model.header(model.width))
-	if !strings.Contains(header, "CYCLO") || !strings.Contains(header, "RPC :54321") {
+	if !strings.Contains(header, "GSTYLE") || !strings.Contains(header, "RPC :54321") {
 		t.Fatalf("header hides the control port: %q", header)
 	}
 }

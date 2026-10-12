@@ -67,7 +67,7 @@ doc drift: fix the skill, rebuild if the fix touched code, and re-run doctor
 once before calling the pass blocked.
 
 For the TUI specifically, a drive is healthy when the stripped typescript
-contains `CYCLO` in the header and `funcs·` with a nonzero count in the footer,
+contains `GSTYLE` in the header and `funcs·` with a nonzero count in the footer,
 e.g. `945 funcs·cc4.0·cog3.5`. A footer that never advances past
 `0 funcs·cc0.0·cog0.0` after the wait means analysis never finished — doctor
 the target dir (does it contain Go files? does `go list` work there?) rather
@@ -105,7 +105,7 @@ Capture the action and the resulting state, not just the final screen:
   `--format facts` exports the typed facts at `schema_version` 2 (version 1
   stays readable via `--facts-in`).
 - **TUI:** the typescript at `$RUN_DIR/evidence/tui.typescript`. Strip ANSI and
-  assert the claimed strings (header `CYCLO`, footer counts, `qualityfailed`
+  assert the claimed strings (header `GSTYLE`, footer counts, `qualityfailed`
   when the target has findings). A screenshot is not available headless; the
   typescript is the proof.
 - **Mutations:** prove side effects with a read-only second view. After

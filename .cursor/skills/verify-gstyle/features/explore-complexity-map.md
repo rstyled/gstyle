@@ -31,7 +31,7 @@ Preconditions:
 
 - **Launch and render.** Run
   `verify-gstyle tui "$RUN_DIR/gstyle" "$TARGET" "$RUN_DIR" --wait 6 --keys 'q'`.
-  The typescript shows the `CYCLO` header and the pane titles
+  The typescript shows the `GSTYLE` header and the pane titles
   (`COMPLEXITY`, `TREEMAP`, `Files`, `Functions`, `Source`). The exit code is 0.
 - **Footer counts.** Wait for analysis to finish, then strip ANSI from the
   typescript and assert a footer like `4 funcs · cc 1.0 · cog 0.0 · RPC :<port>
