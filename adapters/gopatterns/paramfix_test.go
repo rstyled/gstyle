@@ -66,6 +66,9 @@ func LoadWithRetry(key string) (string, error) {
 	}
 	return "", lastErr
 }
+
+func fetchURL(string) (string, error) { return "", nil }
+func loadKey(string) (string, error) { return "", nil }
 `
 	out := fixParam(t, src)
 	// Helper extracted with withRetry name (common suffix).

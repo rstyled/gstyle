@@ -120,6 +120,12 @@ must return a local named type as their first result. Use
 with Go directives, cgo imports, or same-line declarations. Its candidate spans
 the file, so ` + "`--changed`" + ` can reorder unchanged functions in that file.
 
+Parameterization findings describe aligned graph regions, not proven whole-function
+clones. Auto-fixes require compatible canonical PDG interfaces and callable types,
+a full supported AST match, and a source snapshot proof. Findings without proof
+stay advisory. A proof targets only its selected pair; after other source edits,
+re-mine with phased fixing before parameterization.
+
 **Workflow:** Run ` + "`gstyle patterns`" + ` first, then ` + "`gstyle fix --apply`" + ` to clear the mechanical issues. This saves tokens — don't hand-rewrite what the fixer handles. In an agent loop, use ` + "`gstyle fix --changed --apply`" + ` to fix only candidates in functions your diff touched (against ` + "`--base REF`" + `, defaulting to the merge-base with main/master).
 
 **One at a time:** ` + "`gstyle next [paths...]`" + ` shows the single highest-impact candidate with fix instructions — the one thing to fix now. ` + "`gstyle score [paths...]`" + ` gives a 0-100 north-star (100 = clean, weighted by severity). Suppressed items show separately, so you can't suppress your way to 100.
