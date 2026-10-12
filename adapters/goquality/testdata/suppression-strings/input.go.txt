@@ -9,7 +9,7 @@ func unrelated(value int) int {
 }
 
 // This is Go string data, not a suppression comment.
-const example = "// cyclo-allow(fn_params): documentation example"
+const example = "// gstyle-allow(fn_params): documentation example"
 func Plain() int { return 1 }
 
 func anotherUnrelated() string {

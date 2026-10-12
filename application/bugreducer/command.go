@@ -70,7 +70,7 @@ func newChecker(options options) (*checker, func(), error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("resolve temporary directory: %w", err)
 	}
-	workspace, err := os.MkdirTemp(temporaryRoot, "cyclo-bug-reducer-")
+	workspace, err := os.MkdirTemp(temporaryRoot, "gstyle-bug-reducer-")
 	if err != nil {
 		return nil, nil, fmt.Errorf("create workspace: %w", err)
 	}

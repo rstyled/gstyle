@@ -6,7 +6,7 @@ import "fmt"
 type CloneProfile string
 
 const (
-	CycloPairProfile  CloneProfile = "cyclo.ccgraph-pairs/1"
+	GstylePairProfile CloneProfile = "gstyle.ccgraph-pairs/1"
 	CompatBaseProfile CloneProfile = "compat.ccgraph-base/draft"
 )
 
@@ -31,7 +31,7 @@ type clonePairInputs struct {
 // It streams evidence rather than retaining a quadratic list. Inputs must have
 // known nine-feature facts and names. It does not change the report default.
 func EvaluateClonePairs(profile CloneProfile, graphs map[string]*MiningGraph, names map[string]string, emit func(ClonePairEvidence) error) error {
-	if profile != CycloPairProfile {
+	if profile != GstylePairProfile {
 		return fmt.Errorf("clone profile %q is unavailable for mining views: strict imported graphs use domain/ccgraph.Evaluate", profile)
 	}
 	if emit == nil {

@@ -1,4 +1,4 @@
-// Command cyclo-hunt checks Go function initializers against equivalent
+// Command gstyle-hunt checks Go function initializers against equivalent
 // named declarations, and reduces any mismatch to a standalone Go reproducer.
 package main
 
@@ -21,7 +21,7 @@ func main() {
 
 func run() error {
 	if len(os.Args) != 2 {
-		return fmt.Errorf("usage: go run ./examples/cyclo-hunt INPUT.go")
+		return fmt.Errorf("usage: go run ./examples/gstyle-hunt INPUT.go")
 	}
 	source, err := os.ReadFile(os.Args[1])
 	if err != nil {
@@ -34,7 +34,7 @@ func run() error {
 }
 
 func checkInput(source []byte) error {
-	workspace, err := os.MkdirTemp("", "cyclo-hunt-")
+	workspace, err := os.MkdirTemp("", "gstyle-hunt-")
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func saveFailure(path string, source []byte, failure string) error {
 	if err != nil {
 		return err
 	}
-	directory, err := os.MkdirTemp(".", ".cyclo-hunt-")
+	directory, err := os.MkdirTemp(".", ".gstyle-hunt-")
 	if err != nil {
 		return err
 	}
@@ -70,5 +70,5 @@ func saveFailure(path string, source []byte, failure string) error {
 		}
 	}
 	fmt.Printf("%d -> %d bytes; saved %s\n%s\n", len(source), len(reduced), directory, strings.TrimSpace(string(reduced)))
-	return fmt.Errorf("Cyclo invariant failed: %s", failure)
+	return fmt.Errorf("Gstyle invariant failed: %s", failure)
 }

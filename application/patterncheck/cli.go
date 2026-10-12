@@ -1,4 +1,4 @@
-// Package patterncheck is the IO boundary for cyclo's patterns miner: it
+// Package patterncheck is the IO boundary for gstyle's patterns miner: it
 // proposes latent shared abstractions (interfaces, params structs, generics)
 // found by structural mining. It is informational only: it always exits 0 on
 // success and never feeds the quality gate. Pattern facts live apart from
@@ -25,14 +25,14 @@ inverted conditionals that want to be guard clauses.
 Informational only: always exits 0, never a quality gate.
   --format FORMAT   text (default), json report, or pdg-json graph export
   --threshold N     minimum WL similarity (0-1000) for clustering [default 600]
-  --cache           reuse WL refinements from .cyclo/patterns-cache.json,
+  --cache           reuse WL refinements from .gstyle/patterns-cache.json,
                     speeding up repeat runs on large repos
 
 Exit 0: always, on success (even with no candidates). Exit 2: extraction or
 analysis failure.
 `
 
-const wlCachePath = ".cyclo/patterns-cache.json"
+const wlCachePath = ".gstyle/patterns-cache.json"
 
 type options struct {
 	format    string
@@ -71,7 +71,7 @@ func Run(ctx context.Context, args []string, output io.Writer) error {
 }
 
 // GetReport runs the pattern pipeline and returns the report.
-// Exported for `cyclo next` and `cyclo score`.
+// Exported for `gstyle next` and `gstyle score`.
 func GetReport(ctx context.Context, args []string) (*patterns.PatternsReport, error) {
 	opts, err := parseOptions(args)
 	if err != nil {
@@ -210,7 +210,7 @@ func parseOptions(args []string) (options, error) {
 	flags.SetOutput(io.Discard)
 	format := flags.String("format", "text", "output format")
 	threshold := flags.Uint("threshold", 600, "minimum WL similarity (0-1000)")
-	useCache := flags.Bool("cache", false, "reuse WL refinements from .cyclo/patterns-cache.json")
+	useCache := flags.Bool("cache", false, "reuse WL refinements from .gstyle/patterns-cache.json")
 	if err := flags.Parse(args); err != nil {
 		return options{}, err
 	}

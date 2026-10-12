@@ -4,7 +4,7 @@ import "sort"
 
 // Neighborhood-augmented Weisfeiler-Lehman kernel.
 //
-// Cyclo's adaptation of the multi-scale WL idea: where standard WL (wl.go)
+// Gstyle's adaptation of the multi-scale WL idea: where standard WL (wl.go)
 // runs relabeling once over the whole graph, this kernel runs one WL
 // refinement round on the k-hop neighborhood of every node, for k = 1..2,
 // and combines the per-level histogram kernels. The k-hop neighborhoods
@@ -13,7 +13,7 @@ import "sort"
 //
 // This is inspired by multi-scale WL approaches in the literature (e.g. the
 // neighborhood-kernel construction in Kim & Oh's WLKS work, ICLR 2025,
-// arXiv:2412.02181), but it is Cyclo's own adaptation, not that paper's
+// arXiv:2412.02181), but it is Gstyle's own adaptation, not that paper's
 // algorithm: the paper compares target subgraphs inside a larger global graph
 // with k=0 and k=diameter, while this kernel compares independent
 // whole-function PDGs using per-node k=1,2 neighborhoods.

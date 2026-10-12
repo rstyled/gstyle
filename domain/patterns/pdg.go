@@ -1,5 +1,5 @@
 // Package patterns implements the program-dependence-graph schema and mining
-// primitives for cyclo's abstraction proposer (the port of rstyle's patterns
+// primitives for gstyle's abstraction proposer (the port of rstyle's patterns
 // miner). The schema is front-end neutral by design: it mirrors rstyle's
 // facts::{NodeKind, PdgNode, PdgEdge}, with two Go-specific additions (Defer,
 // Go) documented below.

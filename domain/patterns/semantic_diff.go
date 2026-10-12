@@ -6,7 +6,7 @@ package patterns
 // the text moved. A refactoring that moves code produces zero semantic
 // diff; a one-line change that alters dependences is flagged as significant.
 //
-// For cyclo: `check --changed` classifies each hunk as semantic vs.
+// For gstyle: `check --changed` classifies each hunk as semantic vs.
 // cosmetic by comparing PDG structure before/after. Pure refactors get a
 // free pass from the quality gate; behavior changes get scrutiny. This
 // fixes the #1 complaint about diff-gated linters (flagging moved code).

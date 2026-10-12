@@ -7,7 +7,7 @@ import tempfile
 
 binary = str(pathlib.Path(sys.argv[1]).resolve())
 source = pathlib.Path(sys.argv[2]).read_bytes()
-with tempfile.TemporaryDirectory(prefix="cyclo-suppression-string-") as directory:
+with tempfile.TemporaryDirectory(prefix="gstyle-suppression-string-") as directory:
     root = pathlib.Path(directory)
     (root / "go.mod").write_text("module example.com/quality-repro\n\ngo 1.25.0\n")
     (root / "input.go").write_bytes(source)
@@ -28,7 +28,7 @@ func TestPlainWorks(t *testing.T) {
         function = next(f for f in json.loads(facts.stdout)["functions"] if f["name"].endswith(".Plain"))
         preceding = function["preceding_line"]
         diagnostics = json.loads(analysis.stdout)["diagnostics"]
-        bug = preceding.startswith("const ") and "cyclo-allow" in preceding and any(d["name"].endswith(".Plain") and d["rule_id"] == "invalid_suppression" for d in diagnostics)
+        bug = preceding.startswith("const ") and "gstyle-allow" in preceding and any(d["name"].endswith(".Plain") and d["rule_id"] == "invalid_suppression" for d in diagnostics)
     except (ValueError, KeyError, StopIteration):
         sys.exit(1)
     if not bug:

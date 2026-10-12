@@ -35,13 +35,13 @@ func TestSuppressionReadsParsedDeclarationComments(t *testing.T) {
 	for _, test := range []struct {
 		name, prefix, want string
 	}{
-		{"line comment and docs", "// cyclo-allow(fn_params): stable API\n// Plain has five parameters.\n", ""},
-		{"missing reason", "// cyclo-allow(fn_params):\n", "invalid_suppression"},
-		{"block directive", "/* cyclo-allow(fn_params): stable API */\n", "invalid_suppression"},
-		{"raw string", "const example = `example\n// cyclo-allow(fn_params): sample`\n", "fn_params"},
-		{"string and docs", "const example = \"cyclo-allow\"\n// Plain has five parameters.\n", "fn_params"},
-		{"blank separates comments", "// cyclo-allow(fn_params): unrelated\n\n", "fn_params"},
-		{"trailing comment belongs to constant", "const example = 1 // cyclo-allow(fn_params): unrelated\n", "fn_params"},
+		{"line comment and docs", "// gstyle-allow(fn_params): stable API\n// Plain has five parameters.\n", ""},
+		{"missing reason", "// gstyle-allow(fn_params):\n", "invalid_suppression"},
+		{"block directive", "/* gstyle-allow(fn_params): stable API */\n", "invalid_suppression"},
+		{"raw string", "const example = `example\n// gstyle-allow(fn_params): sample`\n", "fn_params"},
+		{"string and docs", "const example = \"gstyle-allow\"\n// Plain has five parameters.\n", "fn_params"},
+		{"blank separates comments", "// gstyle-allow(fn_params): unrelated\n\n", "fn_params"},
+		{"trailing comment belongs to constant", "const example = 1 // gstyle-allow(fn_params): unrelated\n", "fn_params"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			source := "package repro\n" + test.prefix + "func Plain(a, b, c, d, e int) int { return 1 }\n"

@@ -15,7 +15,7 @@ import (
 // the codebase itself. A function that calls `lock` but not `unlock`
 // violates the rule — that's a bug.
 //
-// For cyclo: a `mined_rule` pattern kind. The items are function calls;
+// For gstyle: a `mined_rule` pattern kind. The items are function calls;
 // the rules are "if you call A and B, you usually also call C".
 // This is the self-supervised version of every hand-written linter rule.
 

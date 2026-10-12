@@ -53,8 +53,8 @@ func TestAnalyzerCapturesTheWorkingTreeDiffFromMainOrMaster(t *testing.T) {
 		t.Run(branch, func(t *testing.T) {
 			root := t.TempDir()
 			runGit(t, root, "init", "-b", branch)
-			runGit(t, root, "config", "user.email", "cyclo@example.com")
-			runGit(t, root, "config", "user.name", "Cyclo")
+			runGit(t, root, "config", "user.email", "gstyle@example.com")
+			runGit(t, root, "config", "user.name", "Gstyle")
 			path := filepath.Join(root, "sample.go")
 			before := "package sample\n\nfunc value() string {\n\treturn \"before\"\n}\n"
 			after := "package sample\n\nfunc value() string {\n\treturn \"after\"\n}\n"

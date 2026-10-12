@@ -92,20 +92,20 @@ type controlReply struct {
 type methodParser func(json.RawMessage) (controlCommand, *controlError)
 
 var methodParsers = map[string]methodParser{
-	"rpc.discover":             parseDiscover,
-	"cyclo.getState":           parseGetState,
-	"cyclo.waitForChange":      parseWaitForChange,
-	"cyclo.getReport":          parseGetReport,
-	"cyclo.setFocus":           parseSetFocus,
-	"cyclo.selectFile":         parseSelectFile,
-	"cyclo.selectFunction":     parseSelectFunction,
-	"cyclo.scrollSource":       parseScrollSource,
-	"cyclo.revealLines":        parseRevealLines,
-	"cyclo.clearLineSelection": parseClearLineSelection,
-	"cyclo.annotateLines":      parseAnnotateLines,
-	"cyclo.removeAnnotation":   parseRemoveAnnotation,
-	"cyclo.refresh":            parseRefresh,
-	"cyclo.setDetailsView":     parseSetDetailsView,
+	"rpc.discover":       parseDiscover,
+	"getState":           parseGetState,
+	"waitForChange":      parseWaitForChange,
+	"getReport":          parseGetReport,
+	"setFocus":           parseSetFocus,
+	"selectFile":         parseSelectFile,
+	"selectFunction":     parseSelectFunction,
+	"scrollSource":       parseScrollSource,
+	"revealLines":        parseRevealLines,
+	"clearLineSelection": parseClearLineSelection,
+	"annotateLines":      parseAnnotateLines,
+	"removeAnnotation":   parseRemoveAnnotation,
+	"refresh":            parseRefresh,
+	"setDetailsView":     parseSetDetailsView,
 }
 
 func NewControlServer(port int) (*ControlServer, error) {
@@ -173,7 +173,7 @@ func (s *ControlServer) handle(writer http.ResponseWriter, request *http.Request
 
 func (s *ControlServer) dispatch(writer http.ResponseWriter, request *http.Request, rpcRequest rpcRequest, command controlCommand) {
 	if s.sender == nil {
-		writeRPCRequestError(writer, rpcRequest, runtimeError("Cyclo is not running"))
+		writeRPCRequestError(writer, rpcRequest, runtimeError("Gstyle is not running"))
 		return
 	}
 
@@ -189,7 +189,7 @@ func (s *ControlServer) dispatch(writer http.ResponseWriter, request *http.Reque
 		writeRPCReply(writer, rpcRequest.ID, reply)
 	case <-request.Context().Done():
 	case <-s.done:
-		writeRPCError(writer, rpcRequest.ID, runtimeError("Cyclo is shutting down"))
+		writeRPCError(writer, rpcRequest.ID, runtimeError("Gstyle is shutting down"))
 	}
 }
 

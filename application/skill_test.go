@@ -33,8 +33,8 @@ func TestSkillExplainsTheAgentControlAPI(t *testing.T) {
 	}
 
 	want := []string{
-		"rpc.discover", "cyclo.getState", "cyclo.waitForChange", "cyclo.selectFile", "cyclo.selectFunction",
-		"cyclo.revealLines", "cyclo.annotateLines", "cyclo.removeAnnotation", "cyclo.refresh",
+		"rpc.discover", "getState", "waitForChange", "selectFile", "selectFunction",
+		"revealLines", "annotateLines", "removeAnnotation", "refresh",
 	}
 	for _, method := range want {
 		if !strings.Contains(output.String(), method) {

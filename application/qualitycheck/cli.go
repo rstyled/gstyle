@@ -1,4 +1,4 @@
-// Package qualitycheck is the IO boundary for Cyclo's headless quality checks.
+// Package qualitycheck is the IO boundary for Gstyle's headless quality checks.
 package qualitycheck
 
 import (

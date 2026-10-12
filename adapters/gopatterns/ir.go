@@ -35,7 +35,7 @@ func newIRBuilder(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pd
 		symbols:        map[types.Object]pdg.Ref{}, nodes: map[ast.Node]pdg.Ref{},
 		writeTargets: map[ast.Node]bool{},
 	}
-	b.policy = pool.Policy("cyclo.abstraction", "0.1.0")
+	b.policy = pool.Policy("gstyle.abstraction", "0.1.0")
 	b.sourceEvidence = pool.Evidence(pdg.Approximated, "Operation identified in typed source; dependency completeness is separate.")
 	b.sourceOrigin = pool.Origin(pdg.SourceOrigin, "Go source operation; abstraction lowering is approximate.")
 	b.header(pkg, fn, path)

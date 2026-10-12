@@ -43,7 +43,7 @@ Press ` + "`[`" + ` and ` + "`]`" + ` from any pane to visit the previous or nex
 
 In Source, ` + "`j/k`" + ` moves a line cursor and keeps it visible. Press ` + "`v`" + ` to start or clear a visual line selection, then ` + "`a`" + ` to attach a note. Use ` + "`d`" + ` to remove the note under the cursor. ` + "`esc`" + ` clears the line selection.
 
-Annotations persist across restarts in SQLite at ` + "`$XDG_STATE_HOME/cyclo/annotations.db`" + `, or ` + "`~/.local/state/cyclo/annotations.db`" + ` when ` + "`XDG_STATE_HOME`" + ` is unset. They are isolated by repository.
+Annotations persist across restarts in SQLite at ` + "`$XDG_STATE_HOME/gstyle/annotations.db`" + `, or ` + "`~/.local/state/gstyle/annotations.db`" + ` when ` + "`XDG_STATE_HOME`" + ` is unset. They are isolated by repository.
 
 ## Control with JSON-RPC
 
@@ -54,7 +54,7 @@ Gstyle exposes its control API on ` + "`http://127.0.0.1:8197`" + ` by default. 
 Connect in this order:
 
 1. Call ` + "`rpc.discover`" + `. Its runtime OpenRPC document is the authority for methods and parameters.
-2. Call ` + "`cyclo.getState`" + `. Record the revision, focus, and selected file and function before changing anything.
+2. Call ` + "`getState`" + `. Record the revision, focus, and selected file and function before changing anything.
 3. Inspect first. Mutate the shared view only when it helps the user.
 
 Use any JSON-RPC client. This shell helper is enough:
@@ -70,17 +70,17 @@ rpc() {
 }
 
 rpc rpc.discover
-rpc cyclo.getState
-rpc cyclo.setFocus '{"pane":"functions"}'
+rpc getState
+rpc setFocus '{"pane":"functions"}'
 ` + "```" + `
 
 Treat a JSON-RPC ` + "`error`" + ` envelope as failure even when HTTP returns 200.
 
-` + "`cyclo.getReport`" + ` returns ranked complexity metadata. Each function includes ` + "`complexity`" + `, ` + "`cognitiveComplexity`" + `, ` + "`cyclomaticDiagnostics`" + `, and ` + "`cognitiveDiagnostics`" + `. The diagnostics identify each increment, its nesting cost, and its source position. The selected code lives at ` + "`result.selection.function.source`" + ` from ` + "`cyclo.getState`" + `. Selections use zero-based indexes from the ranked file and function arrays. ` + "`cyclo.setFocus`" + `, ` + "`cyclo.selectFile`" + `, ` + "`cyclo.selectFunction`" + `, and ` + "`cyclo.scrollSource`" + ` return the updated state. ` + "`cyclo.refresh`" + ` waits for analysis to finish before it replies.
+` + "`getReport`" + ` returns ranked complexity metadata. Each function includes ` + "`complexity`" + `, ` + "`cognitiveComplexity`" + `, ` + "`cyclomaticDiagnostics`" + `, and ` + "`cognitiveDiagnostics`" + `. The diagnostics identify each increment, its nesting cost, and its source position. The selected code lives at ` + "`result.selection.function.source`" + ` from ` + "`getState`" + `. Selections use zero-based indexes from the ranked file and function arrays. ` + "`setFocus`" + `, ` + "`selectFile`" + `, ` + "`selectFunction`" + `, and ` + "`scrollSource`" + ` return the updated state. ` + "`refresh`" + ` waits for analysis to finish before it replies.
 
-Source review state is shared too. ` + "`cyclo.revealLines`" + ` focuses and highlights a range, while ` + "`cyclo.clearLineSelection`" + ` clears it. ` + "`cyclo.annotateLines`" + ` adds a note without changing the visible selection; ` + "`cyclo.removeAnnotation`" + ` deletes one by ID. Line parameters accept displayed source numbers or one-based lines relative to the selected function. Read ` + "`cursor`" + `, ` + "`lineSelection`" + `, ` + "`annotations`" + `, and ` + "`activeAnnotationId`" + ` from ` + "`cyclo.getState`" + `. Use the runtime OpenRPC document for exact result shapes.
+Source review state is shared too. ` + "`revealLines`" + ` focuses and highlights a range, while ` + "`clearLineSelection`" + ` clears it. ` + "`annotateLines`" + ` adds a note without changing the visible selection; ` + "`removeAnnotation`" + ` deletes one by ID. Line parameters accept displayed source numbers or one-based lines relative to the selected function. Read ` + "`cursor`" + `, ` + "`lineSelection`" + `, ` + "`annotations`" + `, and ` + "`activeAnnotationId`" + ` from ` + "`getState`" + `. Use the runtime OpenRPC document for exact result shapes.
 
-Use ` + "`cyclo.waitForChange`" + ` instead of polling. Pass the last ` + "`revision`" + ` as ` + "`afterRevision`" + ` and an optional ` + "`timeoutMs`" + ` from 0 to 60000. It returns when the TUI advances or the timeout expires; compare the returned revision to tell which happened.
+Use ` + "`waitForChange`" + ` instead of polling. Pass the last ` + "`revision`" + ` as ` + "`afterRevision`" + ` and an optional ` + "`timeoutMs`" + ` from 0 to 60000. It returns when the TUI advances or the timeout expires; compare the returned revision to tell which happened.
 
 For inspection-only work, report the evidence without changing the TUI. Restore temporary focus or selection changes when they no longer help the user.
 
@@ -98,9 +98,9 @@ Use ` + "`CC`" + ` to find path-heavy functions and ` + "`COG`" + ` to find code
 
 After editing, run the relevant tests and Gstyle again. Report what became easier to follow, not only how the score changed.
 
-Quality is shared too. ` + "`cyclo.getReport`" + ` includes ` + "`quality.status`" + ` (ready or error) and, on success, ` + "`quality.report`" + ` with its summary, functions, and diagnostics. Function entries and ` + "`cyclo.getState.selection.function.quality`" + ` include density_milli, complete, unclassified_calls, effects, mutation_events, and diagnostics. Nested quality fields retain the headless report's snake_case names. Missing function quality means unavailable; it is not a clean result.
+Quality is shared too. ` + "`getReport`" + ` includes ` + "`quality.status`" + ` (ready or error) and, on success, ` + "`quality.report`" + ` with its summary, functions, and diagnostics. Function entries and ` + "`getState.selection.function.quality`" + ` include density_milli, complete, unclassified_calls, effects, mutation_events, and diagnostics. Nested quality fields retain the headless report's snake_case names. Missing function quality means unavailable; it is not a clean result.
 
-Use ` + "`cyclo.setDetailsView`" + ` with ` + "`{\"view\":\"quality\"}`" + ` or ` + "`{\"view\":\"source\"}`" + ` to change the shared details pane. State includes detailsView and qualityOffset. ` + "`cyclo.revealLines`" + ` and ` + "`cyclo.scrollSource`" + ` return to source view. ` + "`cyclo.refresh`" + ` reruns complexity and typed quality analysis together.
+Use ` + "`setDetailsView`" + ` with ` + "`{\"view\":\"quality\"}`" + ` or ` + "`{\"view\":\"source\"}`" + ` to change the shared details pane. State includes detailsView and qualityOffset. ` + "`revealLines`" + ` and ` + "`scrollSource`" + ` return to source view. ` + "`refresh`" + ` reruns complexity and typed quality analysis together.
 
 ## Fix patterns automatically
 
@@ -126,7 +126,7 @@ Static calls to named helpers in the same package use conservative body summarie
 
 Facts export uses schema_version 2 with helper summaries; version 1 remains readable and keeps absent helper information unknown. Save versioned facts with ` + "`gstyle check --format facts .`" + `, then use ` + "`gstyle check --facts-in PATH --config POLICY --format json`" + ` to reevaluate without loading Go packages. Exit 0 means no findings or successful export, 1 means guardrail findings, and 2 means an operational failure. Type errors must not be interpreted as a clean check.
 
-Suppressions use ` + "`// cyclo-allow(rule_a, rule_b): reason`" + ` above a function, with intervening doc comments allowed. Reasons are required; unknown rules fail validation. Prefer documenting a deliberate exception over hiding evidence.
+Suppressions use ` + "`// gstyle-allow(rule_a, rule_b): reason`" + ` above a function, with intervening doc comments allowed. Reasons are required; unknown rules fail validation. Prefer documenting a deliberate exception over hiding evidence.
 
 Bug-pattern warnings are advisory. ` + "`nilerr`" + ` requires explicit nil in every error result of the error branch; propagating an error in another result is valid. ` + "`typednil`" + ` requires a concrete nil value or a stable zero-valued local boxed into an interface. Unknown constructor results, parameters, and mutable bindings are omitted; absence of a warning does not prove nil safety. Interface suggestions describe normalized signature shapes, not Go declarations; preserve the concrete parameter and result types.
 

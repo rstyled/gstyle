@@ -308,7 +308,7 @@ func precedingSuppression(comments *ast.CommentGroup) string {
 	}
 	for index := len(comments.List) - 1; index >= 0; index-- {
 		text := comments.List[index].Text
-		if strings.Contains(text, "cyclo-allow") {
+		if strings.Contains(text, "gstyle-allow") {
 			return text
 		}
 	}

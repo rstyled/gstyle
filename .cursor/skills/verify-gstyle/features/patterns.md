@@ -1,6 +1,6 @@
 # Pattern mining
 
-`cyclo patterns` mines Go code for 18 kinds of mechanical patterns — structural
+`gstyle patterns` mines Go code for 18 kinds of mechanical patterns — structural
 issues with deterministic AST fixes, from guard clauses and value objects to
 DDD patterns like specifications and domain services. Text output lists one
 candidate per block with its observation, inference, and suggested refactor;
@@ -15,13 +15,13 @@ exit code is always 0 (informational, never a gate).
 
 ## How to get to it (user POV)
 
-- Run `cyclo patterns .` for the current directory.
-- Run `cyclo patterns ./domain` for one package.
-- Pipe to `grep` for one kind: `cyclo patterns . | grep -A5 trait_method`.
+- Run `gstyle patterns .` for the current directory.
+- Run `gstyle patterns ./domain` for one package.
+- Pipe to `grep` for one kind: `gstyle patterns . | grep -A5 trait_method`.
 
-## Driving it with verify-cyclo
+## Driving it with verify-gstyle
 
-Preconditions: `verify-cyclo build "$RUN_DIR"` and `verify-cyclo doctor "$RUN_DIR/cyclo"` report ok; `go` on PATH.
+Preconditions: `verify-gstyle build "$RUN_DIR"` and `verify-gstyle doctor "$RUN_DIR/gstyle"` report ok; `go` on PATH.
 
 - Craft a fixture with a known pattern: two types with parallel methods for `trait_method`. Use this exact shape (blank lines and method order matter to the miner):
   ```go
@@ -54,7 +54,7 @@ Preconditions: `verify-cyclo build "$RUN_DIR"` and `verify-cyclo doctor "$RUN_DI
   }
   ```
   Save under `$RUN_DIR/scratch/patterns/` with a `go.mod` (`module patterntest`, `go 1.21`).
-- Run `$RUN_DIR/cyclo patterns $RUN_DIR/scratch/patterns` and assert the output contains `trait_method` with both sites listed. Exit code is 0.
+- Run `$RUN_DIR/gstyle patterns $RUN_DIR/scratch/patterns` and assert the output contains `trait_method` with both sites listed. Exit code is 0.
 - For a negative case, put the same-named methods on types in *different* packages; assert no `trait_method` candidate (cross-package collisions are skipped).
 - For `specification`, craft two functions with the same boolean rule (`u.Age > 18 && u.Active`); assert a `specification` candidate naming the type.
 - For a two-variable rule (`c.x != first.x`), assert no `specification` candidate (would extract with a dangling reference).

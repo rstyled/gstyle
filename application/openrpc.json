@@ -1,7 +1,7 @@
 {
   "openrpc": "1.2.6",
   "info": {
-    "title": "Cyclo control API",
+    "title": "Gstyle control API",
     "version": "0.4.0"
   },
   "servers": [
@@ -13,7 +13,7 @@
   "methods": [
     {
       "name": "rpc.discover",
-      "summary": "Describe the Cyclo control API",
+      "summary": "Describe the Gstyle control API",
       "paramStructure": "by-name",
       "params": [],
       "result": {
@@ -24,7 +24,7 @@
       }
     },
     {
-      "name": "cyclo.getState",
+      "name": "getState",
       "summary": "Read the current TUI state and selection",
       "paramStructure": "by-name",
       "params": [],
@@ -36,7 +36,7 @@
       }
     },
     {
-      "name": "cyclo.waitForChange",
+      "name": "waitForChange",
       "summary": "Wait for the TUI revision to advance or the timeout to expire",
       "paramStructure": "by-name",
       "params": [
@@ -86,7 +86,7 @@
       ]
     },
     {
-      "name": "cyclo.getReport",
+      "name": "getReport",
       "summary": "Read complexity and typed quality reports with source evidence",
       "paramStructure": "by-name",
       "params": [],
@@ -98,7 +98,7 @@
       }
     },
     {
-      "name": "cyclo.setFocus",
+      "name": "setFocus",
       "summary": "Focus a TUI pane",
       "paramStructure": "by-name",
       "params": [
@@ -138,7 +138,7 @@
       ]
     },
     {
-      "name": "cyclo.selectFile",
+      "name": "selectFile",
       "summary": "Select a ranked file by zero-based index",
       "paramStructure": "by-name",
       "params": [
@@ -174,7 +174,7 @@
       ]
     },
     {
-      "name": "cyclo.selectFunction",
+      "name": "selectFunction",
       "summary": "Select a function in the current file by zero-based index",
       "paramStructure": "by-name",
       "params": [
@@ -210,7 +210,7 @@
       ]
     },
     {
-      "name": "cyclo.scrollSource",
+      "name": "scrollSource",
       "summary": "Show source and scroll the selected function",
       "paramStructure": "by-name",
       "params": [
@@ -245,7 +245,7 @@
       ]
     },
     {
-      "name": "cyclo.revealLines",
+      "name": "revealLines",
       "summary": "Select and reveal source lines in the selected function",
       "paramStructure": "by-name",
       "params": [
@@ -291,7 +291,7 @@
       ]
     },
     {
-      "name": "cyclo.clearLineSelection",
+      "name": "clearLineSelection",
       "summary": "Clear the highlighted source line reference",
       "paramStructure": "by-name",
       "params": [],
@@ -303,7 +303,7 @@
       }
     },
     {
-      "name": "cyclo.annotateLines",
+      "name": "annotateLines",
       "summary": "Add an annotation without changing the visible TUI selection",
       "paramStructure": "by-name",
       "params": [
@@ -366,7 +366,7 @@
       ]
     },
     {
-      "name": "cyclo.removeAnnotation",
+      "name": "removeAnnotation",
       "summary": "Delete one source annotation by ID",
       "paramStructure": "by-name",
       "params": [
@@ -402,7 +402,7 @@
       ]
     },
     {
-      "name": "cyclo.refresh",
+      "name": "refresh",
       "summary": "Reanalyze the configured paths and return the resulting state",
       "paramStructure": "by-name",
       "params": [],
@@ -414,7 +414,7 @@
       }
     },
     {
-      "name": "cyclo.setDetailsView",
+      "name": "setDetailsView",
       "summary": "Show source or quality evidence for the selected function",
       "paramStructure": "by-name",
       "params": [

@@ -79,7 +79,7 @@ func (b *builder) markSynthetic(node *pdg.Node, kind patterns.NodeKind) {
 		return
 	}
 	node.Synthetic = true
-	node.Provenance = b.ir.pool.Origin(pdg.Desugaring, "Cyclo abstraction lowering of source operations.")
+	node.Provenance = b.ir.pool.Origin(pdg.Desugaring, "Gstyle abstraction lowering of source operations.")
 }
 
 func syntheticMiningNode(kind patterns.NodeKind, origin ast.Node) bool {

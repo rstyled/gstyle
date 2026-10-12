@@ -16,7 +16,7 @@ import (
 //     (SQL queries, shell commands, ...)
 // Sanitizers break the chain: their output is clean even with tainted input.
 //
-// For cyclo: v1 is intraprocedural. We walk the PDG's data edges forward
+// For gstyle: v1 is intraprocedural. We walk the PDG's data edges forward
 // from sources, marking tainted nodes to a fixpoint. A sink whose dangerous
 // argument receives tainted data is a finding. Detection-only: the fix
 // depends on context (parameterize the query? escape the output? validate

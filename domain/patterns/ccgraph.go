@@ -9,7 +9,7 @@ import (
 	"sync"
 )
 
-// Cyclo's CCGraph-style adaptation combines characteristic/name admission,
+// Gstyle's CCGraph-style adaptation combines characteristic/name admission,
 // WL verification. It returns connected groups, not
 // paper-level accepted pairs. See docs/papers.md.
 

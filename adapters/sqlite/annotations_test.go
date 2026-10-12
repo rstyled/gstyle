@@ -19,7 +19,7 @@ func TestAnnotationsSurviveReopeningTheDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = store.SaveAnnotation("/workspace/cyclo", annotation)
+	err = store.SaveAnnotation("/workspace/gstyle", annotation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestAnnotationsSurviveReopeningTheDatabase(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	annotations, err := store.ListAnnotations("/workspace/cyclo")
+	annotations, err := store.ListAnnotations("/workspace/gstyle")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,11 +41,11 @@ func TestAnnotationsSurviveReopeningTheDatabase(t *testing.T) {
 		t.Fatalf("annotations = %#v, want %#v", annotations, []domain.Annotation{annotation})
 	}
 
-	err = store.DeleteAnnotation("/workspace/cyclo", annotation.ID)
+	err = store.DeleteAnnotation("/workspace/gstyle", annotation.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	annotations, err = store.ListAnnotations("/workspace/cyclo")
+	annotations, err = store.ListAnnotations("/workspace/gstyle")
 	if err != nil {
 		t.Fatal(err)
 	}

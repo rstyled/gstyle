@@ -30,7 +30,7 @@ func (m dashboard) View() tea.View {
 	content := header + "\n" + m.workspace() + "\n" + dashboardMuted.Render(footer)
 	view := tea.NewView(strings.Join(fitLines(strings.Split(content, "\n"), m.width, m.height), "\n"))
 	view.AltScreen = true
-	view.WindowTitle = "cyclo · bug reducer"
+	view.WindowTitle = "gstyle · bug reducer"
 	return view
 }
 

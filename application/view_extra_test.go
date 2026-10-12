@@ -28,7 +28,7 @@ func TestViewEnablesMouseWheelEvents(t *testing.T) {
 func TestViewUsesCycloName(t *testing.T) {
 	view := (Model{width: 120}).View()
 	if view.WindowTitle != "gstyle" {
-		t.Fatalf("window title = %q, want cyclo", view.WindowTitle)
+		t.Fatalf("window title = %q, want gstyle", view.WindowTitle)
 	}
 }
 

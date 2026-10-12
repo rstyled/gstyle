@@ -55,7 +55,7 @@ jobs:
       - name: Test with race detector
         run: make test-race
 
-  cyclo-check:
+  gstyle-check:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -66,8 +66,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Dogfood cyclo on itself
-        run: make cyclo-check
+      - name: Dogfood gstyle on itself
+        run: make gstyle-check
 
   quality-gate:
     runs-on: ubuntu-latest

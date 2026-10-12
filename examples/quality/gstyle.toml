@@ -1,5 +1,5 @@
 # Unspecified settings retain defaults. Run from the repository root:
-# cyclo check --config examples/quality/cyclo.toml .
+# gstyle check --config examples/quality/gstyle.toml .
 granularity = "field"
 count_self = false
 min_statements = 3

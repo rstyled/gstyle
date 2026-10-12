@@ -1,6 +1,6 @@
 # Bug reducer
 
-`cyclo bug-reducer` minimizes an input file while a checker program keeps
+`gstyle bug-reducer` minimizes an input file while a checker program keeps
 reproducing the bug. The checker receives the absolute candidate path as its
 last argument and exits 0 to accept the candidate, any ordinary nonzero exit
 to reject it. Default mode removes whole lines; `--language go` removes
@@ -19,15 +19,15 @@ exist.
 
 ## How to get to it (user POV)
 
-- Run `cyclo bug-reducer [--tui=false] INPUT -- CHECKER [ARGS...]`.
+- Run `gstyle bug-reducer [--tui=false] INPUT -- CHECKER [ARGS...]`.
 - In the dashboard: `tab` changes panes, `j`/`k` scroll, `enter` expands,
   `q` stops and saves.
 
-## Driving it with verify-cyclo
+## Driving it with verify-gstyle
 
 Preconditions:
 
-- `verify-cyclo build "$RUN_DIR"` and `verify-cyclo doctor "$RUN_DIR/cyclo"`.
+- `verify-gstyle build "$RUN_DIR"` and `verify-gstyle doctor "$RUN_DIR/gstyle"`.
 - A scratch dir `$RUN_DIR/scratch/reducer` with `input.txt`:
 
   ```
@@ -46,7 +46,7 @@ Preconditions:
   ```
 
 - **Reduction.** Run from the scratch dir:
-  `"$RUN_DIR/cyclo" bug-reducer --tui=false input.txt -- ./checker.sh`.
+  `"$RUN_DIR/gstyle" bug-reducer --tui=false input.txt -- ./checker.sh`.
   Exit code is 0. Stdout ends with a summary like
   `53 -> 15 bytes; 14 checks; saved input.txt.reduced`.
 - **Output proof.** `cat input.txt.reduced` shows only `line three BUG`.

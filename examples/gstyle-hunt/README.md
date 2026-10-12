@@ -1,7 +1,7 @@
-# Check Cyclo function initializers
+# Check Gstyle function initializers
 
 ```sh
-go run ./examples/cyclo-hunt path/to/input.go
+go run ./examples/gstyle-hunt path/to/input.go
 ```
 
 Supply a self-contained Go input with package-level function initializers. This
@@ -11,7 +11,7 @@ totals. It matches by name, regardless of report ordering.
 
 On a mismatch it reduces the input, keeping the same failed rule and function
 name where applicable. It saves `seed.go`, `reduced.go`, and `failure.txt` in a new
-`.cyclo-hunt-*` directory and exits nonzero. Original files remain untouched.
+`.gstyle-hunt-*` directory and exits nonzero. Original files remain untouched.
 
 This is a focused checker, not a general Go project analyzer: its input must
 type-check without imports, its function bodies must work as named declarations,

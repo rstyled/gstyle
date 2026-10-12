@@ -8,7 +8,7 @@ package patterns
 //
 // Use cases: mark code known bug-free as a barrier during debugging;
 // ignore error-handling code when you only care about normal execution.
-// For cyclo: the agent marks reviewed code as a barrier and the fault area
+// For gstyle: the agent marks reviewed code as a barrier and the fault area
 // shrinks each iteration.
 
 // BarrierSlice computes the backward slice from seed within a PDG, without

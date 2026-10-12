@@ -17,7 +17,7 @@ import (
 // with no `defer release()` is the highest-value signal — it catches the
 // most common bug pattern (a forgotten Close/Unlock before an early return).
 //
-// For cyclo: v1 checks "acquired without deferred release". The LLM judges
+// For gstyle: v1 checks "acquired without deferred release". The LLM judges
 // whether a flagged site is a real bug — e.g., a resource whose ownership
 // is transferred to the caller (a factory returning an open file) is a
 // false positive, but a file opened and never closed is not.

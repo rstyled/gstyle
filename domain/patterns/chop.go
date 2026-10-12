@@ -6,7 +6,7 @@ package patterns
 // of the forward slice of the source with the backward slice of the sink.
 //
 // Answers "how does THIS input reach THAT output?" rather than "what
-// affects X?" For cyclo: given changed lines (sources) and a sink
+// affects X?" For gstyle: given changed lines (sources) and a sink
 // (DB writes, network calls, error returns), show exactly the statements
 // on the path between them.
 

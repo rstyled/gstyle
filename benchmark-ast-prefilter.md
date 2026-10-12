@@ -35,7 +35,7 @@ Run via `TestASTFilterBenchmark` in `domain/patterns/astbench_test.go`
 is cheap, and the bypass adds few new candidates beyond what Stage 1+2
 already find on this corpus.
 
-## Benchmark: Real Code (cyclo `domain/patterns/`, 648 functions)
+## Benchmark: Real Code (gstyle `domain/patterns/`, 648 functions)
 
 Isolated CCGraph A/B, same extraction, 7 runs each, 2026-10-10:
 
@@ -56,7 +56,7 @@ The earlier synthetic result (830ms → 764ms, ~8% faster on 500 synthetic
 functions) does not replicate on real code. The synthetic corpus likely had
 fewer AST-similar pairs slipping past the characteristic-vector filter.
 
-**Honest assessment**: On cyclo's own codebase the AST pre-filter is a net
+**Honest assessment**: On gstyle's own codebase the AST pre-filter is a net
 cost with no coverage gain. Its value would be on corpora where the
 characteristic-vector filter (0.9) is too aggressive and drops real clones
 that AST similarity would rescue. That case has not been demonstrated. The

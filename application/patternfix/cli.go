@@ -547,12 +547,12 @@ func showDiff(path string, src, out []byte, n int, output io.Writer) (int, error
 
 // unifiedDiff returns a unified diff of old -> new via diff -u.
 func unifiedDiff(path string, old, new []byte) (string, error) {
-	oldFile, err := os.CreateTemp("", "cyclo-fix-old-*.go")
+	oldFile, err := os.CreateTemp("", "gstyle-fix-old-*.go")
 	if err != nil {
 		return "", err
 	}
 	defer os.Remove(oldFile.Name())
-	newFile, err := os.CreateTemp("", "cyclo-fix-new-*.go")
+	newFile, err := os.CreateTemp("", "gstyle-fix-new-*.go")
 	if err != nil {
 		return "", err
 	}

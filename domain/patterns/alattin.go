@@ -13,7 +13,7 @@ import (
 // (disjunction, not conjunction) — and flags code that uses the method
 // with *neither* alternative checked. Cut false positives ~28%.
 //
-// For cyclo: disjunctive rules over call sets. PR-Miner mines "if you
+// For gstyle: disjunctive rules over call sets. PR-Miner mines "if you
 // call A, you also call B"; Alattin mines "if you call A, you call B OR C".
 // The OR rule is only interesting when neither single rule meets the
 // thresholds on its own — that's exactly the case classic miners miss.

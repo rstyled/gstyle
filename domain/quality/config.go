@@ -176,7 +176,7 @@ func defaultPrefixes() []Prefix {
 
 // thirdPartyPrefixes classifies non-stdlib packages the tool knows are
 // pure. Unknown third-party calls stay Unknown on purpose: after the
-// stdlib table, unknown means "a call cyclo cannot see into".
+// stdlib table, unknown means "a call gstyle cannot see into".
 func thirdPartyPrefixes() []Prefix {
 	return []Prefix{
 		{Path: "charm.land/lipgloss", Kind: None},

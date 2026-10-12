@@ -1,6 +1,6 @@
 # Explore the complexity map
 
-The TUI is cyclo's primary surface: launch `cyclo [paths...]` and a full-screen
+The TUI is gstyle's primary surface: launch `gstyle [paths...]` and a full-screen
 treemap shows cyclomatic complexity as tile area and cognitive complexity as
 tile color, with Files, Functions, and Source panes, live counts in the
 header/footer, and an automatic git diff gutter inside a worktree.
@@ -18,19 +18,19 @@ header/footer, and an automatic git diff gutter inside a worktree.
 
 ## How to get to it (user POV)
 
-- Run `cyclo .` in a terminal at least 100 columns wide and 30 rows tall.
-- Run `cyclo ./domain ./adapters` to scan selected paths.
+- Run `gstyle .` in a terminal at least 100 columns wide and 30 rows tall.
+- Run `gstyle ./domain ./adapters` to scan selected paths.
 - Press `q` to quit.
 
-## Driving it with verify-cyclo
+## Driving it with verify-gstyle
 
 Preconditions:
 
-- `verify-cyclo build "$RUN_DIR"` and `verify-cyclo doctor "$RUN_DIR/cyclo"`.
+- `verify-gstyle build "$RUN_DIR"` and `verify-gstyle doctor "$RUN_DIR/gstyle"`.
 - A target dir with Go files (the fixture repo from `check-headless` works).
 
 - **Launch and render.** Run
-  `verify-cyclo tui "$RUN_DIR/cyclo" "$TARGET" "$RUN_DIR" --wait 6 --keys 'q'`.
+  `verify-gstyle tui "$RUN_DIR/gstyle" "$TARGET" "$RUN_DIR" --wait 6 --keys 'q'`.
   The typescript shows the `CYCLO` header and the pane titles
   (`COMPLEXITY`, `TREEMAP`, `Files`, `Functions`, `Source`). The exit code is 0.
 - **Footer counts.** Wait for analysis to finish, then strip ANSI from the
@@ -46,7 +46,7 @@ Preconditions:
 ## Gotchas
 
 - The TUI renders nothing on a terminal smaller than 100x30 or on a bare pipe
-  — a drive that skips `verify-cyclo tui` proves nothing about the TUI.
+  — a drive that skips `verify-gstyle tui` proves nothing about the TUI.
 - Analysis is async: keys sent before the footer shows a nonzero `funcs`
   count act on an empty model. Bump `--wait` for large targets instead of
   guessing.

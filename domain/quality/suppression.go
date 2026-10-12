@@ -9,18 +9,18 @@ var ruleIDs = []string{"fn_length", "fn_params", "mutation_per_target", "mutated
 
 func suppression(comment string) ([]string, string) {
 	comment = strings.TrimSpace(comment)
-	// Support both // cyclo-allow(rules): reason and //lint:ignore rules reason.
+	// Support both // gstyle-allow(rules): reason and //lint:ignore rules reason.
 	// The lint:ignore form is the standard Go ecosystem convention.
 	if strings.HasPrefix(comment, "//lint:ignore") {
 		return parseLintIgnore(comment)
 	}
-	if !strings.Contains(comment, "cyclo-allow") {
+	if !strings.Contains(comment, "gstyle-allow") {
 		return nil, ""
 	}
-	if !strings.HasPrefix(comment, "// cyclo-allow(") {
-		return nil, "invalid suppression: expected // cyclo-allow(rules): reason"
+	if !strings.HasPrefix(comment, "// gstyle-allow(") {
+		return nil, "invalid suppression: expected // gstyle-allow(rules): reason"
 	}
-	rules, reason, ok := strings.Cut(strings.TrimPrefix(comment, "// cyclo-allow("), "):")
+	rules, reason, ok := strings.Cut(strings.TrimPrefix(comment, "// gstyle-allow("), "):")
 	if !ok || strings.TrimSpace(reason) == "" {
 		return nil, "invalid suppression: reason is required"
 	}

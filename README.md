@@ -10,8 +10,9 @@ Install `gstyle` globally with Go:
 go install github.com/rstyled/gstyle@latest
 ```
 
-The executable is `gstyle`. Existing `cyclo.*` RPC methods, `cyclo-allow`
-comments, stored annotations and versioned analysis profiles keep their identifiers.
+The executable is `gstyle`. RPC methods use plain names such as `getState` and
+`getReport`; standard discovery remains `rpc.discover`. Suppression comments use
+`gstyle-allow`, and annotation storage and analysis profiles use the `gstyle` name.
 
 ## Run
 
@@ -32,9 +33,9 @@ and color shows cognitive complexity from green to red. Files group their functi
 tiles. Click a tile to inspect its source and both scores. The map appears in
 terminals at least 100 columns wide and 30 rows tall.
 
-Inside Git, Cyclo automatically shows added and deleted source lines against `main` or `master`.
+Inside Git, Gstyle automatically shows added and deleted source lines against `main` or `master`.
 
-Cyclo starts a localhost JSON-RPC control API on port `8197`. Pick another port with `--control-port`:
+Gstyle starts a localhost JSON-RPC control API on port `8197`. Pick another port with `--control-port`:
 
 ```sh
 gstyle --control-port 9000 .
@@ -48,10 +49,10 @@ curl -s http://127.0.0.1:9000 \
   -d '{"jsonrpc":"2.0","id":1,"method":"rpc.discover"}'
 ```
 
-The control API reads and changes the live TUI model. `cyclo.getReport` returns
+The control API reads and changes the live TUI model. `getReport` returns
 complexity scores and a typed `quality` report with deterministic diagnostics and
 effect counts. Each analyzed function includes `quality` metrics, diagnostics,
-effects, and mutation events. `cyclo.getState` includes this evidence alongside
+effects, and mutation events. `getState` includes this evidence alongside
 the selected function's source. Agents can focus panes, select files and functions,
 scroll source, refresh analysis, and wait for a new revision without polling.
 See [application/openrpc.json](application/openrpc.json) for the full contract.
@@ -76,7 +77,7 @@ Run typed mutation and side-effect analysis without starting the TUI:
 ```sh
 gstyle check .
 gstyle check --format json ./domain ./adapters
-gstyle check --config examples/quality/cyclo.toml .
+gstyle check --config examples/quality/gstyle.toml .
 ```
 
 Directories include Go packages recursively. File arguments load their enclosing
@@ -91,7 +92,7 @@ the details pane between source and quality evidence, then `j/k` to scroll.
 Switching back preserves the source cursor. Use a policy in the TUI with:
 
 ```sh
-gstyle --config examples/quality/cyclo.toml .
+gstyle --config examples/quality/gstyle.toml .
 ```
 
 The TUI includes tests to match its existing complexity scan. Generated functions,
@@ -99,15 +100,15 @@ inactive build files, and nested literals that lack separate typed records show
 quality as unavailable. Type-check failures appear as `quality failed`, with the
 error in the quality pane; the syntax-based complexity view remains usable.
 
-RPC exposes the same data through `cyclo.getReport.quality` and
-`cyclo.getState.selection.function.quality`. Report quality has `status` (`ready`
+RPC exposes the same data through `getReport.quality` and
+`getState.selection.function.quality`. Report quality has `status` (`ready`
 or `error`), an optional error, and the successful report. Nested quality fields
 use the same snake_case names as `gstyle check --format json`. Switch the shared
-details pane with `cyclo.setDetailsView {"view":"quality"}` or `{"view":"source"}`.
-`cyclo.getState.report.quality` contains status, aggregate statistics, and a
-finding count; the full report comes from `cyclo.getReport`.
-State includes `detailsView` and `qualityOffset`. `cyclo.revealLines` and
-`cyclo.scrollSource` return to source view. Refresh reruns both analyses.
+details pane with `setDetailsView {"view":"quality"}` or `{"view":"source"}`.
+`getState.report.quality` contains status, aggregate statistics, and a
+finding count; the full report comes from `getReport`.
+State includes `detailsView` and `qualityOffset`. `revealLines` and
+`scrollSource` return to source view. Refresh reruns both analyses.
 
 | Rule | Default |
 | --- | --- |
@@ -147,12 +148,12 @@ clauses do not add extra statements. Pure arithmetic scores zero.
 
 TOML config retains unspecified defaults and rejects unknown keys. Project
 prefixes extend defaults; later entries win equal-length ties. Kind `none`
-explicitly excludes a call from scoring. See [the example policy](examples/quality/cyclo.toml).
+explicitly excludes a call from scoring. See [the example policy](examples/quality/gstyle.toml).
 
 Suppress selected rules with a reason:
 
 ```go
-// cyclo-allow(fn_params): stable public interface
+// gstyle-allow(fn_params): stable public interface
 func Export(a, b, c, d, e int) {}
 ```
 
@@ -162,8 +163,8 @@ suppressions never suppress findings.
 Save facts and change policy without reloading or type-checking the code:
 
 ```sh
-gstyle check --format facts . > /tmp/cyclo-facts.json
-gstyle check --facts-in /tmp/cyclo-facts.json --config examples/quality/cyclo.toml --format json
+gstyle check --format facts . > /tmp/gstyle-facts.json
+gstyle check --facts-in /tmp/gstyle-facts.json --config examples/quality/gstyle.toml --format json
 ```
 
 Reports contain relative paths and no timestamps. Exit codes are **0** for no
@@ -182,7 +183,7 @@ retain unknown coverage when a limit is reached.
 Facts exports use `schema_version: 2` and retain a flat graph of helper bodies for
 policy reevaluation, including helpers outside a selected file. Version 1 inputs
 remain readable; missing helper evidence stays unknown. Report JSON retains
-schema version 1. Older Cyclo builds do not accept the new facts format.
+schema version 1. Older Gstyle builds do not accept the new facts format.
 
 Run the [generated quality harness](examples/quality-hunt/README.md) with
 `go run ./examples/quality-hunt` to check ownership behavior and equivalent
@@ -223,11 +224,11 @@ Omit `--go-parser` when Tree-sitter resolves the configured `source.go` grammar.
 The Go reducer tries larger syntax units first and reparses after each accepted
 deletion. Syntax errors skip the checker; build errors and the specific bug still
 need to be checked by your command. This mode has no line-deletion fallback.
-Tree-sitter is a runtime dependency for Go reduction; Cyclo builds still support
+Tree-sitter is a runtime dependency for Go reduction; Gstyle builds still support
 `CGO_ENABLED=0`. See the [Tree-sitter CLI documentation](https://tree-sitter.github.io/tree-sitter/cli/parse.html).
 
 The checker receives an absolute candidate file path as its **last argument**,
-following any arguments you supply. It runs in the directory you launched Cyclo
+following any arguments you supply. It runs in the directory you launched Gstyle
 from, inherits your environment, and receives no stdin. Its output appears in the
 live dashboard; plain mode suppresses it.
 Exit **0** means the same bug remains; an ordinary nonzero exit rejects the
@@ -288,7 +289,7 @@ cat /tmp/reducer-demo.txt.reduced
 # specific failure
 ```
 
-Finding bugs still needs tests, fuzzing, or inspection. For Cyclo, a checker can
+Finding bugs still needs tests, fuzzing, or inspection. For Gstyle, a checker can
 compare the analyzer's reports for equivalent Go forms, or assert a known wrong
 score, source location, or panic. Keep each check focused on the specific failure;
 use the reduced input as the regression test after fixing it.
@@ -296,10 +297,10 @@ use the reduced input as the regression test after fixing it.
 To check a specific Go input for initializer inconsistencies and reduce failures:
 
 ```sh
-go run ./examples/cyclo-hunt path/to/input.go
+go run ./examples/gstyle-hunt path/to/input.go
 ```
 
-See [the Cyclo checker guide](examples/cyclo-hunt/README.md) for its supported inputs
+See [the Gstyle checker guide](examples/gstyle-hunt/README.md) for its supported inputs
 and checks. The exploratory fixture generators have been removed.
 
 ## Match imported graphs against compat's strict profile
@@ -320,7 +321,7 @@ shortens WL depth or silently truncates pairs.
 
 This is imported-graph matching, not certification of native Go extraction.
 Native PDG exports require a separate CFG/source/evidence validator before strict
-matching. The existing `patterns` matcher remains the Cyclo adaptation. Pair
+matching. The existing `patterns` matcher remains the Gstyle adaptation. Pair
 results do not establish semantic equivalence or safe refactoring. Required
 unknown facts are diagnosed; cancellation or output failure leaves an incomplete run.
 
@@ -336,7 +337,7 @@ pattern mining and preserves extraction limits as explicit evidence. The existin
 The schema lives in [rstyled/compat](https://github.com/rstyled/compat/blob/56edd6bb804b10edaf9bbc2343d69e5e298d8c1a/schemas/pdg.schema.json).
 The root extraction profile governs counts, dependencies, capabilities and
 provenance. Records have no separate policy fields; conformance is one assessment
-of the root profile. Cyclo's native reference count still counts recorded
+of the root profile. Gstyle's native reference count still counts recorded
 reference-bearing bindings; it is not the strict matcher's retained-read count.
 To check the export fixture against a compat checkout, install Python `jsonschema`
 and run:

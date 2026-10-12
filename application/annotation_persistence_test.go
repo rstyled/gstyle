@@ -40,7 +40,7 @@ func TestDraftSaveFailurePreservesTheDraftAndSelection(t *testing.T) {
 
 func TestModelReloadsPersistedAnnotations(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "annotations.db")
-	report := domain.Report{Root: "/workspace/cyclo"}
+	report := domain.Report{Root: "/workspace/gstyle"}
 	annotation := Annotation{ID: "annotation-1", Message: "Keep this flat"}
 
 	store, err := sqlite.Open(path)

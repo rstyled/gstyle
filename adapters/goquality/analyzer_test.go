@@ -135,7 +135,7 @@ func TestFixtureGoldenAndDoubleRun(t *testing.T) {
 }
 
 func TestSelectionTagsAndIncompletePackages(t *testing.T) {
-	facts, err := (Analyzer{Root: "testdata/sample", Tests: true, BuildFlags: []string{"-tags=cyclo_fixture"}}).Extract(context.Background(), []string{"ignored.go"})
+	facts, err := (Analyzer{Root: "testdata/sample", Tests: true, BuildFlags: []string{"-tags=gstyle_fixture"}}).Extract(context.Background(), []string{"ignored.go"})
 	if err != nil {
 		t.Fatal(err)
 	}

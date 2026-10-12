@@ -1,34 +1,34 @@
 ---
-name: verify-cyclo
-description: "Drive cyclo the way a user or agent does: the complexity TUI treemap, headless `cyclo check`, `check --changed` as an agent-loop gate, `--skill`, and `bug-reducer`. Use when you need to prove cyclo's behavior on a real repo instead of trusting its unit tests."
+name: verify-gstyle
+description: "Drive gstyle the way a user or agent does: the complexity TUI treemap, headless `gstyle check`, `check --changed` as an agent-loop gate, `--skill`, and `bug-reducer`. Use when you need to prove gstyle's behavior on a real repo instead of trusting its unit tests."
 ---
 
-# Verify cyclo
+# Verify gstyle
 
-This skill drives the real cyclo binary against real Go code and captures proof.
+This skill drives the real gstyle binary against real Go code and captures proof.
 It is written for an agent that has never seen this repo: treat every command as
 literal, and keep quoted names and flags unchanged.
 
 ## Launch
 
-Cyclo has two runtimes. Build the binary once per run, then drive each feature
+Gstyle has two runtimes. Build the binary once per run, then drive each feature
 in its own isolated session:
 
 ```sh
-verify-cyclo build "$RUN_DIR"   # builds $RUN_DIR/cyclo from this repo
+verify-gstyle build "$RUN_DIR"   # builds $RUN_DIR/gstyle from this repo
 ```
 
-`verify-cyclo` is the shipped helper at `bin/verify-cyclo` (see Helpers).
+`verify-gstyle` is the shipped helper at `bin/verify-gstyle` (see Helpers).
 
 - **Headless commands** (`check`, `--skill`, `bug-reducer --tui=false`) run
   directly as child processes. Pipe their output: when stdout is not a TTY,
   `bug-reducer` and `check` emit plain text instead of dashboards.
-- **The TUI** (`cyclo [paths...]`) needs a real terminal: at least 100 columns
+- **The TUI** (`gstyle [paths...]`) needs a real terminal: at least 100 columns
   by 30 rows, driven through `script(1)` so bubbletea sees a PTY. It renders
   nothing useful on a smaller terminal or a bare pipe.
 
 ```sh
-verify-cyclo tui "$RUN_DIR/cyclo" "$TARGET_DIR" "$RUN_DIR" --wait 6 --keys 'eq'
+verify-gstyle tui "$RUN_DIR/gstyle" "$TARGET_DIR" "$RUN_DIR" --wait 6 --keys 'eq'
 ```
 
 This launches the TUI inside `script(1)` with `stty cols 160 rows 50`, waits
@@ -38,17 +38,17 @@ and `q` (quit). The full terminal transcript lands at
 
 **Isolation is mandatory, not optional:**
 
-- `go` must be on `PATH`: `cyclo check` shells out to the Go toolchain to load
+- `go` must be on `PATH`: `gstyle check` shells out to the Go toolchain to load
   packages, and exits 2 with `go command required` without it.
 - Point `XDG_STATE_HOME` at a per-run directory. The TUI persists annotation
-  notes in `$XDG_STATE_HOME/cyclo/annotations.db`; driving without isolation
+  notes in `$XDG_STATE_HOME/gstyle/annotations.db`; driving without isolation
   writes into the operator's real annotation store. The helper does this for
   TUI drives automatically (`$RUN_DIR/scratch/xdg-state`).
 - Pass `--control-port 0` to the TUI so the localhost JSON-RPC control server
   binds a random free port instead of the default `8197`. Never assume 8197 is
   free; never drive two TUIs on the same port.
 - `--changed` drives need their own temp git repo with at least one commit.
-  Craft fixtures there; never run `--changed` drives against the cyclo repo
+  Craft fixtures there; never run `--changed` drives against the gstyle repo
   itself unless the point is dogfooding its current diff.
 
 ## Doctor
@@ -57,7 +57,7 @@ One read-only check that answers "is this binary worth driving?" Run it before
 the first drive, and again after any failed drive before retrying:
 
 ```sh
-verify-cyclo doctor "$RUN_DIR/cyclo"
+verify-gstyle doctor "$RUN_DIR/gstyle"
 ```
 
 It verifies: the binary is executable; `check --help` prints the usage line;
@@ -89,7 +89,7 @@ under `features/`. The conventions:
 - `bug-reducer` takes `INPUT -- CHECKER [ARGS...]`; the checker receives the
   absolute candidate path as its last argument and exits 0 to accept.
   `--tui=false` forces the script-friendly summary line.
-- `cyclo --skill` takes no other arguments; anything extra prints a usage
+- `gstyle --skill` takes no other arguments; anything extra prints a usage
   error and exits nonzero.
 
 ## Evidence
@@ -119,7 +119,7 @@ Never put evidence under `scratch/` — cleanup removes scratch.
 ## Cleanup
 
 ```sh
-verify-cyclo cleanup "$RUN_DIR"
+verify-gstyle cleanup "$RUN_DIR"
 ```
 
 This removes `$RUN_DIR/scratch` (isolated `XDG_STATE_HOME`, temp git repos,
@@ -132,14 +132,14 @@ proof fails the run.
 
 ## Helpers
 
-`bin/verify-cyclo` is the only helper. It is executable; every subcommand:
+`bin/verify-gstyle` is the only helper. It is executable; every subcommand:
 
 ```sh
-verify-cyclo build <run-dir>            # build $RUN_DIR/cyclo from the repo
-verify-cyclo doctor <cyclo-bin>         # read-only readiness check
-verify-cyclo tui <cyclo-bin> <target-dir> <run-dir> [--wait N] [--keys KEYS]
+verify-gstyle build <run-dir>            # build $RUN_DIR/gstyle from the repo
+verify-gstyle doctor <gstyle-bin>         # read-only readiness check
+verify-gstyle tui <gstyle-bin> <target-dir> <run-dir> [--wait N] [--keys KEYS]
                                        # drive the TUI under script(1), save typescript
-verify-cyclo cleanup <run-dir>         # remove scratch + binary, keep evidence
+verify-gstyle cleanup <run-dir>         # remove scratch + binary, keep evidence
 ```
 
 `--keys` is a literal key string sent after `--wait` seconds (default 6);

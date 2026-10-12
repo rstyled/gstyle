@@ -1,7 +1,7 @@
 # String literals mistaken for suppression comments
 
 The input has a valid string constant containing a documentation example of
-`cyclo-allow`, immediately before `Plain`. The previous raw-text scan treats it
+`gstyle-allow`, immediately before `Plain`. The previous raw-text scan treats it
 as suppression metadata and emits an invalid suppression diagnostic. Suppression
 metadata now comes only from actual comment groups attached to the declaration.
 
@@ -13,7 +13,7 @@ unrelated failures and correctly analyzed candidates.
 From the repository root, with a binary built before this fix:
 
 ```sh
-python3 adapters/goquality/testdata/suppression-strings/check.py /path/to/affected-cyclo adapters/goquality/testdata/suppression-strings/reduced.go.txt
+python3 adapters/goquality/testdata/suppression-strings/check.py /path/to/affected-gstyle adapters/goquality/testdata/suppression-strings/reduced.go.txt
 ```
 
 The affected binary exits 0; the fixed binary exits 1. Regression coverage in

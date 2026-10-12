@@ -10,7 +10,7 @@ import "fmt"
 // the bug. Engler commercialized this as Coverity (closed source); the
 // open world never got the belief-inference engine.
 //
-// For cyclo: a `deviant_behavior` pattern. For each callee, tally beliefs
+// For gstyle: a `deviant_behavior` pattern. For each callee, tally beliefs
 // across call sites (is the error checked? is the result nil-checked?).
 // Flag sites where the behavior deviates from the overwhelming majority.
 // This generalizes PR-Miner with the MUST/MAY distinction.

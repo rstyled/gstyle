@@ -199,18 +199,18 @@ func TestFindValueClumps(t *testing.T) {
 }
 
 func TestValueObjectPreservesFuncAnnotation(t *testing.T) {
-	// Regression: grouping pid/windowID must not move the // cyclo-allow
+	// Regression: grouping pid/windowID must not move the // gstyle-allow
 	// annotation for performCalculatorStep into the rewritten return.
 	src := `package test
 
 import "context"
 
-// cyclo-allow(side_effect_density): Obtains a fresh observation.
+// gstyle-allow(side_effect_density): Obtains a fresh observation.
 func performCalculatorStep(ctx context.Context, pid int, windowID int) error {
 	return saveCalculatorScreenshot(ctx, pid, windowID)
 }
 
-// cyclo-allow(side_effect_density): Another function.
+// gstyle-allow(side_effect_density): Another function.
 func anotherStep(ctx context.Context, pid int, windowID int) error {
 	return saveCalculatorScreenshot(ctx, pid, windowID)
 }
@@ -225,7 +225,7 @@ func saveCalculatorScreenshot(ctx context.Context, pid int, windowID int) error 
 	lines := strings.Split(out, "\n")
 	for i, line := range lines {
 		if strings.Contains(line, "func performCalculatorStep") {
-			if i == 0 || !strings.Contains(lines[i-1], "cyclo-allow") {
+			if i == 0 || !strings.Contains(lines[i-1], "gstyle-allow") {
 				t.Errorf("annotation not above performCalculatorStep:\n%s", out)
 			}
 		}
@@ -241,7 +241,7 @@ func saveCalculatorScreenshot(ctx context.Context, pid int, windowID int) error 
 		}
 		if inPerform {
 			braceDepth += strings.Count(line, "{") - strings.Count(line, "}")
-			if strings.Contains(line, "cyclo-allow") && !strings.Contains(line, "func ") {
+			if strings.Contains(line, "gstyle-allow") && !strings.Contains(line, "func ") {
 				// Annotation inside function body = misplaced (should be above func).
 				t.Errorf("annotation inside performCalculatorStep body:\n%s", out)
 				break

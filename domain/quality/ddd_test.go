@@ -76,7 +76,7 @@ func TestDDDMutableIdentityRule(t *testing.T) {
 
 func TestDDDRulesSuppressible(t *testing.T) {
 	f := fact("checkout", 1)
-	f.PrecedingLine = "// cyclo-allow(aggregate, repository, mutable_identity): deliberate"
+	f.PrecedingLine = "// gstyle-allow(aggregate, repository, mutable_identity): deliberate"
 	f.DDD = []DDDViolation{
 		{RuleID: "aggregate", Line: 2, Detail: "Order"},
 		{RuleID: "aggregate", Line: 3, Detail: "OrderLine"},

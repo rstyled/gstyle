@@ -33,8 +33,8 @@ The repository's own vet checks remain enabled and pass.
 From the repository root, with a binary built before these fixes:
 
 ```sh
-cyclo bug-reducer --language go --go-parser /path/to/go.so --tui=false --timeout 30s --output /tmp/paren-reduced.go adapters/goquality/testdata/parenthesized-places/input.go.txt -- python3 adapters/goquality/testdata/promoted-pointer/check.py /path/to/affected-cyclo
-cyclo bug-reducer --language go --go-parser /path/to/go.so --tui=false --timeout 30s --output /tmp/blank-reduced.go adapters/goquality/testdata/parenthesized-places/blank-input.go.txt -- python3 adapters/goquality/testdata/parenthesized-places/blank-check.py /path/to/affected-cyclo
+gstyle bug-reducer --language go --go-parser /path/to/go.so --tui=false --timeout 30s --output /tmp/paren-reduced.go adapters/goquality/testdata/parenthesized-places/input.go.txt -- python3 adapters/goquality/testdata/promoted-pointer/check.py /path/to/affected-gstyle
+gstyle bug-reducer --language go --go-parser /path/to/go.so --tui=false --timeout 30s --output /tmp/blank-reduced.go adapters/goquality/testdata/parenthesized-places/blank-input.go.txt -- python3 adapters/goquality/testdata/parenthesized-places/blank-check.py /path/to/affected-gstyle
 ```
 
 Outputs must not exist. Rechecking the saved results returns 0 with the affected

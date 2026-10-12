@@ -4,7 +4,7 @@ import (
 	"go/ast"
 	"go/token"
 
-	cyclo "github.com/fzipp/gocyclo"
+	gstyle "github.com/fzipp/gocyclo"
 )
 
 // gocyclo recognizes only direct literals and names every initializer after the
@@ -31,7 +31,7 @@ func normalizeValueSpec(spec *ast.ValueSpec, fileSet *token.FileSet, names map[i
 	}
 }
 
-func nameFunctionLiterals(stats cyclo.Stats, names map[int]string) {
+func nameFunctionLiterals(stats gstyle.Stats, names map[int]string) {
 	for index := range stats {
 		name, ok := names[stats[index].Pos.Offset]
 		if ok {
