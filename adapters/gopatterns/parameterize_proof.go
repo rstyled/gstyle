@@ -141,6 +141,9 @@ func compatibleInterfaces(a, b *pdg.Graph) bool {
 	if a == nil || b == nil {
 		return false
 	}
+	if a.Tables == nil || b.Tables == nil {
+		return false
+	}
 	return compatibleParameters(a, a.Function.Inputs, b, b.Function.Inputs) && compatibleParameters(a, a.Function.Outputs, b, b.Function.Outputs)
 }
 
@@ -224,6 +227,10 @@ func (s *parameterizationSource) proofSpec(path string, pair *parameterizationPa
 }
 
 func currentGraphSource(graph *pdg.Graph, digest string) bool {
+	// Validate before source/call lookups dereference graph-local records.
+	if pdg.Validate(graph) != nil {
+		return false
+	}
 	if len(graph.Sources) != 1 {
 		return false
 	}

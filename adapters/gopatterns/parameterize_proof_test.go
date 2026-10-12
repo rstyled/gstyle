@@ -241,3 +241,24 @@ func right() int { return 2 }
 		t.Fatal("stale authorized proof accepted")
 	}
 }
+
+func TestParameterizationRejectsInvalidGraphBeforeCallableLookup(t *testing.T) {
+	extraction, report := proofExtraction(t, proofFixture)
+	for i := range extraction.Funcs {
+		graph := &extraction.Funcs[i].Pdg
+		if graph.Tables.Text(graph.Function.ID) != "example.First" {
+			continue
+		}
+		for j := range graph.Nodes {
+			if graph.Nodes[j].Category == pdg.Call {
+				graph.Nodes[j].Span = 9999
+			}
+		}
+	}
+	if err := VerifyParameterizations(&report, extraction); err != nil {
+		t.Fatal(err)
+	}
+	if report.Candidates[0].FixSpec != nil || len(report.Candidates[0].CounterEvidence) == 0 {
+		t.Fatal("invalid source namespace was not rejected")
+	}
+}
