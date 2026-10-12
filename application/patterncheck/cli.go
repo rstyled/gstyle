@@ -99,6 +99,9 @@ func GetReport(ctx context.Context, args []string) (*patterns.PatternsReport, er
 		DomainServices:    pdgs.DomainServices,
 		WlCache:           cache,
 	})
+	if err := gopatterns.VerifyParameterizations(&report, pdgs); err != nil {
+		return nil, fmt.Errorf("verify parameterization: %w", err)
+	}
 	return &report, nil
 }
 

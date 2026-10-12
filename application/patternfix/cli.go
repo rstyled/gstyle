@@ -398,17 +398,24 @@ func mineCandidates(ctx context.Context, opts options) ([]patterns.Candidate, er
 	}
 	facts, anemicHits, missingHits, serviceHits := toFacts(ext)
 	report := patterns.Run(facts, patterns.Options{DeclarationOrders: ext.DeclarationOrders, AnemicModels: anemicHits, MissingIdentities: missingHits, DomainServices: serviceHits})
+	if err := gopatterns.VerifyParameterizations(&report, ext); err != nil {
+		return nil, fmt.Errorf("verify parameterization: %w", err)
+	}
+	return fixableCandidates(report, opts.kind), nil
+}
+
+func fixableCandidates(report patterns.PatternsReport, kind string) []patterns.Candidate {
 	var candidates []patterns.Candidate
 	for _, c := range report.Candidates {
 		if c.FixSpec == nil {
 			continue
 		}
-		if opts.kind != "all" && string(c.Kind) != opts.kind {
+		if kind != "all" && string(c.Kind) != kind {
 			continue
 		}
 		candidates = append(candidates, c)
 	}
-	return candidates, nil
+	return candidates
 }
 
 // candidateSpecs extracts FixSpecs from filtered candidates.

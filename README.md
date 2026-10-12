@@ -370,3 +370,14 @@ declarations. Grouped type declarations stay grouped. Files with Go directives,
 cgo imports, or multiple declarations on one line are left unchanged. The
 candidate covers the whole file: `--changed` selects a file if its declaration
 range overlaps the diff, and may reorder unchanged functions in that file.
+
+## Verify parameterization suggestions
+
+Parameterization suggestions describe aligned graph regions and their coverage;
+a partial match does not mean the listed differences are exhaustive. Automatic
+extraction requires two adjacent free functions with a complete supported AST
+match, known compatible PDG parameter and callable types, and a current source
+snapshot. Unknown or incompatible facts leave the finding advisory, with a reason.
+The fix targets only that pair. If another fix changes the source first, re-mine
+with `gstyle fix --phased` before parameterizing. Callable types are interned PDG
+extensions; no second compiler load is required.
