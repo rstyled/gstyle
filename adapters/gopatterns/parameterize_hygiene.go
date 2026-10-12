@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"go/types"
 	"slices"
 	"strings"
 
@@ -129,7 +130,7 @@ func freshHelperName(source *parameterizationSource, pair *parameterizationPair)
 }
 
 func validHelperIdentifier(name string) bool {
-	return token.IsIdentifier(name) && name != "_" && name != "init"
+	return token.IsIdentifier(name) && name != "_" && name != "init" && types.Universe.Lookup(name) == nil
 }
 
 func frameSensitiveCalls(graph *pdg.Graph) bool {

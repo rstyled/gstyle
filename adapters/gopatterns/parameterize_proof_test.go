@@ -63,7 +63,7 @@ func proofExtractionWithExtra(t *testing.T, src, extra string) (*Extraction, pat
 	}
 	var sites []patterns.Site
 	for _, fp := range extraction.Funcs {
-		if fp.Name != "example.First" && fp.Name != "example.Second" {
+		if !strings.HasPrefix(fp.Name, "example.First") && !strings.HasPrefix(fp.Name, "example.Second") {
 			continue
 		}
 		sites = append(sites, patterns.Site{ID: fp.Name, Name: fp.Name, Path: fp.Path, Line: fp.Line, EndLine: fp.EndLine})
@@ -392,4 +392,32 @@ func TestParameterizationRejectsInvalidGraphBeforeCallableLookup(t *testing.T) {
 	if report.Candidates[0].FixSpec != nil || len(report.Candidates[0].CounterEvidence) == 0 {
 		t.Fatal("invalid graph accepted")
 	}
+}
+
+func TestHelperNameDoesNotShadowPredeclaredNames(t *testing.T) {
+	const source = `package example
+func FirstLen(x int)int{return left(x)}
+func SecondLen(x int)int{return right(x)}
+func left(x int)int{return x}
+func right(x int)int{return x+1}
+`
+	extraction, report := proofExtractionWithExtra(t, source, "package example\nfunc BuiltinUse()int{return len([]int{1,2})}\n")
+	if err := VerifyParameterizations(&report, extraction); err != nil {
+		t.Fatal(err)
+	}
+	spec := report.Candidates[0].FixSpec
+	if spec == nil {
+		t.Fatal(report.Candidates[0])
+	}
+	if spec.Params["helper_name"] == "len" {
+		t.Fatal("helper shadows builtin in another file")
+	}
+	out, err := ApplyFix(spec, []byte(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("sample.go", out, 0644); err != nil {
+		t.Fatal(err)
+	}
+	assertParameterizationModule(t)
 }
