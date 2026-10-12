@@ -288,6 +288,16 @@ func First() int { return left() }
 func Second() int { return right() }
 func left() int {return 1}
 func right() int {return 2}`},
+		{"blank forwarding", `package example
+func First(_ int) int {return left()}
+func Second(_ int) int {return right()}
+func left()int{return 1}
+func right()int{return 2}`},
+		{"unnamed forwarding", `package example
+func First(int) int {return left()}
+func Second(int) int {return right()}
+func left()int{return 1}
+func right()int{return 2}`},
 		{"builtins", `package example
 func First(xs []int) int { return len(xs) }
 func Second(xs []int) int { return cap(xs) }`},

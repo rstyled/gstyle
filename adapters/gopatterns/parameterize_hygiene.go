@@ -26,6 +26,23 @@ func functionDirective(doc *ast.CommentGroup) bool {
 	return false
 }
 
+func forwardableParameters(fn *ast.FuncDecl) bool {
+	if fn.Type.Params == nil {
+		return true
+	}
+	for _, field := range fn.Type.Params.List {
+		if len(field.Names) == 0 {
+			return false
+		}
+		for _, name := range field.Names {
+			if name.Name == "_" {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func (source *parameterizationSource) rewriteRisk(pair *parameterizationPair) string {
 	if len(source.packageNames) == 0 {
 		return "package binding names are unavailable for helper extraction"

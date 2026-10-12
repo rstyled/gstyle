@@ -185,7 +185,7 @@ func safeToExtract(fset *token.FileSet, a, b *ast.FuncDecl) bool {
 }
 
 func safeResults(fn *ast.FuncDecl) bool {
-	return fn.Type.TypeParams == nil && !hasNamedResults(fn)
+	return fn.Type.TypeParams == nil && !hasNamedResults(fn) && forwardableParameters(fn)
 }
 
 // allIdentHoles reports whether every hole is a simple identifier.
