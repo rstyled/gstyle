@@ -350,3 +350,23 @@ The schema test skips when no path is set. Tests and export do not fetch schemas
 Scope IDs use relative paths and lexical byte ranges; they stay deterministic for
 unchanged source and extraction root. Dependencies remain approximate; structural
 schema validity does not establish compat extraction or matching conformance.
+
+## Order declarations by type
+
+`gstyle patterns .` reports `declaration_order` when declarations break the
+order: type, constructors, exported methods, unexported methods. Other functions
+come last. Type groups and declarations within each category keep their order.
+Constructors use a `New` or `new` prefix and return a local named type (or pointer
+as the first result). Other factory names are treated as ordinary functions.
+
+```sh
+gstyle fix --kind declaration_order .          # preview the diff
+gstyle fix --kind declaration_order --apply .  # write the change
+```
+
+The fix moves source blocks with their comments, then runs gofmt. It preserves
+function bodies and the relative order of init functions and non-function
+declarations. Grouped type declarations stay grouped. Files with Go directives,
+cgo imports, or multiple declarations on one line are left unchanged. The
+candidate covers the whole file: `--changed` selects a file if its declaration
+range overlaps the diff, and may reorder unchanged functions in that file.

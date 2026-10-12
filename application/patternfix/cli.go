@@ -30,7 +30,7 @@ Dry-run by default (shows a diff); --apply writes the files.
 
   --kind KIND   which fixes to apply: guard_clause, value_object, parameterize,
                 trait_method, capability_set, enum_dispatch, generic_fn,
-                anemic_model, primitive_obsession, or all (default)
+                anemic_model, primitive_obsession, declaration_order, or all (default)
   --apply       write the fixes to disk (default: dry-run diff only)
   --changed     only fix candidates in functions touched by the git diff
   --base REF    git base for --changed (default: merge-base with main/master)
@@ -67,6 +67,7 @@ var fixPhases = [][]patterns.CandidateKind{
 		patterns.DomainService, patterns.AnemicModel, patterns.TypeSwitch, patterns.EnumDispatch,
 		patterns.TraitMethod, patterns.CapabilitySet, patterns.GenericFn},
 	{patterns.Parameterize},
+	{patterns.DeclarationOrder},
 }
 
 // maxPhasedCycles bounds the fixpoint loop. In practice it terminates
@@ -396,7 +397,7 @@ func mineCandidates(ctx context.Context, opts options) ([]patterns.Candidate, er
 		return nil, fmt.Errorf("extract: %w", err)
 	}
 	facts, anemicHits, missingHits, serviceHits := toFacts(ext)
-	report := patterns.Run(facts, patterns.Options{AnemicModels: anemicHits, MissingIdentities: missingHits, DomainServices: serviceHits})
+	report := patterns.Run(facts, patterns.Options{DeclarationOrders: ext.DeclarationOrders, AnemicModels: anemicHits, MissingIdentities: missingHits, DomainServices: serviceHits})
 	var candidates []patterns.Candidate
 	for _, c := range report.Candidates {
 		if c.FixSpec == nil {
@@ -587,7 +588,7 @@ func parseOptions(args []string) (options, error) {
 }
 
 func (opts options) validate() error {
-	valid := []string{"guard_clause", "value_object", "parameterize", "trait_method", "capability_set", "enum_dispatch", "generic_fn", "anemic_model", "primitive_obsession", "type_switch", "entity_identity", "missing_identity", "mutable_identity", "aggregate", "repository", "factory", "specification", "domain_service", "all"}
+	valid := []string{"guard_clause", "value_object", "parameterize", "trait_method", "capability_set", "enum_dispatch", "generic_fn", "anemic_model", "primitive_obsession", "type_switch", "entity_identity", "missing_identity", "mutable_identity", "aggregate", "repository", "factory", "specification", "domain_service", "declaration_order", "all"}
 	if !slices.Contains(valid, opts.kind) {
 		return fmt.Errorf("kind must be one of %v", valid)
 	}

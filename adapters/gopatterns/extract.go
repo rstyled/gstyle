@@ -77,7 +77,8 @@ type FuncPdg struct {
 // Extraction is the full result of package analysis: per-function PDGs
 // plus package-level type findings (anemic models).
 type Extraction struct {
-	Funcs []FuncPdg
+	DeclarationOrders []patterns.Candidate
+	Funcs             []FuncPdg
 	// AnemicModels are exported methodless structs with 3+ functions
 	// operating on their fields (DDD anemic domain model detection).
 	AnemicModels []patterns.AnemicModelHit
@@ -105,19 +106,24 @@ func Extract(ctx context.Context, root string, paths []string) (*Extraction, err
 	if err != nil {
 		return nil, err
 	}
-	out := &Extraction{}
+	var funcsOut []FuncPdg
+	var orders []patterns.Candidate
+	var anemic []patterns.AnemicModelHit
+	var missing []patterns.MissingIdentityHit
+	var services []patterns.DomainServiceHit
 	pool := pdg.NewBuilder()
 	for _, pkg := range pkgs {
 		funcs, err := packagePdgs(pkg, abs, pool)
 		if err != nil {
 			return nil, err
 		}
-		out.Funcs = append(out.Funcs, funcs...)
-		out.AnemicModels = append(out.AnemicModels, findAnemicModels(pkg, abs)...)
-		out.MissingIdentities = append(out.MissingIdentities, findMissingIdentities(pkg, abs)...)
-		out.DomainServices = append(out.DomainServices, findDomainServices(pkg, abs)...)
+		orders = append(orders, findDeclarationOrders(pkg, abs, paths)...)
+		funcsOut = append(funcsOut, funcs...)
+		anemic = append(anemic, findAnemicModels(pkg, abs)...)
+		missing = append(missing, findMissingIdentities(pkg, abs)...)
+		services = append(services, findDomainServices(pkg, abs)...)
 	}
-	return out, nil
+	return &Extraction{Funcs: funcsOut, DeclarationOrders: orders, AnemicModels: anemic, MissingIdentities: missing, DomainServices: services}, nil
 }
 
 func absRoot(root string) (string, error) {
