@@ -27,6 +27,7 @@ type irBuilder struct {
 	stack                                []ast.Node
 	policy, sourceEvidence, sourceOrigin pdg.Ref
 	executionEvidence, executionOrigin   pdg.Ref
+	scalarDefinitions                    bool
 }
 
 func newIRBuilder(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.Builder) *irBuilder {
@@ -36,7 +37,7 @@ func newIRBuilder(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pd
 		symbols:        map[types.Object]pdg.Ref{}, nodes: map[ast.Node]pdg.Ref{},
 		writeTargets: map[ast.Node]bool{},
 	}
-	b.policy = pool.Policy("gstyle.abstraction", "0.1.0")
+	b.policy = pool.Policy("gstyle.abstraction", "0.2.0")
 	b.sourceEvidence = pool.Evidence(pdg.Approximated, "Operation identified in typed source; dependency completeness is separate.")
 	b.sourceOrigin = pool.Origin(pdg.SourceOrigin, "Go source operation; abstraction lowering is approximate.")
 	b.header(pkg, fn, path)
@@ -53,7 +54,7 @@ func (b *irBuilder) header(pkg *packages.Package, fn *ast.FuncDecl, path string)
 	b.graph = pdg.Graph{
 		Tables: p.Tables, Profile: b.policy,
 		Producer: pdg.Producer{
-			Name: p.Text("gstyle"), Version: p.Text("pdg-ir-0.1.0"), Language: p.Text("go"),
+			Name: p.Text("gstyle"), Version: p.Text("pdg-ir-0.2.0"), Language: p.Text("go"),
 			LanguageVersion: p.Missing(pdg.Unknown, "Compiler language version is not recorded."), Configuration: p.Text("{}"),
 		},
 		Sources: []pdg.Source{{ID: p.Text(path), Path: p.Text(path), ContentIdentity: p.Missing(pdg.Unknown, "Source content digest is not computed.")}},
@@ -156,7 +157,8 @@ func buildGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.
 	b.ir.enrich(fn.Body)
 	b.ir.returnValues(fn.Body)
 	b.ir.references()
-	b.ir.execution(fn.Body)
+	flow, dom := b.ir.execution(fn.Body)
+	b.ir.reachingDefinitions(fn.Body, flow, dom)
 	b.ir.capabilities()
 	if err := b.ir.pack(); err != nil {
 		return pdg.Graph{}, err

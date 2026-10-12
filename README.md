@@ -351,6 +351,12 @@ Scope IDs use relative paths and lexical byte ranges; they stay deterministic fo
 unchanged source and extraction root. Dependencies remain approximate; structural
 schema validity does not establish compat extraction or matching conformance.
 
+For acyclic integer/boolean local code, native data edges now identify reaching
+definitions across reassignment and `if` branches, with RHS reads before writes.
+This replaces first-binding data edges in that subset. Calls, memory, loops and
+short-circuit expressions remain unsupported by this analysis; control dependence,
+value joins and strict reference-count/projection validation remain incomplete.
+
 ## Order declarations by type
 
 `gstyle patterns .` reports `declaration_order` when declarations break the
@@ -386,6 +392,7 @@ ID, canonical node IDs where available, graph conformance, and missing or
 approximate capabilities. Complete coverage describes the required dependency
 facts for that analysis; it is not a security guarantee or strict compat admission.
 Aliases, loop-carried flow, and full producer conformance still need implementation.
+
 ## Verify parameterization suggestions
 
 Parameterization suggestions describe aligned graph regions and their coverage;

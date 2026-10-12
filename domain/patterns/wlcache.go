@@ -21,7 +21,7 @@ type WlCache struct {
 // wlCacheVersion versions the cache format AND the WL computation. Bump it
 // whenever label(), the kernel, or canonicalization changes, so stale
 // entries from an older miner are never reused.
-const wlCacheVersion = 3
+const wlCacheVersion = 4
 
 // wlCacheFile is the JSON-serialized cache with a version header.
 type wlCacheFile struct {
@@ -70,7 +70,21 @@ func pdgKey(pdg *MiningGraph) string {
 		write(string(e.Kind))
 		write(strconv.Itoa(e.ArgPos))
 	}
+	writePaperKey(write, pdg.Paper)
 	return strconv.FormatUint(h, 16)
+}
+
+// Canonical source counts can change even when the abstraction view does not.
+// Cached characteristic vectors therefore need these facts in their identity.
+func writePaperKey(write func(string), paper *PaperCharacteristics) {
+	if paper == nil {
+		write("no-source-counts")
+		return
+	}
+	write(strconv.FormatBool(paper.ReferenceKnown))
+	for _, count := range paper.Counts {
+		write(strconv.FormatFloat(count, 'g', -1, 64))
+	}
 }
 
 // Get returns the cached WL refinement for pdg, rebuilding the graph from

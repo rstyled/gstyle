@@ -29,6 +29,10 @@ func (b *irBuilder) capabilities() {
 	capabilities := make([]pdg.NamedCapability, len(pdg.RequiredCapabilities))
 	for i, name := range pdg.RequiredCapabilities {
 		c := irCapabilities[name]
+		if name == "scalar_reaching_definitions" && b.scalarDefinitions {
+			c.status = pdg.Supported
+			c.description = scalarDefinitionDescription
+		}
 		capabilities[i] = pdg.NamedCapability{
 			Name: b.pool.Text(name), Evidence: b.pool.Evidence(c.status, c.description),
 		}
