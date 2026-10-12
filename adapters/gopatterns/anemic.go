@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"unicode"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/domain/patterns"
 	"golang.org/x/tools/go/packages"
 )
 

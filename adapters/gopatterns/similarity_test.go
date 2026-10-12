@@ -3,7 +3,7 @@ package gopatterns
 import (
 	"testing"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
 // TestReextractedSimilarity validates the extractor end-to-end: PDGs

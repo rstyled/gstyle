@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/shanejonas/cyclo/domain"
+	"github.com/rstyled/gstyle/domain"
 	_ "modernc.org/sqlite"
 )
 

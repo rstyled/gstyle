@@ -1,6 +1,6 @@
 package patterns
 
-import "github.com/shanejonas/cyclo/domain/pdg"
+import "github.com/rstyled/gstyle/domain/pdg"
 
 // ParamInfo is a function parameter's name and primitive type name
 // (e.g. {Name: "amount", Type: "int"}). Only basic types are recorded;

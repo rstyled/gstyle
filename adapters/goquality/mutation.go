@@ -7,7 +7,7 @@ import (
 	"go/types"
 	"strings"
 
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/domain/quality"
 )
 
 type referenceBinding struct {

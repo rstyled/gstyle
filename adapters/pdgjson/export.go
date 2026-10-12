@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 type object = map[string]any

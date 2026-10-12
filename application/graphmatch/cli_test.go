@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shanejonas/cyclo/domain/ccgraph"
+	"github.com/rstyled/gstyle/domain/ccgraph"
 )
 
 func inputPath(t *testing.T) string {

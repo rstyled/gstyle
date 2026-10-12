@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/shanejonas/cyclo/domain"
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/domain"
+	"github.com/rstyled/gstyle/domain/quality"
 )
 
 func (m Model) detailsLines(width, height int, title string) []string {

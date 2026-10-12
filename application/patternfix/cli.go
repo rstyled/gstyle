@@ -1,4 +1,4 @@
-// Package patternfix is the IO boundary for cyclo fix: static auto-fix
+// Package patternfix is the IO boundary for gstyle fix: static auto-fix
 // for patterns miner candidates. No LLM, no tokens — pure AST mechanics.
 // Dry-run by default (prints a diff); --apply writes files.
 //
@@ -16,12 +16,12 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/shanejonas/cyclo/adapters/gitchanged"
-	"github.com/shanejonas/cyclo/adapters/gopatterns"
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/adapters/gitchanged"
+	"github.com/rstyled/gstyle/adapters/gopatterns"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
-const usage = `Usage: cyclo fix [OPTIONS] [DIRECTORIES OR GO FILES...]
+const usage = `Usage: gstyle fix [OPTIONS] [DIRECTORIES OR GO FILES...]
 
 Statically apply fixes for patterns miner candidates. No LLM, no tokens:
 pure AST rewrites that are provably behavior-preserving.

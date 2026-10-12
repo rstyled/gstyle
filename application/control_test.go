@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/shanejonas/cyclo/application"
-	"github.com/shanejonas/cyclo/domain"
+	"github.com/rstyled/gstyle/application"
+	"github.com/rstyled/gstyle/domain"
 )
 
 func TestControlAPIAdvertisesItsRuntimeAddressAndMethods(t *testing.T) {

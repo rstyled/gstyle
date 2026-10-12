@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shanejonas/cyclo/adapters/gopatterns"
+	"github.com/rstyled/gstyle/adapters/gopatterns"
 )
 
 func TestPDGJSONExport(t *testing.T) {

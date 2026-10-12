@@ -7,7 +7,7 @@ import (
 	"go/token"
 	"strings"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
 // applyEnumDispatchFix converts an enum-value switch to a dispatch table.

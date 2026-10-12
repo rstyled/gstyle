@@ -9,7 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/shanejonas/cyclo/domain"
+	"github.com/rstyled/gstyle/domain"
 )
 
 const (
@@ -42,7 +42,7 @@ func (m Model) View() tea.View {
 	view := tea.NewView(content)
 	view.AltScreen = true
 	view.MouseMode = tea.MouseModeCellMotion
-	view.WindowTitle = "cyclo"
+	view.WindowTitle = "gstyle"
 	return view
 }
 

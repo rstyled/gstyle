@@ -21,22 +21,22 @@ Implemented the smallest gocyclo-backed Bubble Tea model that satisfies the appr
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-go-cache go test ./... -count=1
 --- FAIL: TestStartWithTheCurrentRepository
     model_test.go:12: self-scan public TUI contract failed: exit status 1
-        github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui: no non-test Go files in /home/shanejonas/code/github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui
+        github.com/rstyled/gstyle/adapters/inbound/tui: no non-test Go files in /home/shanejonas/code/github.com/rstyled/gstyle/adapters/inbound/tui
 --- FAIL: TestRankFilesAndFunctionsByComplexity
     model_test.go:16: ranking public TUI contract failed: exit status 1
-        github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui: no non-test Go files in /home/shanejonas/code/github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui
+        github.com/rstyled/gstyle/adapters/inbound/tui: no non-test Go files in /home/shanejonas/code/github.com/rstyled/gstyle/adapters/inbound/tui
 --- FAIL: TestNavigateFilesAndFunctions
     model_test.go:20: navigation public TUI contract failed: exit status 1
-        github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui: no non-test Go files in /home/shanejonas/code/github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui
+        github.com/rstyled/gstyle/adapters/inbound/tui: no non-test Go files in /home/shanejonas/code/github.com/rstyled/gstyle/adapters/inbound/tui
 --- FAIL: TestRefreshAnAnalysis
     model_test.go:24: refresh public TUI contract failed: exit status 1
-        github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui: no non-test Go files in /home/shanejonas/code/github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui
+        github.com/rstyled/gstyle/adapters/inbound/tui: no non-test Go files in /home/shanejonas/code/github.com/rstyled/gstyle/adapters/inbound/tui
 --- FAIL: TestKeepNarrowTerminalsUsefulAndEasyToLeave
     model_test.go:28: narrow public TUI contract failed: exit status 1
-        github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui: no non-test Go files in /home/shanejonas/code/github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui
+        github.com/rstyled/gstyle/adapters/inbound/tui: no non-test Go files in /home/shanejonas/code/github.com/rstyled/gstyle/adapters/inbound/tui
 FAIL
-FAIL github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui
-FAIL github.com/shanejonas/cyclomatic-complexity-tui/features
+FAIL github.com/rstyled/gstyle/adapters/inbound/tui
+FAIL github.com/rstyled/gstyle/features
 FAIL
 ```
 
@@ -47,21 +47,21 @@ $ GOCACHE=/tmp/cyclomatic-complexity-tui-build-cache go build ./...
 (no output)
 
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-test-cache go test ./... -count=1
-ok   github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui
-?    github.com/shanejonas/cyclomatic-complexity-tui/adapters/outbound/gocyclo [no test files]
-?    github.com/shanejonas/cyclomatic-complexity-tui/domain [no test files]
-ok   github.com/shanejonas/cyclomatic-complexity-tui/features
-?    github.com/shanejonas/cyclomatic-complexity-tui/ports [no test files]
+ok   github.com/rstyled/gstyle/adapters/inbound/tui
+?    github.com/rstyled/gstyle/adapters/outbound/gocyclo [no test files]
+?    github.com/rstyled/gstyle/domain [no test files]
+ok   github.com/rstyled/gstyle/features
+?    github.com/rstyled/gstyle/ports [no test files]
 
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-vet-cache go vet ./...
 (no output)
 
 $ GOCACHE=/tmp/cyclomatic-complexity-tui-race-cache go test -race ./... -count=1
-ok   github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui
-?    github.com/shanejonas/cyclomatic-complexity-tui/adapters/outbound/gocyclo [no test files]
-?    github.com/shanejonas/cyclomatic-complexity-tui/domain [no test files]
-ok   github.com/shanejonas/cyclomatic-complexity-tui/features
-?    github.com/shanejonas/cyclomatic-complexity-tui/ports [no test files]
+ok   github.com/rstyled/gstyle/adapters/inbound/tui
+?    github.com/rstyled/gstyle/adapters/outbound/gocyclo [no test files]
+?    github.com/rstyled/gstyle/domain [no test files]
+ok   github.com/rstyled/gstyle/features
+?    github.com/rstyled/gstyle/ports [no test files]
 ```
 
 The immutable validation contract still has SHA-256 `c892f85d537b29647951436463daa5af6e9b8f064c4b424f35cf4b16b3b14eb6`.

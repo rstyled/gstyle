@@ -19,7 +19,7 @@ func TestSkillScopesPullRequestAnalysisToChangedGoFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := "git diff --name-only -z --diff-filter=ACMR main -- '*.go' | xargs -0 -r -o cyclo"
+	want := "git diff --name-only -z --diff-filter=ACMR main -- '*.go' | xargs -0 -r -o gstyle"
 	if !strings.Contains(output.String(), want) {
 		t.Fatalf("skill does not scope analysis to the pull-request diff:\n%s", output.String())
 	}

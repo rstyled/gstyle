@@ -2,7 +2,7 @@ package pdgjson
 
 import (
 	"encoding/json"
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 func (x exporter) producer() object {

@@ -6,7 +6,7 @@ import (
 	"go/types"
 	"slices"
 
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/domain/quality"
 )
 
 func (x *extractor) call(call *ast.CallExpr) {

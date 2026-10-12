@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/shanejonas/cyclo/application/patterncheck"
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/application/patterncheck"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
-// Run implements `cyclo next`: show the single highest-impact pattern
+// Run implements `gstyle next`: show the single highest-impact pattern
 // candidate with fix instructions. Agent-focused: one thing, not a firehose.
 func Run(ctx context.Context, args []string, output io.Writer) error {
 	report, err := patterncheck.GetReport(ctx, args)
@@ -27,11 +27,11 @@ func Run(ctx context.Context, args []string, output io.Writer) error {
 	for _, s := range top.Sites {
 		fmt.Fprintf(output, "  %s:%d %s\n", s.Path, s.Line, s.Name)
 	}
-	fmt.Fprintf(output, "\nFix with: cyclo fix --kind %s %s\n", top.Kind, top.Sites[0].Path)
+	fmt.Fprintf(output, "\nFix with: gstyle fix --kind %s %s\n", top.Kind, top.Sites[0].Path)
 	return nil
 }
 
-// Score implements `cyclo score`: a single 0-100 north-star number.
+// Score implements `gstyle score`: a single 0-100 north-star number.
 // 100 = clean, lower = more issues. Weighted by severity.
 func Score(ctx context.Context, args []string, output io.Writer) error {
 	report, err := patterncheck.GetReport(ctx, args)

@@ -11,7 +11,7 @@ import (
 	"os/exec"
 	"sort"
 
-	"github.com/shanejonas/cyclo/adapters/reducer"
+	"github.com/rstyled/gstyle/adapters/reducer"
 )
 
 type GoParser struct {

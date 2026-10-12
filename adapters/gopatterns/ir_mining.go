@@ -4,8 +4,8 @@ import (
 	"go/ast"
 	"strconv"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/domain/patterns"
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 func (b *builder) matchingNode(n patterns.PdgNode) int {

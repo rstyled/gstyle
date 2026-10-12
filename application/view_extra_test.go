@@ -8,7 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/shanejonas/cyclo/domain"
+	"github.com/rstyled/gstyle/domain"
 )
 
 func TestViewUsesAlternateScreen(t *testing.T) {
@@ -27,7 +27,7 @@ func TestViewEnablesMouseWheelEvents(t *testing.T) {
 
 func TestViewUsesCycloName(t *testing.T) {
 	view := (Model{width: 120}).View()
-	if view.WindowTitle != "cyclo" {
+	if view.WindowTitle != "gstyle" {
 		t.Fatalf("window title = %q, want cyclo", view.WindowTitle)
 	}
 }

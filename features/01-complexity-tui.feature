@@ -1,4 +1,4 @@
-# Implementation: github.com/shanejonas/cyclomatic-complexity-tui/adapters/inbound/tui
+# Implementation: github.com/rstyled/gstyle/adapters/inbound/tui
 Feature: Explore Go complexity in the terminal
   Developers can find risky Go code without leaving a compact terminal workflow.
 

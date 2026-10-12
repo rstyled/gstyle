@@ -6,7 +6,7 @@ import (
 	"go/types"
 	"strings"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
 // gostaticanalysis extractors: nilerr, forcetypeassert, typednil.

@@ -12,14 +12,14 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/shanejonas/cyclo/adapters/gitchanged"
-	"github.com/shanejonas/cyclo/adapters/goquality"
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/adapters/gitchanged"
+	"github.com/rstyled/gstyle/adapters/goquality"
+	"github.com/rstyled/gstyle/domain/quality"
 )
 
 var ErrFindings = errors.New("quality guardrails exceeded")
 
-const usage = `Usage: cyclo check [OPTIONS] [DIRECTORIES OR GO FILES...]
+const usage = `Usage: gstyle check [OPTIONS] [DIRECTORIES OR GO FILES...]
 
 Extract typed Go facts and evaluate code quality guardrails. Defaults to .
   --config PATH     TOML policy; unspecified values retain defaults

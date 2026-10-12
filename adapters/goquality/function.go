@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/shanejonas/cyclo/adapters/gopatterns"
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/adapters/gopatterns"
+	"github.com/rstyled/gstyle/domain/quality"
 	"golang.org/x/tools/go/packages"
 )
 

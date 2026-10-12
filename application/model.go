@@ -4,7 +4,7 @@ import (
 	"sort"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/shanejonas/cyclo/domain"
+	"github.com/rstyled/gstyle/domain"
 )
 
 type Analyzer interface {

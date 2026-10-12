@@ -1,11 +1,11 @@
 version: 2
 
-project_name: cyclo
+project_name: gstyle
 
 builds:
-  - id: cyclo
+  - id: gstyle
     main: .
-    binary: cyclo
+    binary: gstyle
     env:
       - CGO_ENABLED=0
     goos:
@@ -18,7 +18,7 @@ builds:
 
 archives:
   - ids:
-      - cyclo
+      - gstyle
     formats:
       - tar.gz
     format_overrides:
@@ -43,5 +43,5 @@ changelog:
 
 release:
   github:
-    owner: shanejonas
-    name: cyclo
+    owner: rstyled
+    name: gstyle

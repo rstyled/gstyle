@@ -1,6 +1,6 @@
 package pdgjson
 
-import "github.com/shanejonas/cyclo/domain/pdg"
+import "github.com/rstyled/gstyle/domain/pdg"
 
 func (x exporter) extractionEvidence() object {
 	capabilities := object{}

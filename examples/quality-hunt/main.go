@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/shanejonas/cyclo/adapters/reducer"
-	"github.com/shanejonas/cyclo/adapters/treesitter"
+	"github.com/rstyled/gstyle/adapters/reducer"
+	"github.com/rstyled/gstyle/adapters/treesitter"
 )
 
 type options struct {

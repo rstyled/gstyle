@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/domain/quality"
 )
 
 func TestLocalHelpersClassifyEffectsConservatively(t *testing.T) {

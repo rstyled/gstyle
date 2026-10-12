@@ -3,7 +3,7 @@ package gopatterns
 import (
 	"go/types"
 
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 // Count distinct recorded variable bindings, not uses, aliases or locations.

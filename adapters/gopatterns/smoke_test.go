@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
 // TestMinerSmoke runs the full patterns pipeline on the shapes fixture:

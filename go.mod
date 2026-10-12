@@ -1,4 +1,4 @@
-module github.com/shanejonas/cyclo
+module github.com/rstyled/gstyle
 
 go 1.26.0
 

@@ -1,6 +1,6 @@
 package patterns
 
-import "github.com/shanejonas/cyclo/domain/pdg"
+import "github.com/rstyled/gstyle/domain/pdg"
 
 // PaperCharacteristics is computed once from canonical source facts. The order
 // is declarations, assignments, controls, calls, other nodes, control edges,

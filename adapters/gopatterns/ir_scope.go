@@ -5,7 +5,7 @@ import (
 	"go/types"
 	"path/filepath"
 
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 // scope IDs use physical file offsets, independent of FileSet allocation order.

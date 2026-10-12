@@ -32,15 +32,15 @@ func TestSkillFlagPrintsAnAgentSkillWithoutStartingTheTUI(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !strings.HasPrefix(output.String(), "---\nname: cyclo\n") {
-		t.Fatalf("skill output has no cyclo frontmatter:\n%s", output.String())
+	if !strings.HasPrefix(output.String(), "---\nname: gstyle\n") {
+		t.Fatalf("skill output has no gstyle frontmatter:\n%s", output.String())
 	}
 	if strings.Contains(output.String(), "\x1b") {
 		t.Fatalf("skill output contains TUI escape sequences: %q", output.String())
 	}
 }
 
-func TestBinaryLaunchesCyclo(t *testing.T) {
+func TestBinaryLaunchesGstyle(t *testing.T) {
 	directory := t.TempDir()
 	t.Setenv("XDG_STATE_HOME", directory)
 	source := filepath.Join(directory, "sample.go")
@@ -52,10 +52,10 @@ func TestBinaryLaunchesCyclo(t *testing.T) {
 	// Cold CI builds need their own deadline; compilation is not TUI startup.
 	buildContext, cancelBuild := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancelBuild()
-	binary := filepath.Join(t.TempDir(), "cyclo")
+	binary := filepath.Join(t.TempDir(), "gstyle")
 	build := exec.CommandContext(buildContext, "go", "build", "-buildvcs=false", "-o", binary, ".")
 	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build cyclo: %v\n%s", err, output)
+		t.Fatalf("build gstyle: %v\n%s", err, output)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -66,10 +66,10 @@ func TestBinaryLaunchesCyclo(t *testing.T) {
 	command.Env = append(os.Environ(), "TERM=xterm-256color")
 	output, err := command.CombinedOutput()
 	if ctx.Err() != nil {
-		t.Fatalf("cyclo did not exit after q: %v\n%s", ctx.Err(), output)
+		t.Fatalf("gstyle did not exit after q: %v\n%s", ctx.Err(), output)
 	}
 	if err != nil {
-		t.Fatalf("cyclo failed: %v\n%s", err, output)
+		t.Fatalf("gstyle failed: %v\n%s", err, output)
 	}
 }
 
@@ -98,7 +98,7 @@ func TestQualityCheckHelpDoesNotStartTUI(t *testing.T) {
 	if err := run([]string{"check", "--help"}, &output); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(output.String(), "Usage: cyclo check") {
+	if !strings.Contains(output.String(), "Usage: gstyle check") {
 		t.Fatal(output.String())
 	}
 }

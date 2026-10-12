@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/shanejonas/cyclo/adapters/gocyclo"
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/adapters/gocyclo"
+	"github.com/rstyled/gstyle/domain/quality"
 )
 
 func TestReducedAliasingMutationsRemainVisibleInQuality(t *testing.T) {

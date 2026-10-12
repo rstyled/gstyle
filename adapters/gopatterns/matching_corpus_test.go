@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
 // TestWriteMatchingCorpus freezes matching inputs for before/after runs.

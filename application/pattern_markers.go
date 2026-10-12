@@ -7,8 +7,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/shanejonas/cyclo/application/patterncheck"
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/application/patterncheck"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
 // patternBackground is the line highlight for pattern findings. Distinct from

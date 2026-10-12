@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/shanejonas/cyclo/adapters/gopatterns"
-	"github.com/shanejonas/cyclo/adapters/pdgjson"
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/adapters/gopatterns"
+	"github.com/rstyled/gstyle/adapters/pdgjson"
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 // exportPDGs bypasses mining and its caches. The array contains one compat

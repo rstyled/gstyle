@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 func TestIRWriteTargetsAndReadModifyWrite(t *testing.T) {

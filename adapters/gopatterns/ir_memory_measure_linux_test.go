@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/domain/pdg"
 	"golang.org/x/tools/go/packages"
 )
 

@@ -8,7 +8,7 @@ import (
 	"go/types"
 	"testing"
 
-	"github.com/shanejonas/cyclo/domain/pdg"
+	"github.com/rstyled/gstyle/domain/pdg"
 	"golang.org/x/tools/go/packages"
 )
 

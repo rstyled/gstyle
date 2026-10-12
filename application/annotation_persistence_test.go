@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shanejonas/cyclo/adapters/sqlite"
-	"github.com/shanejonas/cyclo/domain"
+	"github.com/rstyled/gstyle/adapters/sqlite"
+	"github.com/rstyled/gstyle/domain"
 )
 
 func TestDraftSaveFailurePreservesTheDraftAndSelection(t *testing.T) {

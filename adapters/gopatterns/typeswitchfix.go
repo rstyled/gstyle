@@ -7,7 +7,7 @@ import (
 	"go/token"
 	"strings"
 
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
 // applyTypeSwitchFix replaces a type switch whose arms all call the same

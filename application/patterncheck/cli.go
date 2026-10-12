@@ -13,11 +13,11 @@ import (
 	"runtime"
 	"slices"
 
-	"github.com/shanejonas/cyclo/adapters/gopatterns"
-	"github.com/shanejonas/cyclo/domain/patterns"
+	"github.com/rstyled/gstyle/adapters/gopatterns"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
-const usage = `Usage: cyclo patterns [OPTIONS] [DIRECTORIES OR GO FILES...]
+const usage = `Usage: gstyle patterns [OPTIONS] [DIRECTORIES OR GO FILES...]
 
 Mine the codebase for latent shared abstractions: structurally parallel
 functions that suggest interfaces, params structs, or generics, plus

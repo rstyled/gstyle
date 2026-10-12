@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/domain/quality"
 )
 
 var updateGolden = flag.Bool("update", false, "update quality report golden")

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/shanejonas/cyclo/adapters/reducer"
+	"github.com/rstyled/gstyle/adapters/reducer"
 )
 
 func TestReductionPreservesSpecificFunctionFailure(t *testing.T) {

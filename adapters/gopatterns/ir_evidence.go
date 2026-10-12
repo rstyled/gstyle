@@ -1,6 +1,6 @@
 package gopatterns
 
-import "github.com/shanejonas/cyclo/domain/pdg"
+import "github.com/rstyled/gstyle/domain/pdg"
 
 // Extraction completeness describes the actual producer, not what the IR can
 // express. In particular CFG succession is not an execution dependency policy.

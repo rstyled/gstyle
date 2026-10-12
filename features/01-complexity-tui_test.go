@@ -140,9 +140,9 @@ import (
 	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/shanejonas/cyclo/adapters/gocyclo"
-	"github.com/shanejonas/cyclo/application"
-	"github.com/shanejonas/cyclo/domain"
+	"github.com/rstyled/gstyle/adapters/gocyclo"
+	"github.com/rstyled/gstyle/application"
+	"github.com/rstyled/gstyle/domain"
 )
 
 type sequenceAnalyzer struct {

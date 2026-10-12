@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/domain/quality"
 )
 
 func writeTemp(t *testing.T, name, source string) string {
@@ -70,7 +70,7 @@ func TestConfigDefaultsOverridesAndValidation(t *testing.T) {
 
 func TestCLIHelpAndInvalidInput(t *testing.T) {
 	var output bytes.Buffer
-	if err := Run(context.Background(), []string{"--help"}, &output); err != nil || !strings.Contains(output.String(), "Usage: cyclo check") {
+	if err := Run(context.Background(), []string{"--help"}, &output); err != nil || !strings.Contains(output.String(), "Usage: gstyle check") {
 		t.Fatalf("help: %v %s", err, output.String())
 	}
 	for _, args := range [][]string{{"--format", "bad"}, {"--facts-in", "missing", "."}, {"--facts-in", "missing", "--tests"}} {

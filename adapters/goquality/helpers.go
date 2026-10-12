@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/shanejonas/cyclo/domain/quality"
+	"github.com/rstyled/gstyle/domain/quality"
 )
 
 func attachHelpers(facts, available []quality.Function) []quality.Function {
