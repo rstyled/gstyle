@@ -108,13 +108,27 @@ Run ` + "`gstyle patterns [paths...]`" + ` to find mechanical code patterns acro
 
 Run ` + "`gstyle fix --kind all [paths...]`" + ` to auto-fix them. Dry-run by default (shows a diff); add ` + "`--apply`" + ` to write. No LLM, no tokens — pure static analysis. Use ` + "`--kind guard_clause|value_object|parameterize|anemic_model|primitive_obsession|type_switch|enum_dispatch|trait_method|capability_set|generic_fn|entity_identity|missing_identity|factory|specification|domain_service`" + ` to fix one kind.
 
-Use ` + "`gstyle fix --phased --apply [paths...]`" + ` when fixes interact: it mines, applies one phase, re-mines, and repeats to a fixpoint (max 3 cycles). Phases run guard/value-object work first, structural patterns next, and parameterize last.
+Use ` + "`gstyle fix --phased --apply [paths...]`" + ` when fixes interact: it mines, applies one phase, re-mines, and repeats to a fixpoint (max 3 cycles). Phases run guard/value-object work first, structural patterns next, parameterize next, and declaration ordering last.
 
 ` + "`domain_service`" + ` is detection-only: it identifies stateless functions operating on 2+ domain types as legitimate Domain Services (Evans), and suppresses the corresponding ` + "`anemic_model`" + ` suggestions. ` + "`specification`" + ` extracts repeated boolean business rules into named predicates (a method on the type, or a function for external types). ` + "`trait_method`" + ` proposes interfaces from parallel methods on types in the same package.
 
+The declaration_order pattern groups each type with its New/new constructors,
+exported methods, then private methods, with other functions last. Constructors
+must return a local named type as their first result. Use
+` + "`gstyle fix --kind declaration_order [paths...]`" + ` to preview and add
+` + "`--apply`" + ` to write. It preserves comments and bodies and skips files
+with Go directives, cgo imports, or same-line declarations. Its candidate spans
+the file, so ` + "`--changed`" + ` can reorder unchanged functions in that file.
+
+Parameterization findings describe aligned graph regions, not proven whole-function
+clones. Auto-fixes require compatible canonical PDG interfaces and callable types,
+a full supported AST match, and a source snapshot proof. Findings without proof
+stay advisory. A proof targets only its selected pair; after other source edits,
+re-mine with phased fixing before parameterization.
+
 **Workflow:** Run ` + "`gstyle patterns`" + ` first, then ` + "`gstyle fix --apply`" + ` to clear the mechanical issues. This saves tokens — don't hand-rewrite what the fixer handles. In an agent loop, use ` + "`gstyle fix --changed --apply`" + ` to fix only candidates in functions your diff touched (against ` + "`--base REF`" + `, defaulting to the merge-base with main/master).
 
-**One at a time:** ` + "`gstyle next [paths...]`" + ` shows the single highest-impact candidate with fix instructions — the one thing to fix now. ` + "`gstyle score [paths...]`" + ` gives a 0-100 north-star (100 = clean, weighted by severity). Suppressed items show separately, so you can't suppress your way to 100.
+**One at a time:** ` + "`gstyle next [paths...]`" + ` shows the single highest-impact candidate with fix instructions — the one thing to fix now. ` + "`gstyle score [paths...]`" + ` gives a 0-100 finding score (100 = no scored findings, weighted by severity; inspect dependency coverage). Suppressed items show separately, so you can't suppress your way to 100.
 
 ## Check quality guardrails (needs your judgment)
 
@@ -129,6 +143,11 @@ Facts export uses schema_version 2 with helper summaries; version 1 remains read
 Suppressions use ` + "`// gstyle-allow(rule_a, rule_b): reason`" + ` above a function, with intervening doc comments allowed. Reasons are required; unknown rules fail validation. Prefer documenting a deliberate exception over hiding evidence.
 
 Bug-pattern warnings are advisory. ` + "`nilerr`" + ` requires explicit nil in every error result of the error branch; propagating an error in another result is valid. ` + "`typednil`" + ` requires a concrete nil value or a stable zero-valued local boxed into an interface. Unknown constructor results, parameters, and mutable bindings are omitted; absence of a warning does not prove nil safety. Interface suggestions describe normalized signature shapes, not Go declarations; preserve the concrete parameter and result types.
+
+Taint and slicing use canonical PDG operations. Inspect analysis_coverage even
+when no findings appear: partial coverage is not proof of clean flow. Each finding's
+analysis_evidence records missing capabilities and canonical operation IDs within
+its function. These are advisory paths and slices, not proof of a vulnerability.
 
 **Patterns vs quality:** ` + "`gstyle fix`" + ` handles mechanical patterns automatically. ` + "`gstyle check`" + ` findings (side_effect_density, mutated_targets, etc.) are design smells — they need your judgment to refactor. The check tells you *where* to look; you decide *how* to restructure. Don't try to auto-fix quality findings.
 

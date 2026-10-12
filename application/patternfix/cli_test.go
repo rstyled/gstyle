@@ -494,3 +494,62 @@ func TestPhaseNames(t *testing.T) {
 		t.Errorf("unexpected: %q", names)
 	}
 }
+
+func TestDeclarationOrderDryRunApplyAndPhased(t *testing.T) {
+	const src = `package example
+
+type Service struct{}
+func helper() {}
+func (s *Service) run() {}
+func NewService() *Service { return &Service{} }
+func (s *Service) Run() {}
+`
+	for _, phased := range []bool{false, true} {
+		t.Run(fmtBool(phased), func(t *testing.T) {
+			path := writeTempGo(t, src)
+			var out bytes.Buffer
+			args := []string{"--kind", "declaration_order", path}
+			if phased {
+				args = append([]string{"--phased"}, args...)
+			}
+			if err := Run(context.Background(), args, &out); err != nil {
+				t.Fatal(err)
+			}
+			before, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(before) != src {
+				t.Fatal("dry run wrote source")
+			}
+			if !strings.Contains(out.String(), "NewService") {
+				t.Fatalf("missing dry-run diff: %s", &out)
+			}
+			out.Reset()
+			if err := Run(context.Background(), append([]string{"--apply"}, args...), &out); err != nil {
+				t.Fatal(err)
+			}
+			fixed, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			text := string(fixed)
+			names := []string{"func NewService", "func (s *Service) Run", "func (s *Service) run", "func helper"}
+			last := -1
+			for _, name := range names {
+				index := strings.Index(text, name)
+				if index <= last {
+					t.Fatalf("wrong order for %s: %s", name, text)
+				}
+				last = index
+			}
+		})
+	}
+}
+
+func fmtBool(value bool) string {
+	if value {
+		return "phased"
+	}
+	return "single"
+}

@@ -14,6 +14,8 @@ type ParamInfo struct {
 // miner: a function's identity, its PDG, and the effect summary used for the
 // effect-mismatch check. The extractor (adapters/gopatterns) builds these.
 type FunctionFacts[G any] struct {
+	// Canonical is borrowed by temporary mining facts for semantic analyses.
+	Canonical *pdg.Graph `json:"-"`
 	// ID is the stable function id (package path + name, like FuncID).
 	ID string
 	// Name is the short function name for display.

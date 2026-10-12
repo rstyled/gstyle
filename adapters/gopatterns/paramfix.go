@@ -52,12 +52,22 @@ const maxParamHoles = 3
 // The transform is behavior-preserving when the safety checks pass;
 // otherwise the pair is skipped.
 func FixParameterize(fset *token.FileSet, f *ast.File, src []byte, candidates []patterns.Candidate) ([]byte, []ParamFix, error) {
+	return fixParameterizeWithTypes(fset, f, src, parameterizeConfig{candidates, localCallableTypes(fset, f)})
+}
+
+type parameterizeConfig struct {
+	candidates []patterns.Candidate
+	signatures map[string]string
+}
+
+func fixParameterizeWithTypes(fset *token.FileSet, f *ast.File, src []byte, config parameterizeConfig) ([]byte, []ParamFix, error) {
 	funcs := freeFuncs(f)
 	if len(funcs) < 2 {
 		return src, nil, nil
 	}
-	allow := buildAllowlist(candidates)
-	edits, fixes := collectEdits(fset, funcs, allow, src)
+	allow := buildAllowlist(config.candidates)
+	tc := &tryCtx{fset: fset, allow: allow, used: make(map[string]bool), src: src, signatures: config.signatures}
+	edits, fixes := collectEdits(tc, funcs)
 	if len(edits) == 0 {
 		return src, nil, nil
 	}
@@ -65,11 +75,9 @@ func FixParameterize(fset *token.FileSet, f *ast.File, src []byte, candidates []
 }
 
 // collectEdits finds all parameterize pairs and builds their edits.
-func collectEdits(fset *token.FileSet, funcs []*ast.FuncDecl, allow map[[2]string]bool, src []byte) ([]textEdit, []ParamFix) {
+func collectEdits(tc *tryCtx, funcs []*ast.FuncDecl) ([]textEdit, []ParamFix) {
 	var edits []textEdit
 	var fixes []ParamFix
-	used := map[string]bool{}
-	tc := &tryCtx{fset: fset, allow: allow, used: used, src: src}
 	for i := 0; i < len(funcs); i++ {
 		for j := i + 1; j < len(funcs); j++ {
 			if edit, fix, ok := tc.tryPair(funcs[i], funcs[j]); ok {
@@ -83,10 +91,11 @@ func collectEdits(fset *token.FileSet, funcs []*ast.FuncDecl, allow map[[2]strin
 
 // tryCtx carries the context for trying function pairs.
 type tryCtx struct {
-	fset  *token.FileSet
-	allow map[[2]string]bool
-	used  map[string]bool
-	src   []byte
+	signatures map[string]string
+	fset       *token.FileSet
+	allow      map[[2]string]bool
+	used       map[string]bool
+	src        []byte
 }
 
 // tryPair attempts one pair, marking used on success.
@@ -97,7 +106,7 @@ func (tc *tryCtx) tryPair(a, b *ast.FuncDecl) (textEdit, ParamFix, bool) {
 	if !pairAllowed(a, b, tc.allow) {
 		return textEdit{}, ParamFix{}, false
 	}
-	edit, fix, ok := paramEdit(tc.fset, a, b, tc.src)
+	edit, fix, ok := paramEdit(tc, a, b)
 	if !ok {
 		return textEdit{}, ParamFix{}, false
 	}
@@ -171,7 +180,11 @@ func safeToExtract(fset *token.FileSet, a, b *ast.FuncDecl) bool {
 	if hasFuncLit(a.Body) || hasFuncLit(b.Body) {
 		return false
 	}
-	return !hasNamedResults(a) && !hasNamedResults(b)
+	return safeResults(a) && safeResults(b)
+}
+
+func safeResults(fn *ast.FuncDecl) bool {
+	return fn.Type.TypeParams == nil && !hasNamedResults(fn)
 }
 
 // allIdentHoles reports whether every hole is a simple identifier.
@@ -189,18 +202,18 @@ func allIdentHoles(holes []hole) bool {
 
 // paramEdit computes the text edit that extracts the common body of a and b.
 // It returns false when the extraction cannot be proven safe.
-func paramEdit(fset *token.FileSet, a, b *ast.FuncDecl, src []byte) (textEdit, ParamFix, bool) {
-	if !safeToExtract(fset, a, b) {
+func paramEdit(tc *tryCtx, a, b *ast.FuncDecl) (textEdit, ParamFix, bool) {
+	if !safeToExtract(tc.fset, a, b) {
 		return textEdit{}, ParamFix{}, false
 	}
 	r, holes, ok := diffPair(a, b)
 	if !ok {
 		return textEdit{}, ParamFix{}, false
 	}
-	if !adjacent(fset, a, b, src) {
+	if !adjacent(tc.fset, a, b, tc.src) {
 		return textEdit{}, ParamFix{}, false
 	}
-	ctx := &paramCtx{fset: fset, a: a, b: b, src: src, r: r, holes: holes}
+	ctx := &paramCtx{fset: tc.fset, a: a, b: b, src: tc.src, r: r, holes: holes, signatures: tc.signatures}
 	return buildEdit(ctx)
 }
 
@@ -331,6 +344,7 @@ func hasNamedResults(fn *ast.FuncDecl) bool {
 
 // paramCtx carries the shared context for parameterizing a function pair.
 type paramCtx struct {
+	signatures    map[string]string
 	fset          *token.FileSet
 	a, b          *ast.FuncDecl
 	src           []byte
@@ -1127,41 +1141,51 @@ func resultParts(fset *token.FileSet, fn *ast.FuncDecl) []string {
 	return parts
 }
 
-// inferHoleFuncType infers the function type for a hole identifier by
-// finding its call site in both functions.
+// inferHoleFuncType uses actual callable signatures, never the enclosing
+// function's results. Both alternatives must have the same verified type.
 func inferHoleFuncType(ctx *paramCtx, ai, bi *ast.Ident) (string, bool) {
-	callA := findCall(ctx.a.Body, ai.Name)
-	callB := findCall(ctx.b.Body, bi.Name)
-	if callA == nil || callB == nil {
+	a, b := ctx.signatures[ai.Name], ctx.signatures[bi.Name]
+	if a == "" || a != b {
 		return "", false
 	}
-	argTypes, ok := callArgTypes(ctx.fset, ctx.a, callA)
-	if !ok {
+	if findCall(ctx.a.Body, ai.Name) == nil || findCall(ctx.b.Body, bi.Name) == nil {
 		return "", false
 	}
-	resTypes := resultTypes(ctx.fset, ctx.a)
-	if len(resTypes) == 0 {
-		return "", false
-	}
-	_ = callB
-	return fmt.Sprintf("func(%s) (%s)", strings.Join(argTypes, ", "), strings.Join(resTypes, ", ")), true
+	return a, true
 }
 
-// callArgTypes infers the argument types of a call (must be param idents).
-func callArgTypes(fset *token.FileSet, fn *ast.FuncDecl, call *ast.CallExpr) ([]string, bool) {
-	var argTypes []string
-	for _, arg := range call.Args {
-		id, ok := arg.(*ast.Ident)
-		if !ok {
-			return nil, false
+// The standalone AST API only accepts locally declared callable types.
+// CLI fixes instead supply package-checked signatures from a source proof.
+func localCallableTypes(fset *token.FileSet, file *ast.File) map[string]string {
+	out := make(map[string]string)
+	for _, fn := range freeFuncs(file) {
+		if fn.Type.TypeParams != nil {
+			continue
 		}
-		typ, ok := paramTypeOf(fset, fn, id.Name)
-		if !ok {
-			return nil, false
-		}
-		argTypes = append(argTypes, typ)
+		out[fn.Name.Name] = callableTypeText(fset, fn.Type)
 	}
-	return argTypes, true
+	return out
+}
+
+func callableTypeText(fset *token.FileSet, signature *ast.FuncType) string {
+	return "func(" + strings.Join(callableFieldTypes(fset, signature.Params), ", ") + ") (" + strings.Join(callableFieldTypes(fset, signature.Results), ", ") + ")"
+}
+
+func callableFieldTypes(fset *token.FileSet, fields *ast.FieldList) []string {
+	var out []string
+	if fields == nil {
+		return out
+	}
+	for _, field := range fields.List {
+		count := len(field.Names)
+		if count == 0 {
+			count = 1
+		}
+		for range count {
+			out = append(out, typeString(fset, field.Type))
+		}
+	}
+	return out
 }
 
 // findCall finds the first call expression calling the named function.
@@ -1177,41 +1201,6 @@ func findCall(n ast.Node, name string) *ast.CallExpr {
 		return true
 	})
 	return found
-}
-
-// paramTypeOf returns the type string for a named param.
-func paramTypeOf(fset *token.FileSet, fn *ast.FuncDecl, name string) (string, bool) {
-	if fn.Type.Params == nil {
-		return "", false
-	}
-	for _, f := range fn.Type.Params.List {
-		for _, n := range f.Names {
-			if n.Name == name {
-				var buf bytes.Buffer
-				if err := format.Node(&buf, fset, f.Type); err != nil {
-					return "", false
-				}
-				return buf.String(), true
-			}
-		}
-	}
-	return "", false
-}
-
-// resultTypes returns the result type strings.
-func resultTypes(fset *token.FileSet, fn *ast.FuncDecl) []string {
-	var out []string
-	if fn.Type.Results == nil {
-		return out
-	}
-	for _, f := range fn.Type.Results.List {
-		var buf bytes.Buffer
-		if err := format.Node(&buf, fset, f.Type); err != nil {
-			return nil
-		}
-		out = append(out, buf.String())
-	}
-	return out
 }
 
 // buildHelperBody builds the helper body text from a's body, replacing

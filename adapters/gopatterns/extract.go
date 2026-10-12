@@ -5,13 +5,16 @@ package gopatterns
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"go/ast"
+	"go/parser"
 	"go/token"
 	"go/types"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/rstyled/gstyle/domain/patterns"
 	"github.com/rstyled/gstyle/domain/pdg"
@@ -77,7 +80,8 @@ type FuncPdg struct {
 // Extraction is the full result of package analysis: per-function PDGs
 // plus package-level type findings (anemic models).
 type Extraction struct {
-	Funcs []FuncPdg
+	DeclarationOrders []patterns.Candidate
+	Funcs             []FuncPdg
 	// AnemicModels are exported methodless structs with 3+ functions
 	// operating on their fields (DDD anemic domain model detection).
 	AnemicModels []patterns.AnemicModelHit
@@ -101,23 +105,28 @@ func Extract(ctx context.Context, root string, paths []string) (*Extraction, err
 	if err != nil {
 		return nil, err
 	}
-	pkgs, err := loadPatternPackages(ctx, abs, query)
+	pkgs, sourceIdentities, err := loadPatternSources(ctx, abs, query)
 	if err != nil {
 		return nil, err
 	}
-	out := &Extraction{}
+	var funcsOut []FuncPdg
+	var orders []patterns.Candidate
+	var anemic []patterns.AnemicModelHit
+	var missing []patterns.MissingIdentityHit
+	var services []patterns.DomainServiceHit
 	pool := pdg.NewBuilder()
 	for _, pkg := range pkgs {
-		funcs, err := packagePdgs(pkg, abs, pool)
+		funcs, err := packagePdgsWithSources(pkg, abs, pool, sourceIdentities)
 		if err != nil {
 			return nil, err
 		}
-		out.Funcs = append(out.Funcs, funcs...)
-		out.AnemicModels = append(out.AnemicModels, findAnemicModels(pkg, abs)...)
-		out.MissingIdentities = append(out.MissingIdentities, findMissingIdentities(pkg, abs)...)
-		out.DomainServices = append(out.DomainServices, findDomainServices(pkg, abs)...)
+		orders = append(orders, findDeclarationOrders(pkg, abs, paths)...)
+		funcsOut = append(funcsOut, funcs...)
+		anemic = append(anemic, findAnemicModels(pkg, abs)...)
+		missing = append(missing, findMissingIdentities(pkg, abs)...)
+		services = append(services, findDomainServices(pkg, abs)...)
 	}
-	return out, nil
+	return &Extraction{Funcs: funcsOut, DeclarationOrders: orders, AnemicModels: anemic, MissingIdentities: missing, DomainServices: services}, nil
 }
 
 func absRoot(root string) (string, error) {
@@ -132,10 +141,28 @@ func absRoot(root string) (string, error) {
 }
 
 func loadPatternPackages(ctx context.Context, dir string, query []string) ([]*packages.Package, error) {
-	config := &packages.Config{Context: ctx, Dir: dir, Mode: packages.LoadSyntax}
+	pkgs, _, err := loadPatternSources(ctx, dir, query)
+	return pkgs, err
+}
+
+func loadPatternSources(ctx context.Context, dir string, query []string) ([]*packages.Package, map[string]string, error) {
+	sources := make(map[string]string)
+	var lock sync.Mutex
+	parse := func(fset *token.FileSet, filename string, src []byte) (*ast.File, error) {
+		file, err := parser.ParseFile(fset, filename, src, parser.ParseComments|parser.SkipObjectResolution)
+		if err != nil {
+			return nil, err
+		}
+		identity := fmt.Sprintf("%x", sha256.Sum256(src))
+		lock.Lock()
+		sources[filename] = identity
+		lock.Unlock()
+		return file, nil
+	}
+	config := &packages.Config{Context: ctx, Dir: dir, Mode: packages.LoadSyntax, ParseFile: parse}
 	pkgs, err := packages.Load(config, query...)
 	if err != nil {
-		return nil, fmt.Errorf("load Go packages: %w", err)
+		return nil, nil, fmt.Errorf("load Go packages: %w", err)
 	}
 	var errs []string
 	for _, pkg := range pkgs {
@@ -144,15 +171,20 @@ func loadPatternPackages(ctx context.Context, dir string, query []string) ([]*pa
 		}
 	}
 	if len(errs) > 0 {
-		return nil, fmt.Errorf("Go analysis fails:\n%s", strings.Join(errs, "\n"))
+		return nil, nil, fmt.Errorf("Go analysis fails:\n%s", strings.Join(errs, "\n"))
 	}
-	return pkgs, nil
+	return pkgs, sources, nil
 }
 
 func packagePdgs(pkg *packages.Package, root string, pool *pdg.Builder) ([]FuncPdg, error) {
+	return packagePdgsWithSources(pkg, root, pool, nil)
+}
+
+func packagePdgsWithSources(pkg *packages.Package, root string, pool *pdg.Builder, sources map[string]string) ([]FuncPdg, error) {
 	var out []FuncPdg
 	ctx := newExtractCtx(pkg, root)
 	ctx.pool = pool
+	ctx.sourceIdentities = sources
 	for _, file := range pkg.Syntax {
 		funcs, err := filePdgs(pkg, file, root, ctx)
 		if err != nil {
@@ -169,6 +201,7 @@ func filePdgs(pkg *packages.Package, file *ast.File, root string, ctx extractCtx
 	if err != nil {
 		return nil, fmt.Errorf("PDG source path: %w", err)
 	}
+	identity := pdgSourceIdentity(ctx.pool, ctx.sourceIdentities[filename])
 	var out []FuncPdg
 	for _, decl := range file.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
@@ -179,6 +212,7 @@ func filePdgs(pkg *packages.Package, file *ast.File, root string, ctx extractCtx
 		if err != nil {
 			return nil, err
 		}
+		graph.Pdg.Sources[0].ContentIdentity = identity
 		out = append(out, graph)
 	}
 	return out, nil
@@ -186,9 +220,10 @@ func filePdgs(pkg *packages.Package, file *ast.File, root string, ctx extractCtx
 
 // extractCtx carries per-package maps for entity pairing.
 type extractCtx struct {
-	pool       *pdg.Builder
-	structLocs map[string]structLoc
-	mutated    map[string]bool
+	sourceIdentities map[string]string
+	pool             *pdg.Builder
+	structLocs       map[string]structLoc
+	mutated          map[string]bool
 }
 
 // newExtractCtx builds the struct location and mutation maps for pairing
@@ -439,4 +474,11 @@ func (b *builder) params(fn *ast.FuncDecl) {
 	}
 	add(fn.Recv)
 	add(fn.Type.Params)
+}
+
+func pdgSourceIdentity(pool *pdg.Builder, digest string) pdg.Fact {
+	if digest == "" {
+		return pool.Missing(pdg.Unknown, "Compiler source snapshot was not captured.")
+	}
+	return pool.Known(digest)
 }

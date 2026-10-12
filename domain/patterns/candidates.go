@@ -41,6 +41,8 @@ import (
 type CandidateKind string
 
 const (
+	// DeclarationOrder groups constructors and methods before free functions.
+	DeclarationOrder CandidateKind = "declaration_order"
 	// TraitMethod proposes an interface from parallel methods.
 	TraitMethod CandidateKind = "trait_method"
 	// CapabilitySet proposes an interface from several parallel methods.
@@ -219,6 +221,7 @@ var FixKindOrder = []CandidateKind{
 	CapabilitySet,
 	GenericFn,
 	Parameterize,
+	DeclarationOrder,
 	// Detection-only kinds never produce FixSpecs; they sort last.
 	// Listed explicitly so the miner and fixer agree on the full order.
 	MutableIdentity,
@@ -276,6 +279,7 @@ type Breakdown struct {
 
 // Candidate is one ranked abstraction proposal.
 type Candidate struct {
+	Analysis         *AnalysisEvidence `json:"analysis_evidence,omitempty"`
 	Kind             CandidateKind
 	ScoreMilli       uint32
 	Breakdown        Breakdown
@@ -288,8 +292,7 @@ type Candidate struct {
 	Definitions     []Site
 	CounterEvidence []string
 	// FixSpec is the precise info a fixer needs to apply this candidate
-	// statically. Nil if the candidate is not auto-fixable (should not
-	// happen — every kind must have a fixer).
+	// statically. Nil when a safe mechanical rewrite has not been established.
 	FixSpec *FixSpec
 }
 
@@ -1015,8 +1018,8 @@ func hasSubstance(ix *candidateIndex, f *MiningFacts) bool {
 }
 
 func summaryOf(ix *candidateIndex, sites []*MiningFacts, cluster *Cluster) string {
-	return fmt.Sprintf("%d functions share one dependence structure and differ only at %s",
-		len(sites), columnsText(ix, cluster.Columns))
+	return fmt.Sprintf("%d functions share an aligned dependence region (%d%% mean coverage); detected differences: %s",
+		len(sites), breakdownOf(sites, cluster, 0).CoverageMilli/10, columnsText(ix, cluster.Columns))
 }
 
 func breakdownOf(sites []*MiningFacts, cluster *Cluster, liftMilli uint32) Breakdown {
@@ -1220,16 +1223,10 @@ func parameterize(ix *candidateIndex, sites []*MiningFacts, cluster *Cluster) *C
 		ScoreMilli:       ScoreMilli(breakdown, false) / 3,
 		Breakdown:        breakdown,
 		Observation:      summaryOf(ix, sites, cluster),
-		Inference:        "the same computation is written out once per site",
-		PossibleRefactor: fmt.Sprintf("extract one helper and pass the differing parts as parameters: %s", holes),
+		Inference:        "the aligned regions are similar; whole-function equivalence is not proven",
+		PossibleRefactor: fmt.Sprintf("review the aligned region for a shared helper; account for unmatched code and detected differences: %s", holes),
 		Sites:            sitesList,
-		FixSpec: &FixSpec{
-			Kind:    Parameterize,
-			File:    sitesList[0].Path,
-			Line:    sitesList[0].Line,
-			EndLine: sitesList[0].EndLine,
-			Params:  map[string]string{},
-		},
+		// A graph match alone does not authorize a source rewrite.
 	}
 }
 

@@ -243,7 +243,9 @@ func (b *irBuilder) call(n *ast.CallExpr) {
 		b.addNode(n, pdg.Computation, pdg.Attributes{Operator: b.pool.Known("conversion")})
 		return
 	}
-	b.addNode(n, pdg.Call, b.callAttributes(n.Fun))
+	attrs := b.callAttributes(n.Fun)
+	attrs.Extensions = b.callableExtensions(n.Fun)
+	b.addNode(n, pdg.Call, attrs)
 }
 
 func (b *irBuilder) callAttributes(expr ast.Expr) pdg.Attributes {

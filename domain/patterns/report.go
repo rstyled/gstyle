@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 )
 
 // PatternsReport is the full output of the patterns miner.
 type PatternsReport struct {
+	AnalysisCoverage []AnalysisCoverage `json:"analysis_coverage,omitempty"`
 	// SignatureGroups are the layer-1 groups, best first.
 	SignatureGroups []SigGroup `json:"signature_groups"`
 	// Candidates are the ranked layer-2 abstraction proposals, best first.
@@ -25,6 +27,9 @@ type PatternsReport struct {
 
 // Options selects what to show and what to pretend.
 type Options struct {
+	semantic *semanticResults
+	// DeclarationOrders are file-level source-order proposals.
+	DeclarationOrders []Candidate
 	// MinScoreMilli drops groups and candidates scoring below this.
 	MinScoreMilli uint32
 	// Top keeps only the first N groups and candidates (all when nil).
@@ -88,10 +93,11 @@ func RunMining(facts []*MiningFacts, options Options) PatternsReport {
 		sortMined(&mined)
 	}
 	addSingleFunctionCandidates(&mined, prepared, options)
-	report := Build(groups, options.MinScoreMilli, options.Top)
-	report.Candidates = keepCandidates(mined.Candidates, options.MinScoreMilli, options.Top)
-	report.Suppressed = mined.Suppressed
-	return report
+	return PatternsReport{
+		SignatureGroups: keepGroups(groups, options.MinScoreMilli, options.Top),
+		Candidates:      keepCandidates(mined.Candidates, options.MinScoreMilli, options.Top),
+		Suppressed:      mined.Suppressed, AnalysisCoverage: reportSemanticCoverage(prepared, options),
+	}
 }
 
 // singleFunctionBuilder pairs a pattern kind with its candidate builder.
@@ -122,6 +128,7 @@ var singleFunctionBuilders = []singleFunctionBuilder{
 	{AnemicModel, func(prepared []*MiningFacts, options Options) []Candidate {
 		return anemicModelCandidates(options.AnemicModels, options.DomainServices)
 	}},
+	{DeclarationOrder, func(_ []*MiningFacts, options Options) []Candidate { return options.DeclarationOrders }},
 	{MutableIdentity, func(prepared []*MiningFacts, options Options) []Candidate { return mutableIdentityCandidates(prepared) }},
 	{Aggregate, func(prepared []*MiningFacts, options Options) []Candidate { return aggregateCandidates(prepared) }},
 	{Repository, func(prepared []*MiningFacts, options Options) []Candidate { return repositoryCandidates(prepared) }},
@@ -169,18 +176,30 @@ var singleFunctionBuilders = []singleFunctionBuilder{
 		return InconsistentCloneCandidates(divergent, prepared)
 	}},
 	{TaintFlowKind, func(prepared []*MiningFacts, options Options) []Candidate {
+		if options.semantic != nil {
+			return options.semantic.candidates(TaintFlowKind)
+		}
 		flows := FindTaintFlows(prepared)
 		return TaintFlowCandidates(flows, prepared)
 	}},
 	{BarrierSliceKind, func(prepared []*MiningFacts, options Options) []Candidate {
+		if options.semantic != nil {
+			return options.semantic.candidates(BarrierSliceKind)
+		}
 		findings := FindBarrierSlices(prepared)
 		return BarrierSliceCandidates(findings, prepared)
 	}},
 	{ThinSliceKind, func(prepared []*MiningFacts, options Options) []Candidate {
+		if options.semantic != nil {
+			return options.semantic.candidates(ThinSliceKind)
+		}
 		findings := FindThinSlices(prepared)
 		return ThinSliceCandidates(findings, prepared)
 	}},
 	{ChopKind, func(prepared []*MiningFacts, options Options) []Candidate {
+		if options.semantic != nil {
+			return options.semantic.candidates(ChopKind)
+		}
 		findings := FindChops(prepared)
 		return ChopCandidates(findings, prepared)
 	}},
@@ -222,16 +241,9 @@ func Text(report *PatternsReport) string {
 	parts := []string{
 		section(fmt.Sprintf("%d signature groups", len(groups)), groups),
 		section(fmt.Sprintf("%d candidates", len(found)), found),
+		coverageText(report.AnalysisCoverage), suppressedSection(report.Suppressed),
 	}
-	if len(report.Suppressed) > 0 {
-		lines := make([]string, len(report.Suppressed))
-		for i := range report.Suppressed {
-			lines[i] = suppressedText(&report.Suppressed[i])
-		}
-		parts = append(parts, fmt.Sprintf("%d suppressed (already abstracted)\n%s",
-			len(lines), strings.Join(lines, "\n")))
-	}
-	return strings.Join(parts, "\n\n")
+	return strings.Join(nonemptyStrings(parts), "\n\n")
 }
 
 // JSON renders the report as pretty JSON.
@@ -362,13 +374,7 @@ func headline(index int, c *Candidate) string {
 }
 
 func candidateText(index int, c *Candidate) string {
-	lines := []string{
-		headline(index, c),
-		fmt.Sprintf("  observation: %s", c.Observation),
-		fmt.Sprintf("  inference: %s", c.Inference),
-		fmt.Sprintf("  possible refactor: %s", c.PossibleRefactor),
-		"  sites:",
-	}
+	lines := candidateIntro(index, c)
 	for _, s := range c.Sites {
 		lines = append(lines, memberSite(s.Path, s.Line, s.Name))
 	}
@@ -395,4 +401,34 @@ func suppressedText(s *Suppressed) string {
 
 func section(title string, body []string) string {
 	return strings.Join(append([]string{title}, body...), "\n\n")
+}
+
+func candidateIntro(index int, candidate *Candidate) []string {
+	return slices.Concat([]string{
+		headline(index, candidate),
+		fmt.Sprintf("  observation: %s", candidate.Observation),
+		fmt.Sprintf("  inference: %s", candidate.Inference),
+		fmt.Sprintf("  possible refactor: %s", candidate.PossibleRefactor),
+	}, analysisLines(candidate.Analysis), []string{"  sites:"})
+}
+
+func analysisLines(evidence *AnalysisEvidence) []string {
+	if evidence == nil {
+		return nil
+	}
+	if len(evidence.Missing) == 0 {
+		return []string{"  analysis: " + evidence.Status}
+	}
+	return []string{"  analysis: " + evidence.Status, "  coverage gaps: " + strings.Join(evidence.Missing, "; ")}
+}
+
+func suppressedSection(suppressed []Suppressed) string {
+	if len(suppressed) == 0 {
+		return ""
+	}
+	lines := make([]string, len(suppressed))
+	for i := range suppressed {
+		lines[i] = suppressedText(&suppressed[i])
+	}
+	return fmt.Sprintf("%d suppressed (already abstracted)\n%s", len(lines), strings.Join(lines, "\n"))
 }

@@ -92,12 +92,16 @@ func GetReport(ctx context.Context, args []string) (*patterns.PatternsReport, er
 	// that large temporary phase before allocating the mining graphs.
 	runtime.GC()
 	report := patterns.Run(toFacts(pdgs.Funcs), patterns.Options{
+		DeclarationOrders: pdgs.DeclarationOrders,
 		Params:            params,
 		AnemicModels:      pdgs.AnemicModels,
 		MissingIdentities: pdgs.MissingIdentities,
 		DomainServices:    pdgs.DomainServices,
 		WlCache:           cache,
 	})
+	if err := gopatterns.VerifyParameterizations(&report, pdgs); err != nil {
+		return nil, fmt.Errorf("verify parameterization: %w", err)
+	}
 	return &report, nil
 }
 

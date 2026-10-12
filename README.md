@@ -356,3 +356,50 @@ definitions across reassignment and `if` branches, with RHS reads before writes.
 This replaces first-binding data edges in that subset. Calls, memory, loops and
 short-circuit expressions remain unsupported by this analysis; control dependence,
 value joins and strict reference-count/projection validation remain incomplete.
+
+## Order declarations by type
+
+`gstyle patterns .` reports `declaration_order` when declarations break the
+order: type, constructors, exported methods, unexported methods. Other functions
+come last. Type groups and declarations within each category keep their order.
+Constructors use a `New` or `new` prefix and return a local named type (or pointer
+as the first result). Other factory names are treated as ordinary functions.
+
+```sh
+gstyle fix --kind declaration_order .          # preview the diff
+gstyle fix --kind declaration_order --apply .  # write the change
+```
+
+The fix moves source blocks with their comments, then runs gofmt. It preserves
+function bodies and the relative order of init functions and non-function
+declarations. Grouped type declarations stay grouped. Files with Go directives,
+cgo imports, or multiple declarations on one line are left unchanged. The
+candidate covers the whole file: `--changed` selects a file if its declaration
+range overlaps the diff, and may reorder unchanged functions in that file.
+
+## Dependency analysis coverage
+
+Taint, barrier slices, thin slices, and input-to-output chops traverse canonical
+PDG operations, including nodes omitted by abstraction matching. The analysis
+borrows bindings, definitions, locations, and evidence from the original graph.
+One function's traversal scratch is built at a time and released before clone
+matching. Clone matching keeps its existing abstraction view.
+
+Pattern reports include four small `analysis_coverage` rows: complete, partial,
+not evaluated, and unavailable function counts. No findings with partial coverage
+is not proof of clean flow. Findings include `analysis_evidence` with the function
+ID, canonical node IDs where available, graph conformance, and missing or
+approximate capabilities. Complete coverage describes the required dependency
+facts for that analysis; it is not a security guarantee or strict compat admission.
+Aliases, loop-carried flow, and full producer conformance still need implementation.
+
+## Verify parameterization suggestions
+
+Parameterization suggestions describe aligned graph regions and their coverage;
+a partial match does not mean the listed differences are exhaustive. Automatic
+extraction requires two adjacent free functions with a complete supported AST
+match, known compatible PDG parameter and callable types, and a current source
+snapshot. Unknown or incompatible facts leave the finding advisory, with a reason.
+The fix targets only that pair. If another fix changes the source first, re-mine
+with `gstyle fix --phased` before parameterizing. Callable types are interned PDG
+extensions; no second compiler load is required.

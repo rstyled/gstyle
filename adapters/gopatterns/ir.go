@@ -13,6 +13,7 @@ import (
 )
 
 type irBuilder struct {
+	typeQualifier                        types.Qualifier
 	sourceFilename                       string
 	attributes                           []pdg.Attributes
 	outputs                              []pdg.Ref
@@ -31,7 +32,7 @@ type irBuilder struct {
 
 func newIRBuilder(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.Builder) *irBuilder {
 	b := &irBuilder{
-		pool: pool, info: pkg.TypesInfo, fset: pkg.Fset,
+		pool: pool, info: pkg.TypesInfo, fset: pkg.Fset, typeQualifier: callableQualifier(pkg, fn),
 		sourceFilename: pkg.Fset.PositionFor(fn.Pos(), false).Filename,
 		symbols:        map[types.Object]pdg.Ref{}, nodes: map[ast.Node]pdg.Ref{},
 		writeTargets: map[ast.Node]bool{},
@@ -100,7 +101,7 @@ func (b *irBuilder) appendNode(n ast.Node, category pdg.Category, attrs pdg.Attr
 	b.graph.Spans = append(b.graph.Spans, b.span(n))
 	b.attributes = append(b.attributes, attrs)
 	b.graph.Nodes = append(b.graph.Nodes, pdg.Node{
-		ID: b.pool.Text("n" + strconv.Itoa(int(id))), Category: category,
+		ID: b.pool.Text("n" + strconv.Itoa(int(id))), Category: category, Line: b.sourceLine(n),
 		OriginalKind: b.pool.Known(fmt.Sprintf("%T", n)), Span: pdg.Ref(len(b.graph.Spans)),
 		Attributes: pdg.Ref(len(b.attributes)), Evidence: b.sourceEvidence, Provenance: b.sourceOrigin,
 	})
@@ -163,4 +164,11 @@ func buildGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.
 		return pdg.Graph{}, err
 	}
 	return b.ir.graph, nil
+}
+
+func (b *irBuilder) sourceLine(node ast.Node) uint32 {
+	if node == nil {
+		return 0
+	}
+	return uint32(b.fset.PositionFor(node.Pos(), false).Line)
 }
