@@ -386,3 +386,13 @@ ID, canonical node IDs where available, graph conformance, and missing or
 approximate capabilities. Complete coverage describes the required dependency
 facts for that analysis; it is not a security guarantee or strict compat admission.
 Aliases, loop-carried flow, and full producer conformance still need implementation.
+## Verify parameterization suggestions
+
+Parameterization suggestions describe aligned graph regions and their coverage;
+a partial match does not mean the listed differences are exhaustive. Automatic
+extraction requires two adjacent free functions with a complete supported AST
+match, known compatible PDG parameter and callable types, and a current source
+snapshot. Unknown or incompatible facts leave the finding advisory, with a reason.
+The fix targets only that pair. If another fix changes the source first, re-mine
+with `gstyle fix --phased` before parameterizing. Callable types are interned PDG
+extensions; no second compiler load is required.

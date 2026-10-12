@@ -13,6 +13,7 @@ import (
 )
 
 type irBuilder struct {
+	typeQualifier                        types.Qualifier
 	sourceFilename                       string
 	attributes                           []pdg.Attributes
 	outputs                              []pdg.Ref
@@ -30,7 +31,7 @@ type irBuilder struct {
 
 func newIRBuilder(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.Builder) *irBuilder {
 	b := &irBuilder{
-		pool: pool, info: pkg.TypesInfo, fset: pkg.Fset,
+		pool: pool, info: pkg.TypesInfo, fset: pkg.Fset, typeQualifier: callableQualifier(pkg, fn),
 		sourceFilename: pkg.Fset.PositionFor(fn.Pos(), false).Filename,
 		symbols:        map[types.Object]pdg.Ref{}, nodes: map[ast.Node]pdg.Ref{},
 		writeTargets: map[ast.Node]bool{},

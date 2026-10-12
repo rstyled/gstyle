@@ -1,0 +1,41 @@
+package gopatterns
+
+import (
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+
+	"github.com/rstyled/gstyle/domain/patterns"
+)
+
+// A proof is tied to the complete source snapshot. Earlier fixes must re-mine
+// before parameterization; stale evidence cannot authorize another pair.
+func applyParameterizeFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
+	a, b, signatures, err := parameterizationProof(spec, src)
+	if err != nil {
+		return nil, err
+	}
+	fset, file, err := parseSpec(spec, src)
+	if err != nil {
+		return nil, err
+	}
+	candidates := []patterns.Candidate{{Kind: patterns.Parameterize, Sites: []patterns.Site{{Name: a}, {Name: b}}}}
+	out, _, err := fixParameterizeWithTypes(fset, file, src, parameterizeConfig{candidates, signatures})
+	return out, err
+}
+
+func parameterizationProof(spec *patterns.FixSpec, src []byte) (string, string, map[string]string, error) {
+	if spec.Params["source_sha256"] != fmt.Sprintf("%x", sha256.Sum256(src)) {
+		return "", "", nil, fmt.Errorf("parameterization requires a current typed source proof; re-run patterns")
+	}
+	a, b := spec.Params["pair_a"], spec.Params["pair_b"]
+	if a == "" || b == "" || a == b {
+		return "", "", nil, fmt.Errorf("parameterization requires one explicit function pair")
+	}
+	var signatures map[string]string
+	if err := json.Unmarshal([]byte(spec.Params["callee_types"]), &signatures); err != nil {
+		return "", "", nil, fmt.Errorf("parameterization callable types: %w", err)
+	}
+
+	return a, b, signatures, nil
+}

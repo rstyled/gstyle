@@ -88,20 +88,6 @@ func applyValueObjectFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
 	return out, nil
 }
 
-// applyParameterizeFix applies a parameterize FixSpec.
-func applyParameterizeFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
-	fset, f, err := parseSpec(spec, src)
-	if err != nil {
-		return nil, err
-	}
-	// Delegate to existing fixer; it finds parameterizable pairs.
-	out, _, err := FixParameterize(fset, f, src, nil)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // applyInterfaceFix generates a Go interface for trait_method and
 // capability_set candidates. The fix emits the interface definition;
 // the types already implement it implicitly.
