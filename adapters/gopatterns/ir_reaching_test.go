@@ -73,6 +73,9 @@ func reachingDescriptions(t *testing.T, g pdg.Graph, source string) []string {
 		if g.Tables.Text(edge.Subkind) != "reaching-definition" {
 			continue
 		}
+		if g.Nodes[edge.Target-1].Category == pdg.Merge {
+			continue
+		}
 		definition := g.Definitions[edge.Definition-1]
 		if edge.Source != definition.Node || edge.Symbol != definition.Symbol {
 			t.Fatal("edge disagrees with definition")
@@ -80,9 +83,12 @@ func reachingDescriptions(t *testing.T, g pdg.Graph, source string) []string {
 		if g.Tables.Evidence[edge.Evidence-1].Status != pdg.Supported {
 			t.Fatal("exact edge lacks support evidence")
 		}
-		from, to := g.Spans[g.Nodes[edge.Source-1].Span-1], g.Spans[g.Nodes[edge.Target-1].Span-1]
+		from, to := g.Spans[g.Nodes[edge.Source-1].Span-1], g.Spans[g.Nodes[readConsumer(g, edge.Target)-1].Span-1]
 		name := g.Tables.Text(g.Symbols[edge.Symbol-1].Name.Value)
-		descriptions = append(descriptions, sourceOperation(source, from)+" -> "+sourceOperation(source, to)+" : "+name)
+		for _, producer := range reachingProducers(g, edge.Source) {
+			from = g.Spans[g.Nodes[producer-1].Span-1]
+			descriptions = append(descriptions, sourceOperation(source, from)+" -> "+sourceOperation(source, to)+" : "+name)
+		}
 	}
 	slices.Sort(descriptions)
 	return descriptions
@@ -110,7 +116,6 @@ func TestReachingDefinitionsRejectUnsupportedFunctions(t *testing.T) {
 		`func f(x int) int { for x < 2 { x++ }; return x }`,
 		`func f(p *int) int { return *p }`,
 		`func f(x int) int { println(x); return x }`,
-		`func f(x bool, y bool) bool { if x && y { return true }; return false }`,
 		`func f(xs []int) int { return xs[0] }`,
 		`var x int; func f() int { x = 1; return x }`,
 		`func f(x int) int { next := func() int { return x }; return next() }`,
@@ -139,7 +144,7 @@ func TestScalarValueEdgesPreserveExpressionFlow(t *testing.T) {
 		from, to := g.Spans[g.Nodes[edge.Source-1].Span-1], g.Spans[g.Nodes[edge.Target-1].Span-1]
 		got = append(got, sourceOperation(source, from)+" -> "+sourceOperation(source, to))
 	}
-	want := []string{"1 -> x + 1", "x + 1 -> (x + 1)", "(x + 1) -> x = (x + 1)", "2 -> x * 2", "x * 2 -> return x * 2"}
+	want := []string{"1 -> x + 1", "x + 1 -> (x + 1)", "(x + 1) -> x = (x + 1)", "2 -> x * 2", "x * 2 -> return x * 2", "x #4 -> x + 1", "x #5 -> x * 2"}
 	slices.Sort(got)
 	slices.Sort(want)
 	if !reflect.DeepEqual(got, want) {
@@ -164,10 +169,51 @@ func TestReachingEdgesKeepOperandOrder(t *testing.T) {
 			if edge.Definition == 0 {
 				continue
 			}
-			got = append(got, g.Tables.Text(g.Symbols[edge.Symbol-1].Name.Value)+":"+strconv.Itoa(int(edge.Position)))
+			got = append(got, g.Tables.Text(g.Symbols[edge.Symbol-1].Name.Value)+":"+strconv.Itoa(int(readOperandPosition(g, edge))))
 		}
 		if !reflect.DeepEqual(got, tc.want) {
 			t.Fatalf("%s: got %v; want %v", tc.function, got, tc.want)
 		}
 	}
+}
+
+// Resolve explicit value joins for the existing source def/use expectations.
+// Separate join fixtures assert the actual intermediate graph entities.
+func reachingProducers(g pdg.Graph, node pdg.Ref) []pdg.Ref {
+	if g.Nodes[node-1].Category != pdg.Merge {
+		return []pdg.Ref{node}
+	}
+	var result []pdg.Ref
+	for _, edge := range g.Edges {
+		if edge.Kind == pdg.Data && edge.Target == node {
+			result = append(result, reachingProducers(g, edge.Source)...)
+		}
+	}
+	return result
+}
+
+// Display def/use fixtures at their consuming source operation, while read
+// occurrence fixtures below check the newly decomposed intermediate entities.
+func readConsumer(g pdg.Graph, node pdg.Ref) pdg.Ref {
+	if g.Nodes[node-1].Category != pdg.Read {
+		return node
+	}
+	for _, edge := range g.Edges {
+		if edge.Source == node && g.Tables.Text(edge.Subkind) == "scalar-value" {
+			return edge.Target
+		}
+	}
+	return node
+}
+
+func readOperandPosition(g pdg.Graph, definition pdg.Edge) pdg.Position {
+	if g.Nodes[definition.Target-1].Category != pdg.Read {
+		return definition.Position
+	}
+	for _, edge := range g.Edges {
+		if edge.Source == definition.Target && g.Tables.Text(edge.Subkind) == "scalar-value" {
+			return edge.Position
+		}
+	}
+	return definition.Position
 }

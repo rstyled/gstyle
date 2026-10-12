@@ -28,6 +28,9 @@ type irBuilder struct {
 	policy, sourceEvidence, sourceOrigin pdg.Ref
 	executionEvidence, executionOrigin   pdg.Ref
 	scalarDefinitions                    bool
+	scalarOperations                     bool
+	implicitReads                        map[ast.Node][]pdg.Ref
+	normalDependencies                   bool
 }
 
 func newIRBuilder(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.Builder) *irBuilder {
@@ -144,6 +147,13 @@ func (b *irBuilder) definition(node, symbol pdg.Ref) {
 	attrs.Defines = append(attrs.Defines, id)
 }
 
+func (b *irBuilder) sourceLine(node ast.Node) uint32 {
+	if node == nil {
+		return 0
+	}
+	return uint32(b.fset.PositionFor(node.Pos(), false).Line)
+}
+
 // buildGraph is the sole production graph construction path.
 func buildGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.Builder) (pdg.Graph, error) {
 	file := pkg.Fset.File(fn.Pos())
@@ -154,21 +164,17 @@ func buildGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.
 	b.ir.interfaces(fn)
 	b.params(fn)
 	b.stmt(fn.Body)
+	b.ir.scalarOperations = b.ir.scalarInterface(fn) && b.ir.reachingSubset(fn.Body)
+	b.ir.implicitReads = map[ast.Node][]pdg.Ref{}
 	b.ir.enrich(fn.Body)
 	b.ir.returnValues(fn.Body)
 	b.ir.references()
 	flow, dom := b.ir.execution(fn.Body)
-	b.ir.reachingDefinitions(fn.Body, flow, dom)
+	flow, dom = b.ir.reachingDefinitions(fn.Body, flow, dom)
+	b.ir.normalDependenciesFor(flow, dom)
 	b.ir.capabilities()
 	if err := b.ir.pack(); err != nil {
 		return pdg.Graph{}, err
 	}
 	return b.ir.graph, nil
-}
-
-func (b *irBuilder) sourceLine(node ast.Node) uint32 {
-	if node == nil {
-		return 0
-	}
-	return uint32(b.fset.PositionFor(node.Pos(), false).Line)
 }

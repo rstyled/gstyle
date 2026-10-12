@@ -60,11 +60,12 @@ func MiningView(g *pdg.Graph) *MiningGraph {
 	if g == nil {
 		return nil
 	}
-	view := &MiningGraph{Paper: nativeCharacteristics(g), Nodes: make([]PdgNode, 0, matchingNodeCount(g)), Edges: make([]PdgEdge, 0, len(g.Edges))}
+	kept := pdg.NormalProjection(g)
+	view := &MiningGraph{Paper: nativeCharacteristicsFor(g, kept), Nodes: make([]PdgNode, 0, matchingNodeCount(g)), Edges: make([]PdgEdge, 0, len(g.Edges))}
 	indexes := make([]int, len(g.Nodes))
 	for i, n := range g.Nodes {
 		indexes[i] = -1
-		if n.MatchLabel == 0 {
+		if n.MatchLabel == 0 || normalNodeRemoved(kept, i) {
 			continue
 		}
 		indexes[i] = len(view.Nodes)
@@ -108,3 +109,5 @@ func matchingNodeCount(g *pdg.Graph) int {
 func miningLabel(t *pdg.Tables, l pdg.MatchLabel, line int) PdgNode {
 	return PdgNode{Kind: NodeKind(t.Text(l.Kind)), TyClass: t.Text(l.TypeClass), SigClass: t.Text(l.SignatureClass), CalleeID: t.Text(l.Callee), LitKind: t.Text(l.LiteralKind), Detail: t.Text(l.Detail), Effects: l.Effects, Line: line}
 }
+
+func normalNodeRemoved(kept []bool, index int) bool { return kept != nil && !kept[index] }

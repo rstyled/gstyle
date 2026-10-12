@@ -255,6 +255,7 @@ type NamedCapability struct {
 // address the corresponding graph slice. References are one-based.
 type Graph struct {
 	Tables          *Tables
+	NormalFlow      *NormalFlow
 	Profile         Ref
 	Producer        Producer
 	Sources         []Source

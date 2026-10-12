@@ -337,8 +337,9 @@ pattern mining and preserves extraction limits as explicit evidence. The existin
 The schema lives in [rstyled/compat](https://github.com/rstyled/compat/blob/56edd6bb804b10edaf9bbc2343d69e5e298d8c1a/schemas/pdg.schema.json).
 The root extraction profile governs counts, dependencies, capabilities and
 provenance. Records have no separate policy fields; conformance is one assessment
-of the root profile. Gstyle's native reference count still counts recorded
-reference-bearing bindings; it is not the strict matcher's retained-read count.
+of the root profile. `gstyle.go.scalar-normal/0.1.0` counts distinct local/parameter
+bindings read by reachable read operations. The broader `gstyle.abstraction/0.2.0`
+profile retains its reference-bearing binding count; these policies are distinct.
 To check the export fixture against a compat checkout, install Python `jsonschema`
 and run:
 
@@ -351,11 +352,22 @@ Scope IDs use relative paths and lexical byte ranges; they stay deterministic fo
 unchanged source and extraction root. Dependencies remain approximate; structural
 schema validity does not establish compat extraction or matching conformance.
 
-For acyclic integer/boolean local code, native data edges now identify reaching
-definitions across reassignment and `if` branches, with RHS reads before writes.
-This replaces first-binding data edges in that subset. Calls, memory, loops and
-short-circuit expressions remain unsupported by this analysis; control dependence,
-value joins and strict reference-count/projection validation remain incomplete.
+The scalar normal profile covers typed local integer/boolean code, declarations,
+assignment, compound assignment, shadowing, `if` branches, `&&`/`||`, and returns.
+It records distinct read occurrences, reaching definitions, explicit value joins,
+post-dominator control edges, and nearest-operation-dominator execution edges.
+Short-circuit RHS operations are conditional; branch joins do not require a skipped
+arm. Compiler CFG context uses compact indexes and remains beside the closed PDG
+interchange document. Validation recomputes reachability and retained-read counts;
+matching excludes unreachable operations while export preserves source facts.
+
+The profile excludes calls, memory, loops, closures, concurrency, generics and
+non-scalar types, including unsupported unreachable source. Exceptional flow is
+omitted and remains unsupported. Its extraction conformance remains nonconformant:
+operation inventory and independent source/CFG/type/provenance validation still
+need the separate Go profile and conformance harness required by
+[compat's strict contract](https://github.com/rstyled/compat/blob/56edd6bb804b10edaf9bbc2343d69e5e298d8c1a/schemas/ccgraph-profile.md#L19-L60).
+These changes do not switch the default matcher to certified strict matching.
 
 ## Order declarations by type
 

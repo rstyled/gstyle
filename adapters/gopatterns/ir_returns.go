@@ -15,7 +15,12 @@ func (b *irBuilder) returnValues(body *ast.BlockStmt) {
 		return
 	}
 	description := "Syntactic transfer from an explicit return to its formal output slot; reaching definitions, deferred result writes and exceptional exits are not modeled."
-	evidence := b.pool.Evidence(pdg.Approximated, description)
+	status := pdg.Approximated
+	if b.scalarOperations {
+		status = pdg.Supported
+		description = "Normal scalar return transfers; explicit values and named-result reads preserve source order. Deferred calls and exceptional exits are outside this profile."
+	}
+	evidence := b.pool.Evidence(status, description)
 	origin := b.pool.Origin(pdg.Analysis, description)
 	ast.Inspect(body, func(n ast.Node) bool {
 		if _, closure := n.(*ast.FuncLit); closure {
@@ -31,7 +36,7 @@ func (b *irBuilder) returnValues(body *ast.BlockStmt) {
 func (b *irBuilder) returnSlots(ret *ast.ReturnStmt, evidence, origin pdg.Ref) {
 	node := b.nodes[ret]
 	if len(ret.Results) == 0 {
-		b.namedReturnReads(node)
+		b.namedReturnReads(ret, node)
 	}
 	for position, output := range b.outputs {
 		b.graph.Edges = append(b.graph.Edges, pdg.Edge{
@@ -44,12 +49,17 @@ func (b *irBuilder) returnSlots(ret *ast.ReturnStmt, evidence, origin pdg.Ref) {
 
 // Bare returns read the named result bindings at this return site. These are
 // access facts, not claims about which definitions reach those bindings.
-func (b *irBuilder) namedReturnReads(node pdg.Ref) {
+func (b *irBuilder) namedReturnReads(ret *ast.ReturnStmt, node pdg.Ref) {
 	attrs := &b.attributes[b.graph.Nodes[node-1].Attributes-1]
 	for position, param := range b.graph.Function.Outputs {
 		if param.Symbol == 0 {
 			continue
 		}
-		attrs.Reads = append(attrs.Reads, pdg.Access{Symbol: param.Symbol, Position: pdg.Position(position + 1)})
+		read := pdg.Access{Symbol: param.Symbol, Position: pdg.Position(position + 1)}
+		if b.scalarOperations {
+			b.implicitScalarRead(ret, nil, read)
+			continue
+		}
+		attrs.Reads = append(attrs.Reads, read)
 	}
 }

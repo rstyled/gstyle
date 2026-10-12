@@ -13,25 +13,6 @@ type validator struct {
 	err error
 }
 
-// Validate checks the IR's structure and local references. It does not certify
-// extraction correctness or profile conformance; those require source fixtures.
-func Validate(g *Graph) error {
-	if g == nil || g.Tables == nil {
-		return fmt.Errorf("PDG tables are required")
-	}
-	v := validator{g: g}
-	v.tables()
-	v.header()
-	v.sources()
-	v.symbols()
-	v.definitions()
-	v.locations()
-	v.nodes()
-	v.edges()
-	v.evidence()
-	return v.err
-}
-
 func (v *validator) require(ok bool, message string) {
 	if !ok && v.err == nil {
 		v.err = fmt.Errorf("invalid PDG: %s", message)
@@ -224,15 +205,6 @@ func (v *validator) definitionOwner(d Definition, id Ref) {
 		return
 	}
 	v.require(contains(v.g.NodeAttributes(n).Defines, id), "definition missing from owner")
-}
-
-func contains(ids []Ref, target Ref) bool {
-	for _, id := range ids {
-		if id == target {
-			return true
-		}
-	}
-	return false
 }
 
 func (v *validator) locations() {
@@ -435,4 +407,35 @@ func (v *validator) matchLabels() {
 			v.text(id, false)
 		}
 	}
+}
+
+// Validate checks the IR's structure and local references. It does not certify
+// extraction correctness or profile conformance; those require source fixtures.
+func Validate(g *Graph) error {
+	if g == nil || g.Tables == nil {
+		return fmt.Errorf("PDG tables are required")
+	}
+	v := validator{g: g}
+	v.tables()
+	v.header()
+	v.sources()
+	v.symbols()
+	v.definitions()
+	v.locations()
+	v.nodes()
+	v.edges()
+	v.evidence()
+	if v.err == nil && g.NormalFlow != nil {
+		return validateNormalFlow(g)
+	}
+	return v.err
+}
+
+func contains(ids []Ref, target Ref) bool {
+	for _, id := range ids {
+		if id == target {
+			return true
+		}
+	}
+	return false
 }

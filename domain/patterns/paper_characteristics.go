@@ -11,16 +11,13 @@ type PaperCharacteristics struct {
 }
 
 func nativeCharacteristics(g *pdg.Graph) *PaperCharacteristics {
+	return nativeCharacteristicsFor(g, pdg.NormalProjection(g))
+}
+
+func nativeCharacteristicsFor(g *pdg.Graph, kept []bool) *PaperCharacteristics {
 	out := &PaperCharacteristics{ReferenceKnown: g.Function.ReferenceCount.Status == pdg.Known}
-	for _, node := range g.Nodes {
-		if !paperFeatureNode(node.Category) {
-			continue
-		}
-		out.Counts[paperCategoryIndex(node.Category)]++
-	}
-	for _, edge := range g.Edges {
-		out.Counts[paperEdgeIndex(edge.Kind)]++
-	}
+	countNativeNodes(g, kept, out)
+	countNativeEdges(g, kept, out)
 	if out.ReferenceKnown {
 		out.Counts[8] = float64(g.Function.ReferenceCount.Value)
 	}
@@ -59,5 +56,45 @@ func paperFeatureNode(category pdg.Category) bool {
 		return false
 	default:
 		return true
+	}
+}
+
+func normalEdgeRemoved(kept []bool, edge pdg.Edge) bool {
+	return normalNodeRemoved(kept, int(edge.Source-1)) || normalNodeRemoved(kept, int(edge.Target-1))
+}
+
+func nativeFeatureNode(g *pdg.Graph, category pdg.Category) bool {
+	if g.NormalFlow != nil {
+		return category != pdg.Entry && category != pdg.Exit
+	}
+	return paperFeatureNode(category)
+}
+
+func nativeCategoryIndex(g *pdg.Graph, category pdg.Category) int {
+	if g.NormalFlow != nil && category == pdg.FormalInput {
+		return 4
+	}
+	return paperCategoryIndex(category)
+}
+
+func countNativeNodes(g *pdg.Graph, kept []bool, out *PaperCharacteristics) {
+	for i, node := range g.Nodes {
+		if normalNodeRemoved(kept, i) {
+			continue
+		}
+		if !nativeFeatureNode(g, node.Category) {
+			continue
+		}
+		out.Counts[nativeCategoryIndex(g, node.Category)]++
+	}
+}
+
+func countNativeEdges(g *pdg.Graph, kept []bool, out *PaperCharacteristics) {
+
+	for _, edge := range g.Edges {
+		if normalEdgeRemoved(kept, edge) {
+			continue
+		}
+		out.Counts[paperEdgeIndex(edge.Kind)]++
 	}
 }

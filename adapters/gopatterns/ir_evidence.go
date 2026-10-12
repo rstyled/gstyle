@@ -4,10 +4,12 @@ import "github.com/rstyled/gstyle/domain/pdg"
 
 // Extraction completeness describes the actual producer, not what the IR can
 // express. In particular CFG succession is not an execution dependency policy.
-var irCapabilities = map[string]struct {
+type irCapability struct {
 	status      pdg.Status
 	description string
-}{
+}
+
+var irCapabilities = map[string]irCapability{
 	"node_extraction":             {pdg.Approximated, "Mixed statement/expression operations; closures are opaque; not a complete language lowering."},
 	"scalar_reaching_definitions": {pdg.Unsupported, "Distinct syntactic definitions are recorded; mining edges use first bindings, not reaching definitions."},
 	"branch_merges":               {pdg.Unsupported, "Merge values are not computed."},
@@ -25,14 +27,24 @@ var irCapabilities = map[string]struct {
 	"reference_counting":          {pdg.Supported, "Distinct recorded Go reference-bearing variable bindings; type parameters remain unknown. Not alias or storage-location counting."},
 }
 
+var irNormalCapabilities = map[string]irCapability{
+	"scalar_reaching_definitions": {pdg.Supported, scalarDefinitionDescription},
+	"branch_merges":               {pdg.Supported, scalarDefinitionDescription},
+	"control_dependencies":        {pdg.Supported, normalDependencyDescription},
+	"execution_dependencies":      {pdg.Supported, normalDependencyDescription},
+	"reference_counting":          {pdg.Supported, "Distinct local/parameter bindings read by reachable normal-flow read operations; repeated reads count once, shadowed bindings separately."},
+	"returns":                     {pdg.Supported, "Explicit and bare return values under bounded scalar normal flow; deferred writes and exceptional exits are excluded by the source scan."},
+	"calls":                       {pdg.NotApplicable, "The entire scalar source body is checked to contain no calls."},
+	"memory_aliases":              {pdg.NotApplicable, "The entire scalar source body and interface exclude reference-bearing types and memory operations."},
+	"loop_carried_dependencies":   {pdg.NotApplicable, "The entire scalar source body excludes loops and branch transfers; the retained normal CFG is acyclic."},
+	"closures":                    {pdg.NotApplicable, "The entire scalar source body and interface exclude closures and function values."},
+	"concurrency":                 {pdg.NotApplicable, "The entire scalar source body excludes go, select, send and receive operations."},
+}
+
 func (b *irBuilder) capabilities() {
 	capabilities := make([]pdg.NamedCapability, len(pdg.RequiredCapabilities))
 	for i, name := range pdg.RequiredCapabilities {
-		c := irCapabilities[name]
-		if name == "scalar_reaching_definitions" && b.scalarDefinitions {
-			c.status = pdg.Supported
-			c.description = scalarDefinitionDescription
-		}
+		c := b.capability(name)
 		capabilities[i] = pdg.NamedCapability{
 			Name: b.pool.Text(name), Evidence: b.pool.Evidence(c.status, c.description),
 		}
@@ -46,4 +58,13 @@ func (b *irBuilder) capabilities() {
 		Code: b.pool.Text("pdg.incomplete-dependencies"), Severity: pdg.Warning,
 		Message: b.pool.Text("Operation facts are available; dependency absence must not be treated as independence."),
 	}}
+}
+
+func (b *irBuilder) capability(name string) irCapability {
+	if b.normalDependencies {
+		if c, ok := irNormalCapabilities[name]; ok {
+			return c
+		}
+	}
+	return irCapabilities[name]
 }
