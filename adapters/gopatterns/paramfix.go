@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/format"
-	"go/parser"
 	"go/token"
 	"strings"
 	"unicode"
@@ -52,12 +51,13 @@ const maxParamHoles = 3
 // This is the low-level rewrite mechanism. The CLI additionally requires
 // VerifyParameterizations to authorize canonical dependency and type evidence.
 func FixParameterize(fset *token.FileSet, f *ast.File, src []byte, candidates []patterns.Candidate) ([]byte, []ParamFix, error) {
-	return fixParameterizeWithTypes(fset, f, src, parameterizeConfig{candidates, localCallableTypes(fset, f)})
+	return fixParameterizeWithTypes(fset, f, src, parameterizeConfig{candidates: candidates, signatures: localCallableTypes(fset, f)})
 }
 
 type parameterizeConfig struct {
 	candidates []patterns.Candidate
 	signatures map[string]string
+	helperName string
 }
 
 func fixParameterizeWithTypes(fset *token.FileSet, f *ast.File, src []byte, config parameterizeConfig) ([]byte, []ParamFix, error) {
@@ -66,7 +66,7 @@ func fixParameterizeWithTypes(fset *token.FileSet, f *ast.File, src []byte, conf
 		return src, nil, nil
 	}
 	allow := buildAllowlist(config.candidates)
-	tc := &tryCtx{fset: fset, allow: allow, used: make(map[string]bool), src: src, signatures: config.signatures}
+	tc := &tryCtx{fset: fset, allow: allow, used: make(map[string]bool), src: src, signatures: config.signatures, helperName: config.helperName}
 	edits, fixes := collectEdits(tc, funcs)
 	if len(edits) == 0 {
 		return src, nil, nil
@@ -91,6 +91,7 @@ func collectEdits(tc *tryCtx, funcs []*ast.FuncDecl) ([]textEdit, []ParamFix) {
 
 // tryCtx carries the context for trying function pairs.
 type tryCtx struct {
+	helperName string
 	signatures map[string]string
 	fset       *token.FileSet
 	allow      map[[2]string]bool
@@ -177,7 +178,7 @@ func safeToExtract(fset *token.FileSet, a, b *ast.FuncDecl) bool {
 	if !sameSignature(fset, a, b) {
 		return false
 	}
-	if hasFuncLit(a.Body) || hasFuncLit(b.Body) {
+	if unsafeExtractionBody(a) || unsafeExtractionBody(b) {
 		return false
 	}
 	return safeResults(a) && safeResults(b)
@@ -213,7 +214,7 @@ func paramEdit(tc *tryCtx, a, b *ast.FuncDecl) (textEdit, ParamFix, bool) {
 	if !adjacent(tc.fset, a, b, tc.src) {
 		return textEdit{}, ParamFix{}, false
 	}
-	ctx := &paramCtx{fset: tc.fset, a: a, b: b, src: tc.src, r: r, holes: holes, signatures: tc.signatures}
+	ctx := &paramCtx{fset: tc.fset, a: a, b: b, src: tc.src, r: r, holes: holes, signatures: tc.signatures, extractedName: tc.helperName}
 	return buildEdit(ctx)
 }
 
@@ -237,12 +238,14 @@ func diffPair(a, b *ast.FuncDecl) (*renames, []hole, bool) {
 
 // buildEdit constructs the final text edit from validated holes.
 func buildEdit(ctx *paramCtx) (textEdit, ParamFix, bool) {
-	ctx.extractedName = helperName(ctx.a.Name.Name, ctx.b.Name.Name)
+	if ctx.extractedName == "" {
+		ctx.extractedName = helperName(ctx.a.Name.Name, ctx.b.Name.Name)
+	}
 	replacement, ok := buildReplacement(ctx)
 	if !ok {
 		return textEdit{}, ParamFix{}, false
 	}
-	aStart := ctx.fset.PositionFor(ctx.a.Pos(), false).Offset
+	aStart := declarationStart(ctx.fset, ctx.a)
 	bEnd := ctx.fset.PositionFor(ctx.b.End(), false).Offset
 	lineA := ctx.fset.PositionFor(ctx.a.Pos(), false).Line
 	lineB := ctx.fset.PositionFor(ctx.b.Pos(), false).Line
@@ -1008,6 +1011,7 @@ type holeParam struct {
 // holeParams builds the helper parameters from holes.
 func holeParams(ctx *paramCtx) ([]holeParam, bool) {
 	var params []holeParam
+	names := helperHoleNames(ctx.a, len(ctx.holes))
 	for i, h := range ctx.holes {
 		ai := h.aExpr.(*ast.Ident)
 		bi := h.bExpr.(*ast.Ident)
@@ -1016,14 +1020,11 @@ func holeParams(ctx *paramCtx) ([]holeParam, bool) {
 			return nil, false
 		}
 		params = append(params, holeParam{
-			name:  fmt.Sprintf("fn%d", i+1),
+			name:  names[i],
 			typ:   typ,
 			aExpr: ai.Name,
 			bExpr: bi.Name,
 		})
-	}
-	if len(params) == 1 {
-		params[0].name = "fn"
 	}
 	return params, true
 }
@@ -1206,65 +1207,28 @@ func findCall(n ast.Node, name string) *ast.CallExpr {
 // buildHelperBody builds the helper body text from a's body, replacing
 // holes with param names.
 func buildHelperBody(ctx *paramCtx) ([]byte, bool) {
-	body := cloneBlock(ctx.a.Body)
-	if body == nil {
+	start := ctx.fset.Position(ctx.a.Body.Pos()).Offset
+	end := ctx.fset.Position(ctx.a.Body.End()).Offset
+	edits := make([]textEdit, len(ctx.holes))
+	for i, hole := range ctx.holes {
+		edits[i] = textEdit{start: ctx.fset.Position(hole.aExpr.Pos()).Offset - start,
+			end: ctx.fset.Position(hole.aExpr.End()).Offset - start, replacement: []byte(ctx.params[i].name)}
+	}
+	body := applyEdits(ctx.src[start:end], edits)
+	formatted, err := format.Source(append([]byte("package p\nfunc f() "), body...))
+	if err != nil {
 		return nil, false
 	}
-	rewriteHoles(body, ctx.holes, ctx.params)
-	return formatStmts(ctx.fset, body.List)
-}
-
-// rewriteHoles renames hole identifiers to param names in the cloned body.
-func rewriteHoles(body *ast.BlockStmt, holes []hole, params []holeParam) {
-	holeMap := map[string]string{}
-	for i, h := range holes {
-		ai := h.aExpr.(*ast.Ident)
-		holeMap[ai.Name] = params[i].name
+	text := bytes.TrimPrefix(formatted[bytes.IndexByte(formatted, '{')+1:len(formatted)-2], []byte("\n"))
+	if !bytes.HasSuffix(text, []byte("\n")) {
+		text = append(text, '\n')
 	}
-	ast.Inspect(body, func(n ast.Node) bool {
-		if id, ok := n.(*ast.Ident); ok {
-			if p, ok := holeMap[id.Name]; ok {
-				id.Name = p
-			}
-		}
-		return true
-	})
-}
-
-// formatStmts formats a statement list, one per line.
-func formatStmts(fset *token.FileSet, stmts []ast.Stmt) ([]byte, bool) {
-	var buf bytes.Buffer
-	for _, stmt := range stmts {
-		if err := format.Node(&buf, fset, stmt); err != nil {
-			return nil, false
-		}
-		buf.WriteByte('\n')
-	}
-	return buf.Bytes(), true
-}
-
-// cloneBlock deep-copies a block statement (via format+parse).
-func cloneBlock(b *ast.BlockStmt) *ast.BlockStmt {
-	fset := token.NewFileSet()
-	var buf bytes.Buffer
-	buf.WriteString("package p\nfunc f() ")
-	if err := format.Node(&buf, fset, b); err != nil {
-		return nil
-	}
-	f, err := parser.ParseFile(fset, "clone.go", buf.Bytes(), 0)
-	if err != nil {
-		return nil
-	}
-	for _, decl := range f.Decls {
-		if fn, ok := decl.(*ast.FuncDecl); ok {
-			return fn.Body
-		}
-	}
-	return nil
+	return text, true
 }
 
 // writeWrapper writes a thin wrapper function that delegates to the helper.
 func writeWrapper(out *bytes.Buffer, ctx *paramCtx, fn *ast.FuncDecl, isA bool) {
+	writeWrapperDoc(out, ctx, fn)
 	out.WriteString("func " + fn.Name.Name + "(")
 	// Original params.
 	out.WriteString(paramString(ctx.fset, fn))
@@ -1274,7 +1238,7 @@ func writeWrapper(out *bytes.Buffer, ctx *paramCtx, fn *ast.FuncDecl, isA bool) 
 	}
 	out.WriteString(" {\n")
 	// Body: return extracted(holeArgs..., origArgs...)
-	out.WriteString("\treturn " + ctx.extractedName + "(")
+	out.WriteString(wrapperCallPrefix(fn) + ctx.extractedName + "(")
 	var args []string
 	for _, h := range ctx.holes {
 		if isA {
@@ -1283,11 +1247,27 @@ func writeWrapper(out *bytes.Buffer, ctx *paramCtx, fn *ast.FuncDecl, isA bool) 
 			args = append(args, h.bExpr.(*ast.Ident).Name)
 		}
 	}
-	for _, n := range paramNames(fn) {
+	for _, n := range parameterArgumentNames(fn) {
 		args = append(args, n)
 	}
 	out.WriteString(strings.Join(args, ", "))
 	out.WriteString(")\n}\n")
+}
+
+func writeWrapperDoc(out *bytes.Buffer, ctx *paramCtx, fn *ast.FuncDecl) {
+	if fn.Doc == nil {
+		return
+	}
+	start, end := ctx.fset.Position(fn.Doc.Pos()).Offset, ctx.fset.Position(fn.Doc.End()).Offset
+	out.Write(ctx.src[start:end])
+	out.WriteByte('\n')
+}
+
+func wrapperCallPrefix(fn *ast.FuncDecl) string {
+	if fn.Type.Results == nil || len(fn.Type.Results.List) == 0 {
+		return "\t"
+	}
+	return "\treturn "
 }
 
 // paramString returns the parameter list as "name type, name type".

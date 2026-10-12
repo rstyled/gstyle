@@ -189,24 +189,16 @@ func Flow(r *http.Request, db *sql.DB) {
 	}
 }
 
-func TestNativeParameterizationRetainsSuggestionWithoutUnsafeFix(t *testing.T) {
+func TestNativeParameterizationAutoFixAllowsPartialFlowCoverage(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example\n\ngo 1.24\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	source := `package example
-func First(x int) (int, error) {
- value, err := left(x)
- if err != nil { return 0, err }
- return len(value), nil
-}
-func Second(x int) (int, error) {
- value, err := right(x)
- if err != nil { return 0, err }
- return len(value), nil
-}
-func left(int) (string, error) { return "a", nil }
-func right(int) (string, error) { return "bb", nil }
+	const source = `package example
+func First(x int)(int,error){ value,err:=left(x);if err!=nil{return 0,err};return len(value),nil }
+func Second(x int)(int,error){ value,err:=right(x);if err!=nil{return 0,err};return len(value),nil }
+func left(int)(string,error){return "a",nil}
+func right(int)(string,error){return "bb",nil}
 `
 	if err := os.WriteFile(filepath.Join(dir, "sample.go"), []byte(source), 0644); err != nil {
 		t.Fatal(err)
@@ -218,20 +210,14 @@ func right(int) (string, error) { return "bb", nil }
 	}
 	found := false
 	for _, candidate := range report.Candidates {
-		if candidate.Kind != patterns.Parameterize {
-			continue
-		}
-		found = true
-		if candidate.FixSpec != nil || len(candidate.DependencySafety) != 2 {
-			t.Fatalf("native fix was not gated: %+v", candidate)
-		}
-		for _, evidence := range candidate.DependencySafety {
-			if evidence.Status != "partial" || evidence.Bindings != 3 || evidence.Definitions != 3 || evidence.ExecutionConstraints != 3 {
-				t.Fatalf("missing canonical dependency facts: %+v", evidence)
-			}
+		if candidate.Kind == patterns.Parameterize && candidate.FixSpec != nil {
+			found = true
 		}
 	}
-	if !found || !strings.Contains(patterns.Text(report), "dependency safety: partial") {
-		t.Fatal("advisory finding or text evidence missing")
+	if !found {
+		t.Fatal("partial whole-function coverage blocked a proven substitution")
+	}
+	if !patterns.HasIncompleteAnalysis(report.AnalysisCoverage) {
+		t.Fatal("test must exercise the partial native producer")
 	}
 }

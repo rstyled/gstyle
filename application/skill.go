@@ -122,11 +122,11 @@ the file, so ` + "`--changed`" + ` can reorder unchanged functions in that file.
 
 Parameterization findings describe aligned graph regions, not proven whole-function
 clones. Auto-fixes require compatible canonical PDG interfaces and callable types,
-a full supported AST match, a source snapshot proof, and precise dependency
-coverage with matching binding, definition and directed ordering constraints.
-The dependency_safety summaries list missing memory/call/order facts. Native
-parameterization remains advisory while those facts are partial. Old typed-only
-fix specs are rejected. A proof targets only its selected pair; after other source edits,
+a full supported AST match, a source snapshot proof, and compatible PDG binding
+identities. Auto-fixes substitute matched call occurrences without reordering the
+body. Missing whole-function effect/order coverage alone does not block them.
+Fresh names prevent capture; builtin substitutions and direct recover/stack
+inspection stay advisory. A proof targets only its selected pair; after source edits,
 re-mine with phased fixing before parameterization.
 
 **Workflow:** Run ` + "`gstyle patterns`" + ` first, then ` + "`gstyle fix --apply`" + ` to clear the mechanical issues. This saves tokens — don't hand-rewrite what the fixer handles. In an agent loop, use ` + "`gstyle fix --changed --apply`" + ` to fix only candidates in functions your diff touched (against ` + "`--base REF`" + `, defaulting to the merge-base with main/master).

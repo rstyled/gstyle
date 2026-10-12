@@ -399,14 +399,12 @@ Parameterization suggestions describe aligned graph regions and their coverage;
 a partial match does not mean the listed differences are exhaustive. Automatic
 extraction requires two adjacent free functions with a complete supported AST
 match, known compatible PDG parameter and callable types, and a current source
-snapshot. It also requires precise dependency coverage and matching binding,
-definition, memory and directed execution/control constraints. Reports retain
-two small `dependency_safety` summaries with counts and reasons; they borrow the
-canonical graph during verification instead of copying it into each finding.
-Unknown or incompatible facts leave the finding advisory. The current native
-producer has partial call effects and ordering, so its parameterization findings
-remain advisory even when their types and full source bodies match. Old typed
-fix specs without the current dependency policy are rejected; re-run patterns.
+snapshot. The rewrite substitutes only matched callee occurrences and preserves
+body evaluation order. PDG binding identities and callable facts check the
+substitutions; incomplete whole-function effect or ordering analysis does not
+block an otherwise supported fix. Fresh helper and parameter names avoid binding
+capture. Builtin substitutions and direct recover/stack inspection stay advisory.
+Fix specs carry the current substitution policy; re-run patterns for older specs.
 The fix targets only that pair. If another fix changes the source first, re-mine
 with `gstyle fix --phased` before parameterizing. Callable types are interned PDG
 extensions; no second compiler load is required.

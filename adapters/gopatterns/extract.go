@@ -80,6 +80,9 @@ type FuncPdg struct {
 // Extraction is the full result of package analysis: per-function PDGs
 // plus package-level type findings (anemic models).
 type Extraction struct {
+	// PackageNames contains only declaration spellings, not compiler objects.
+	// It lets helper extraction avoid collisions with declarations in other files.
+	PackageNames      map[string][]string
 	DeclarationOrders []patterns.Candidate
 	Funcs             []FuncPdg
 	// AnemicModels are exported methodless structs with 3+ functions
@@ -126,7 +129,22 @@ func Extract(ctx context.Context, root string, paths []string) (*Extraction, err
 		missing = append(missing, findMissingIdentities(pkg, abs)...)
 		services = append(services, findDomainServices(pkg, abs)...)
 	}
-	return &Extraction{Funcs: funcsOut, DeclarationOrders: orders, AnemicModels: anemic, MissingIdentities: missing, DomainServices: services}, nil
+	return &Extraction{PackageNames: packageBindingNames(pkgs), Funcs: funcsOut, DeclarationOrders: orders, AnemicModels: anemic, MissingIdentities: missing, DomainServices: services}, nil
+}
+
+func packageBindingNames(pkgs []*packages.Package) map[string][]string {
+	names := make(map[string][]string)
+	for _, pkg := range pkgs {
+		names[pkg.PkgPath] = ownedBindingNames(pkg.Types.Scope().Names())
+	}
+	return names
+}
+
+func ownedBindingNames(names []string) []string {
+	for i := range names {
+		names[i] = strings.Clone(names[i])
+	}
+	return names
 }
 
 func absRoot(root string) (string, error) {
