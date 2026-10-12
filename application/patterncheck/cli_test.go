@@ -188,3 +188,50 @@ func Flow(r *http.Request, db *sql.DB) {
 		t.Fatal("native Go method flow was not detected")
 	}
 }
+
+func TestNativeParameterizationRetainsSuggestionWithoutUnsafeFix(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example\n\ngo 1.24\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	source := `package example
+func First(x int) (int, error) {
+ value, err := left(x)
+ if err != nil { return 0, err }
+ return len(value), nil
+}
+func Second(x int) (int, error) {
+ value, err := right(x)
+ if err != nil { return 0, err }
+ return len(value), nil
+}
+func left(int) (string, error) { return "a", nil }
+func right(int) (string, error) { return "bb", nil }
+`
+	if err := os.WriteFile(filepath.Join(dir, "sample.go"), []byte(source), 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+	report, err := GetReport(context.Background(), []string{"."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, candidate := range report.Candidates {
+		if candidate.Kind != patterns.Parameterize {
+			continue
+		}
+		found = true
+		if candidate.FixSpec != nil || len(candidate.DependencySafety) != 2 {
+			t.Fatalf("native fix was not gated: %+v", candidate)
+		}
+		for _, evidence := range candidate.DependencySafety {
+			if evidence.Status != "partial" || evidence.Bindings != 3 || evidence.Definitions != 3 || evidence.ExecutionConstraints != 3 {
+				t.Fatalf("missing canonical dependency facts: %+v", evidence)
+			}
+		}
+	}
+	if !found || !strings.Contains(patterns.Text(report), "dependency safety: partial") {
+		t.Fatal("advisory finding or text evidence missing")
+	}
+}

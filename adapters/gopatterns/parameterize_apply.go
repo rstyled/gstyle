@@ -25,11 +25,14 @@ func applyParameterizeFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
 }
 
 func parameterizationProof(spec *patterns.FixSpec, src []byte) (string, string, map[string]string, error) {
+	if spec.Params["dependency_policy"] != dependencyPolicy {
+		return "", "", nil, fmt.Errorf("parameterization requires current PDG dependency authorization; re-run patterns")
+	}
 	if spec.Params["source_sha256"] != fmt.Sprintf("%x", sha256.Sum256(src)) {
 		return "", "", nil, fmt.Errorf("parameterization requires a current typed source proof; re-run patterns")
 	}
 	a, b := spec.Params["pair_a"], spec.Params["pair_b"]
-	if a == "" || b == "" || a == b {
+	if !validParameterizationPair(a, b) {
 		return "", "", nil, fmt.Errorf("parameterization requires one explicit function pair")
 	}
 	var signatures map[string]string
@@ -38,4 +41,8 @@ func parameterizationProof(spec *patterns.FixSpec, src []byte) (string, string, 
 	}
 
 	return a, b, signatures, nil
+}
+
+func validParameterizationPair(a, b string) bool {
+	return a != "" && b != "" && a != b
 }

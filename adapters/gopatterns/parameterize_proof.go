@@ -7,6 +7,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"maps"
 	"os"
 	"strings"
 
@@ -37,10 +38,11 @@ func VerifyParameterizations(report *patterns.PatternsReport, extraction *Extrac
 }
 
 type parameterizationSource struct {
-	fset   *token.FileSet
-	file   *ast.File
-	src    []byte
-	digest string
+	fset         *token.FileSet
+	file         *ast.File
+	src          []byte
+	digest       string
+	dependencies map[*pdg.Graph]patterns.RefactorDependencies
 }
 
 func verifyParameterization(c patterns.Candidate, graphs map[string]*pdg.Graph, files map[string]*parameterizationSource) (patterns.Candidate, error) {
@@ -56,16 +58,37 @@ func verifyParameterization(c patterns.Candidate, graphs map[string]*pdg.Graph, 
 	if err != nil {
 		return c, err
 	}
+	return source.verifyCandidate(c, left, right), nil
+}
+
+func (source *parameterizationSource) verifyCandidate(c patterns.Candidate, left, right *pdg.Graph) patterns.Candidate {
 	spec, reason := source.prove(c.Sites, left, right)
 	if spec == nil {
-		return unverifiedParameterization(c, reason), nil
+		return unverifiedParameterization(c, reason)
+	}
+	c.DependencySafety = source.dependencySafety(left, right)
+	if !completeDependencySafety(c.DependencySafety) {
+		return unverifiedParameterization(c, "PDG dependency safety is incomplete; review binding, memory, call effects and execution coverage")
+	}
+	if !patterns.RefactorDependencyShapeMatches(left, right) {
+		return unverifiedParameterization(c, "PDG bindings, definitions or directed dependency constraints differ between the source bodies")
 	}
 	return patterns.Candidate{
 		Kind: c.Kind, ScoreMilli: c.ScoreMilli, Breakdown: c.Breakdown, Observation: c.Observation,
 		Inference:        "complete source bodies match under substitutions with compatible PDG callable types",
 		PossibleRefactor: "extract the verified pair into a shared helper with the differing callables as parameters",
-		Sites:            c.Sites, Definitions: c.Definitions, CounterEvidence: c.CounterEvidence, FixSpec: spec,
-	}, nil
+		Sites:            c.Sites, Definitions: c.Definitions, CounterEvidence: c.CounterEvidence, FixSpec: dependencyAuthorizedSpec(spec),
+		DependencySafety: c.DependencySafety,
+	}
+}
+
+const dependencyPolicy = "gstyle.whole-body/0.1.0"
+
+func dependencyAuthorizedSpec(spec *patterns.FixSpec) *patterns.FixSpec {
+	params := maps.Clone(spec.Params)
+	params["dependency_policy"] = dependencyPolicy
+	return &patterns.FixSpec{Kind: spec.Kind, File: spec.File, Line: spec.Line, EndLine: spec.EndLine,
+		Params: params, Definitions: spec.Definitions}
 }
 
 func parameterizationFile(path string, files map[string]*parameterizationSource) (*parameterizationSource, error) {
@@ -81,9 +104,32 @@ func parameterizationFile(path string, files map[string]*parameterizationSource)
 	if err != nil {
 		return nil, err
 	}
-	source := &parameterizationSource{fset, file, src, fmt.Sprintf("%x", sha256.Sum256(src))}
+	source := &parameterizationSource{fset: fset, file: file, src: src, digest: fmt.Sprintf("%x", sha256.Sum256(src)),
+		dependencies: make(map[*pdg.Graph]patterns.RefactorDependencies)}
 	files[path] = source
 	return source, nil
+}
+
+func (s *parameterizationSource) dependencySafety(a, b *pdg.Graph) []patterns.RefactorDependencies {
+	return []patterns.RefactorDependencies{s.dependenciesFor(a), s.dependenciesFor(b)}
+}
+
+func (s *parameterizationSource) dependenciesFor(graph *pdg.Graph) patterns.RefactorDependencies {
+	if evidence, ok := s.dependencies[graph]; ok {
+		return evidence
+	}
+	evidence := patterns.CheckRefactorDependencies(graph)
+	s.dependencies[graph] = evidence
+	return evidence
+}
+
+func completeDependencySafety(evidence []patterns.RefactorDependencies) bool {
+	for _, function := range evidence {
+		if function.Status != "complete" {
+			return false
+		}
+	}
+	return len(evidence) == 2
 }
 
 func unverifiedParameterization(c patterns.Candidate, reason string) patterns.Candidate {

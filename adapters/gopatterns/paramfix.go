@@ -49,8 +49,8 @@ const maxParamHoles = 3
 // If candidates is non-empty, only the named pairs are considered;
 // otherwise all pairs in the file are auto-detected via AST comparison.
 // It returns the rewritten source (gofmt-clean) and the fixes applied.
-// The transform is behavior-preserving when the safety checks pass;
-// otherwise the pair is skipped.
+// This is the low-level rewrite mechanism. The CLI additionally requires
+// VerifyParameterizations to authorize canonical dependency and type evidence.
 func FixParameterize(fset *token.FileSet, f *ast.File, src []byte, candidates []patterns.Candidate) ([]byte, []ParamFix, error) {
 	return fixParameterizeWithTypes(fset, f, src, parameterizeConfig{candidates, localCallableTypes(fset, f)})
 }

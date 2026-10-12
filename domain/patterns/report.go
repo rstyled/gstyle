@@ -409,7 +409,24 @@ func candidateIntro(index int, candidate *Candidate) []string {
 		fmt.Sprintf("  observation: %s", candidate.Observation),
 		fmt.Sprintf("  inference: %s", candidate.Inference),
 		fmt.Sprintf("  possible refactor: %s", candidate.PossibleRefactor),
-	}, analysisLines(candidate.Analysis), []string{"  sites:"})
+	}, analysisLines(candidate.Analysis), dependencySafetyLines(candidate.DependencySafety), []string{"  sites:"})
+}
+
+func dependencySafetyLines(evidence []RefactorDependencies) []string {
+	var lines []string
+	for _, function := range evidence {
+		lines = append(lines, dependencyFunctionLines(function)...)
+	}
+	return lines
+}
+
+func dependencyFunctionLines(function RefactorDependencies) []string {
+	lines := []string{fmt.Sprintf("  dependency safety: %s (%s; %d bindings, %d definitions, %d memory locations, %d execution constraints)",
+		function.Status, function.FunctionID, function.Bindings, function.Definitions, function.MemoryLocations, function.ExecutionConstraints)}
+	for _, gap := range function.Missing {
+		lines = append(lines, "    - "+gap)
+	}
+	return lines
 }
 
 func analysisLines(evidence *AnalysisEvidence) []string {

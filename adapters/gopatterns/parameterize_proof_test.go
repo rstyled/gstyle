@@ -2,6 +2,7 @@ package gopatterns
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/rstyled/gstyle/domain/patterns"
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 const proofFixture = `package example
@@ -66,11 +68,22 @@ func TestPDGProofUsesCalleeResultsAndOnlySelectedPair(t *testing.T) {
 	if err := VerifyParameterizations(&report, extraction); err != nil {
 		t.Fatal(err)
 	}
-	spec := report.Candidates[0].FixSpec
-	if spec == nil {
-		t.Fatalf("missing proof: %+v", report.Candidates[0])
+	if report.Candidates[0].FixSpec != nil || len(report.Candidates[0].DependencySafety) != 2 {
+		t.Fatalf("partial native producer authorized a fix: %+v", report.Candidates[0])
 	}
-	out, err := ApplyFix(spec, []byte(proofFixture))
+	// Test the typed rewrite independently of authorization. The native producer
+	// cannot yet provide complete dependencies for this call-containing body.
+	spec := typedFixtureSpec(t, extraction, report.Candidates[0])
+	fset, file, err := parseSpec(spec, []byte(proofFixture))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var signatures map[string]string
+	if err := json.Unmarshal([]byte(spec.Params["callee_types"]), &signatures); err != nil {
+		t.Fatal(err)
+	}
+	selected := []patterns.Candidate{{Kind: patterns.Parameterize, Sites: []patterns.Site{{Name: spec.Params["pair_a"]}, {Name: spec.Params["pair_b"]}}}}
+	out, _, err := fixParameterizeWithTypes(fset, file, []byte(proofFixture), parameterizeConfig{selected, signatures})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,9 +114,26 @@ func TestResults(t *testing.T) {
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("generated code: %v\n%s", err, output)
 	}
-	if _, err := ApplyFix(spec, append([]byte(proofFixture), '\n')); err == nil {
-		t.Fatal("stale source proof accepted")
+	if _, err := ApplyFix(spec, []byte(proofFixture)); err == nil {
+		t.Fatal("typed source proof without dependency authorization accepted")
 	}
+}
+
+func typedFixtureSpec(t *testing.T, extraction *Extraction, candidate patterns.Candidate) *patterns.FixSpec {
+	t.Helper()
+	graphs := make(map[string]*pdg.Graph)
+	for i := range extraction.Funcs {
+		graphs[extraction.Funcs[i].Name] = &extraction.Funcs[i].Pdg
+	}
+	source, err := parameterizationFile(candidate.Sites[0].Path, make(map[string]*parameterizationSource))
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec, reason := source.prove(candidate.Sites, graphs[candidate.Sites[0].ID], graphs[candidate.Sites[1].ID])
+	if spec == nil {
+		t.Fatal(reason)
+	}
+	return spec
 }
 
 func TestPDGProofRejectsUnknownAndMismatchedCallTypes(t *testing.T) {
@@ -173,5 +203,41 @@ func TestCallableProofRequiresRenderableSourceType(t *testing.T) {
 		if got := compatibleCallableProofs(c.a, c.b); got != c.want {
 			t.Errorf("got %v, want %v for %+v", got, c.want, c)
 		}
+	}
+}
+
+func TestParameterizationAuthorizationNeedsCompleteDependencyFixture(t *testing.T) {
+	const source = `package example
+func First() int { return left() }
+func Second() int { return right() }
+func left() int { return 1 }
+func right() int { return 2 }
+`
+	extraction, report := proofExtraction(t, source)
+	if err := VerifyParameterizations(&report, extraction); err != nil {
+		t.Fatal(err)
+	}
+	if report.Candidates[0].FixSpec != nil {
+		t.Fatal("native partial call/order evidence authorized a fix")
+	}
+	// Supply an explicit test contract for the simple no-input call/return
+	// fixture. This exercises admission; it does not certify the Go producer.
+	tables := extraction.Funcs[0].Pdg.Tables
+	for i := range tables.Evidence {
+		tables.Evidence[i].Status = pdg.Supported
+	}
+	if err := VerifyParameterizations(&report, extraction); err != nil {
+		t.Fatal(err)
+	}
+	spec := report.Candidates[0].FixSpec
+	if spec == nil {
+		t.Fatalf("complete test fixture rejected: %+v", report.Candidates[0])
+	}
+	out, err := ApplyFix(spec, []byte(source))
+	if err != nil || !strings.Contains(string(out), "fn func() int") {
+		t.Fatalf("authorized fix: %v\n%s", err, out)
+	}
+	if _, err := ApplyFix(spec, []byte(source+"\n")); err == nil {
+		t.Fatal("stale authorized proof accepted")
 	}
 }
