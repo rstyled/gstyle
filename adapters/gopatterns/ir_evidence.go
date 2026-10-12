@@ -31,7 +31,7 @@ var irNormalCapabilities = map[string]irCapability{
 	"scalar_reaching_definitions": {pdg.Supported, scalarDefinitionDescription},
 	"branch_merges":               {pdg.Supported, scalarDefinitionDescription},
 	"control_dependencies":        {pdg.Supported, normalDependencyDescription},
-	"execution_dependencies":      {pdg.Supported, normalDependencyDescription},
+	"execution_dependencies":      {pdg.Approximated, normalExecutionDescription},
 	"reference_counting":          {pdg.Supported, "Distinct local/parameter bindings read by reachable normal-flow read operations; repeated reads count once, shadowed bindings separately."},
 	"returns":                     {pdg.Supported, "Explicit and bare return values under bounded scalar normal flow; deferred writes and exceptional exits are excluded by the source scan."},
 	"calls":                       {pdg.NotApplicable, "The entire scalar source body is checked to contain no calls."},

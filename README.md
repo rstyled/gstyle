@@ -356,6 +356,8 @@ The scalar normal profile covers typed local integer/boolean code, declarations,
 assignment, compound assignment, shadowing, `if` branches, `&&`/`||`, and returns.
 It records distinct read occurrences, reaching definitions, explicit value joins,
 post-dominator control edges, and nearest-operation-dominator execution edges.
+Go leaves some operand orders unspecified: the selected source-order execution
+basis remains approximate, not a proof of language-mandated sequencing.
 Short-circuit RHS operations are conditional; branch joins do not require a skipped
 arm. Compiler CFG context uses compact indexes and remains beside the closed PDG
 interchange document. Validation recomputes reachability and retained-read counts;

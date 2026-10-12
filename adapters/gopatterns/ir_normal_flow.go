@@ -8,14 +8,16 @@ import (
 	"golang.org/x/tools/go/cfg"
 )
 
+const normalExecutionDescription = "Nearest dominators under deterministic source-order scalar lowering; Go leaves some operand evaluation orders unspecified. These edges are not a complete language-mandated ordering proof."
+
 const normalDependencyDescription = "Nearest-operation dominance and post-dominator control dependence for reachable acyclic local scalar normal flow; exceptional flow is excluded."
 
 type normalFlowAnalysis struct {
-	builder          *irBuilder
-	operations       [][]pdg.Ref
-	post             *executionDominators
-	evidence, origin pdg.Ref
-	nextEdge         int
+	builder                             *irBuilder
+	operations                          [][]pdg.Ref
+	post                                *executionDominators
+	evidence, executionEvidence, origin pdg.Ref
+	nextEdge                            int
 }
 
 func (a *normalFlowAnalysis) execution(dom *executionDominators) {
@@ -54,12 +56,14 @@ func (a *normalFlowAnalysis) edge(source, target pdg.Ref, kind pdg.EdgeKind) {
 		return
 	}
 	a.nextEdge++
-	subkind := "nearest-dominator"
+	subkind := "chosen-order-dominator"
+	evidence := a.executionEvidence
 	if kind == pdg.ControlEdge {
 		subkind = "post-dominator-control"
+		evidence = a.evidence
 	}
 	b := a.builder
-	b.graph.Edges = append(b.graph.Edges, pdg.Edge{ID: b.pool.Text("normal-e" + strconv.Itoa(a.nextEdge)), Source: source, Target: target, Kind: kind, Subkind: b.pool.Text(subkind), Evidence: a.evidence, Provenance: a.origin})
+	b.graph.Edges = append(b.graph.Edges, pdg.Edge{ID: b.pool.Text("normal-e" + strconv.Itoa(a.nextEdge)), Source: source, Target: target, Kind: kind, Subkind: b.pool.Text(subkind), Evidence: evidence, Provenance: a.origin})
 }
 
 func (b *irBuilder) normalDependenciesFor(flow *cfg.CFG, dom *executionDominators) {
@@ -68,7 +72,7 @@ func (b *irBuilder) normalDependenciesFor(flow *cfg.CFG, dom *executionDominator
 	}
 	post := normalPostDominators(flow, dom)
 	a := normalFlowAnalysis{builder: b, operations: make([][]pdg.Ref, len(flow.Blocks)), post: post,
-		evidence: b.pool.Evidence(pdg.Supported, normalDependencyDescription), origin: b.pool.Origin(pdg.Analysis, normalDependencyDescription), nextEdge: len(b.graph.Edges)}
+		evidence: b.pool.Evidence(pdg.Supported, normalDependencyDescription), origin: b.pool.Origin(pdg.Analysis, normalDependencyDescription), executionEvidence: b.pool.Evidence(pdg.Approximated, normalExecutionDescription), nextEdge: len(b.graph.Edges)}
 	for index, block := range flow.Blocks {
 		a.operations[index] = b.normalOperations(block)
 	}

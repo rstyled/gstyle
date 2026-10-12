@@ -60,6 +60,12 @@ func TestNormalFlowExecutionIncludesExpressionOperations(t *testing.T) {
 	if got := normalEdgeDescriptions(graph, source, pdg.Execution); !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v; want %v", got, want)
 	}
+	for _, edge := range graph.Edges {
+		if edge.Kind == pdg.Execution && graph.Tables.Evidence[edge.Evidence-1].Status != pdg.Approximated {
+			t.Fatal("chosen operand order is claimed as language-mandated")
+		}
+	}
+
 }
 
 func TestNormalFlowUnsupportedConstructsKeepPartialEvidence(t *testing.T) {
