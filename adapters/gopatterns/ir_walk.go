@@ -183,7 +183,9 @@ func (b *irBuilder) modify(node pdg.Ref, expr ast.Expr) {
 	if len(attrs.Writes) == 0 {
 		return
 	}
-	attrs.Reads = append(attrs.Reads, attrs.Writes[len(attrs.Writes)-1])
+	read := attrs.Writes[len(attrs.Writes)-1]
+	read.Position = 1
+	attrs.Reads = append(attrs.Reads, read)
 }
 
 func (b *irBuilder) variableWrite(id *ast.Ident) pdg.Access {
@@ -209,7 +211,7 @@ func (b *irBuilder) read(id *ast.Ident) {
 	symbol := b.symbol(id, role)
 	node := b.readOwner(id)
 	attrs := &b.attributes[b.graph.Nodes[node-1].Attributes-1]
-	attrs.Reads = append(attrs.Reads, pdg.Access{Symbol: symbol})
+	attrs.Reads = append(attrs.Reads, pdg.Access{Symbol: symbol, Position: b.readPosition(node, id)})
 }
 
 func (b *irBuilder) selectorName(id *ast.Ident) bool {

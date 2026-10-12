@@ -350,3 +350,9 @@ The schema test skips when no path is set. Tests and export do not fetch schemas
 Scope IDs use relative paths and lexical byte ranges; they stay deterministic for
 unchanged source and extraction root. Dependencies remain approximate; structural
 schema validity does not establish compat extraction or matching conformance.
+
+For acyclic integer/boolean local code, native data edges now identify reaching
+definitions across reassignment and `if` branches, with RHS reads before writes.
+This replaces first-binding data edges in that subset. Calls, memory, loops and
+short-circuit expressions remain unsupported by this analysis; control dependence,
+value joins and strict reference-count/projection validation remain incomplete.

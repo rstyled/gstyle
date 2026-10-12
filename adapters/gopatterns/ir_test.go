@@ -6,6 +6,7 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
+	"reflect"
 	"testing"
 
 	"github.com/rstyled/gstyle/domain/pdg"
@@ -39,7 +40,7 @@ func parseIR(t testing.TB, source string, pool *pdg.Builder) pdg.Graph {
 	return pdg.Graph{}
 }
 
-func TestIRReassignmentRecordsDefinitionsWithoutFalseDefUse(t *testing.T) {
+func TestIRReassignmentRecordsReachingDefinitions(t *testing.T) {
 	source := "package example\nfunc f(x int) int { x = x + 1; x = x + 2; return x }"
 	g := parseIR(t, source, pdg.NewBuilder())
 	if err := pdg.Validate(&g); err != nil {
@@ -54,8 +55,8 @@ func TestIRReassignmentRecordsDefinitionsWithoutFalseDefUse(t *testing.T) {
 			uses = append(uses, edge.Definition)
 		}
 	}
-	if len(uses) != 0 {
-		t.Fatalf("def-use=%v; first-binding mining edges must not claim reaching definitions", uses)
+	if len(uses) != 3 {
+		t.Fatalf("def-use=%v; each read must identify its reaching definition", uses)
 	}
 	for _, node := range g.Nodes {
 		span := g.Spans[node.Span-1]
@@ -65,15 +66,13 @@ func TestIRReassignmentRecordsDefinitionsWithoutFalseDefUse(t *testing.T) {
 	}
 }
 
-func TestIRBranchesNeverClaimReachingDefinitionCompleteness(t *testing.T) {
+func TestIRBranchesDoNotClaimFullExtractionConformance(t *testing.T) {
 	g := parseIR(t, "package example\nfunc f(x int, c bool) int { if c { x = 1 }; return x }", pdg.NewBuilder())
 	if err := pdg.Validate(&g); err != nil {
 		t.Fatal(err)
 	}
-	for _, edge := range g.Edges {
-		if edge.Definition != 0 {
-			t.Fatalf("unsupported dependency emitted: %+v", edge)
-		}
+	if reachingCapability(g) != pdg.Supported {
+		t.Fatal("acyclic scalar branches lack reaching-definition support")
 	}
 	if g.Conformance.Status != pdg.NonConformant {
 		t.Fatal("incomplete extraction claims conformance")
@@ -175,15 +174,20 @@ func BenchmarkIRRepeatedTypes(b *testing.B) {
 }
 
 func TestIRParenthesizedOperands(t *testing.T) {
-	g := parseIR(t, "package example\nfunc f(x int) int { x = (x + 1); return (x) }", pdg.NewBuilder())
-	operandEdges := 0
+	source := "package example\nfunc f(x int) int { x = (x + 1); return (x) }"
+	g := parseIR(t, source, pdg.NewBuilder())
+	if err := pdg.Validate(&g); err != nil {
+		t.Fatal(err)
+	}
 	for _, edge := range g.Edges {
 		if g.Tables.Text(edge.Subkind) == "mining-value" {
-			operandEdges++
+			t.Fatal("first-binding edge remains in supported scalar graph")
 		}
 	}
-	if operandEdges != 5 {
-		t.Fatalf("operand edges=%d, want 5", operandEdges)
+	want := []string{"x = (x + 1) -> return (x) : x", "x int -> x + 1 : x"}
+	got := reachingDescriptions(t, g, source)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v; want %v", got, want)
 	}
 }
 

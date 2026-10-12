@@ -11,7 +11,7 @@ import (
 // A sparse must-precede basis: consecutive operation anchors in a reachable
 // block, plus the nearest dominating operation for each block's first anchor.
 // Successor links are analysis inputs; they are never exported as dependencies.
-func (b *irBuilder) execution(body *ast.BlockStmt) {
+func (b *irBuilder) execution(body *ast.BlockStmt) (*cfg.CFG, *executionDominators) {
 	b.executionMetadata()
 	flow := cfg.New(body, b.mayReturn)
 	dom := newExecutionDominators(flow)
@@ -27,6 +27,7 @@ func (b *irBuilder) execution(body *ast.BlockStmt) {
 			previous = node
 		}
 	}
+	return flow, dom
 }
 
 func (b *irBuilder) mayReturn(call *ast.CallExpr) bool {

@@ -38,6 +38,22 @@ func TestWlCacheHit(t *testing.T) {
 	}
 }
 
+func TestWlCacheMissOnCanonicalSourceCounts(t *testing.T) {
+	graph := cacheTestPdg()
+	graph.Paper = &PaperCharacteristics{ReferenceKnown: true, Counts: [9]float64{1, 2, 3}}
+	cache := NewWlCache()
+	cache.Put(graph, NewWl(graph))
+	changed := cacheTestPdg()
+	changed.Paper = &PaperCharacteristics{ReferenceKnown: true, Counts: [9]float64{1, 2, 4}}
+	if _, ok := cache.Get(changed); ok {
+		t.Fatal("cached vector reused after source-only counts changed")
+	}
+	changed.Paper = &PaperCharacteristics{Counts: graph.Paper.Counts}
+	if _, ok := cache.Get(changed); ok {
+		t.Fatal("cached vector reused after reference evidence changed")
+	}
+}
+
 func TestWlCacheMissOnChange(t *testing.T) {
 	c := NewWlCache()
 	pdg := cacheTestPdg()

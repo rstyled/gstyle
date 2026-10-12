@@ -51,7 +51,10 @@ func TestIRWriteTargetsAndReadModifyWrite(t *testing.T) {
 					t.Fatal("scalar write loses binding")
 				}
 				for _, read := range attrs.Reads {
-					if read == target {
+					if read.Symbol == target.Symbol && read.Location == target.Location && read.UnresolvedReason == target.UnresolvedReason {
+						if read.Position != 1 {
+							t.Fatal("old target read must occupy operand zero")
+						}
 						targetReads++
 					}
 				}
