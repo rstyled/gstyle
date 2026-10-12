@@ -55,7 +55,7 @@ func visitProducers(queue []int, visited map[int]bool, prods []int, pdg *MiningG
 func isProducer(n PdgNode) bool {
 	// Skip control-flow nodes.
 	switch n.Kind {
-	case "Ctrl", "Branch", "Loop":
+	case "Ctrl", "Branch", "Loop", Branch, Loop, Iterate, Match, Try:
 		return false
 	}
 	// Skip address-of and dereference plumbing (heap manipulation).

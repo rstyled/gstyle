@@ -370,3 +370,19 @@ declarations. Grouped type declarations stay grouped. Files with Go directives,
 cgo imports, or multiple declarations on one line are left unchanged. The
 candidate covers the whole file: `--changed` selects a file if its declaration
 range overlaps the diff, and may reorder unchanged functions in that file.
+
+## Dependency analysis coverage
+
+Taint, barrier slices, thin slices, and input-to-output chops traverse canonical
+PDG operations, including nodes omitted by abstraction matching. The analysis
+borrows bindings, definitions, locations, and evidence from the original graph.
+One function's traversal scratch is built at a time and released before clone
+matching. Clone matching keeps its existing abstraction view.
+
+Pattern reports include four small `analysis_coverage` rows: complete, partial,
+not evaluated, and unavailable function counts. No findings with partial coverage
+is not proof of clean flow. Findings include `analysis_evidence` with the function
+ID, canonical node IDs where available, graph conformance, and missing or
+approximate capabilities. Complete coverage describes the required dependency
+facts for that analysis; it is not a security guarantee or strict compat admission.
+Aliases, loop-carried flow, and full producer conformance still need implementation.

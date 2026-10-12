@@ -17,9 +17,11 @@ func Run(ctx context.Context, args []string, output io.Writer) error {
 		return err
 	}
 	if len(report.Candidates) == 0 {
-		fmt.Fprintln(output, "No pattern candidates. Codebase is clean.")
+		fmt.Fprintln(output, "No pattern candidates.")
+		writeAnalysisCoverage(output, report.AnalysisCoverage)
 		return nil
 	}
+	writeAnalysisCoverage(output, report.AnalysisCoverage)
 	top := report.Candidates[0]
 	fmt.Fprintf(output, "Next: %s (score %.2f)\n", top.Kind, float64(top.ScoreMilli)/1000)
 	fmt.Fprintf(output, "  %s\n", top.Observation)
@@ -27,12 +29,12 @@ func Run(ctx context.Context, args []string, output io.Writer) error {
 	for _, s := range top.Sites {
 		fmt.Fprintf(output, "  %s:%d %s\n", s.Path, s.Line, s.Name)
 	}
-	fmt.Fprintf(output, "\nFix with: gstyle fix --kind %s %s\n", top.Kind, top.Sites[0].Path)
+	writeFixInstructions(output, top)
 	return nil
 }
 
 // Score implements `gstyle score`: a single 0-100 north-star number.
-// 100 = clean, lower = more issues. Weighted by severity.
+// 100 = no scored findings; it does not establish complete analysis coverage.
 func Score(ctx context.Context, args []string, output io.Writer) error {
 	report, err := patterncheck.GetReport(ctx, args)
 	if err != nil {
@@ -45,6 +47,7 @@ func Score(ctx context.Context, args []string, output io.Writer) error {
 		fmt.Fprintf(output, ", %d suppressed", len(report.Suppressed))
 	}
 	fmt.Fprintln(output)
+	writeAnalysisCoverage(output, report.AnalysisCoverage)
 	return nil
 }
 
@@ -61,4 +64,19 @@ func computeScore(report *patterns.PatternsReport) int {
 		score = 0
 	}
 	return score
+}
+
+func writeAnalysisCoverage(output io.Writer, coverage []patterns.AnalysisCoverage) {
+	if !patterns.HasIncompleteAnalysis(coverage) {
+		return
+	}
+	fmt.Fprintln(output, "Dependency analysis coverage is incomplete; see gstyle patterns for details.")
+}
+
+func writeFixInstructions(output io.Writer, candidate patterns.Candidate) {
+	if candidate.FixSpec == nil {
+		fmt.Fprintln(output, "\nAdvisory finding: no automatic fix is available.")
+		return
+	}
+	fmt.Fprintf(output, "\nFix with: gstyle fix --kind %s %s\n", candidate.FixSpec.Kind, candidate.FixSpec.File)
 }
