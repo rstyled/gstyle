@@ -19,6 +19,10 @@ func TestControlAPIAdvertisesItsRuntimeAddressAndMethods(t *testing.T) {
 	if document["openrpc"] != "1.2.6" {
 		t.Fatalf("openrpc = %v, want 1.2.6", document["openrpc"])
 	}
+	info := document["info"].(map[string]any)
+	if info["version"] != "0.5.0" {
+		t.Fatalf("API version = %v, want 0.5.0 for unprefixed methods", info["version"])
+	}
 	servers := document["servers"].([]any)
 	local := servers[0].(map[string]any)
 	if local["url"] != server.URL() {

@@ -2,7 +2,7 @@
   "openrpc": "1.2.6",
   "info": {
     "title": "Gstyle control API",
-    "version": "0.4.0"
+    "version": "0.5.0"
   },
   "servers": [
     {

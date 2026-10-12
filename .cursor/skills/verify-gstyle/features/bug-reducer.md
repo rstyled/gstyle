@@ -55,8 +55,14 @@ Preconditions:
 - **Existing output.** Run the same command again. It fails because
   `input.txt.reduced` already exists: the reducer never overwrites. Remove
   the output between drives.
-- **Timeout.** `--timeout 1s` on a slow checker stops the reduction; the
-  summary reports the stop, and no partial output is left behind.
+- **Timeout after seed acceptance.** Use a checker that accepts its first
+  invocation, then sleeps longer than `--timeout 1s`. The command exits nonzero
+  and saves the best accepted input to `INPUT.reduced` before reporting the error.
+  Verify that the saved file still satisfies the bug predicate and that the
+  original input is unchanged. The timeout applies to each checker invocation.
+- **Timeout before seed acceptance.** Use a checker that sleeps on its first
+  invocation. The command exits nonzero and leaves no output file, because no
+  candidate has been accepted. Use a fresh input/output path for each drive.
 
 ## Gotchas
 
