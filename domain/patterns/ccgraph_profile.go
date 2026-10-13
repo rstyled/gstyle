@@ -40,7 +40,7 @@ func (in *clonePairInputs) evaluate(profile CloneProfile, emit func(ClonePairEvi
 
 func (in *clonePairInputs) evidence(profile CloneProfile, i, j int) ClonePairEvidence {
 	numerical := in.filters.cosine(i, j)
-	name := (S1S2)(S1S2{S1: in.names[i], S2: in.names[j]}).jaroWinkler()
+	name := (S1S2{S1: in.names[i], S2: in.names[j]}).jaroWinkler()
 	admitted := numerical >= charVecThreshold || name >= ccStage2NameThreshold
 	var score uint32
 	if admitted {

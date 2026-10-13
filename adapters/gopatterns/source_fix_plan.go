@@ -200,7 +200,7 @@ func (p *sourceFix) call(fn pdg.SourceFunction, ref pdg.SourceReference) error {
 	}
 	replacement := p.valueCall(fn, arguments)
 	if p.method {
-		replacement = "(" + fn.ParametersList[0].TypeSyntax + ")(" + arguments[0] + ")." + fn.Name + "(" + strings.Join(arguments[1:], ", ") + ")"
+		replacement = p.methodReceiver(fn, ref, arguments[0], snapshot) + "." + fn.Name + "(" + strings.Join(arguments[1:], ", ") + ")"
 	}
 	p.edits[ref.Source] = append(remaining, pdg.SourceEdit{Range: ref.Range, Replacement: replacement})
 	return nil
@@ -251,6 +251,33 @@ func (p *sourceFix) render() (map[string][]byte, error) {
 		overlay[snapshot.Path] = formatted
 	}
 	return overlay, nil
+}
+
+func (p *sourceFix) methodReceiver(fn pdg.SourceFunction, ref pdg.SourceReference, argument string, snapshot pdg.SourceSnapshot) string {
+	if !ref.Receiver.ExactType {
+		return "(" + fn.ParametersList[0].TypeSyntax + ")(" + argument + ")"
+	}
+	if p.copyIsReceiver(ref) {
+		return snapshot.Content[ref.Receiver.Copy.Start:ref.Receiver.Copy.End]
+	}
+	if ref.Receiver.Parenthesize {
+		return "(" + argument + ")"
+	}
+	return argument
+}
+
+// Reuse only a binding that becomes a receiver in this same plan. Complete
+// field identity and type identity were proved by the extraction producer.
+func (p *sourceFix) copyIsReceiver(ref pdg.SourceReference) bool {
+	if ref.Receiver.Copy.End == 0 {
+		return false
+	}
+	for _, fn := range p.targets {
+		if bindingBecomesReceiver(fn, ref) {
+			return true
+		}
+	}
+	return false
 }
 
 // PlanSignatureFix uses the typed source inventory from PDG extraction.
@@ -387,4 +414,20 @@ func receiverPosition(fn pdg.SourceFunction, typeName string) []int {
 
 func completeParameterGroup(positions []int, group []string) bool {
 	return len(positions) >= 2 && len(positions) == len(group)
+}
+
+func bindingBecomesReceiver(fn pdg.SourceFunction, ref pdg.SourceReference) bool {
+	if fn.Source != ref.Source || !sourceRangeContains(fn.Declaration, ref.Range) {
+		return false
+	}
+	for _, use := range fn.ParametersList[0].Uses {
+		if use == ref.Receiver.Copy {
+			return true
+		}
+	}
+	return false
+}
+
+func sourceRangeContains(outer, inner pdg.ByteRange) bool {
+	return outer.Start <= inner.Start && inner.End <= outer.End
 }

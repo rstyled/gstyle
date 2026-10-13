@@ -21,9 +21,18 @@ type SourceFunction struct {
 // SourceReference resolves a use to a function identity, not its spelling.
 // A non-direct use blocks a signature rewrite until a planner supports it.
 type SourceReference struct {
+	Receiver         SourceReceiver
 	Target           string
 	Source           Ref
 	Range, Callee    ByteRange
 	Arguments        []ByteRange
 	Direct, Variadic bool
+}
+
+// SourceReceiver proves when a function argument already has the receiver
+// type. Copy refers to the binding in a complete, unchanged struct projection.
+// False ExactType keeps the formal conversion, including for untyped nil.
+type SourceReceiver struct {
+	Copy                    ByteRange
+	ExactType, Parenthesize bool
 }

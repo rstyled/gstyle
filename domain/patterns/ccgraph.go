@@ -158,8 +158,8 @@ type S1S2 struct {
 // jaroWinkler returns the Jaro-Winkler string similarity in [0, 1].
 // Identical strings score 1.0; completely different strings score 0.0.
 func (s1S2 S1S2) jaroWinkler() float64 {
-	j := (S1S2)(S1S2{S1: s1S2.S1, S2: s1S2.S2}).jaro()
-	prefix := (S1S2)(S1S2{S1: s1S2.S1, S2: s1S2.S2}).commonPrefixLen(4)
+	j := s1S2.jaro()
+	prefix := s1S2.commonPrefixLen(4)
 	return j + float64(prefix)*0.1*(1.0-j)
 }
 
@@ -312,7 +312,7 @@ func ccNamesSimilar(a, b string) bool {
 	if a == "" || b == "" {
 		return true
 	}
-	return (S1S2)(S1S2{S1: shortName(a), S2: shortName(b)}).jaroWinkler() >= ccStage2NameThreshold
+	return (S1S2{S1: shortName(a), S2: shortName(b)}).jaroWinkler() >= ccStage2NameThreshold
 }
 
 // ccBuildWls builds WL instances for every function appearing in any

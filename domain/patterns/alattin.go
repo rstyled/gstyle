@@ -157,7 +157,7 @@ func FindAlternativeViolations(sets []CallSet, rules []DisjunctiveRule) []Altern
 func alternativeViolationsFor(sets []CallSet, rule DisjunctiveRule) []AlternativeViolation {
 	var out []AlternativeViolation
 	for _, s := range sets {
-		if (CallSet)(s).hasAntecedent(rule.Antecedent) && !hasAnyAlternative(s, rule.Alternatives) {
+		if s.hasAntecedent(rule.Antecedent) && !hasAnyAlternative(s, rule.Alternatives) {
 			out = append(out, AlternativeViolation{FuncID: s.FuncID, Rule: rule})
 		}
 	}

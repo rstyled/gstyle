@@ -76,13 +76,7 @@ func sourceReference(pkg *packages.Package, ref pdg.Ref, ident *ast.Ident, call 
 	if call == nil {
 		return result
 	}
-	result.Direct = true
-	result.Variadic = call.Ellipsis.IsValid()
-	result.Range = nodeByteRange(fset, call)
-	for _, arg := range call.Args {
-		result.Arguments = append(result.Arguments, nodeByteRange(fset, arg))
-	}
-	return result
+	return pdg.SourceReference{Target: result.Target, Source: ref, Range: nodeByteRange(fset, call), Callee: result.Callee, Arguments: sourceArgumentRanges(fset, call.Args), Receiver: sourceReceiver(pkg, function, call), Direct: true, Variadic: call.Ellipsis.IsValid()}
 }
 
 // Successful typed loading guarantees a function object and signature here.
@@ -132,4 +126,12 @@ func parameterAddressed(pkg *packages.Package, node ast.Node, object types.Objec
 	}
 	ident, ok := ast.Unparen(unary.X).(*ast.Ident)
 	return ok && pkg.TypesInfo.Uses[ident] == object
+}
+
+func sourceArgumentRanges(fset *token.FileSet, arguments []ast.Expr) []pdg.ByteRange {
+	result := make([]pdg.ByteRange, len(arguments))
+	for i, arg := range arguments {
+		result[i] = nodeByteRange(fset, arg)
+	}
+	return result
 }

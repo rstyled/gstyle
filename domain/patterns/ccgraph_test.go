@@ -3,30 +3,30 @@ package patterns
 import "testing"
 
 func TestJaroWinklerIdentical(t *testing.T) {
-	if got := (S1S2)(S1S2{S1: "getUser", S2: "getUser"}).jaroWinkler(); got != 1.0 {
+	if got := (S1S2{S1: "getUser", S2: "getUser"}).jaroWinkler(); got != 1.0 {
 		t.Fatalf("identical strings should score 1.0, got %f", got)
 	}
 }
 
 func TestJaroWinklerEmpty(t *testing.T) {
-	if got := (S1S2)(S1S2{S1: "", S2: ""}).jaroWinkler(); got != 1.0 {
+	if got := (S1S2{S1: "", S2: ""}).jaroWinkler(); got != 1.0 {
 		t.Fatalf("two empty strings should score 1.0, got %f", got)
 	}
-	if got := (S1S2)(S1S2{S1: "abc", S2: ""}).jaroWinkler(); got != 0.0 {
+	if got := (S1S2{S1: "abc", S2: ""}).jaroWinkler(); got != 0.0 {
 		t.Fatalf("empty vs non-empty should score 0.0, got %f", got)
 	}
 }
 
 func TestJaroWinklerSimilar(t *testing.T) {
 	// "getUser" vs "getUsers" share a long prefix: should be high.
-	got := (S1S2)(S1S2{S1: "getUser", S2: "getUsers"}).jaroWinkler()
+	got := (S1S2{S1: "getUser", S2: "getUsers"}).jaroWinkler()
 	if got < 0.9 {
 		t.Fatalf("similar names should score >= 0.9, got %f", got)
 	}
 }
 
 func TestJaroWinklerDifferent(t *testing.T) {
-	got := (S1S2)(S1S2{S1: "abcdef", S2: "xyz"}).jaroWinkler()
+	got := (S1S2{S1: "abcdef", S2: "xyz"}).jaroWinkler()
 	if got > 0.5 {
 		t.Fatalf("different strings should score low, got %f", got)
 	}
@@ -35,10 +35,10 @@ func TestJaroWinklerDifferent(t *testing.T) {
 func TestJaroWinklerThreshold(t *testing.T) {
 	// Sanity: names that differ by a suffix pass the 0.5 Stage 2 bar,
 	// unrelated names don't.
-	if (S1S2)(S1S2{S1: "fetchData", S2: "fetchDatum"}).jaroWinkler() < ccStage2NameThreshold {
+	if (S1S2{S1: "fetchData", S2: "fetchDatum"}).jaroWinkler() < ccStage2NameThreshold {
 		t.Fatal("fetchData/fetchDatum should pass Stage 2")
 	}
-	if (S1S2)(S1S2{S1: "fetchData", S2: "renderWidget"}).jaroWinkler() >= ccStage2NameThreshold {
+	if (S1S2{S1: "fetchData", S2: "renderWidget"}).jaroWinkler() >= ccStage2NameThreshold {
 		t.Fatal("fetchData/renderWidget should fail Stage 2")
 	}
 }

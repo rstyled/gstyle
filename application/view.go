@@ -44,7 +44,7 @@ type ValueWidth struct {
 }
 
 func (valueWidth ValueWidth) styledCell() string {
-	valueWidth.Value = (ValueWidth)(ValueWidth{Value: valueWidth.Value, Width: valueWidth.Width}).truncate()
+	valueWidth.Value = valueWidth.truncate()
 	padding := strings.Repeat(" ", max(valueWidth.Width-ansi.StringWidth(valueWidth.Value), 0))
 	return valueWidth.Value + padding
 }
@@ -169,7 +169,7 @@ func (m Model) footer(width int) string {
 		keys := amber.Render("Annotate"+rangeLabel+": ") + text.Render(m.annotationDraft+"█") +
 			muted.Render("  ·  ") + green.Render("enter") + muted.Render(" save  ·  ") +
 			green.Render("esc") + muted.Render(" cancel")
-		return (ValueWidth)(ValueWidth{Value: keys, Width: width}).truncate()
+		return (ValueWidth{Value: keys, Width: width}).truncate()
 	}
 	if width < wideMinimum {
 		keys := green.Render("tab") + muted.Render(" panes · ") +
@@ -180,7 +180,7 @@ func (m Model) footer(width int) string {
 		if m.focus == detailsPane {
 			keys += muted.Render(" · ") + green.Render("v/a/d") + muted.Render(" source")
 		}
-		return (ValueWidth)(ValueWidth{Value: keys, Width: width}).truncate()
+		return (ValueWidth{Value: keys, Width: width}).truncate()
 	}
 
 	keys := green.Render("tab/shift+tab") + muted.Render(" panes · ") +
@@ -195,7 +195,7 @@ func (m Model) footer(width int) string {
 			green.Render("a") + muted.Render(" note · ") +
 			green.Render("d") + muted.Render(" remove")
 	}
-	return (ValueWidth)(ValueWidth{Value: keys, Width: width}).truncate()
+	return (ValueWidth{Value: keys, Width: width}).truncate()
 }
 
 func (m Model) fileTable(width int, height int) []string {
@@ -222,7 +222,7 @@ func (m Model) fileRow(file domain.File, width int, selected bool) string {
 	if width < 30 {
 		nameWidth := max(width-10, 1)
 		path := fileTablePath(m.report.Root, file.Path, nameWidth)
-		name := text.Render((ValueWidth)(ValueWidth{Value: path, Width: nameWidth}).padText())
+		name := text.Render((ValueWidth{Value: path, Width: nameWidth}).padText())
 		peak := metricStyle(file.Peak).Render(fmt.Sprintf(" %3d", file.Peak))
 		load := cognitive.Render(fmt.Sprintf(" %3d", file.CognitivePeak))
 		return m.selection(name+peak+load, filesPane, selected, m.fileAnnotationCount(file.Path) > 0)
@@ -230,7 +230,7 @@ func (m Model) fileRow(file domain.File, width int, selected bool) string {
 	if width < 42 {
 		nameWidth := max(width-15, 1)
 		path := fileTablePath(m.report.Root, file.Path, nameWidth)
-		name := text.Render((ValueWidth)(ValueWidth{Value: path, Width: nameWidth}).padText())
+		name := text.Render((ValueWidth{Value: path, Width: nameWidth}).padText())
 		total := muted.Render(fmt.Sprintf(" %3d ", file.Total))
 		peak := metricStyle(file.Peak).Render(fmt.Sprintf("%3d", file.Peak))
 		load := cognitive.Render(fmt.Sprintf(" %3d", file.CognitivePeak))
@@ -239,7 +239,7 @@ func (m Model) fileRow(file domain.File, width int, selected bool) string {
 
 	nameWidth := max(width-21, 1)
 	path := fileTablePath(m.report.Root, file.Path, nameWidth)
-	name := text.Render((ValueWidth)(ValueWidth{Value: path, Width: nameWidth}).padText())
+	name := text.Render((ValueWidth{Value: path, Width: nameWidth}).padText())
 	values := muted.Render(fmt.Sprintf(" %5d %4.1f ", file.Total, file.Average))
 	peak := metricStyle(file.Peak).Render(fmt.Sprintf("%3d", file.Peak))
 	load := cognitive.Render(fmt.Sprintf(" %3d", file.CognitivePeak))
@@ -271,7 +271,7 @@ func (m Model) functionRow(function domain.Function, width int, selected bool) s
 	if file, ok := m.selectedFile(); ok {
 		count = m.functionAnnotationCount(file.Path, function)
 	}
-	name := text.Render((ValueWidth)(ValueWidth{Value: (ValueWidth)(ValueWidth{Value: function.Name, Width: nameWidth}).truncate(), Width: nameWidth}).padText())
+	name := text.Render((ValueWidth{Value: (ValueWidth{Value: function.Name, Width: nameWidth}).truncate(), Width: nameWidth}).padText())
 	complexity := metricStyle(function.Complexity).Render(fmt.Sprintf(" %3d", function.Complexity))
 	load := cognitive.Render(fmt.Sprintf(" %3d", function.CognitiveComplexity))
 	lines := muted.Render(fmt.Sprintf(" %5d", functionLineCount(function)))
@@ -509,7 +509,7 @@ func (m Model) sourceLocation(path string, line int, column int, width int) stri
 	}
 
 	nameWidth := max(width-ansi.StringWidth(coordinates), 0)
-	return (ValueWidth)(ValueWidth{Value: filepath.Base(path), Width: nameWidth}).truncate() + coordinates
+	return (ValueWidth{Value: filepath.Base(path), Width: nameWidth}).truncate() + coordinates
 }
 
 func workspaceWidths(width int) []int {
@@ -540,7 +540,7 @@ func fileTablePath(root string, path string, width int) string {
 		return path
 	}
 
-	return (ValueWidth)(ValueWidth{Value: filepath.Base(path), Width: width}).truncate()
+	return (ValueWidth{Value: filepath.Base(path), Width: width}).truncate()
 }
 
 func functionTableHeader(width int) string {
@@ -892,7 +892,7 @@ func verticalScrollbar(
 		if thumbStart <= row && row < thumbStart+thumbHeight {
 			gutter = thumbGutter
 		}
-		lines[index] = (ValueWidth)(ValueWidth{Value: lines[index], Width: contentWidth}).styledCell() + gutter
+		lines[index] = (ValueWidth{Value: lines[index], Width: contentWidth}).styledCell() + gutter
 	}
 	return lines
 }
@@ -936,7 +936,7 @@ func rowCells(panes [][]string, widths []int, row int) []string {
 		if row < len(pane) {
 			value = pane[row]
 		}
-		cells[column] = (ValueWidth)(ValueWidth{Value: value, Width: widths[column]}).styledCell()
+		cells[column] = (ValueWidth{Value: value, Width: widths[column]}).styledCell()
 	}
 	return cells
 }
@@ -956,7 +956,7 @@ func fitLines(lines []string, width int, height int) []string {
 			result[index] = strings.Repeat(" ", width)
 			continue
 		}
-		result[index] = (ValueWidth)(ValueWidth{Value: lines[index], Width: width}).styledCell()
+		result[index] = (ValueWidth{Value: lines[index], Width: width}).styledCell()
 	}
 
 	return result
@@ -971,9 +971,9 @@ func joinSides(left string, right string, width int) string {
 	if gap < 1 {
 		leftWidth := max(width-ansi.StringWidth(right)-1, 0)
 		if leftWidth == 0 {
-			return (ValueWidth)(ValueWidth{Value: right, Width: width}).truncate()
+			return (ValueWidth{Value: right, Width: width}).truncate()
 		}
-		return (ValueWidth)(ValueWidth{Value: left, Width: leftWidth}).truncate() + " " + right
+		return (ValueWidth{Value: left, Width: leftWidth}).truncate() + " " + right
 	}
 
 	return left + strings.Repeat(" ", gap) + right
