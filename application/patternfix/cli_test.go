@@ -466,25 +466,14 @@ func TestPhaseHas(t *testing.T) {
 	if !phaseHas(fixPhases[0], patterns.GuardClause) {
 		t.Error("phase 1 should have guard_clause")
 	}
-	if !phaseHas(fixPhases[1], patterns.ValueObject) {
+	if !phaseHas(fixPhases[phaseIndex(patterns.ValueObject)], patterns.ValueObject) {
 		t.Error("phase 2 should have value_object")
 	}
-	if !phaseHas(fixPhases[3], patterns.Parameterize) {
+	if !phaseHas(fixPhases[phaseIndex(patterns.Parameterize)], patterns.Parameterize) {
 		t.Error("phase 4 should have parameterize")
 	}
 	if phaseHas(fixPhases[0], patterns.Parameterize) {
 		t.Error("phase 1 should not have parameterize")
-	}
-}
-
-func TestDedupe(t *testing.T) {
-	in := []string{"a", "b", "a", "c", "b"}
-	out := dedupe(in)
-	if len(out) != 3 {
-		t.Errorf("expected 3, got %d: %v", len(out), out)
-	}
-	if out[0] != "a" || out[1] != "b" || out[2] != "c" {
-		t.Errorf("order not preserved: %v", out)
 	}
 }
 

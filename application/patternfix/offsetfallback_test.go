@@ -97,7 +97,7 @@ func TestOffsetFallbackKindIsAvailableInPhases(t *testing.T) {
 	if err := (options{kind: "offset_fallback"}).validate(); err != nil {
 		t.Fatal(err)
 	}
-	if !phaseHas(fixPhases[0], patterns.OffsetFallback) {
+	if !phaseHas(fixPhases[phaseIndex(patterns.OffsetFallback)], patterns.OffsetFallback) {
 		t.Fatal("range guard fix missing from phased workflow")
 	}
 }

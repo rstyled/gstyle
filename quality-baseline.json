@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generated_at": "2026-10-13T17:05:03Z",
-  "commit": "aafc169",
+  "generated_at": "2026-10-13T17:30:05Z",
+  "commit": "9d40162",
   "functions": 2939,
   "tolerance": 0.05,
   "rules": {
@@ -27,8 +27,8 @@
     },
     "side_effect_density": {
       "limit": 500,
-      "excess": 9375293,
-      "per_1000_functions": 3189960.1905410006
+      "excess": 9371507,
+      "per_1000_functions": 3188671.997277986
     }
   }
 }

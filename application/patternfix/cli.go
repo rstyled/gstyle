@@ -37,8 +37,8 @@ Dry-run by default (shows a diff); --apply writes the files.
   --apply       write the fixes to disk (default: dry-run diff only)
   --changed     only fix candidates in functions touched by the git diff
   --base REF    git base for --changed (default: merge-base with main/master)
-  --phased      run fixes in dependency phases, re-mining changed files
-                between phases (value_object fixes feed factory, etc.)
+  --phased      run fixes in dependency order, refreshing PDG facts
+                after writes and reusing them while source is unchanged
 
 Exit 0: always, on success (even with no fixes). Exit 2: parse or IO failure.
 `
@@ -60,26 +60,9 @@ func (opts options) validate() error {
 	return nil
 }
 
-// fixPhases groups pattern kinds by dependency level for phased fixing.
-// Each phase runs after the previous phase's fixes are written to disk,
-// then the next phase re-mines only the files that changed. This lets
-// later phases see the results of earlier ones (e.g. value_object
-// bundling params before factory builds constructors from them).
-//
-// The grouping mirrors FixKindOrder:
-//  1. guard_clause + primitive_obsession: simplify control flow, create types
-//  2. value_object: bundle params into the new types
-//  3. factory + specification + independent semantic fixes: use the bundled types
-//  4. parameterize: PDG-based, most sensitive to code shape, runs last
-var fixPhases = [][]patterns.CandidateKind{
-	{patterns.GuardClause, patterns.OffsetFallback, patterns.PrimitiveObsession},
-	{patterns.ValueObject},
-	{patterns.Factory, patterns.Specification, patterns.MissingIdentity, patterns.EntityIdentity,
-		patterns.DomainService, patterns.AnemicModel, patterns.TypeSwitch, patterns.EnumDispatch,
-		patterns.TraitMethod, patterns.CapabilitySet, patterns.GenericFn},
-	{patterns.Parameterize},
-	{patterns.DeclarationOrder},
-}
+// fixPhases follows the domain dependency order. Each kind gets fresh
+// evidence after a write; phases with no writes share one extraction.
+var fixPhases = dependencyPhases()
 
 // maxPhasedCycles bounds the fixpoint loop. In practice it terminates
 // after 1-2 cycles; 3 is a safety net against oscillation.
@@ -87,8 +70,7 @@ const maxPhasedCycles = 3
 
 // phasedState tracks the fixpoint loop state across phases.
 type phasedState struct {
-	dirty      []string
-	firstCycle bool
+	revision   fixRevision
 	totalFixed int
 }
 
@@ -96,7 +78,7 @@ type phasedState struct {
 type phasedPhase struct {
 	phase    []patterns.CandidateKind
 	phaseIdx int
-	paths    []string
+	revision *fixRevision
 }
 
 // Run runs the miner, then applies fixes for candidates with FixSpecs.
@@ -138,14 +120,14 @@ func reportDryRun(opts options, output io.Writer, fixed int) {
 }
 
 // runPhased applies fixes in dependency phases, re-mining changed files
-// between phases. After each phase writes fixes, the next phase mines
-// only those files, so it sees the updated code. Repeats until a full
+// between revisions. After a write, the next phase refreshes the complete
+// input scope, including cross-file callers. Repeats until a full
 // cycle produces no fixes or maxPhasedCycles is reached.
 func runPhased(ctx context.Context, opts options, output io.Writer) error {
 	if !opts.apply {
 		return runPhasedDryRun(ctx, opts, output)
 	}
-	st := &phasedState{firstCycle: true}
+	st := &phasedState{revision: fixRevision{mine: mineCandidates}}
 	for cycle := 0; cycle < maxPhasedCycles; cycle++ {
 		fixed, err := runPhasedCycle(ctx, opts, output, st)
 		if err != nil {
@@ -161,57 +143,35 @@ func runPhased(ctx context.Context, opts options, output io.Writer) error {
 }
 
 // runPhasedCycle runs one full pass through all phases. Returns the number
-// of fixes applied; updates st.dirty with files written for the next cycle.
-// Within a cycle, each phase mines all inputs for its kinds (we haven't
-// checked those kinds yet). Across cycles, only re-mine changed files.
+// of fixes applied. Reuse candidates until source changes; never narrow the
+// input scope merely because edits touch a subset of files.
 func runPhasedCycle(ctx context.Context, opts options, output io.Writer, st *phasedState) (int, error) {
 	var cycleFixed int
-	var cycleWritten []string
 	for phaseIdx, phase := range fixPhases {
 		if err := ctx.Err(); err != nil {
 			return cycleFixed, err
 		}
-		minePaths := phasedMinePaths(opts, st, phaseIdx)
-		if minePaths == nil {
-			continue // nothing changed; skip
-		}
-		pp := phasedPhase{phase: phase, phaseIdx: phaseIdx, paths: minePaths}
-		fixed, written, err := runPhasedPhase(ctx, opts, output, pp)
+		pp := phasedPhase{phase: phase, phaseIdx: phaseIdx, revision: &st.revision}
+		fixed, written, err := runRevisionPhase(ctx, opts, output, pp)
 		if err != nil {
 			return cycleFixed, err
 		}
+		if len(written) > 0 {
+			st.revision.invalidate()
+		}
 		cycleFixed += fixed
-		cycleWritten = append(cycleWritten, written...)
 	}
-	st.dirty = dedupe(cycleWritten)
-	st.firstCycle = false
 	return cycleFixed, nil
-}
-
-// phasedMinePaths decides which files to mine for a phase.
-// Returns nil to skip (nothing changed since last check).
-// Within the first cycle, every phase mines all inputs for its kinds.
-// In later cycles, only re-mine files written in the previous cycle.
-// parameterize always mines everything (needs cross-file view).
-func phasedMinePaths(opts options, st *phasedState, phaseIdx int) []string {
-	phase := fixPhases[phaseIdx]
-	// parameterize needs the full cross-file view for clustering.
-	if phaseHas(phase, patterns.Parameterize) {
-		return opts.paths
-	}
-	if st.firstCycle {
-		return opts.paths
-	}
-	if len(st.dirty) == 0 {
-		return nil
-	}
-	return st.dirty
 }
 
 // runPhasedPhase mines one phase's kinds and applies the fixes.
 // Returns fixes applied and files written.
-func runPhasedPhase(ctx context.Context, opts options, output io.Writer, pp phasedPhase) (int, []string, error) {
-	specs, err := mineKinds(ctx, opts, pp.phase, pp.paths)
+func runRevisionPhase(ctx context.Context, opts options, output io.Writer, pp phasedPhase) (int, []string, error) {
+	candidates, err := pp.revision.load(ctx, opts)
+	if err != nil {
+		return 0, nil, err
+	}
+	specs, err := filterKindSpecs(candidates, phaseKindSet(pp.phase), opts)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -310,50 +270,19 @@ func phaseNames(phase []patterns.CandidateKind) string {
 	return strings.Join(names, ",")
 }
 
-// mineKinds mines candidates for specific kinds, limited to paths.
-// An empty paths slice mines the input paths; nil mines everything the
-// caller passed in opts.paths.
-func mineKinds(ctx context.Context, opts options, kinds []patterns.CandidateKind, paths []string) ([]*patterns.FixSpec, error) {
-	kindSet := make(map[patterns.CandidateKind]bool, len(kinds))
-	for _, k := range kinds {
-		kindSet[k] = true
-	}
-	mineOpts := opts
-	mineOpts.paths = paths
-	candidates, err := mineCandidates(ctx, mineOpts)
-	if err != nil {
-		return nil, err
-	}
-	return filterKindSpecs(candidates, kindSet, opts)
-}
-
 // filterKindSpecs keeps FixSpecs for kinds in the set, applying --changed
 // filtering when requested.
 func filterKindSpecs(candidates []patterns.Candidate, kindSet map[patterns.CandidateKind]bool, opts options) ([]*patterns.FixSpec, error) {
-	var specs []*patterns.FixSpec
-	for _, c := range candidates {
-		if !kindSet[c.Kind] {
-			continue
+	var selected []patterns.Candidate
+	for _, candidate := range candidates {
+		if kindSet[candidate.Kind] {
+			selected = append(selected, candidate)
 		}
-		kept, err := keepCandidateSpec(c, opts)
-		if err != nil {
-			return nil, err
-		}
-		specs = append(specs, kept...)
 	}
-	return specs, nil
-}
-
-// keepCandidateSpec returns the FixSpec for a candidate, applying --changed
-// filtering. Returns empty when filtered out.
-func keepCandidateSpec(c patterns.Candidate, opts options) ([]*patterns.FixSpec, error) {
 	if opts.changed {
-		return onlyChangedSpecs([]patterns.Candidate{c}, opts)
+		return onlyChangedSpecs(selected, opts)
 	}
-	if c.FixSpec != nil {
-		return []*patterns.FixSpec{c.FixSpec}, nil
-	}
-	return nil, nil
+	return candidateSpecs(selected), nil
 }
 
 // applyAndTrack applies specs and returns the files that were written.
@@ -363,19 +292,6 @@ func applyAndTrack(ctx context.Context, specs []*patterns.FixSpec, opts options,
 		return 0, nil, err
 	}
 	return executeFixPlan(ctx, plan, opts, output)
-}
-
-// dedupe removes duplicate strings, preserving order.
-func dedupe(in []string) []string {
-	seen := make(map[string]bool, len(in))
-	out := in[:0]
-	for _, s := range in {
-		if !seen[s] {
-			seen[s] = true
-			out = append(out, s)
-		}
-	}
-	return out
 }
 
 // collectFixSpecs runs the miner and returns FixSpecs filtered by kind,
@@ -640,4 +556,12 @@ func paramInfos(params []patterns.ParamInfo) []patterns.ParamInfo {
 		out = append(out, patterns.ParamInfo{Name: p.Name, Type: p.Type})
 	}
 	return out
+}
+
+func phaseKindSet(kinds []patterns.CandidateKind) map[patterns.CandidateKind]bool {
+	set := make(map[patterns.CandidateKind]bool, len(kinds))
+	for _, kind := range kinds {
+		set[kind] = true
+	}
+	return set
 }
