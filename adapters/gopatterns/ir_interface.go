@@ -63,7 +63,8 @@ func (b *irBuilder) parameterFacts(field *ast.Field, name *ast.Ident, role pdg.R
 	_, variadic := field.Type.(*ast.Ellipsis)
 	p := pdg.Parameter{
 		Position: position, Role: role, Name: b.pool.Known(""), Type: b.typeFact(field.Type),
-		Variadic: pdg.BooleanFact{Status: pdg.Known, Value: variadic},
+		Variadic:   pdg.BooleanFact{Status: pdg.Known, Value: variadic},
+		Extensions: b.resolvedType(b.info.TypeOf(field.Type)),
 	}
 	if name != nil {
 		p.Name = b.pool.Known(name.Name)

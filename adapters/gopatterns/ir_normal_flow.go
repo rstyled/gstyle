@@ -10,6 +10,8 @@ import (
 
 const normalExecutionDescription = "Nearest dominators under deterministic source-order scalar lowering; Go leaves some operand evaluation orders unspecified. These edges are not a complete language-mandated ordering proof."
 
+const orderedExecutionDescription = "Nearest semantic-operation dominators for acyclic scalar normal flow with independently evaluated sibling operands excluded by a whole-body source check. Short-circuit operands retain language-defined conditional order."
+
 const normalDependencyDescription = "Nearest-operation dominance and post-dominator control dependence for reachable acyclic local scalar normal flow; exceptional flow is excluded."
 
 type normalFlowAnalysis struct {
@@ -57,6 +59,9 @@ func (a *normalFlowAnalysis) edge(source, target pdg.Ref, kind pdg.EdgeKind) {
 	}
 	a.nextEdge++
 	subkind := "chosen-order-dominator"
+	if a.builder.scalarOrderKnown {
+		subkind = "nearest-operation-dominator"
+	}
 	evidence := a.executionEvidence
 	if kind == pdg.ControlEdge {
 		subkind = "post-dominator-control"
@@ -73,6 +78,9 @@ func (b *irBuilder) normalDependenciesFor(flow *cfg.CFG, dom *executionDominator
 	post := normalPostDominators(flow, dom)
 	a := normalFlowAnalysis{builder: b, operations: make([][]pdg.Ref, len(flow.Blocks)), post: post,
 		evidence: b.pool.Evidence(pdg.Supported, normalDependencyDescription), origin: b.pool.Origin(pdg.Analysis, normalDependencyDescription), executionEvidence: b.pool.Evidence(pdg.Approximated, normalExecutionDescription), nextEdge: len(b.graph.Edges)}
+	if b.scalarOrderKnown {
+		a.executionEvidence = b.pool.Evidence(pdg.Supported, orderedExecutionDescription)
+	}
 	for index, block := range flow.Blocks {
 		a.operations[index] = b.normalOperations(block)
 	}

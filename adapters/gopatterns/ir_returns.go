@@ -20,6 +20,10 @@ func (b *irBuilder) returnValues(body *ast.BlockStmt) {
 		status = pdg.Supported
 		description = "Normal scalar return transfers; explicit values and named-result reads preserve source order. Deferred calls and exceptional exits are outside this profile."
 	}
+	if b.bindingOperations {
+		status = pdg.Supported
+		description = interfaceFlowDescription
+	}
 	evidence := b.pool.Evidence(status, description)
 	origin := b.pool.Origin(pdg.Analysis, description)
 	ast.Inspect(body, func(n ast.Node) bool {
@@ -56,7 +60,7 @@ func (b *irBuilder) namedReturnReads(ret *ast.ReturnStmt, node pdg.Ref) {
 			continue
 		}
 		read := pdg.Access{Symbol: param.Symbol, Position: pdg.Position(position + 1)}
-		if b.scalarOperations {
+		if b.scalarOperations || b.bindingOperations {
 			b.implicitScalarRead(ret, nil, read)
 			continue
 		}

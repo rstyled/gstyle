@@ -145,12 +145,18 @@ Facts export uses schema_version 2 with helper summaries; version 1 remains read
 
 Suppressions use ` + "`// gstyle-allow(rule_a, rule_b): reason`" + ` above a function, with intervening doc comments allowed. Reasons are required; unknown rules fail validation. Prefer documenting a deliberate exception over hiding evidence.
 
-Bug-pattern warnings are advisory. ` + "`nilerr`" + ` requires explicit nil in every error result of the error branch; propagating an error in another result is valid. ` + "`typednil`" + ` requires a concrete nil value or a stable zero-valued local boxed into an interface. Unknown constructor results, parameters, and mutable bindings are omitted; absence of a warning does not prove nil safety. Interface suggestions describe normalized signature shapes, not Go declarations; preserve the concrete parameter and result types.
+Bug-pattern warnings are advisory. ` + "`nilerr`" + ` requires explicit nil in every error result of the error branch; propagating an error in another result is valid. ` + "`typednil`" + ` proves non-nil interface comparisons from compiler value kinds and supported PDG binding/value/return dependencies. A concrete value has a dynamic type even when its pointer, map, or slice is nil. The bounded acyclic analysis follows local overwrites, branch joins, named returns, and direct same-analysis function summaries. Mixed nil paths and unknown interface inputs remain unknown. Loops, address escapes, closures, deferred writes, concurrency, and multiple results/assignments are excluded; absence of a warning does not prove nil safety. Interface suggestions describe normalized signature shapes, not Go declarations; preserve the concrete parameter and result types.
 
 Taint and slicing use canonical PDG operations. Inspect analysis_coverage even
 when no findings appear: partial coverage is not proof of clean flow. Each finding's
 analysis_evidence records missing capabilities and canonical operation IDs within
 its function. These are advisory paths and slices, not proof of a vulnerability.
+
+Native conformance uses ` + "`gstyle match-graphs --source .`" + `.
+It validates bounded scalar Go source and reports excluded functions before strict
+matching. Add ` + "`--context-output /tmp/gstyle-context.jsonl`" + ` with a new path
+to preserve source snapshots and paired PDG/CFG documents. The held-out quality
+study remains pending; clone scores do not prove a safe auto-fix.
 
 **Patterns vs quality:** ` + "`gstyle fix`" + ` handles mechanical patterns automatically. ` + "`gstyle check`" + ` findings (side_effect_density, mutated_targets, etc.) are design smells — they need your judgment to refactor. The check tells you *where* to look; you decide *how* to restructure. Don't try to auto-fix quality findings.
 

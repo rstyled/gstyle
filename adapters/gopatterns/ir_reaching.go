@@ -121,7 +121,7 @@ func (a *reachingAnalysis) valueEdge(source, target pdg.Ref, position pdg.Positi
 		ID:     a.edgeID(),
 		Source: source, Target: target, Kind: pdg.Data,
 		Position: position,
-		Subkind:  b.pool.Text("scalar-value"), Evidence: a.evidence, Provenance: a.origin,
+		Subkind:  b.pool.Text(b.valueSubkind()), Evidence: a.evidence, Provenance: a.origin,
 	})
 }
 
@@ -165,13 +165,13 @@ func (a *reachingAnalysis) sourceValues(flow *cfg.CFG, dom *executionDominators)
 const scalarDefinitionDescription = "Exact scalar reaching definitions for acyclic normal flow: local integer/boolean bindings, assignments, if branches, short-circuit expressions, explicit value joins and returns; calls, memory and loops are excluded."
 
 func (b *irBuilder) reachingDefinitions(body *ast.BlockStmt, flow *cfg.CFG, dom *executionDominators) (*cfg.CFG, *executionDominators) {
-	if !b.scalarOperations || !b.reachingSubset(body) {
+	if !b.scalarOperations && !b.bindingOperations {
 		return flow, dom
 	}
 	nextEdgeID := len(b.graph.Edges)
 	b.removeFirstBindingEdges()
 
-	a := reachingAnalysis{builder: b, controls: b.executionControls(body), nextEdgeID: nextEdgeID, evidence: b.pool.Evidence(pdg.Supported, scalarDefinitionDescription), origin: b.pool.Origin(pdg.Analysis, scalarDefinitionDescription)}
+	a := reachingAnalysis{builder: b, controls: b.executionControls(body), nextEdgeID: nextEdgeID, evidence: b.pool.Evidence(pdg.Supported, b.bindingDescription()), origin: b.pool.Origin(pdg.Analysis, b.bindingDescription())}
 	a.sourceValues(flow, dom)
 	flow = b.scalarCFG(body, flow)
 	dom = newExecutionDominators(flow)
@@ -186,7 +186,7 @@ func (b *irBuilder) reachingDefinitions(body *ast.BlockStmt, flow *cfg.CFG, dom 
 			a.outputs[index] = state
 		}
 	}
-	b.scalarDefinitions = true
+	b.scalarDefinitions = b.scalarOperations
 	return flow, dom
 }
 
@@ -204,4 +204,18 @@ func reachingConsumers(flow *cfg.CFG) []int {
 		consumers[i] = len(block.Succs)
 	}
 	return consumers
+}
+
+func (b *irBuilder) bindingDescription() string {
+	if b.bindingOperations {
+		return interfaceFlowDescription
+	}
+	return scalarDefinitionDescription
+}
+
+func (b *irBuilder) valueSubkind() string {
+	if b.bindingOperations {
+		return "binding-value"
+	}
+	return "scalar-value"
 }

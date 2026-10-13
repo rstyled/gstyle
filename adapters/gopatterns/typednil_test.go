@@ -1,10 +1,8 @@
 package gopatterns
 
 import (
-	"go/ast"
-	"go/parser"
-	"go/token"
-	"go/types"
+	"github.com/rstyled/gstyle/domain/interfacenil"
+	"github.com/rstyled/gstyle/domain/pdg"
 	"testing"
 )
 
@@ -40,9 +38,9 @@ func TestTypedNilInterfaceBoundary(t *testing.T) {
 		{"named pointer", "var p Pointer; var x any = p; _ = x == nil", 1},
 		{"alias interface", "var p *Target; var x Alias = p; _ = x == nil", 1},
 		{"non-nil literal", "var x any = &Target{}; _ = x == nil", 0},
-		{"non-nil new", "var x any = new(Target); _ = x == nil", 0},
-		{"non-nil map", "var x any = make(map[string]int); _ = x == nil", 0},
-		{"constructor result", "p := build(); var x any = p; _ = x == nil", 0},
+		{"non-nil new", "var x any = new(Target); _ = x == nil", 1},
+		{"non-nil map", "var x any = make(map[string]int); _ = x == nil", 1},
+		{"constructor result", "p := build(); var x any = p; _ = x == nil", 1},
 		{"checked constructor", "p, err := construct(); if err != nil { return }; var x any = p; _ = x == nil", 0},
 		{"explicit nil pointer", "var x any = (*Target)(nil); _ = x == nil", 1},
 		{"initialized nil pointer", "var p *Target = nil; var x any = p; _ = x == nil", 1},
@@ -58,8 +56,8 @@ func TestTypedNilInterfaceBoundary(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			fn, fset, info := parseTypedNilFunc(t, tc.body)
-			hits := findTypedNilHits(fn, fset, info)
+			graph := parseTypedNilGraph(t, tc.body)
+			hits := interfacenil.Find([]pdg.Graph{graph})[0]
 			if len(hits) != tc.want {
 				t.Fatalf("got %+v, want %d hits", hits, tc.want)
 			}
@@ -67,7 +65,7 @@ func TestTypedNilInterfaceBoundary(t *testing.T) {
 	}
 }
 
-func parseTypedNilFunc(t *testing.T, body string) (*ast.FuncDecl, *token.FileSet, *types.Info) {
+func parseTypedNilGraph(t *testing.T, body string) pdg.Graph {
 	t.Helper()
 	source := `package p
 func check() {` + body + `}
@@ -84,15 +82,5 @@ type Lookup map[string]any
 type Callback func()
 type Pointer *Target
 `
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "typednil.go", source, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	info := &types.Info{Types: map[ast.Expr]types.TypeAndValue{}, Defs: map[*ast.Ident]types.Object{}, Uses: map[*ast.Ident]types.Object{}}
-	config := types.Config{}
-	if _, err := config.Check("p", fset, []*ast.File{file}, info); err != nil {
-		t.Fatal(err)
-	}
-	return file.Decls[0].(*ast.FuncDecl), fset, info
+	return parseIR(t, source, pdg.NewBuilder())
 }

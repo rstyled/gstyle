@@ -184,7 +184,7 @@ func TestIRParenthesizedOperands(t *testing.T) {
 			t.Fatal("first-binding edge remains in supported scalar graph")
 		}
 	}
-	want := []string{"x = (x + 1) -> return (x) : x", "x int -> x + 1 : x"}
+	want := []string{"x = (x + 1) -> (x) : x", "x int -> x + 1 : x"}
 	got := reachingDescriptions(t, g, source)
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v; want %v", got, want)

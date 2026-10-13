@@ -1,5 +1,5 @@
-// Package graphmatch exposes the imported projected-graph matching milestone.
-// It does not accept native PDG exports as semantically validated strict inputs.
+// Package graphmatch exposes imported projected-stage and validated native-source
+// matching. Native PDG JSON claims alone are not source validation proof.
 package graphmatch
 
 import (
@@ -31,33 +31,53 @@ func Run(ctx context.Context, args []string, output io.Writer) error {
 	fs := flag.NewFlagSet("match-graphs", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	path := fs.String("input", "", "imported projected-stage input JSON")
+	source := fs.String("source", "", "Go source root for independently validated native matching")
+	contextPath := fs.String("context-output", "", "optional paired PDG/CFG conformance JSON Lines output")
 	configPath := fs.String("config", "", "strict matching overrides JSON")
 	timeout := fs.Duration("timeout", 0, "explicit resource deadline; zero is unlimited")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if *path == "" || fs.NArg() != 0 {
-		return fmt.Errorf("usage: gstyle match-graphs --input graphs.json [--config thresholds.json]")
+	if err := inputOptions(*path, *source, *contextPath, fs.NArg()); err != nil {
+		return err
 	}
-	return runDeadline(ctx, options{*path, *configPath, *timeout}, output)
+	return runDeadline(ctx, options{input: *path, config: *configPath, timeout: *timeout, source: *source, contextOutput: *contextPath}, output)
 }
 
 type options struct {
-	input, config string
-	timeout       time.Duration
+	input, config         string
+	timeout               time.Duration
+	source, contextOutput string
 }
 
 func runDeadline(ctx context.Context, opts options, output io.Writer) error {
-	path, configPath, timeout := opts.input, opts.config, opts.timeout
+	timeout := opts.timeout
 	if timeout < 0 {
 		return fmt.Errorf("timeout must be nonnegative")
 	}
 	if timeout == 0 {
-		return runFiles(ctx, path, configPath, output)
+		return runInput(ctx, opts, output)
 	}
 	limited, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	return runFiles(limited, path, configPath, output)
+	return runInput(limited, opts, output)
+}
+
+func inputOptions(input, source, contextPath string, args int) error {
+	if args != 0 || (input == "") == (source == "") {
+		return fmt.Errorf("usage: gstyle match-graphs --input graphs.json | --source ROOT [--config thresholds.json] [--context-output context.jsonl]")
+	}
+	if contextPath != "" && source == "" {
+		return fmt.Errorf("context-output requires native source input")
+	}
+	return nil
+}
+
+func runInput(ctx context.Context, opts options, output io.Writer) error {
+	if opts.source != "" {
+		return runNative(ctx, opts, output)
+	}
+	return runFiles(ctx, opts.input, opts.config, output)
 }
 
 func runFiles(ctx context.Context, path, configPath string, output io.Writer) error {
@@ -93,7 +113,7 @@ func loadInput(path string) (inputFile, error) {
 		return inputFile{}, err
 	}
 	if input.Profile != ccgraph.Profile || input.InputScope != "projected_stage_inputs" {
-		return inputFile{}, fmt.Errorf("require %s projected_stage_inputs; native PDG validation is not implemented", ccgraph.Profile)
+		return inputFile{}, fmt.Errorf("require %s projected_stage_inputs; native PDG JSON claims are not validation proof, use --source", ccgraph.Profile)
 	}
 	return input, nil
 }

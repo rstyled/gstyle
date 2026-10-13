@@ -49,6 +49,9 @@ func (b *irBuilder) capabilities() {
 			Name: b.pool.Text(name), Evidence: b.pool.Evidence(c.status, c.description),
 		}
 	}
+	if b.bindingOperations {
+		capabilities = append(capabilities, pdg.NamedCapability{Name: b.pool.Text("interface_binding_flow"), Evidence: b.pool.Evidence(pdg.Supported, interfaceFlowDescription)})
+	}
 	b.graph.Capabilities = capabilities
 	b.graph.Conformance = pdg.Conformance{
 		Status:  pdg.NonConformant,
@@ -61,6 +64,9 @@ func (b *irBuilder) capabilities() {
 }
 
 func (b *irBuilder) capability(name string) irCapability {
+	if b.normalDependencies && b.scalarOrderKnown && name == "execution_dependencies" {
+		return irCapability{pdg.Supported, orderedExecutionDescription}
+	}
 	if b.normalDependencies {
 		if c, ok := irNormalCapabilities[name]; ok {
 			return c

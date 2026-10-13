@@ -303,10 +303,11 @@ go run ./examples/gstyle-hunt path/to/input.go
 See [the Gstyle checker guide](examples/gstyle-hunt/README.md) for its supported inputs
 and checks. The exploratory fixture generators have been removed.
 
-## Match imported graphs against compat's strict profile
+## Match graphs against compat's strict profile
 
 ```sh
 gstyle match-graphs --input domain/ccgraph/testdata/imported-graphs.json
+gstyle match-graphs --source . --context-output /tmp/gstyle-context.jsonl
 go test ./domain/ccgraph -run TestCompat -count=1
 ```
 
@@ -319,9 +320,18 @@ Configuration overrides use exact decimal strings, for example
 `--timeout 30s` stops resource use with an incomplete-run diagnostic; it never
 shortens WL depth or silently truncates pairs.
 
-This is imported-graph matching, not certification of native Go extraction.
-Native PDG exports require a separate CFG/source/evidence validator before strict
-matching. The existing `patterns` matcher remains the Gstyle adaptation. Pair
+`--source` registers `gstyle.go.scalar-normal/0.2.0` and independently checks
+typed source, operation inventory, bindings, CFG transitions and outcomes,
+dependencies, interfaces, and target width before strict matching. It reports
+excluded functions separately. Optional context output preserves exact source
+snapshots and paired PDG 0.1.0 / CFG 0.2.0 documents; the output path must be new.
+See the [bounded Go extraction contract](docs/papers.md#gstyle-go-scalar-normal).
+Unspecified sibling-operand order is rejected. Calls, memory operations, loops,
+closures, and concurrency remain outside this initial source profile.
+
+The labeled development/held-out quality study remains pending; this command is
+a conformance path, not detector certification. The existing `patterns` matcher
+remains the Gstyle adaptation. Pair
 results do not establish semantic equivalence or safe refactoring. Required
 unknown facts are diagnosed; cancellation or output failure leaves an incomplete run.
 
@@ -422,3 +432,9 @@ Fix specs carry the current substitution policy; re-run patterns for older specs
 The fix targets only that pair. If another fix changes the source first, re-mine
 with `gstyle fix --phased` before parameterizing. Callable types are interned PDG
 extensions; no second compiler load is required.
+
+Interface nil checks use supported PDG binding and value dependencies, with
+compiler type facts and direct-call return summaries. The original synthetic
+corpus is in `adapters/gopatterns/testdata/interface-nil`. Mixed nil paths and
+unsupported mutation paths remain unflagged; these warnings do not authorize
+an automatic fix.

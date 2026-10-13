@@ -92,6 +92,8 @@ func (b *irBuilder) otherStatement(n ast.Node) {
 
 func (b *irBuilder) expressionOperation(n ast.Node) {
 	switch n := n.(type) {
+	case *ast.ParenExpr:
+		b.parenthesizedValue(n)
 	case *ast.BasicLit:
 		b.addNode(n, pdg.Computation, pdg.Attributes{Literal: b.pool.Known(n.Value), Operator: b.pool.Known("literal")})
 	case *ast.BinaryExpr:
@@ -103,6 +105,13 @@ func (b *irBuilder) expressionOperation(n ast.Node) {
 	default:
 		b.accessOperation(n)
 	}
+}
+
+func (b *irBuilder) parenthesizedValue(n *ast.ParenExpr) {
+	if (!b.scalarOperations && !b.bindingOperations) || b.writeTargets[n] {
+		return
+	}
+	b.addNode(n, pdg.Computation, pdg.Attributes{Operator: b.pool.Known("parentheses")})
 }
 
 func (b *irBuilder) accessOperation(n ast.Node) {
@@ -159,6 +168,7 @@ func (b *irBuilder) rangeOperation(n *ast.RangeStmt) {
 }
 
 func (b *irBuilder) write(node pdg.Ref, expr ast.Expr) {
+	b.writeTargetSyntax(expr)
 	expr = unparen(expr)
 	b.writeTargets[expr] = true
 	access := pdg.Access{UnresolvedReason: b.pool.Text("Memory target and aliases are unresolved.")}
@@ -176,6 +186,17 @@ func (b *irBuilder) write(node pdg.Ref, expr ast.Expr) {
 	}
 }
 
+func (b *irBuilder) writeTargetSyntax(expr ast.Expr) {
+	for {
+		b.writeTargets[expr] = true
+		paren, ok := expr.(*ast.ParenExpr)
+		if !ok {
+			return
+		}
+		expr = paren.X
+	}
+}
+
 // Read-modify-write operations read the same target they write. The access
 // remains unresolved for memory targets; no alias or reaching-definition claim.
 func (b *irBuilder) modify(owner ast.Node, node pdg.Ref, expr ast.Expr) {
@@ -187,7 +208,7 @@ func (b *irBuilder) modify(owner ast.Node, node pdg.Ref, expr ast.Expr) {
 	read := attrs.Writes[len(attrs.Writes)-1]
 	read.Position = 1
 	if b.scalarOperations {
-		b.implicitScalarRead(owner, expr, read)
+		b.implicitScalarRead(owner, unparen(expr), read)
 		return
 	}
 	attrs.Reads = append(attrs.Reads, read)
