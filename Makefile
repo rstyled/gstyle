@@ -25,14 +25,14 @@ gstyle-check:
 # when it reports findings, which is expected; only exit 2 (analysis
 # failure) fails the run.
 quality-gate:
-	go build -buildvcs=false -o "$(QUALITY_TMP_DIR)/gstyle-check-bin" .
+	go build -buildvcs=false -o "$(QUALITY_TMP_DIR)/gstyle-check-bin" ./cmd/gstyle
 	"$(QUALITY_TMP_DIR)/gstyle-check-bin" check --format json . > "$(QUALITY_TMP_DIR)/gstyle-facts.json" || test $$? -eq 1
 	go run ./application/qualitygate --baseline quality-baseline.json --facts "$(QUALITY_TMP_DIR)/gstyle-facts.json"
 
 # Regenerate the checked-in baseline after a change legitimately moves the
 # numbers (usually down).
 quality-baseline:
-	go build -buildvcs=false -o "$(QUALITY_TMP_DIR)/gstyle-check-bin" .
+	go build -buildvcs=false -o "$(QUALITY_TMP_DIR)/gstyle-check-bin" ./cmd/gstyle
 	"$(QUALITY_TMP_DIR)/gstyle-check-bin" check --format json . > "$(QUALITY_TMP_DIR)/gstyle-facts.json" || test $$? -eq 1
 	go run ./application/qualitygate --write quality-baseline.json --facts "$(QUALITY_TMP_DIR)/gstyle-facts.json"
 

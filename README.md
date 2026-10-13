@@ -7,7 +7,7 @@ See cyclomatic paths and cognitive load in Go code in a TUI or hand it to an age
 Install `gstyle` globally with Go:
 
 ```sh
-go install github.com/rstyled/gstyle@latest
+go install github.com/rstyled/gstyle/cmd/gstyle@latest
 ```
 
 The executable is `gstyle`. RPC methods use plain names such as `getState` and
@@ -66,7 +66,7 @@ gstyle --skill
 ## Build
 
 ```sh
-go build -o gstyle .
+go build -o gstyle ./cmd/gstyle
 ./gstyle
 ```
 
@@ -210,7 +210,7 @@ The filenames below are placeholders: supply an existing input and checker.
 ```sh
 gstyle bug-reducer failing-input -- ./check-bug.sh
 # Run directly from this repository:
-go run . bug-reducer failing-input -- ./check-bug.sh
+go run ./cmd/gstyle bug-reducer failing-input -- ./check-bug.sh
 ```
 
 For Go source, install the Tree-sitter CLI and configure a Go grammar, or supply
