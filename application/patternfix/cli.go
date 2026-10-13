@@ -333,30 +333,6 @@ func groupByFile(specs []*patterns.FixSpec) map[string][]*patterns.FixSpec {
 	return byFile
 }
 
-// applySpecsToSource applies each spec, skipping failures. Specs run in
-// pattern dependency order (see patterns.FixKindOrder): guard clauses
-// first to simplify control flow, type-creating passes next, parameterize
-// last since it's the most sensitive to code shape. Within a kind, specs
-// run bottom-up (highest line first) so an edit never shifts the line
-// numbers of specs that have not run yet.
-func applySpecsToSource(path string, specs []*patterns.FixSpec, src []byte) ([]byte, int) {
-	ordered := sortSpecsForApply(specs)
-	out := src
-	var applied int
-	for _, spec := range ordered {
-		fixed, err := gopatterns.ApplyFix(spec, out)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: %s: %v\n", path, err)
-			continue
-		}
-		if string(fixed) != string(out) {
-			applied++
-			out = fixed
-		}
-	}
-	return out, applied
-}
-
 // sortSpecsForApply orders specs by pattern dependency rank, then bottom-up
 // by line within a kind.
 func sortSpecsForApply(specs []*patterns.FixSpec) []*patterns.FixSpec {

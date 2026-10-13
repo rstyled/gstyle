@@ -39,7 +39,7 @@ func speakAll(x interface{}) {
 			"args":   "",
 		},
 	}
-	out, err := applyTypeSwitchFix(spec, []byte(src))
+	out, err := applyProjectedFix(t, spec, []byte(src))
 	if err != nil {
 		t.Fatalf("fix failed: %v", err)
 	}
@@ -76,7 +76,7 @@ func speakAll(x interface{}) {
 			"args":   "",
 		},
 	}
-	if _, err := applyTypeSwitchFix(spec, []byte(src)); err == nil {
+	if _, err := applyProjectedFix(t, spec, []byte(src)); err == nil {
 		t.Error("expected error when method decls missing")
 	}
 }
@@ -111,7 +111,7 @@ func speakAll(x interface{}) {
 			"args":   "",
 		},
 	}
-	if _, err := applyTypeSwitchFix(spec, []byte(src)); err == nil {
+	if _, err := applyProjectedFix(t, spec, []byte(src)); err == nil {
 		t.Error("expected error when signatures differ")
 	}
 }
@@ -150,7 +150,7 @@ func speakAll(x interface{}) string {
 			"args":   "3",
 		},
 	}
-	out, err := applyTypeSwitchFix(spec, []byte(src))
+	out, err := applyProjectedFix(t, spec, []byte(src))
 	if err != nil {
 		t.Fatalf("fix failed: %v", err)
 	}

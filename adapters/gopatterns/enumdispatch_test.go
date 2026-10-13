@@ -207,7 +207,7 @@ func TestEnumDispatchEndToEnd(t *testing.T) {
 		File: "test.go",
 		Line: hits[0].Line,
 	}
-	out, err := applyEnumDispatchFix(spec, []byte(enumDispatchSrc))
+	out, err := applyProjectedFix(t, spec, []byte(enumDispatchSrc))
 	if err != nil {
 		t.Fatalf("fixer declined the detector's hit: %v", err)
 	}

@@ -596,8 +596,17 @@ func publishSourceSnapshot(snapshots *pdg.SourceContext, filename string, conten
 	if snapshots.Reference(filename) != 0 {
 		return snapshots.Check(filename, content)
 	}
-	snapshots.AddOwned(filename, content, sourceCommentRanges(fset, file, content), sourceCommentOwners(fset, file, content))
-	return nil
+	ref := snapshots.AddOwned(filename, content, sourceCommentRanges(fset, file, content), sourceCommentOwners(fset, file, content))
+	// Tests retain exact bytes and typed caller ranges for signature fixes. They
+	// are not local rewrite targets, so they need no full syntax projection.
+	if strings.HasSuffix(filename, "_test.go") {
+		return nil
+	}
+	syntax, err := captureSourceSyntax(fset, file, content)
+	if err != nil {
+		return err
+	}
+	return snapshots.SetSyntax(ref, sourceSyntaxProfile, syntax)
 }
 
 func collectFixReferences(sources *pdg.SourceContext, pkgs []*packages.Package, fixes bool) {

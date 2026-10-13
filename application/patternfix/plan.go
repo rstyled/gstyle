@@ -80,8 +80,11 @@ func planFile(path string, specs []*patterns.FixSpec, sources *pdg.SourceContext
 		return filePlan{}, err
 	}
 	before := []byte(snapshot.Content)
-	after, count := applySpecsToSource(path, specs, before)
-	return filePlan{path: absolute, before: before, after: after, count: count}, nil
+	after, count, skipped, err := gopatterns.PlanLocalFixes(sortSpecsForApply(specs), snapshot)
+	for _, reason := range skipped {
+		fmt.Fprintf(os.Stderr, "warning: %s: %s\n", path, reason)
+	}
+	return filePlan{path: absolute, before: before, after: after, count: count}, err
 }
 
 func samePlanContext(specs []*patterns.FixSpec, sources *pdg.SourceContext) error {

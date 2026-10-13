@@ -87,7 +87,7 @@ func page(items []int, offset int) []int {
 }
 `)
 	c := offsetFallbackTestSource(t, string(src))[0]
-	fixed, err := ApplyFix(c.FixSpec, src)
+	fixed, err := applyProjectedFix(t, c.FixSpec, src)
 	if err != nil {
 		t.Fatal(err)
 	}

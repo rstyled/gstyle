@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/ast"
-	"go/parser"
 	"go/token"
 	"strings"
 
@@ -147,8 +146,7 @@ func parameterizationFile(path string, files map[string]*parameterizationSource,
 	if err != nil {
 		return nil, err
 	}
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, path, src, parser.ParseComments)
+	fset, file, err := sourceSyntaxTree(fixSourcePath(sources.Root, path), sources)
 	if err != nil {
 		return nil, err
 	}

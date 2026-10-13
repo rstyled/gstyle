@@ -31,7 +31,7 @@ func process(x int) int {
 			"if_line": "6",
 		},
 	}
-	out, err := ApplyFix(spec, []byte(src))
+	out, err := applyProjectedFix(t, spec, []byte(src))
 	if err != nil {
 		t.Fatalf("ApplyFix failed: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestApplyFixUnknownKind(t *testing.T) {
 		Kind: "nonexistent",
 		File: "main.go",
 	}
-	_, err := ApplyFix(spec, []byte("package main"))
+	_, err := applyProjectedFix(t, spec, []byte("package main"))
 	if err == nil {
 		t.Error("expected error for unknown kind")
 	}
@@ -108,7 +108,7 @@ func traitMethodSpec() *patterns.FixSpec {
 // form the miner actually emits. A bare-name-only lookup silently finds
 // nothing and the fixer no-ops.
 func TestApplyFixTraitMethodQualifiedDefinitions(t *testing.T) {
-	out, err := ApplyFix(traitMethodSpec(), []byte(traitMethodSrc))
+	out, err := applyProjectedFix(t, traitMethodSpec(), []byte(traitMethodSrc))
 	if err != nil {
 		t.Fatalf("ApplyFix failed: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestApplyFixTraitMethodQualifiedDefinitions(t *testing.T) {
 // numbers, as the miner would re-emit them after the first fix shifted
 // the file.
 func TestApplyFixTraitMethodIdempotent(t *testing.T) {
-	once, err := ApplyFix(traitMethodSpec(), []byte(traitMethodSrc))
+	once, err := applyProjectedFix(t, traitMethodSpec(), []byte(traitMethodSrc))
 	if err != nil {
 		t.Fatalf("first ApplyFix failed: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestApplyFixTraitMethodIdempotent(t *testing.T) {
 		"p.go:17:example.com/traitmethod.Dog.sound",
 		"p.go:26:example.com/traitmethod.Cat.sound",
 	}
-	twice, err := ApplyFix(again, once)
+	twice, err := applyProjectedFix(t, again, once)
 	if err != nil {
 		t.Fatalf("second ApplyFix failed: %v", err)
 	}
@@ -168,7 +168,7 @@ func (d Dog) greeting(prefix string) string { return prefix + " hello" }
 
 func (c Cat) greeting(prefix string) string { return prefix + " hiss" }
 `
-	out, err := ApplyFix(spec, []byte(src))
+	out, err := applyProjectedFix(t, spec, []byte(src))
 	if err != nil {
 		t.Fatalf("ApplyFix failed: %v", err)
 	}

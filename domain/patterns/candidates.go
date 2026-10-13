@@ -289,8 +289,8 @@ type Candidate struct {
 }
 
 // FixSpec carries the exact positions and parameters a fixer needs to
-// apply a candidate without re-detecting. It is JSON-serializable so
-// `gstyle patterns --format json` output can be piped to `gstyle fix`.
+// apply a candidate. Execution requires the shared extraction Context; the
+// JSON form describes the proposal and does not authorize a source rewrite.
 type FixSpec struct {
 	Context *pdg.SourceContext `json:"-"`
 	Targets []string           `json:"-"`

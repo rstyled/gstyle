@@ -23,3 +23,32 @@ func TestSourceRevisionKeepsReferencesAndOriginalEvidence(t *testing.T) {
 		t.Fatal("revision lost updated evidence")
 	}
 }
+
+func TestSourceSyntaxFollowsRevisionLifetime(t *testing.T) {
+	source := NewSourceContext("/module", nil)
+	ref := source.Add("/module/code.go", []byte("before"), nil)
+	if err := source.SetSyntax(ref, "profile", "compact"); err != nil {
+		t.Fatal(err)
+	}
+	evidence, _ := source.EvidenceOnly().Snapshot(ref)
+	if evidence.Syntax != "" {
+		t.Fatal("disk proof retains obsolete syntax")
+	}
+	unchanged, _ := source.NextRevision(nil).Snapshot(ref)
+	if unchanged.Syntax != "compact" {
+		t.Fatal("unchanged revision loses syntax")
+	}
+	updated := source.NextRevision(map[string]bool{"/module/code.go": true})
+	updated.Add("/module/code.go", []byte("after"), nil)
+	snapshot, _ := updated.Snapshot(ref)
+	if snapshot.Syntax != "" {
+		t.Fatal("changed revision retains stale syntax")
+	}
+	if err := updated.SetSyntax(ref, "profile", "new compact"); err != nil {
+		t.Fatal(err)
+	}
+	original, _ := source.Snapshot(ref)
+	if original.Syntax != "compact" {
+		t.Fatal("new revision mutates original syntax")
+	}
+}

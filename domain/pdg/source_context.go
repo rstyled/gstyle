@@ -18,11 +18,13 @@ type SourceCommentOwner struct {
 // SourceSnapshot owns one immutable copy of a file, shared by all its graphs.
 // Comments contain actual parser comment ranges, never comment-like literals.
 type SourceSnapshot struct {
-	Owners   []SourceCommentOwner
-	Path     string
-	Content  string
-	Identity [32]byte
-	Comments []ByteRange
+	SyntaxProfile string `json:"-"`
+	Syntax        string `json:"-"`
+	Owners        []SourceCommentOwner
+	Path          string
+	Content       string
+	Identity      [32]byte
+	Comments      []ByteRange
 }
 
 // HasComment reports intersection with parser-owned comment ranges.
@@ -134,4 +136,17 @@ func (c *SourceContext) MissingPaths() []string {
 	}
 	sort.Strings(paths)
 	return paths
+}
+
+// SetSyntax publishes a language-specific compact syntax projection. It is
+// shared by a revision and never retains parser or compiler objects.
+func (c *SourceContext) SetSyntax(ref Ref, profile, data string) error {
+	if ref == 0 || uint64(ref) > uint64(len(c.files)) {
+		return fmt.Errorf("source evidence is missing")
+	}
+	if c.files[ref-1].Syntax != "" {
+		return fmt.Errorf("source syntax is already published")
+	}
+	c.files[ref-1].SyntaxProfile, c.files[ref-1].Syntax = profile, data
+	return nil
 }

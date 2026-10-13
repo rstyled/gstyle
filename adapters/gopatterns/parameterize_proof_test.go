@@ -80,7 +80,7 @@ func TestPDGProofUsesCalleeResultsAndOnlySelectedPair(t *testing.T) {
 	if spec == nil {
 		t.Fatalf("missing proof: %+v", report.Candidates[0])
 	}
-	out, err := ApplyFix(spec, []byte(proofFixture))
+	out, err := applyProjectedFix(t, spec, []byte(proofFixture))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func TestResults(t *testing.T) {
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("generated code: %v\n%s", err, output)
 	}
-	if _, err := ApplyFix(spec, append([]byte(proofFixture), '\n')); err == nil {
+	if _, err := applyProjectedFix(t, spec, append([]byte(proofFixture), '\n')); err == nil {
 		t.Fatal("stale source proof accepted")
 	}
 }
@@ -226,7 +226,7 @@ func TestPreserved(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertParameterizationModule(t)
-	out, err := ApplyFix(spec, []byte(source))
+	out, err := applyProjectedFix(t, spec, []byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,7 +264,7 @@ func right(xs ...int) int { return len(xs)+1 }
 	if spec == nil {
 		t.Fatalf("variadic proof missing: %+v", report.Candidates[0])
 	}
-	out, err := ApplyFix(spec, []byte(source))
+	out, err := applyProjectedFix(t, spec, []byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -357,7 +357,7 @@ func right(){ result+=2 }
 	if spec == nil {
 		t.Fatal(report.Candidates[0])
 	}
-	out, err := ApplyFix(spec, []byte(source))
+	out, err := applyProjectedFix(t, spec, []byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -412,7 +412,7 @@ func right(x int)int{return x+1}
 	if spec.Params["helper_name"] == "len" {
 		t.Fatal("helper shadows builtin in another file")
 	}
-	out, err := ApplyFix(spec, []byte(source))
+	out, err := applyProjectedFix(t, spec, []byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
