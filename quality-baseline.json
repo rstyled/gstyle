@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generated_at": "2026-10-13T22:33:17Z",
-  "commit": "d211b70",
+  "generated_at": "2026-10-13T23:37:48Z",
+  "commit": "5175f6d",
   "functions": 3046,
   "tolerance": 0.05,
   "rules": {
@@ -12,8 +12,8 @@
     },
     "fn_params": {
       "limit": 4,
-      "excess": 35,
-      "per_1000_functions": 11.490479317137229
+      "excess": 34,
+      "per_1000_functions": 11.162179908076165
     },
     "mutated_targets": {
       "limit": 3,

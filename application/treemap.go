@@ -57,7 +57,7 @@ func (s treemap) tileAt(point image.Point) (treemapTile, bool) {
 func (s treemap) raster(file int, function int) *image.RGBA {
 	canvas := image.NewRGBA(image.Rect(0, 0, s.width, treemapHeight*2))
 	for _, tile := range s.files {
-		paintTreemap(canvas, tile, file, function)
+		paintTreemap(canvas, tile, FileFunction{File: file, Function: function})
 	}
 	return canvas
 }
@@ -85,6 +85,11 @@ func (s treemap) render(file int, function int) []string {
 var treemapSelection = color.RGBA{R: 237, G: 242, B: 243, A: 255}
 
 var treemapFileBorder = color.RGBA{R: 58, G: 70, B: 74, A: 255}
+
+type FileFunction struct {
+	File     int
+	Function int
+}
 
 func (m Model) complexityTreemap(width int) treemap {
 	chart := treemap{width: width}
@@ -173,19 +178,19 @@ func splitTreemapBounds(bounds image.Rectangle, fraction float64) (image.Rectang
 	return first, second
 }
 
-func paintTreemap(canvas *image.RGBA, tile treemapTile, file int, function int) {
+func paintTreemap(canvas *image.RGBA, tile treemapTile, fileFunction FileFunction) {
 	base := treemapFileBorder
 	if tile.function >= 0 {
 		base = treemapColor(tile.cognitive)
 	}
-	selected := tile.file == file && tile.function == function
+	selected := tile.file == fileFunction.File && tile.function == fileFunction.Function
 	for y := tile.bounds.Min.Y; y < tile.bounds.Max.Y; y++ {
 		for x := tile.bounds.Min.X; x < tile.bounds.Max.X; x++ {
 			canvas.SetRGBA(x, y, tile.pixel(image.Pt(x, y), base, selected))
 		}
 	}
 	for _, child := range tile.children {
-		paintTreemap(canvas, child, file, function)
+		paintTreemap(canvas, child, FileFunction{File: fileFunction.File, Function: fileFunction.Function})
 	}
 }
 

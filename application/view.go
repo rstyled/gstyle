@@ -33,6 +33,34 @@ var (
 
 const scrollbarGutterWidth = 2
 
+type LineWidth struct {
+	Line  int
+	Width int
+}
+
+type ValueWidth struct {
+	Value string
+	Width int
+}
+
+func (valueWidth ValueWidth) styledCell() string {
+	valueWidth.Value = (ValueWidth)(ValueWidth{Value: valueWidth.Value, Width: valueWidth.Width}).truncate()
+	padding := strings.Repeat(" ", max(valueWidth.Width-ansi.StringWidth(valueWidth.Value), 0))
+	return valueWidth.Value + padding
+}
+
+func (valueWidth ValueWidth) padText() string {
+	return valueWidth.Value + strings.Repeat(" ", max(valueWidth.Width-ansi.StringWidth(valueWidth.Value), 0))
+}
+
+func (valueWidth ValueWidth) truncate() string {
+	if valueWidth.Width <= 0 {
+		return ""
+	}
+
+	return ansi.Truncate(valueWidth.Value, valueWidth.Width, "")
+}
+
 func (m Model) View() tea.View {
 	var content string
 	if m.width > 0 && m.width < wideMinimum {
@@ -141,7 +169,7 @@ func (m Model) footer(width int) string {
 		keys := amber.Render("Annotate"+rangeLabel+": ") + text.Render(m.annotationDraft+"█") +
 			muted.Render("  ·  ") + green.Render("enter") + muted.Render(" save  ·  ") +
 			green.Render("esc") + muted.Render(" cancel")
-		return truncate(keys, width)
+		return (ValueWidth)(ValueWidth{Value: keys, Width: width}).truncate()
 	}
 	if width < wideMinimum {
 		keys := green.Render("tab") + muted.Render(" panes · ") +
@@ -152,7 +180,7 @@ func (m Model) footer(width int) string {
 		if m.focus == detailsPane {
 			keys += muted.Render(" · ") + green.Render("v/a/d") + muted.Render(" source")
 		}
-		return truncate(keys, width)
+		return (ValueWidth)(ValueWidth{Value: keys, Width: width}).truncate()
 	}
 
 	keys := green.Render("tab/shift+tab") + muted.Render(" panes · ") +
@@ -167,7 +195,7 @@ func (m Model) footer(width int) string {
 			green.Render("a") + muted.Render(" note · ") +
 			green.Render("d") + muted.Render(" remove")
 	}
-	return truncate(keys, width)
+	return (ValueWidth)(ValueWidth{Value: keys, Width: width}).truncate()
 }
 
 func (m Model) fileTable(width int, height int) []string {
@@ -194,7 +222,7 @@ func (m Model) fileRow(file domain.File, width int, selected bool) string {
 	if width < 30 {
 		nameWidth := max(width-10, 1)
 		path := fileTablePath(m.report.Root, file.Path, nameWidth)
-		name := text.Render(padText(path, nameWidth))
+		name := text.Render((ValueWidth)(ValueWidth{Value: path, Width: nameWidth}).padText())
 		peak := metricStyle(file.Peak).Render(fmt.Sprintf(" %3d", file.Peak))
 		load := cognitive.Render(fmt.Sprintf(" %3d", file.CognitivePeak))
 		return m.selection(name+peak+load, filesPane, selected, m.fileAnnotationCount(file.Path) > 0)
@@ -202,7 +230,7 @@ func (m Model) fileRow(file domain.File, width int, selected bool) string {
 	if width < 42 {
 		nameWidth := max(width-15, 1)
 		path := fileTablePath(m.report.Root, file.Path, nameWidth)
-		name := text.Render(padText(path, nameWidth))
+		name := text.Render((ValueWidth)(ValueWidth{Value: path, Width: nameWidth}).padText())
 		total := muted.Render(fmt.Sprintf(" %3d ", file.Total))
 		peak := metricStyle(file.Peak).Render(fmt.Sprintf("%3d", file.Peak))
 		load := cognitive.Render(fmt.Sprintf(" %3d", file.CognitivePeak))
@@ -211,7 +239,7 @@ func (m Model) fileRow(file domain.File, width int, selected bool) string {
 
 	nameWidth := max(width-21, 1)
 	path := fileTablePath(m.report.Root, file.Path, nameWidth)
-	name := text.Render(padText(path, nameWidth))
+	name := text.Render((ValueWidth)(ValueWidth{Value: path, Width: nameWidth}).padText())
 	values := muted.Render(fmt.Sprintf(" %5d %4.1f ", file.Total, file.Average))
 	peak := metricStyle(file.Peak).Render(fmt.Sprintf("%3d", file.Peak))
 	load := cognitive.Render(fmt.Sprintf(" %3d", file.CognitivePeak))
@@ -243,7 +271,7 @@ func (m Model) functionRow(function domain.Function, width int, selected bool) s
 	if file, ok := m.selectedFile(); ok {
 		count = m.functionAnnotationCount(file.Path, function)
 	}
-	name := text.Render(padText(truncate(function.Name, nameWidth), nameWidth))
+	name := text.Render((ValueWidth)(ValueWidth{Value: (ValueWidth)(ValueWidth{Value: function.Name, Width: nameWidth}).truncate(), Width: nameWidth}).padText())
 	complexity := metricStyle(function.Complexity).Render(fmt.Sprintf(" %3d", function.Complexity))
 	load := cognitive.Render(fmt.Sprintf(" %3d", function.CognitiveComplexity))
 	lines := muted.Render(fmt.Sprintf(" %5d", functionLineCount(function)))
@@ -369,7 +397,7 @@ func (m Model) sourceDisplayWindow(lines []string, function domain.Function, wid
 	for index := min(m.sourceOffset, len(lines)); index < len(lines) && len(result) < height; index++ {
 		lineNumber := function.Line + index
 		rows := sourceRowsAtLine(function, lineNumber, lines[index], width, index == len(lines)-1, annotations)
-		rows = appendPatternRows(rows, patterns, path, lineNumber, width)
+		rows = appendPatternRows(rows, patterns, path, LineWidth{Line: lineNumber, Width: width})
 		remaining := height - len(result)
 		if len(rows) > remaining {
 			return append(result, rows[:remaining]...)
@@ -481,7 +509,7 @@ func (m Model) sourceLocation(path string, line int, column int, width int) stri
 	}
 
 	nameWidth := max(width-ansi.StringWidth(coordinates), 0)
-	return truncate(filepath.Base(path), nameWidth) + coordinates
+	return (ValueWidth)(ValueWidth{Value: filepath.Base(path), Width: nameWidth}).truncate() + coordinates
 }
 
 func workspaceWidths(width int) []int {
@@ -512,7 +540,7 @@ func fileTablePath(root string, path string, width int) string {
 		return path
 	}
 
-	return truncate(filepath.Base(path), width)
+	return (ValueWidth)(ValueWidth{Value: filepath.Base(path), Width: width}).truncate()
 }
 
 func functionTableHeader(width int) string {
@@ -578,11 +606,11 @@ func normalizedSourceText(source string) string {
 }
 
 // appendPatternRows appends the pattern label row for the line, if any.
-func appendPatternRows(rows []string, markers []PatternMarker, path string, line int, width int) []string {
+func appendPatternRows(rows []string, markers []PatternMarker, path string, lineWidth LineWidth) []string {
 	if len(markers) == 0 {
 		return rows
 	}
-	return append(rows, sourcePatternRows(patternMarkersStartingAt(markers, path, line), width)...)
+	return append(rows, sourcePatternRows(patternMarkersStartingAt(markers, path, lineWidth.Line), lineWidth.Width)...)
 }
 
 func sourceRowsAtLine(
@@ -600,7 +628,7 @@ func sourceRowsAtLine(
 	return slices.Concat(
 		sourceDeletedRows(function.DiffLines, lineNumber),
 		[]string{source},
-		sourceAnnotationRows(annotations, lineNumber, width),
+		sourceAnnotationRows(annotations, LineWidth{Line: lineNumber, Width: width}),
 		trailing,
 	)
 }
@@ -650,14 +678,14 @@ func sourceDeletedRows(lines []domain.DiffLine, beforeLine int) []string {
 	return result
 }
 
-func sourceAnnotationRows(annotations []Annotation, line int, width int) []string {
+func sourceAnnotationRows(annotations []Annotation, lineWidth LineWidth) []string {
 	rows := make([]string, 0)
 	for index, annotation := range annotations {
-		if annotation.EndLine != line {
+		if annotation.EndLine != lineWidth.Line {
 			continue
 		}
 		prefix := sourceAnnotationPrefix(index, len(annotations))
-		rows = append(rows, annotationMessageRows(annotation.Message, prefix, width)...)
+		rows = append(rows, annotationMessageRows(annotation.Message, prefix, lineWidth.Width)...)
 	}
 	return rows
 }
@@ -864,7 +892,7 @@ func verticalScrollbar(
 		if thumbStart <= row && row < thumbStart+thumbHeight {
 			gutter = thumbGutter
 		}
-		lines[index] = styledCell(lines[index], contentWidth) + gutter
+		lines[index] = (ValueWidth)(ValueWidth{Value: lines[index], Width: contentWidth}).styledCell() + gutter
 	}
 	return lines
 }
@@ -908,7 +936,7 @@ func rowCells(panes [][]string, widths []int, row int) []string {
 		if row < len(pane) {
 			value = pane[row]
 		}
-		cells[column] = styledCell(value, widths[column])
+		cells[column] = (ValueWidth)(ValueWidth{Value: value, Width: widths[column]}).styledCell()
 	}
 	return cells
 }
@@ -928,16 +956,10 @@ func fitLines(lines []string, width int, height int) []string {
 			result[index] = strings.Repeat(" ", width)
 			continue
 		}
-		result[index] = styledCell(lines[index], width)
+		result[index] = (ValueWidth)(ValueWidth{Value: lines[index], Width: width}).styledCell()
 	}
 
 	return result
-}
-
-func styledCell(value string, width int) string {
-	value = truncate(value, width)
-	padding := strings.Repeat(" ", max(width-ansi.StringWidth(value), 0))
-	return value + padding
 }
 
 func rule(width int) string {
@@ -949,16 +971,12 @@ func joinSides(left string, right string, width int) string {
 	if gap < 1 {
 		leftWidth := max(width-ansi.StringWidth(right)-1, 0)
 		if leftWidth == 0 {
-			return truncate(right, width)
+			return (ValueWidth)(ValueWidth{Value: right, Width: width}).truncate()
 		}
-		return truncate(left, leftWidth) + " " + right
+		return (ValueWidth)(ValueWidth{Value: left, Width: leftWidth}).truncate() + " " + right
 	}
 
 	return left + strings.Repeat(" ", gap) + right
-}
-
-func padText(value string, width int) string {
-	return value + strings.Repeat(" ", max(width-ansi.StringWidth(value), 0))
 }
 
 func metricStyle(value int) lipgloss.Style {
@@ -970,14 +988,6 @@ func metricStyle(value int) lipgloss.Style {
 	}
 
 	return green
-}
-
-func truncate(value string, width int) string {
-	if width <= 0 {
-		return ""
-	}
-
-	return ansi.Truncate(value, width, "")
 }
 
 func displayPath(root string, path string) string {

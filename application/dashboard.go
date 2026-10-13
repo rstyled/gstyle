@@ -55,13 +55,13 @@ func (m Model) treemapLegend(width int) []string {
 		return append(lines, muted.Render("No Go functions to map"))
 	}
 	lines = append(lines,
-		text.Render(truncate(displayPath(m.report.Root, file.Path), width)),
+		text.Render((ValueWidth)(ValueWidth{Value: displayPath(m.report.Root, file.Path), Width: width}).truncate()),
 		fmt.Sprintf("CC %d · COG %d", file.Total, file.CognitiveTotal),
 	)
 	function, ok := m.selectedFunction()
 	if ok {
 		lines = append(lines,
-			text.Bold(true).Render(truncate(function.Name, width)),
+			text.Bold(true).Render((ValueWidth)(ValueWidth{Value: function.Name, Width: width}).truncate()),
 			fmt.Sprintf("CC %d · COG %d", function.Complexity, function.CognitiveComplexity),
 		)
 	}

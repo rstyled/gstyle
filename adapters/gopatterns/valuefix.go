@@ -30,6 +30,30 @@ type ValueClump struct {
 	Funcs  []*ast.FuncDecl
 }
 
+// isSubsetOfAnother reports whether c is a strict subset of another clump.
+func (c ValueClump) isSubsetOfAnother(clumps []ValueClump, idx int) bool {
+	for j, other := range clumps {
+		if idx != j && isClumpSubset(c.Params, other.Params) {
+			return true
+		}
+	}
+	return false
+}
+
+// clumpSafe runs all safety checks for a clump.
+func (clump ValueClump) clumpSafe(paramName string) bool {
+	if !allUnexported(clump.Funcs) {
+		return false
+	}
+	paramNames := clumpParamNames(clump.Params)
+	for _, fn := range clump.Funcs {
+		if !funcSafe(fn, paramNames, paramName) {
+			return false
+		}
+	}
+	return true
+}
+
 // ValueFix describes one applied value-object extraction.
 type ValueFix struct {
 	// Line is the line of the generated struct definition.
@@ -391,21 +415,11 @@ func appendUniqueFunc(funcs []*ast.FuncDecl, fn *ast.FuncDecl) []*ast.FuncDecl {
 func maximalValueClumps(clumps []ValueClump) []ValueClump {
 	var out []ValueClump
 	for i, c := range clumps {
-		if !isSubsetOfAnother(c, clumps, i) {
+		if !c.isSubsetOfAnother(clumps, i) {
 			out = append(out, c)
 		}
 	}
 	return out
-}
-
-// isSubsetOfAnother reports whether c is a strict subset of another clump.
-func isSubsetOfAnother(c ValueClump, clumps []ValueClump, idx int) bool {
-	for j, other := range clumps {
-		if idx != j && isClumpSubset(c.Params, other.Params) {
-			return true
-		}
-	}
-	return false
 }
 
 // isClumpSubset reports whether a's params are a strict subset of b's.
@@ -431,7 +445,7 @@ func isClumpSubset(a, b []ClumpParam) bool {
 func applyValueClump(fset *token.FileSet, f *ast.File, clump ValueClump) (ValueFix, string, bool) {
 	typeName := valueTypeName(clump.Params)
 	paramName := lowerFirst(typeName)
-	if !clumpSafe(clump, paramName) {
+	if !clump.clumpSafe(paramName) {
 		return ValueFix{}, "", false
 	}
 	if !rewriteClumpCallSites(f, clump, typeName) {
@@ -466,20 +480,6 @@ func paramList(params []ClumpParam) string {
 		names = append(names, p.Name)
 	}
 	return strings.Join(names, ", ")
-}
-
-// clumpSafe runs all safety checks for a clump.
-func clumpSafe(clump ValueClump, paramName string) bool {
-	if !allUnexported(clump.Funcs) {
-		return false
-	}
-	paramNames := clumpParamNames(clump.Params)
-	for _, fn := range clump.Funcs {
-		if !funcSafe(fn, paramNames, paramName) {
-			return false
-		}
-	}
-	return true
 }
 
 // funcSafe runs the per-function safety checks.
