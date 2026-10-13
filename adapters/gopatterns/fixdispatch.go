@@ -16,6 +16,7 @@ type fixApplier func(*patterns.FixSpec, []byte) ([]byte, error)
 var appliers = map[patterns.CandidateKind]fixApplier{
 	patterns.DeclarationOrder:   applyDeclarationOrderFix,
 	patterns.GuardClause:        applyGuardFix,
+	patterns.OffsetFallback:     applyOffsetFallbackFix,
 	patterns.ValueObject:        applyValueObjectFix,
 	patterns.Parameterize:       applyParameterizeFix,
 	patterns.TraitMethod:        applyInterfaceFix,
