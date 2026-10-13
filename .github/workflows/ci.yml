@@ -38,9 +38,6 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
 
-      - name: Build command
-        run: go build -buildvcs=false -o /tmp/gstyle ./cmd/gstyle
-
       - name: Test
         run: make test
 
