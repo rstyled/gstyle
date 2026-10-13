@@ -43,6 +43,8 @@ type CandidateKind string
 const (
 	// DeclarationOrder groups constructors and methods before free functions.
 	DeclarationOrder CandidateKind = "declaration_order"
+	// SliceOffsetFallback flags guarded suffix slices that retain the full input out of range.
+	SliceOffsetFallback CandidateKind = "slice_offset_fallback"
 	// TraitMethod proposes an interface from parallel methods.
 	TraitMethod CandidateKind = "trait_method"
 	// CapabilitySet proposes an interface from several parallel methods.
@@ -207,6 +209,7 @@ const (
 //     sensitive to code shape, so it sees the final structure.
 var FixKindOrder = []CandidateKind{
 	GuardClause,
+	SliceOffsetFallback,
 	PrimitiveObsession,
 	ValueObject,
 	Factory,

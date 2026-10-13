@@ -85,6 +85,7 @@ type Extraction struct {
 	// It lets helper extraction avoid collisions with declarations in other files.
 	PackageNames      map[string][]string
 	DeclarationOrders []patterns.Candidate
+	SliceOffsets      []patterns.Candidate
 	Funcs             []FuncPdg
 	// AnemicModels are exported methodless structs with 3+ functions
 	// operating on their fields (DDD anemic domain model detection).
@@ -238,6 +239,7 @@ func Extract(ctx context.Context, root string, paths []string) (*Extraction, err
 	}
 	var funcsOut []FuncPdg
 	var orders []patterns.Candidate
+	var ranges []patterns.Candidate
 	var anemic []patterns.AnemicModelHit
 	var missing []patterns.MissingIdentityHit
 	var services []patterns.DomainServiceHit
@@ -248,13 +250,14 @@ func Extract(ctx context.Context, root string, paths []string) (*Extraction, err
 			return nil, err
 		}
 		orders = append(orders, findDeclarationOrders(pkg, abs, paths)...)
+		ranges = append(ranges, findSliceOffsets(pkg, abs, paths, sourceIdentities)...)
 		funcsOut = append(funcsOut, funcs...)
 		anemic = append(anemic, findAnemicModels(pkg, abs)...)
 		missing = append(missing, findMissingIdentities(pkg, abs)...)
 		services = append(services, findDomainServices(pkg, abs)...)
 	}
 	populateInterfaceNilHits(funcsOut)
-	return &Extraction{PackageNames: packageBindingNames(pkgs), Funcs: funcsOut, DeclarationOrders: orders, AnemicModels: anemic, MissingIdentities: missing, DomainServices: services}, nil
+	return &Extraction{PackageNames: packageBindingNames(pkgs), Funcs: funcsOut, DeclarationOrders: orders, SliceOffsets: ranges, AnemicModels: anemic, MissingIdentities: missing, DomainServices: services}, nil
 }
 
 func packageBindingNames(pkgs []*packages.Package) map[string][]string {

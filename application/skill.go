@@ -106,6 +106,14 @@ Use ` + "`gstyle fix --phased --apply [paths...]`" + ` when fixes interact: it m
 
 ` + "`domain_service`" + ` is detection-only: it identifies stateless functions operating on 2+ domain types as legitimate Domain Services (Evans), and suppresses the corresponding ` + "`anemic_model`" + ` suggestions. ` + "`specification`" + ` extracts repeated boolean business rules into named predicates (a method on the type, or a function for external types). ` + "`trait_method`" + ` proposes interfaces from parallel methods on types in the same package.
 
+The slice_offset_fallback pattern detects guarded suffix slices that leave the
+original collection intact when an offset exceeds its length. It shows an
+empty-result diff for review. The missing-fallback case is advisory: fix --apply
+never invents pagination intent. Automatic clamping requires a single slice
+assignment and an existing else branch that selects the empty suffix, preserving
+capacity and aliasing. Shadowed min, older Go versions, condition comments, and
+extra body work block automatic edits. Re-mine after source changes.
+
 The declaration_order pattern groups each type with its New/new constructors,
 exported methods, then private methods, with other functions last. Constructors
 must return a local named type as their first result. Use
