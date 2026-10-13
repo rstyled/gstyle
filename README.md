@@ -1,7 +1,7 @@
 # gstyle
 
 Find complex code, heavy mutation, and repeated patterns in Go. Inspect the results
-in a terminal UI, get JSON reports, or hand the tool to a coding agent.
+in a terminal UI, get JSON reports, or hand the tool to a agent.
 
 ## Install
 
@@ -129,7 +129,7 @@ gstyle fix --phased .         # preview
 
 ## Use with agents and scripts
 
-Print the operating instructions for a coding agent:
+Print the operating instructions for a agent:
 
 ```sh
 gstyle --skill
