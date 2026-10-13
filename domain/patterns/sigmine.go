@@ -41,6 +41,11 @@ type SigGroup struct {
 	ScoreMilli uint32
 }
 
+type bucketEntry struct {
+	member  Member
+	traited bool
+}
+
 // shortName mirrors rstyle's shape::short: the method name after its final
 // scope separator (Go's '.' instead of Rust's '::').
 func shortName(name string) string {
@@ -99,11 +104,6 @@ func sharedNameTypes(members []Member) int {
 		}
 	}
 	return best
-}
-
-type bucketEntry struct {
-	member  Member
-	traited bool
 }
 
 // build partitions a bucket into inherent/traited, requires at least two

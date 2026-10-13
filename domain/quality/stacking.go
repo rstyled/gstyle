@@ -34,6 +34,62 @@ type callSite struct {
 	args   []ArgSource
 }
 
+// forward is a (callerParam, calleeParam) pair for one bare-parameter argument.
+type forward struct {
+	from int
+	to   int
+}
+
+type bundleKey struct {
+	name string
+	typ  string
+}
+
+type scoredSet struct {
+	set   map[bundleKey]bool
+	count int
+}
+
+// planCtx holds the resolved state for building one stacking plan.
+type planCtx struct {
+	functions []Function
+	feeding   []callSite
+	incoming  map[int]int
+	outgoing  map[int]int
+}
+
+// newPlanCtx resolves the feeding sites and site counts once.
+func newPlanCtx(functions []Function, sites []callSite, changedSet map[int]bool) *planCtx {
+	feeding := feedingSites(sites, changedSet)
+	incoming, outgoing := siteCounts(sites, feeding)
+	return &planCtx{functions: functions, feeding: feeding, incoming: incoming, outgoing: outgoing}
+}
+
+func (c *planCtx) step(index int, signature bool) PlanStep {
+	return PlanStep{
+		Location:      c.functions[index].Location,
+		Signature:     signature,
+		IncomingSites: c.incoming[index],
+		OutgoingSites: c.outgoing[index],
+		PassThrough:   passThrough(index, c.functions, c.feeding),
+	}
+}
+
+// steps builds the ordered step list: re-signed signatures callee-first,
+// then the callers whose call sites must follow.
+func (c *planCtx) steps(changed, touched []int) []PlanStep {
+	order := slices.Concat(changed, touched)
+	isChanged := map[int]bool{}
+	for _, m := range changed {
+		isChanged[m] = true
+	}
+	out := make([]PlanStep, len(order))
+	for i, index := range order {
+		out[i] = c.step(index, isChanged[index])
+	}
+	return out
+}
+
 // stackSites resolves static local calls to function indices. Unresolved,
 // dynamic, and self calls are not sites.
 func stackSites(functions []Function) []callSite {
@@ -68,12 +124,6 @@ func paramCount(f Function) int {
 	return f.Params
 }
 
-// forward is a (callerParam, calleeParam) pair for one bare-parameter argument.
-type forward struct {
-	from int
-	to   int
-}
-
 // forwards pairs caller and callee parameter positions for every argument
 // that is a bare caller parameter.
 func forwards(s callSite, functions []Function) []forward {
@@ -91,22 +141,12 @@ func forwards(s callSite, functions []Function) []forward {
 	return out
 }
 
-type bundleKey struct {
-	name string
-	typ  string
-}
-
 func calleeKey(functions []Function, callee, param int) (bundleKey, bool) {
 	list := functions[callee].ParamList
 	if param < 0 || param >= len(list) {
 		return bundleKey{}, false
 	}
 	return bundleKey{name: list[param].Name, typ: list[param].Type}, true
-}
-
-type scoredSet struct {
-	set   map[bundleKey]bool
-	count int
 }
 
 func compareBundleKey(a, b bundleKey) int {
@@ -315,14 +355,6 @@ func forwardCounts(f int, functions []Function, sites []callSite) map[int]int {
 	return forwarded
 }
 
-// planCtx holds the resolved state for building one stacking plan.
-type planCtx struct {
-	functions []Function
-	feeding   []callSite
-	incoming  map[int]int
-	outgoing  map[int]int
-}
-
 // buildPlan computes the stacking plan for members (callee-first indices)
 // where violators marks the fn_params violators. Nil when no member violates.
 func buildPlan(functions []Function, sites []callSite, members []int, violators map[int]bool) *StackPlan {
@@ -333,13 +365,6 @@ func buildPlan(functions []Function, sites []callSite, members []int, violators 
 	ctx := newPlanCtx(functions, sites, changedSet)
 	touched := touchedFunctions(members, changedSet, ctx.feeding)
 	return &StackPlan{Steps: ctx.steps(changed, touched), Bundles: bundles(ctx.feeding, functions)}
-}
-
-// newPlanCtx resolves the feeding sites and site counts once.
-func newPlanCtx(functions []Function, sites []callSite, changedSet map[int]bool) *planCtx {
-	feeding := feedingSites(sites, changedSet)
-	incoming, outgoing := siteCounts(sites, feeding)
-	return &planCtx{functions: functions, feeding: feeding, incoming: incoming, outgoing: outgoing}
 }
 
 func changedMembers(members []int, violators map[int]bool) ([]int, map[int]bool) {
@@ -392,31 +417,6 @@ func siteCounts(sites, feeding []callSite) (incoming, outgoing map[int]int) {
 		outgoing[s.caller]++
 	}
 	return incoming, outgoing
-}
-
-func (c *planCtx) step(index int, signature bool) PlanStep {
-	return PlanStep{
-		Location:      c.functions[index].Location,
-		Signature:     signature,
-		IncomingSites: c.incoming[index],
-		OutgoingSites: c.outgoing[index],
-		PassThrough:   passThrough(index, c.functions, c.feeding),
-	}
-}
-
-// steps builds the ordered step list: re-signed signatures callee-first,
-// then the callers whose call sites must follow.
-func (c *planCtx) steps(changed, touched []int) []PlanStep {
-	order := slices.Concat(changed, touched)
-	isChanged := map[int]bool{}
-	for _, m := range changed {
-		isChanged[m] = true
-	}
-	out := make([]PlanStep, len(order))
-	for i, index := range order {
-		out[i] = c.step(index, isChanged[index])
-	}
-	return out
 }
 
 // planFindings attaches a stacking plan to each fn_params finding: the

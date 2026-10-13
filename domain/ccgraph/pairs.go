@@ -19,19 +19,23 @@ type StageFunction struct {
 	UsesNativeWidth bool
 	PointerWidth    int
 }
+
 type preparedFunction struct {
 	StageFunction
 	features [9]uint64
 	strings  Strings
 	diameter int
 }
+
 type FunctionTrace struct {
 	Key      string
 	Features [9]uint64
 	Strings  Strings
 	Diameter int
 }
+
 type Diagnostic struct{ Function, Code, Message string }
+
 type Run struct {
 	Profile, ContractCommit, InputScope string
 	Config                              Config
@@ -40,6 +44,7 @@ type Run struct {
 	Ineligible                          []Diagnostic
 	Functions                           []FunctionTrace
 }
+
 type Gate string
 
 const (
@@ -57,6 +62,36 @@ type Pair struct {
 	Kernel                                    *Kernel
 	Accepted                                  bool
 	Diagnostic                                string
+}
+
+func newPair(a, b preparedFunction) Pair {
+	return Pair{Left: a.Key, Right: b.Key, Nonempty: NotEvaluated, Size: NotEvaluated, Numerical: NotEvaluated, Strings: NotEvaluated, Final: NotEvaluated}
+}
+
+type pairComparison struct {
+	a, b   preparedFunction
+	config Config
+}
+
+func (comparison pairComparison) remainingGates(ctx context.Context, p Pair) (Pair, error) {
+	a, b, c := comparison.a, comparison.b, comparison.config
+	score, err := CompareStrings(a.strings, b.strings)
+	if err != nil {
+		return p, err
+	}
+	p.StringScore = &score
+	p.Strings = gate(atLeast(score.Mean, c.Strings))
+	if p.Strings == Rejected {
+		return p, nil
+	}
+	kernel, err := (kernelPair{a.Graph, b.Graph, a.diameter, b.diameter}).compare(ctx)
+	if err != nil {
+		return p, err
+	}
+	p.Kernel = &kernel
+	p.Accepted = kernelAccepted(kernel, c)
+	p.Final = gate(p.Accepted)
+	return p, nil
 }
 
 func prepareFunction(f StageFunction) (preparedFunction, error) {
@@ -194,10 +229,6 @@ func enumerate(ctx context.Context, functions []preparedFunction, run Run, emit 
 	return run, nil
 }
 
-func newPair(a, b preparedFunction) Pair {
-	return Pair{Left: a.Key, Right: b.Key, Nonempty: NotEvaluated, Size: NotEvaluated, Numerical: NotEvaluated, Strings: NotEvaluated, Final: NotEvaluated}
-}
-
 func comparePair(ctx context.Context, a, b preparedFunction, c Config) (Pair, error) {
 	p := newPair(a, b)
 	if incompatibleWidths(a, b) {
@@ -233,32 +264,6 @@ func numericalGate(p *Pair, a, b [9]uint64, threshold Decimal) bool {
 	p.NumericalScore = &score
 	p.Numerical = gate(score.AtLeast(threshold))
 	return p.Numerical == Passed
-}
-
-type pairComparison struct {
-	a, b   preparedFunction
-	config Config
-}
-
-func (comparison pairComparison) remainingGates(ctx context.Context, p Pair) (Pair, error) {
-	a, b, c := comparison.a, comparison.b, comparison.config
-	score, err := CompareStrings(a.strings, b.strings)
-	if err != nil {
-		return p, err
-	}
-	p.StringScore = &score
-	p.Strings = gate(atLeast(score.Mean, c.Strings))
-	if p.Strings == Rejected {
-		return p, nil
-	}
-	kernel, err := (kernelPair{a.Graph, b.Graph, a.diameter, b.diameter}).compare(ctx)
-	if err != nil {
-		return p, err
-	}
-	p.Kernel = &kernel
-	p.Accepted = kernelAccepted(kernel, c)
-	p.Final = gate(p.Accepted)
-	return p, nil
 }
 
 func kernelAccepted(k Kernel, c Config) bool {

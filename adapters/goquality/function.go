@@ -26,73 +26,6 @@ type extractor struct {
 	receiver   types.Object
 }
 
-func extractFunction(pkg *packages.Package, fn *ast.FuncDecl, path string, source []byte) quality.Function {
-	start, end := physicalPosition(pkg.Fset, fn.Pos()), physicalPosition(pkg.Fset, fn.End())
-	name := fn.Name.Name
-	if object, ok := pkg.TypesInfo.Defs[fn.Name].(*types.Func); ok {
-		name = resolvedName(object)
-	}
-	x := extractor{pkg: pkg, bindings: map[types.Object]referenceBinding{}, parameters: map[types.Object]bool{}, paramIndex: map[types.Object]int{}, fact: quality.Function{
-		Location: quality.Location{Path: path, Line: start.Line, Column: start.Column, Name: name},
-		Params:   parameterCount(fn.Type.Params), HasSelf: fn.Recv != nil,
-		Source: string(source[start.Offset:end.Offset]), PrecedingLine: precedingSuppression(fn.Doc),
-		Mutations: []quality.Mutation{}, Calls: []quality.Call{}, Effects: []quality.Effect{},
-	}}
-	x.fact.CodeLines = codeLines(x.fact.Source)
-	x.indexParameters(fn.Type.Params)
-	x.noteReceiver(fn.Recv)
-	x.addParameters(fn.Type.Params)
-	x.addParameters(fn.Recv)
-	x.collectBindings(fn.Body)
-	ast.Inspect(fn.Body, x.visit)
-	x.fact.DDD = dddViolations(pkg, fn, path)
-	return x.fact
-}
-
-// dddViolations runs the DDD detectors (Evans) for the quality gate:
-// aggregate boundaries, repository bypasses, and mutable identities.
-func dddViolations(pkg *packages.Package, fn *ast.FuncDecl, path string) []quality.DDDViolation {
-	var out []quality.DDDViolation
-	// Aggregate: mutating 2+ struct types in one function crosses an
-	// aggregate boundary. One violation per type; the gate fires when
-	// the distinct count exceeds the limit.
-	for _, m := range gopatterns.FindAggregateMods(fn, pkg.TypesInfo) {
-		out = append(out, quality.DDDViolation{
-			RuleID: "aggregate",
-			Line:   pkg.Fset.Position(fn.Pos()).Line,
-			Detail: m.TypeName,
-		})
-	}
-	// Repository: direct db calls outside repository files.
-	for _, d := range gopatterns.FindDbCalls(fn, pkg.Fset, pkg.TypesInfo, path) {
-		out = append(out, quality.DDDViolation{
-			RuleID: "repository",
-			Line:   d.Line,
-			Detail: fmt.Sprintf("direct db call %s in business logic", d.Call),
-		})
-	}
-	// Mutable identity: ID assignments outside constructors.
-	for _, m := range gopatterns.FindMutableIdentities(fn, pkg.Fset) {
-		out = append(out, quality.DDDViolation{
-			RuleID: "mutable_identity",
-			Line:   m.Line,
-			Detail: fmt.Sprintf("assigns .%s outside a constructor", m.Field),
-		})
-	}
-	return out
-}
-
-func parameterCount(fields *ast.FieldList) int {
-	if fields == nil {
-		return 0
-	}
-	count := 0
-	for _, field := range fields.List {
-		count += max(len(field.Names), 1)
-	}
-	return count
-}
-
 func (x *extractor) addParameters(fields *ast.FieldList) {
 	if fields == nil {
 		return
@@ -110,43 +43,6 @@ func (x *extractor) addParameters(fields *ast.FieldList) {
 // matching the fn_params budget.
 func (x *extractor) indexParameters(fields *ast.FieldList) {
 	x.fact.ParamList, x.paramIndex = buildParams(fields, x.pkg.TypesInfo)
-}
-
-// buildParams is pure: it returns the parameter list and object→index map
-// without mutating shared state.
-func buildParams(fields *ast.FieldList, info *types.Info) ([]quality.ParamFacts, map[types.Object]int) {
-	var list []quality.ParamFacts
-	index := map[types.Object]int{}
-	if fields == nil {
-		return list, index
-	}
-	for _, field := range fields.List {
-		typ := paramType(field.Type, info)
-		if len(field.Names) == 0 {
-			list = append(list, quality.ParamFacts{Type: typ})
-			continue
-		}
-		for _, name := range field.Names {
-			if obj := info.Defs[name]; obj != nil {
-				index[obj] = len(list)
-			}
-			list = append(list, quality.ParamFacts{Name: name.Name, Type: typ})
-		}
-	}
-	return list, index
-}
-
-func paramType(expr ast.Expr, info *types.Info) string {
-	typ := info.TypeOf(expr)
-	if typ == nil {
-		return ""
-	}
-	return types.TypeString(typ, func(pkg *types.Package) string {
-		if pkg == nil {
-			return ""
-		}
-		return pkg.Name()
-	})
 }
 
 func (x *extractor) noteReceiver(fields *ast.FieldList) {
@@ -220,16 +116,6 @@ func (x *extractor) visitEffect(node ast.Node) {
 	}
 }
 
-func countedStatement(node ast.Node) bool {
-	switch node.(type) {
-	case *ast.BlockStmt, *ast.EmptyStmt, *ast.CaseClause, *ast.CommClause, *ast.LabeledStmt:
-		return false
-	default:
-		_, ok := node.(ast.Stmt)
-		return ok
-	}
-}
-
 func (x *extractor) assignment(statement *ast.AssignStmt) {
 	for _, place := range statement.Lhs {
 		if id, ok := place.(*ast.Ident); ok && x.pkg.TypesInfo.Defs[id] != nil {
@@ -267,6 +153,125 @@ func (x *extractor) globalRead(id *ast.Ident) {
 		return
 	}
 	x.fact.Effects = append(x.fact.Effects, quality.Effect{Kind: quality.Global, Detail: detail, Line: line})
+}
+
+func (x *extractor) objectID(object types.Object) string {
+	pos := physicalPosition(x.pkg.Fset, object.Pos())
+	return strconv.Itoa(pos.Line) + ":" + strconv.Itoa(pos.Column)
+}
+
+func extractFunction(pkg *packages.Package, fn *ast.FuncDecl, path string, source []byte) quality.Function {
+	start, end := physicalPosition(pkg.Fset, fn.Pos()), physicalPosition(pkg.Fset, fn.End())
+	name := fn.Name.Name
+	if object, ok := pkg.TypesInfo.Defs[fn.Name].(*types.Func); ok {
+		name = resolvedName(object)
+	}
+	x := extractor{pkg: pkg, bindings: map[types.Object]referenceBinding{}, parameters: map[types.Object]bool{}, paramIndex: map[types.Object]int{}, fact: quality.Function{
+		Location: quality.Location{Path: path, Line: start.Line, Column: start.Column, Name: name},
+		Params:   parameterCount(fn.Type.Params), HasSelf: fn.Recv != nil,
+		Source: string(source[start.Offset:end.Offset]), PrecedingLine: precedingSuppression(fn.Doc),
+		Mutations: []quality.Mutation{}, Calls: []quality.Call{}, Effects: []quality.Effect{},
+	}}
+	x.fact.CodeLines = codeLines(x.fact.Source)
+	x.indexParameters(fn.Type.Params)
+	x.noteReceiver(fn.Recv)
+	x.addParameters(fn.Type.Params)
+	x.addParameters(fn.Recv)
+	x.collectBindings(fn.Body)
+	ast.Inspect(fn.Body, x.visit)
+	x.fact.DDD = dddViolations(pkg, fn, path)
+	return x.fact
+}
+
+// dddViolations runs the DDD detectors (Evans) for the quality gate:
+// aggregate boundaries, repository bypasses, and mutable identities.
+func dddViolations(pkg *packages.Package, fn *ast.FuncDecl, path string) []quality.DDDViolation {
+	var out []quality.DDDViolation
+	// Aggregate: mutating 2+ struct types in one function crosses an
+	// aggregate boundary. One violation per type; the gate fires when
+	// the distinct count exceeds the limit.
+	for _, m := range gopatterns.FindAggregateMods(fn, pkg.TypesInfo) {
+		out = append(out, quality.DDDViolation{
+			RuleID: "aggregate",
+			Line:   pkg.Fset.Position(fn.Pos()).Line,
+			Detail: m.TypeName,
+		})
+	}
+	// Repository: direct db calls outside repository files.
+	for _, d := range gopatterns.FindDbCalls(fn, pkg.Fset, pkg.TypesInfo, path) {
+		out = append(out, quality.DDDViolation{
+			RuleID: "repository",
+			Line:   d.Line,
+			Detail: fmt.Sprintf("direct db call %s in business logic", d.Call),
+		})
+	}
+	// Mutable identity: ID assignments outside constructors.
+	for _, m := range gopatterns.FindMutableIdentities(fn, pkg.Fset) {
+		out = append(out, quality.DDDViolation{
+			RuleID: "mutable_identity",
+			Line:   m.Line,
+			Detail: fmt.Sprintf("assigns .%s outside a constructor", m.Field),
+		})
+	}
+	return out
+}
+
+func parameterCount(fields *ast.FieldList) int {
+	if fields == nil {
+		return 0
+	}
+	count := 0
+	for _, field := range fields.List {
+		count += max(len(field.Names), 1)
+	}
+	return count
+}
+
+// buildParams is pure: it returns the parameter list and object→index map
+// without mutating shared state.
+func buildParams(fields *ast.FieldList, info *types.Info) ([]quality.ParamFacts, map[types.Object]int) {
+	var list []quality.ParamFacts
+	index := map[types.Object]int{}
+	if fields == nil {
+		return list, index
+	}
+	for _, field := range fields.List {
+		typ := paramType(field.Type, info)
+		if len(field.Names) == 0 {
+			list = append(list, quality.ParamFacts{Type: typ})
+			continue
+		}
+		for _, name := range field.Names {
+			if obj := info.Defs[name]; obj != nil {
+				index[obj] = len(list)
+			}
+			list = append(list, quality.ParamFacts{Name: name.Name, Type: typ})
+		}
+	}
+	return list, index
+}
+
+func paramType(expr ast.Expr, info *types.Info) string {
+	typ := info.TypeOf(expr)
+	if typ == nil {
+		return ""
+	}
+	return types.TypeString(typ, func(pkg *types.Package) string {
+		if pkg == nil {
+			return ""
+		}
+		return pkg.Name()
+	})
+}
+
+func countedStatement(node ast.Node) bool {
+	switch node.(type) {
+	case *ast.BlockStmt, *ast.EmptyStmt, *ast.CaseClause, *ast.CommClause, *ast.LabeledStmt:
+		return false
+	default:
+		_, ok := node.(ast.Stmt)
+		return ok
+	}
 }
 
 func hasGlobalEffect(effects []quality.Effect, line int, detail string) bool {
@@ -343,9 +348,4 @@ func markLiteralLines(lines map[int]bool, line int, kind token.Token, literal st
 	for offset := 1; offset <= strings.Count(literal, "\n"); offset++ {
 		lines[line+offset] = true
 	}
-}
-
-func (x *extractor) objectID(object types.Object) string {
-	pos := physicalPosition(x.pkg.Fset, object.Pos())
-	return strconv.Itoa(pos.Line) + ":" + strconv.Itoa(pos.Column)
 }

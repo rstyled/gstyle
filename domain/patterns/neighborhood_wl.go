@@ -51,6 +51,28 @@ type NeighborhoodWL struct {
 	totals []int
 }
 
+// NewNeighborhoodWL builds the neighborhood-WL representation of a PDG: for each k in 1..neighborhoodWLMaxK
+// and each node, the k-hop neighborhood's WL colors are aggregated into the
+// level histogram. Uses reused workspace buffers; no per-neighborhood
+// allocations, no subgraph construction.
+func NewNeighborhoodWL(pdg *MiningGraph) *NeighborhoodWL {
+	g := buildGraph(pdg)
+	ws := newNeighborhoodWLWorkspace(len(g.labels))
+	w := &NeighborhoodWL{
+		hists:  make([][]histEntry, neighborhoodWLMaxK),
+		totals: make([]int, neighborhoodWLMaxK),
+	}
+	for k := 1; k <= neighborhoodWLMaxK; k++ {
+		var colors []uint64
+		for v := range g.labels {
+			colors = ws.neighborhoodColorsFast(&g, v, k, colors)
+		}
+		w.hists[k-1] = histogram(colors)
+		w.totals[k-1] = len(colors)
+	}
+	return w
+}
+
 // neighborhoodWLWorkspace holds reusable buffers for neighborhood computation,
 // avoiding per-neighborhood allocations. The seen array uses generation
 // counters so it never needs clearing.
@@ -142,28 +164,6 @@ func (ws *neighborhoodWLWorkspace) neighborhoodColorsFast(g *Graph, v, k int, ou
 		out = append(out, ws.digestFiltered(inward, outSalt, g.out[u], g.labels))
 	}
 	return out
-}
-
-// NewNeighborhoodWL builds the neighborhood-WL representation of a PDG: for each k in 1..neighborhoodWLMaxK
-// and each node, the k-hop neighborhood's WL colors are aggregated into the
-// level histogram. Uses reused workspace buffers; no per-neighborhood
-// allocations, no subgraph construction.
-func NewNeighborhoodWL(pdg *MiningGraph) *NeighborhoodWL {
-	g := buildGraph(pdg)
-	ws := newNeighborhoodWLWorkspace(len(g.labels))
-	w := &NeighborhoodWL{
-		hists:  make([][]histEntry, neighborhoodWLMaxK),
-		totals: make([]int, neighborhoodWLMaxK),
-	}
-	for k := 1; k <= neighborhoodWLMaxK; k++ {
-		var colors []uint64
-		for v := range g.labels {
-			colors = ws.neighborhoodColorsFast(&g, v, k, colors)
-		}
-		w.hists[k-1] = histogram(colors)
-		w.totals[k-1] = len(colors)
-	}
-	return w
 }
 
 // neighborhoodWLWeights are (neighborhoodWLMaxK, ..., 1): tighter neighborhoods count more,

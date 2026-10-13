@@ -118,6 +118,23 @@ func (s *solver) seedQueue(known []bool) []int {
 	return queue
 }
 
+func (s *solver) operandKnown(graphs []pdg.Graph, index int, position pdg.Position, known []bool) bool {
+	where := s.sites[index]
+	graph := &graphs[where.graph]
+	offset := s.offsets[where.graph]
+	found := false
+	for _, edge := range graph.Edges {
+		if !comparisonOperand(graph, edge, where.node, position) {
+			continue
+		}
+		if !known[offset+int(edge.Source)-1] {
+			return false
+		}
+		found = true
+	}
+	return found
+}
+
 // Find returns comparison nodes with a proven non-nil interface operand.
 // Unknown inputs and unresolved/recursive call summaries do not become proof.
 func Find(graphs []pdg.Graph) [][]pdg.Ref {
@@ -202,23 +219,6 @@ func nilOperand(graph *pdg.Graph, attrs pdg.Attributes) pdg.Position {
 	default:
 		return 0
 	}
-}
-
-func (s *solver) operandKnown(graphs []pdg.Graph, index int, position pdg.Position, known []bool) bool {
-	where := s.sites[index]
-	graph := &graphs[where.graph]
-	offset := s.offsets[where.graph]
-	found := false
-	for _, edge := range graph.Edges {
-		if !comparisonOperand(graph, edge, where.node, position) {
-			continue
-		}
-		if !known[offset+int(edge.Source)-1] {
-			return false
-		}
-		found = true
-	}
-	return found
 }
 
 func comparisonOperand(graph *pdg.Graph, edge pdg.Edge, target pdg.Ref, position pdg.Position) bool {

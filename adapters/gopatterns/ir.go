@@ -157,6 +157,12 @@ func (b *irBuilder) sourceLine(node ast.Node) uint32 {
 	return uint32(b.fset.PositionFor(node.Pos(), false).Line)
 }
 
+func (b *irBuilder) selectScalarLowering(fn *ast.FuncDecl) {
+	b.scalarOperations = b.scalarInterface(fn) && b.reachingSubset(fn.Body)
+	b.bindingOperations = !b.scalarOperations && b.interfaceBindingSubset(fn)
+	b.scalarOrderKnown = scalarOrderKnown(fn.Body) && len(b.graph.Function.Outputs) <= 1
+}
+
 // buildGraph is the sole production graph construction path.
 func buildGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.Builder) (pdg.Graph, error) {
 	file := pkg.Fset.File(fn.Pos())
@@ -181,10 +187,4 @@ func buildGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.
 		return pdg.Graph{}, err
 	}
 	return b.ir.graph, nil
-}
-
-func (b *irBuilder) selectScalarLowering(fn *ast.FuncDecl) {
-	b.scalarOperations = b.scalarInterface(fn) && b.reachingSubset(fn.Body)
-	b.bindingOperations = !b.scalarOperations && b.interfaceBindingSubset(fn)
-	b.scalarOrderKnown = scalarOrderKnown(fn.Body) && len(b.graph.Function.Outputs) <= 1
 }

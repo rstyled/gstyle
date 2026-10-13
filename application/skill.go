@@ -5,15 +5,6 @@ import (
 	"io"
 )
 
-func WriteSkill(writer io.Writer) error {
-	if writer == nil {
-		return errors.New("skill writer is required")
-	}
-
-	_, err := io.WriteString(writer, agentSkill)
-	return err
-}
-
 const agentSkill = `---
 name: gstyle
 description: Inspect Go complexity, check mutation and effect guardrails, and minimize bug reproducers.
@@ -186,3 +177,12 @@ Timeout, Ctrl-C, Unix SIGTERM, checker signals, and launch errors stop reduction
 
 Recheck the reduced file, use it as a regression test, and then fix the bug. Report the original and reduced sizes, the checker used, and validation results. The result is a local minimum for the selected deletion units, not a guarantee of the smallest possible reproducer. Use ` + "`gstyle bug-reducer --help`" + ` for the current CLI contract.
 `
+
+func WriteSkill(writer io.Writer) error {
+	if writer == nil {
+		return errors.New("skill writer is required")
+	}
+
+	_, err := io.WriteString(writer, agentSkill)
+	return err
+}

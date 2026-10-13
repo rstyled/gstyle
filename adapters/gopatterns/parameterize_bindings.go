@@ -6,6 +6,13 @@ import (
 	"github.com/rstyled/gstyle/domain/pdg"
 )
 
+type parameterizationBinding struct {
+	scope      int
+	role       pdg.Role
+	typeStatus pdg.Status
+	typeName   string
+}
+
 // Complete source matching establishes operation correspondence. Compare the
 // compiler-resolved bindings on those operations, not approximate flow edges.
 func matchingParameterizationBindings(a, b *pdg.Graph) bool {
@@ -16,13 +23,6 @@ func matchingParameterizationBindings(a, b *pdg.Graph) bool {
 		return false
 	}
 	return matchingOperationBindings(a, b) && matchingDefinitionBindings(a, b)
-}
-
-type parameterizationBinding struct {
-	scope      int
-	role       pdg.Role
-	typeStatus pdg.Status
-	typeName   string
 }
 
 func parameterizationScopes(graph *pdg.Graph) []parameterizationBinding {

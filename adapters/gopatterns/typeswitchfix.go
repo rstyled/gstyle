@@ -10,6 +10,15 @@ import (
 	"github.com/rstyled/gstyle/domain/patterns"
 )
 
+// typeSwitchSpecParams are the FixSpec params for a type_switch candidate.
+type typeSwitchSpecParams struct {
+	bound  string
+	expr   string
+	method string
+	types  []string
+	args   string
+}
+
 // applyTypeSwitchFix replaces a type switch whose arms all call the same
 // method on the case-bound value with a direct interface method call.
 //
@@ -77,15 +86,6 @@ func formatTypeSwitchFix(fset *token.FileSet, sw *ast.TypeSwitchStmt, src []byte
 		return nil, fmt.Errorf("gofmt after type_switch fix: %w", err)
 	}
 	return formatted, nil
-}
-
-// typeSwitchSpecParams are the FixSpec params for a type_switch candidate.
-type typeSwitchSpecParams struct {
-	bound  string
-	expr   string
-	method string
-	types  []string
-	args   string
 }
 
 // typeSwitchParams extracts and validates the FixSpec params.

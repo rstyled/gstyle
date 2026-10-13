@@ -33,40 +33,6 @@ type Config struct {
 	Grouping Grouping `toml:"grouping"`
 }
 
-type Weights struct {
-	Mutation int64 `toml:"mutation"`
-	IO       int64 `toml:"io"`
-	Network  int64 `toml:"network"`
-	Global   int64 `toml:"global"`
-	Unsafe   int64 `toml:"unsafe"`
-	Time     int64 `toml:"time"`
-	Random   int64 `toml:"random"`
-	Panic    int64 `toml:"panic"`
-	Unknown  int64 `toml:"unknown"`
-}
-
-type Prefix struct {
-	Path string `toml:"path"`
-	Kind Kind   `toml:"kind"`
-}
-
-// Grouping decides which violations must be fixed together.
-type Grouping struct {
-	CallerRules []string `toml:"caller_rules"`
-	CallerHops  int      `toml:"caller_hops"`
-}
-
-func DefaultConfig() Config {
-	return Config{
-		FnLength: Rule{true, 200}, FnParams: Rule{true, 4},
-		MutationPerTarget: Rule{true, 3}, MutatedTargets: Rule{true, 3},
-		SideEffectDensity: Rule{true, 500}, MinStatements: 3, Granularity: "root",
-		Aggregate: Rule{true, 1}, Repository: Rule{true, 0}, MutableIdentity: Rule{true, 0},
-		Weights: Weights{1, 3, 3, 2, 4, 1, 1, 0, 1}, Prefixes: defaultPrefixes(),
-		Grouping: Grouping{CallerRules: []string{"fn_params"}, CallerHops: 1},
-	}
-}
-
 func (c Config) Validate() error {
 	if !slices.Contains([]string{"root", "field"}, c.Granularity) {
 		return fmt.Errorf("granularity must be root or field")
@@ -81,8 +47,6 @@ func (c Config) Validate() error {
 	}
 	return nil
 }
-
-func within(value, maximum int64) bool { return value >= 0 && value <= maximum }
 
 func (c Config) validateLimits() error {
 	for _, rule := range []Rule{c.FnLength, c.FnParams, c.MutationPerTarget, c.MutatedTargets, c.SideEffectDensity} {
@@ -125,16 +89,16 @@ func (c Config) validateGrouping() error {
 	return nil
 }
 
-func validKind(kind Kind, allowNone bool) bool {
-	if allowNone && kind == None {
-		return true
-	}
-	for _, known := range kinds {
-		if known == kind {
-			return true
-		}
-	}
-	return false
+type Weights struct {
+	Mutation int64 `toml:"mutation"`
+	IO       int64 `toml:"io"`
+	Network  int64 `toml:"network"`
+	Global   int64 `toml:"global"`
+	Unsafe   int64 `toml:"unsafe"`
+	Time     int64 `toml:"time"`
+	Random   int64 `toml:"random"`
+	Panic    int64 `toml:"panic"`
+	Unknown  int64 `toml:"unknown"`
 }
 
 func (w Weights) value(kind Kind) int64 {
@@ -165,6 +129,42 @@ func (w Weights) environmentWeight(kind Kind) int64 {
 	default:
 		return w.Unknown
 	}
+}
+
+type Prefix struct {
+	Path string `toml:"path"`
+	Kind Kind   `toml:"kind"`
+}
+
+// Grouping decides which violations must be fixed together.
+type Grouping struct {
+	CallerRules []string `toml:"caller_rules"`
+	CallerHops  int      `toml:"caller_hops"`
+}
+
+func DefaultConfig() Config {
+	return Config{
+		FnLength: Rule{true, 200}, FnParams: Rule{true, 4},
+		MutationPerTarget: Rule{true, 3}, MutatedTargets: Rule{true, 3},
+		SideEffectDensity: Rule{true, 500}, MinStatements: 3, Granularity: "root",
+		Aggregate: Rule{true, 1}, Repository: Rule{true, 0}, MutableIdentity: Rule{true, 0},
+		Weights: Weights{1, 3, 3, 2, 4, 1, 1, 0, 1}, Prefixes: defaultPrefixes(),
+		Grouping: Grouping{CallerRules: []string{"fn_params"}, CallerHops: 1},
+	}
+}
+
+func within(value, maximum int64) bool { return value >= 0 && value <= maximum }
+
+func validKind(kind Kind, allowNone bool) bool {
+	if allowNone && kind == None {
+		return true
+	}
+	for _, known := range kinds {
+		if known == kind {
+			return true
+		}
+	}
+	return false
 }
 
 func defaultPrefixes() []Prefix {

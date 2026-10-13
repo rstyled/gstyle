@@ -49,6 +49,14 @@ type options struct {
 	paths   []string
 }
 
+func (opts options) validate() error {
+	valid := []string{"guard_clause", "value_object", "parameterize", "trait_method", "capability_set", "enum_dispatch", "generic_fn", "anemic_model", "primitive_obsession", "type_switch", "entity_identity", "missing_identity", "mutable_identity", "aggregate", "repository", "factory", "specification", "domain_service", "declaration_order", "all"}
+	if !slices.Contains(valid, opts.kind) {
+		return fmt.Errorf("kind must be one of %v", valid)
+	}
+	return nil
+}
+
 // fixPhases groups pattern kinds by dependency level for phased fixing.
 // Each phase runs after the previous phase's fixes are written to disk,
 // then the next phase re-mines only the files that changed. This lets
@@ -79,6 +87,13 @@ type phasedState struct {
 	dirty      []string
 	firstCycle bool
 	totalFixed int
+}
+
+// phasedPhase bundles the inputs for running one phase.
+type phasedPhase struct {
+	phase    []patterns.CandidateKind
+	phaseIdx int
+	paths    []string
 }
 
 // Run runs the miner, then applies fixes for candidates with FixSpecs.
@@ -188,13 +203,6 @@ func phasedMinePaths(opts options, st *phasedState, phaseIdx int) []string {
 		return nil
 	}
 	return st.dirty
-}
-
-// phasedPhase bundles the inputs for running one phase.
-type phasedPhase struct {
-	phase    []patterns.CandidateKind
-	phaseIdx int
-	paths    []string
 }
 
 // runPhasedPhase mines one phase's kinds and applies the fixes.
@@ -592,14 +600,6 @@ func parseOptions(args []string) (options, error) {
 	}
 	result := options{kind: *kind, apply: *apply, changed: *changed, base: *base, phased: *phased, paths: flags.Args()}
 	return result, result.validate()
-}
-
-func (opts options) validate() error {
-	valid := []string{"guard_clause", "value_object", "parameterize", "trait_method", "capability_set", "enum_dispatch", "generic_fn", "anemic_model", "primitive_obsession", "type_switch", "entity_identity", "missing_identity", "mutable_identity", "aggregate", "repository", "factory", "specification", "domain_service", "declaration_order", "all"}
-	if !slices.Contains(valid, opts.kind) {
-		return fmt.Errorf("kind must be one of %v", valid)
-	}
-	return nil
 }
 
 // toFacts converts extraction to FuncFacts (copied from patterncheck).

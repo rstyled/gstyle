@@ -40,56 +40,6 @@ type NativeMatching struct {
 	Graphs                  []pdg.Graph `json:"-"`
 }
 
-// ExtractMatching is an explicit conformance path. Routine advisory mining is
-// unchanged; native JSON producer claims are never accepted as validation proof.
-func ExtractMatching(ctx context.Context, root string, paths []string) (*NativeMatching, error) {
-	abs, err := absRoot(root)
-	if err != nil {
-		return nil, err
-	}
-	query, err := patternsQuery(abs, paths)
-	if err != nil {
-		return nil, err
-	}
-	build, err := nativeBuild(ctx, abs)
-	if err != nil {
-		return nil, err
-	}
-	return loadNativeMatching(ctx, abs, query, build)
-}
-
-func loadNativeMatching(ctx context.Context, root string, query []string, build NativeBuild) (*NativeMatching, error) {
-	pkgs, sources, err := loadPatternSources(ctx, root, query)
-	if err != nil {
-		return nil, err
-	}
-	result := newNativeMatching(root, build)
-	result.SourceSnapshots, err = nativeSourceSnapshots(root, sources)
-	if err != nil {
-		return nil, err
-	}
-	pool := pdg.NewBuilder()
-	for _, pkg := range pkgs {
-		loader := nativeLoader{result: result, pkg: pkg, root: root, sources: sources, pool: pool}
-		if err := loader.packageGraphs(); err != nil {
-			return nil, err
-		}
-	}
-	return result, nil
-}
-
-func nativeSourceSnapshots(root string, sources map[string]string) (map[string]string, error) {
-	result := map[string]string{}
-	for path, digest := range sources {
-		rel, err := filepath.Rel(root, path)
-		if err != nil {
-			return nil, err
-		}
-		result[filepath.ToSlash(rel)] = digest
-	}
-	return result, nil
-}
-
 func newNativeMatching(root string, build NativeBuild) *NativeMatching {
 	return &NativeMatching{root: root, Build: build, ExtractionProfile: ScalarNormalProfileID, ExtractionVersion: NativeExtractionVersion, PDGSchema: pdg.SchemaVersion, CFGSchema: "0.2.0", MatchingProfile: ccgraph.Profile, ContractCommit: ccgraph.ContractCommit, AdmissionContractCommit: "56edd6bb804b10edaf9bbc2343d69e5e298d8c1a", RegisteredProfiles: []NativePolicy{nativePolicy()}, QualityStatus: "not_evaluated: bounded independently labeled development/held-out study remains required before replacing miner defaults"}
 }
@@ -148,6 +98,56 @@ func (n *nativeLoader) function(fn *ast.FuncDecl, path, digest string) error {
 	n.result.Graphs = append(n.result.Graphs, graph)
 	n.result.Evidence = append(n.result.Evidence, NativeEvidence{Key: key, Source: path, ContentIdentity: digest, PointerWidth: stage.PointerWidth, Projection: projection})
 	return nil
+}
+
+// ExtractMatching is an explicit conformance path. Routine advisory mining is
+// unchanged; native JSON producer claims are never accepted as validation proof.
+func ExtractMatching(ctx context.Context, root string, paths []string) (*NativeMatching, error) {
+	abs, err := absRoot(root)
+	if err != nil {
+		return nil, err
+	}
+	query, err := patternsQuery(abs, paths)
+	if err != nil {
+		return nil, err
+	}
+	build, err := nativeBuild(ctx, abs)
+	if err != nil {
+		return nil, err
+	}
+	return loadNativeMatching(ctx, abs, query, build)
+}
+
+func loadNativeMatching(ctx context.Context, root string, query []string, build NativeBuild) (*NativeMatching, error) {
+	pkgs, sources, err := loadPatternSources(ctx, root, query)
+	if err != nil {
+		return nil, err
+	}
+	result := newNativeMatching(root, build)
+	result.SourceSnapshots, err = nativeSourceSnapshots(root, sources)
+	if err != nil {
+		return nil, err
+	}
+	pool := pdg.NewBuilder()
+	for _, pkg := range pkgs {
+		loader := nativeLoader{result: result, pkg: pkg, root: root, sources: sources, pool: pool}
+		if err := loader.packageGraphs(); err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+func nativeSourceSnapshots(root string, sources map[string]string) (map[string]string, error) {
+	result := map[string]string{}
+	for path, digest := range sources {
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return nil, err
+		}
+		result[filepath.ToSlash(rel)] = digest
+	}
+	return result, nil
 }
 
 func nativeStage(graph *pdg.Graph, pkg *packages.Package, fn *ast.FuncDecl) (ccgraph.StageFunction, ccgraph.Projection, error) {

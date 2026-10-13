@@ -23,6 +23,33 @@ func (m Model) relocateAnnotations() Model {
 	return m
 }
 
+func (m Model) annotationNavigationLabel() string {
+	if len(m.annotations) == 0 {
+		return " notes (none)"
+	}
+	position, unmatched := m.annotationNavigationPosition()
+	label := fmt.Sprintf(" notes (%d", len(m.annotations))
+	if position > 0 {
+		label = fmt.Sprintf(" notes (%d/%d", position, len(m.annotations))
+	}
+	if unmatched > 0 {
+		label += fmt.Sprintf("; %d unmatched", unmatched)
+	}
+	return label + ")"
+}
+
+func (m Model) annotationNavigationPosition() (position int, unmatched int) {
+	for index, target := range m.annotationTargets() {
+		if target.ID == m.activeAnnotationID {
+			position = index + 1
+		}
+		if target.functionIndex < 0 {
+			unmatched++
+		}
+	}
+	return position, unmatched
+}
+
 // annotationFunction finds the function an annotation belongs to after the
 // code moved: first by unique name, then by unique annotated text. An
 // ambiguous or missing match relocates nothing.
@@ -90,31 +117,4 @@ func relocateAnnotation(annotation Annotation, function domain.Function) Annotat
 
 func annotationMatchesFunction(annotation Annotation, function domain.Function) bool {
 	return annotation.Function == function.Name && annotation.FunctionLine == function.Line
-}
-
-func (m Model) annotationNavigationLabel() string {
-	if len(m.annotations) == 0 {
-		return " notes (none)"
-	}
-	position, unmatched := m.annotationNavigationPosition()
-	label := fmt.Sprintf(" notes (%d", len(m.annotations))
-	if position > 0 {
-		label = fmt.Sprintf(" notes (%d/%d", position, len(m.annotations))
-	}
-	if unmatched > 0 {
-		label += fmt.Sprintf("; %d unmatched", unmatched)
-	}
-	return label + ")"
-}
-
-func (m Model) annotationNavigationPosition() (position int, unmatched int) {
-	for index, target := range m.annotationTargets() {
-		if target.ID == m.activeAnnotationID {
-			position = index + 1
-		}
-		if target.functionIndex < 0 {
-			unmatched++
-		}
-	}
-	return position, unmatched
 }

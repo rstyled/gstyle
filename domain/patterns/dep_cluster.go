@@ -37,6 +37,84 @@ type DepCluster struct {
 	Fraction float64
 }
 
+type tarjan struct {
+	adj     [][]int
+	index   []int
+	lowlink []int
+	onStack []bool
+	stack   []int
+	counter int
+	sccs    [][]int
+}
+
+// newTarjan creates a Tarjan state for the PDG.
+func newTarjan(pdg *MiningGraph) *tarjan {
+	n := len(pdg.Nodes)
+	adj := abstractionAdjacency(pdg, false)
+	t := &tarjan{
+		adj:     adj,
+		index:   make([]int, n),
+		lowlink: make([]int, n),
+		onStack: make([]bool, n),
+	}
+	for i := range t.index {
+		t.index[i] = -1
+	}
+	return t
+}
+
+// run executes Tarjan's algorithm.
+func (t *tarjan) run() {
+	for v := 0; v < len(t.index); v++ {
+		if t.index[v] == -1 {
+			t.visit(v)
+		}
+	}
+}
+
+func (t *tarjan) visit(v int) {
+	t.index[v] = t.counter
+	t.lowlink[v] = t.counter
+	t.counter++
+	t.stack = append(t.stack, v)
+	t.onStack[v] = true
+	for _, w := range t.adj[v] {
+		t.visitEdge(v, w)
+	}
+	if t.lowlink[v] == t.index[v] {
+		t.popSCC(v)
+	}
+}
+
+// visitEdge processes one edge v->w in Tarjan's algorithm.
+func (t *tarjan) visitEdge(v, w int) {
+	if t.index[w] == -1 {
+		t.visit(w)
+		if t.lowlink[w] < t.lowlink[v] {
+			t.lowlink[v] = t.lowlink[w]
+		}
+	} else if t.onStack[w] {
+		if t.index[w] < t.lowlink[v] {
+			t.lowlink[v] = t.index[w]
+		}
+	}
+}
+
+// popSCC pops a strongly connected component off the stack.
+func (t *tarjan) popSCC(v int) {
+	var scc []int
+	for {
+		w := t.stack[len(t.stack)-1]
+		t.stack = t.stack[:len(t.stack)-1]
+		t.onStack[w] = false
+		scc = append(scc, w)
+		if w == v {
+			break
+		}
+	}
+	t.sccs = append(t.sccs, scc)
+}
+
 // FindDepClusters finds dependence clusters (large SCCs) in function PDGs.
 func FindDepClusters(facts []*MiningFacts) []DepCluster {
 	var out []DepCluster
@@ -89,31 +167,6 @@ func stronglyConnected(pdg *MiningGraph) [][]int {
 	return filterSCCs(t.sccs)
 }
 
-// newTarjan creates a Tarjan state for the PDG.
-func newTarjan(pdg *MiningGraph) *tarjan {
-	n := len(pdg.Nodes)
-	adj := abstractionAdjacency(pdg, false)
-	t := &tarjan{
-		adj:     adj,
-		index:   make([]int, n),
-		lowlink: make([]int, n),
-		onStack: make([]bool, n),
-	}
-	for i := range t.index {
-		t.index[i] = -1
-	}
-	return t
-}
-
-// run executes Tarjan's algorithm.
-func (t *tarjan) run() {
-	for v := 0; v < len(t.index); v++ {
-		if t.index[v] == -1 {
-			t.visit(v)
-		}
-	}
-}
-
 // filterSCCs keeps components with 2+ nodes.
 func filterSCCs(sccs [][]int) [][]int {
 	var out [][]int
@@ -123,59 +176,6 @@ func filterSCCs(sccs [][]int) [][]int {
 		}
 	}
 	return out
-}
-
-type tarjan struct {
-	adj     [][]int
-	index   []int
-	lowlink []int
-	onStack []bool
-	stack   []int
-	counter int
-	sccs    [][]int
-}
-
-func (t *tarjan) visit(v int) {
-	t.index[v] = t.counter
-	t.lowlink[v] = t.counter
-	t.counter++
-	t.stack = append(t.stack, v)
-	t.onStack[v] = true
-	for _, w := range t.adj[v] {
-		t.visitEdge(v, w)
-	}
-	if t.lowlink[v] == t.index[v] {
-		t.popSCC(v)
-	}
-}
-
-// visitEdge processes one edge v->w in Tarjan's algorithm.
-func (t *tarjan) visitEdge(v, w int) {
-	if t.index[w] == -1 {
-		t.visit(w)
-		if t.lowlink[w] < t.lowlink[v] {
-			t.lowlink[v] = t.lowlink[w]
-		}
-	} else if t.onStack[w] {
-		if t.index[w] < t.lowlink[v] {
-			t.lowlink[v] = t.index[w]
-		}
-	}
-}
-
-// popSCC pops a strongly connected component off the stack.
-func (t *tarjan) popSCC(v int) {
-	var scc []int
-	for {
-		w := t.stack[len(t.stack)-1]
-		t.stack = t.stack[:len(t.stack)-1]
-		t.onStack[w] = false
-		scc = append(scc, w)
-		if w == v {
-			break
-		}
-	}
-	t.sccs = append(t.sccs, scc)
 }
 
 // DepClusterCandidates converts clusters to pattern candidates.

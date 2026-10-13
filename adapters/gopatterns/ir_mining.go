@@ -8,6 +8,15 @@ import (
 	"github.com/rstyled/gstyle/domain/pdg"
 )
 
+var miningCategories = map[patterns.NodeKind]pdg.Category{
+	patterns.Param: pdg.FormalInput, patterns.Let: pdg.Declaration,
+	patterns.Call: pdg.Call, patterns.Field: pdg.Read,
+	patterns.Branch: pdg.Control, patterns.Match: pdg.Control,
+	patterns.Iterate: pdg.Control, patterns.Loop: pdg.Control,
+	patterns.Return: pdg.Return, patterns.Case: pdg.Control,
+	patterns.Closure: pdg.Other, patterns.Defer: pdg.Other, patterns.Go: pdg.Other,
+}
+
 func (b *builder) matchingNode(n patterns.PdgNode) int {
 	var ref pdg.Ref
 	if n.Kind == patterns.Param {
@@ -33,20 +42,12 @@ func (b *builder) matchLabel(n patterns.PdgNode) pdg.MatchLabel {
 	return pdg.MatchLabel{Kind: p.Text(string(n.Kind)), TypeClass: p.Text(n.TyClass), SignatureClass: p.Text(n.SigClass), Callee: p.Text(n.CalleeID), LiteralKind: p.Text(n.LitKind), Detail: p.Text(n.Detail), Effects: n.Effects}
 }
 
-var miningCategories = map[patterns.NodeKind]pdg.Category{
-	patterns.Param: pdg.FormalInput, patterns.Let: pdg.Declaration,
-	patterns.Call: pdg.Call, patterns.Field: pdg.Read,
-	patterns.Branch: pdg.Control, patterns.Match: pdg.Control,
-	patterns.Iterate: pdg.Control, patterns.Loop: pdg.Control,
-	patterns.Return: pdg.Return, patterns.Case: pdg.Control,
-	patterns.Closure: pdg.Other, patterns.Defer: pdg.Other, patterns.Go: pdg.Other,
-}
-
-func miningCategory(kind patterns.NodeKind) pdg.Category {
-	if category, ok := miningCategories[kind]; ok {
-		return category
+func (b *builder) markSynthetic(node *pdg.Node, kind patterns.NodeKind) {
+	if !syntheticMiningNode(kind, b.origin) {
+		return
 	}
-	return pdg.Computation
+	node.Synthetic = true
+	node.Provenance = b.ir.pool.Origin(pdg.Desugaring, "Gstyle abstraction lowering of source operations.")
 }
 
 func (b *irBuilder) miningEdge(from, to, position int, kind pdg.EdgeKind) {
@@ -74,12 +75,11 @@ func (b *irBuilder) pack() error {
 	return nil
 }
 
-func (b *builder) markSynthetic(node *pdg.Node, kind patterns.NodeKind) {
-	if !syntheticMiningNode(kind, b.origin) {
-		return
+func miningCategory(kind patterns.NodeKind) pdg.Category {
+	if category, ok := miningCategories[kind]; ok {
+		return category
 	}
-	node.Synthetic = true
-	node.Provenance = b.ir.pool.Origin(pdg.Desugaring, "Gstyle abstraction lowering of source operations.")
+	return pdg.Computation
 }
 
 func syntheticMiningNode(kind patterns.NodeKind, origin ast.Node) bool {

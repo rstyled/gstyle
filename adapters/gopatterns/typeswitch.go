@@ -47,6 +47,14 @@ type TypeSwitchHit struct {
 	Args string
 }
 
+// typeArm is one case arm: its type name, the method it calls, and the
+// argument source text.
+type typeArm struct {
+	typ    string
+	method string
+	args   string
+}
+
 // findTypeSwitches scans fn for type switches in the fixable subset:
 // `switch v := x.(type)` with 2+ value cases, no default statements, each
 // arm a single `v.Method(...)` call with the same method name and args.
@@ -130,14 +138,6 @@ func bindingAssert(assign *ast.AssignStmt) (*ast.TypeAssertExpr, bool) {
 		return nil, false
 	}
 	return assert, true
-}
-
-// typeArm is one case arm: its type name, the method it calls, and the
-// argument source text.
-type typeArm struct {
-	typ    string
-	method string
-	args   string
 }
 
 // typeSwitchArms extracts the arms of a type switch: 2+ value cases, no

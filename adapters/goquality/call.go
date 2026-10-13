@@ -78,25 +78,6 @@ func (x *extractor) classifyIdentArg(arg ast.Expr) *quality.ArgSource {
 	return nil
 }
 
-// peelArg strips &, *, and parens: they change how a value is passed, not
-// what it is.
-func peelArg(expr ast.Expr) ast.Expr {
-	for {
-		switch e := expr.(type) {
-		case *ast.ParenExpr:
-			expr = e.X
-		case *ast.UnaryExpr:
-			if e.Op == token.AND || e.Op == token.MUL {
-				expr = e.X
-			} else {
-				return expr
-			}
-		default:
-			return expr
-		}
-	}
-}
-
 // localFieldRoot reports whether expr is rooted at a parameter, the receiver,
 // or a function-local variable.
 func (x *extractor) localFieldRoot(expr ast.Expr) bool {
@@ -122,28 +103,10 @@ func (x *extractor) isFieldRoot(id *ast.Ident) bool {
 	return ok && isLocalVar(v)
 }
 
-func isLocalVar(v *types.Var) bool {
-	pkg := v.Pkg()
-	return pkg != nil && v.Parent() != pkg.Scope()
-}
-
 func (x *extractor) conversion(call *ast.CallExpr) {
 	basic, ok := underlying(x.pkg.TypesInfo.TypeOf(call)).(*types.Basic)
 	if ok && basic.Kind() == types.UnsafePointer {
 		x.effect(quality.Unsafe, "unsafe pointer conversion", call.Pos())
-	}
-}
-
-func unwrappedCallee(expr ast.Expr) ast.Expr {
-	switch expr := expr.(type) {
-	case *ast.ParenExpr:
-		return unwrappedCallee(expr.X)
-	case *ast.IndexExpr:
-		return unwrappedCallee(expr.X)
-	case *ast.IndexListExpr:
-		return unwrappedCallee(expr.X)
-	default:
-		return expr
 	}
 }
 
@@ -156,19 +119,6 @@ func (x *extractor) calledObject(expr ast.Expr) types.Object {
 	default:
 		return nil
 	}
-}
-
-func interfaceCall(info *types.Info, expr ast.Expr) bool {
-	selector, ok := expr.(*ast.SelectorExpr)
-	if !ok {
-		return false
-	}
-	selection := info.Selections[selector]
-	if selection == nil {
-		return false
-	}
-	_, ok = selection.Recv().Underlying().(*types.Interface)
-	return ok
 }
 
 func (x *extractor) builtin(call *ast.CallExpr, name string) {
@@ -192,4 +142,54 @@ func (x *extractor) unsafeBuiltin(call *ast.CallExpr, name string) {
 	if slices.Contains([]string{"Add", "Slice", "SliceData", "String", "StringData"}, name) {
 		x.effect(quality.Unsafe, "unsafe."+name, call.Pos())
 	}
+}
+
+// peelArg strips &, *, and parens: they change how a value is passed, not
+// what it is.
+func peelArg(expr ast.Expr) ast.Expr {
+	for {
+		switch e := expr.(type) {
+		case *ast.ParenExpr:
+			expr = e.X
+		case *ast.UnaryExpr:
+			if e.Op == token.AND || e.Op == token.MUL {
+				expr = e.X
+			} else {
+				return expr
+			}
+		default:
+			return expr
+		}
+	}
+}
+
+func isLocalVar(v *types.Var) bool {
+	pkg := v.Pkg()
+	return pkg != nil && v.Parent() != pkg.Scope()
+}
+
+func unwrappedCallee(expr ast.Expr) ast.Expr {
+	switch expr := expr.(type) {
+	case *ast.ParenExpr:
+		return unwrappedCallee(expr.X)
+	case *ast.IndexExpr:
+		return unwrappedCallee(expr.X)
+	case *ast.IndexListExpr:
+		return unwrappedCallee(expr.X)
+	default:
+		return expr
+	}
+}
+
+func interfaceCall(info *types.Info, expr ast.Expr) bool {
+	selector, ok := expr.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	selection := info.Selections[selector]
+	if selection == nil {
+		return false
+	}
+	_, ok = selection.Recv().Underlying().(*types.Interface)
+	return ok
 }

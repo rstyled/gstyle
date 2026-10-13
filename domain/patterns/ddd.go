@@ -32,6 +32,22 @@ const factoryMinFields = 5
 // min at 5 this keeps the pattern dormant until param bundling is designed.
 const factoryMaxFields = 4
 
+// factoryTypeKey identifies a struct type by name and declaration file.
+type factoryTypeKey struct {
+	name string
+	file string
+}
+
+// specificationScoreMilli is the fixed score for repeated business rules.
+// The Specification extraction is mechanical.
+const specificationScoreMilli = 450
+
+// specRuleKey identifies a business rule by its normalized key.
+type specRuleKey struct {
+	key      string
+	typeName string
+}
+
 // aggregateCandidates finds pairs of struct types mutated together in 2+
 // functions. Such types likely belong under one aggregate root.
 func aggregateCandidates(facts []*MiningFacts) []Candidate {
@@ -194,12 +210,6 @@ func factoryCandidates(facts []*MiningFacts) []Candidate {
 	return out
 }
 
-// factoryTypeKey identifies a struct type by name and declaration file.
-type factoryTypeKey struct {
-	name string
-	file string
-}
-
 // groupFactoryLits groups factory hits by struct type, tracking the
 // functions that build each type and the first literal line. Only hits
 // with construction logic are counted — plain field assignment is skipped.
@@ -263,10 +273,6 @@ func factoryCandidate(k factoryTypeKey, facts []*MiningFacts, funcs map[string]b
 	}
 }
 
-// specificationScoreMilli is the fixed score for repeated business rules.
-// The Specification extraction is mechanical.
-const specificationScoreMilli = 450
-
 // specificationCandidates finds boolean business rules (2+ conditions)
 // repeated in 2+ functions. Such rules want a named predicate: a method
 // on the type when it's local, a plain function otherwise (idiomatic Go;
@@ -287,12 +293,6 @@ func specificationCandidates(facts []*MiningFacts) []Candidate {
 		return out[i].Observation < out[j].Observation
 	})
 	return out
-}
-
-// specRuleKey identifies a business rule by its normalized key.
-type specRuleKey struct {
-	key      string
-	typeName string
 }
 
 // groupSpecRules groups specification hits by rule key, tracking the

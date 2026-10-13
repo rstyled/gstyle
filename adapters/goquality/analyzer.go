@@ -44,6 +44,40 @@ func (a Analyzer) Extract(ctx context.Context, paths []string) ([]quality.Functi
 	return extractPackages(pkgs, root, selected)
 }
 
+type selection struct{ directories, files []string }
+
+func (s *selection) addInput(root, input string) (string, error) {
+	absolute, err := inputPath(root, input)
+	if err != nil {
+		return "", err
+	}
+	info, err := os.Stat(absolute)
+	if err != nil {
+		return "", fmt.Errorf("inspect input %q: %w", input, err)
+	}
+	if info.IsDir() {
+		s.directories = append(s.directories, absolute)
+		return filepath.Join(absolute, "..."), nil
+	}
+	if !info.Mode().IsRegular() || filepath.Ext(absolute) != ".go" {
+		return "", fmt.Errorf("input must be a directory or regular Go file: %q", input)
+	}
+	s.files = append(s.files, absolute)
+	return "file=" + absolute, nil
+}
+
+func (s selection) includes(file string) bool {
+	if slices.Contains(s.files, file) {
+		return true
+	}
+	for _, directory := range s.directories {
+		if file == directory || strings.HasPrefix(file, directory+string(filepath.Separator)) {
+			return true
+		}
+	}
+	return false
+}
+
 func extractPackages(pkgs []*packages.Package, root string, selected selection) ([]quality.Function, error) {
 	facts := []quality.Function{}
 	for _, pkg := range pkgs {
@@ -76,8 +110,6 @@ func analysisRoot(root string) (string, error) {
 	return filepath.Abs(root)
 }
 
-type selection struct{ directories, files []string }
-
 func loadPatterns(root string, paths []string) ([]string, selection, error) {
 	if len(paths) == 0 {
 		paths = []string{"."}
@@ -108,38 +140,6 @@ func inputPath(root, input string) (string, error) {
 		return "", err
 	}
 	return absolute, nil
-}
-
-func (s *selection) addInput(root, input string) (string, error) {
-	absolute, err := inputPath(root, input)
-	if err != nil {
-		return "", err
-	}
-	info, err := os.Stat(absolute)
-	if err != nil {
-		return "", fmt.Errorf("inspect input %q: %w", input, err)
-	}
-	if info.IsDir() {
-		s.directories = append(s.directories, absolute)
-		return filepath.Join(absolute, "..."), nil
-	}
-	if !info.Mode().IsRegular() || filepath.Ext(absolute) != ".go" {
-		return "", fmt.Errorf("input must be a directory or regular Go file: %q", input)
-	}
-	s.files = append(s.files, absolute)
-	return "file=" + absolute, nil
-}
-
-func (s selection) includes(file string) bool {
-	if slices.Contains(s.files, file) {
-		return true
-	}
-	for _, directory := range s.directories {
-		if file == directory || strings.HasPrefix(file, directory+string(filepath.Separator)) {
-			return true
-		}
-	}
-	return false
 }
 
 func relativePath(root, file string) (string, error) {

@@ -31,24 +31,6 @@ type attributeBuilder struct {
 	sets       map[AttributeSet]Ref
 }
 
-// PackAttributes replaces construction attributes with deduplicated records and
-// lists. Nodes initially reference the input slice; their indexes are remapped.
-// Construction maps and the original records are not retained by the graph.
-func PackAttributes(g *Graph, input []Attributes) error {
-	if err := attributeInput(g, input); err != nil {
-		return err
-	}
-	b := attributeBuilder{g: g, refs: map[string]Ref{}, accesses: map[string]Ref{}, extensions: map[string]Ref{}, sets: map[AttributeSet]Ref{}}
-	mapping := make([]Ref, len(input)+1)
-	for i, attrs := range input {
-		mapping[i+1] = b.pack(attrs)
-	}
-	for i := range g.Nodes {
-		g.Nodes[i].Attributes = mapping[g.Nodes[i].Attributes]
-	}
-	return nil
-}
-
 func (b *attributeBuilder) pack(a Attributes) Ref {
 	set := AttributeSet{
 		Symbols: b.references(a.Symbols), Defines: b.references(a.Defines),
@@ -84,14 +66,6 @@ func (b *attributeBuilder) references(list []Ref) Ref {
 	return id
 }
 
-func referenceKey(list []Ref) string {
-	data := make([]byte, 0, len(list)*4)
-	for _, value := range list {
-		data = binary.LittleEndian.AppendUint32(data, uint32(value))
-	}
-	return string(data)
-}
-
 func (b *attributeBuilder) textList(list []Text) Ref {
 	refs := make([]Ref, len(list))
 	for i, value := range list {
@@ -112,18 +86,6 @@ func (b *attributeBuilder) accessList(list []Access) Ref {
 	id := Ref(len(b.g.AttributeTables.Accesses))
 	b.accesses[key] = id
 	return id
-}
-
-func accessKey(list []Access) string {
-	data := make([]byte, len(list)*16)
-	for i, value := range list {
-		record := data[i*16 : (i+1)*16]
-		binary.LittleEndian.PutUint32(record[0:4], uint32(value.Symbol))
-		binary.LittleEndian.PutUint32(record[4:8], uint32(value.Location))
-		binary.LittleEndian.PutUint32(record[8:12], uint32(value.UnresolvedReason))
-		binary.LittleEndian.PutUint32(record[12:16], uint32(value.Position))
-	}
-	return string(data)
 }
 
 func (b *attributeBuilder) extensionList(list []Extension) Ref {
@@ -165,13 +127,6 @@ func (g *Graph) expand(a AttributeSet) Attributes {
 	}
 }
 
-func listAt[T any](lists [][]T, ref Ref) []T {
-	if ref == 0 || uint64(ref) > uint64(len(lists)) {
-		return nil
-	}
-	return lists[ref-1]
-}
-
 func (g *Graph) outcomes(ref Ref) []Text {
 	refs := listAt(g.AttributeTables.References, ref)
 	if len(refs) == 0 {
@@ -182,6 +137,51 @@ func (g *Graph) outcomes(ref Ref) []Text {
 		texts[i] = Text(value)
 	}
 	return texts
+}
+
+// PackAttributes replaces construction attributes with deduplicated records and
+// lists. Nodes initially reference the input slice; their indexes are remapped.
+// Construction maps and the original records are not retained by the graph.
+func PackAttributes(g *Graph, input []Attributes) error {
+	if err := attributeInput(g, input); err != nil {
+		return err
+	}
+	b := attributeBuilder{g: g, refs: map[string]Ref{}, accesses: map[string]Ref{}, extensions: map[string]Ref{}, sets: map[AttributeSet]Ref{}}
+	mapping := make([]Ref, len(input)+1)
+	for i, attrs := range input {
+		mapping[i+1] = b.pack(attrs)
+	}
+	for i := range g.Nodes {
+		g.Nodes[i].Attributes = mapping[g.Nodes[i].Attributes]
+	}
+	return nil
+}
+
+func referenceKey(list []Ref) string {
+	data := make([]byte, 0, len(list)*4)
+	for _, value := range list {
+		data = binary.LittleEndian.AppendUint32(data, uint32(value))
+	}
+	return string(data)
+}
+
+func accessKey(list []Access) string {
+	data := make([]byte, len(list)*16)
+	for i, value := range list {
+		record := data[i*16 : (i+1)*16]
+		binary.LittleEndian.PutUint32(record[0:4], uint32(value.Symbol))
+		binary.LittleEndian.PutUint32(record[4:8], uint32(value.Location))
+		binary.LittleEndian.PutUint32(record[8:12], uint32(value.UnresolvedReason))
+		binary.LittleEndian.PutUint32(record[12:16], uint32(value.Position))
+	}
+	return string(data)
+}
+
+func listAt[T any](lists [][]T, ref Ref) []T {
+	if ref == 0 || uint64(ref) > uint64(len(lists)) {
+		return nil
+	}
+	return lists[ref-1]
 }
 
 func attributeInput(g *Graph, input []Attributes) error {

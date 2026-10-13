@@ -40,11 +40,70 @@ type ValueFix struct {
 	Kind string
 }
 
+// rewriteBodyIdents replaces param uses with struct field accesses.
+// E.g. `amount` becomes `amountCurrency.Amount`.
+
+// FixLine implements gopatterns.Fix.
+func (v ValueFix) FixLine() int { return v.Line }
+
+// FixKind implements gopatterns.Fix.
+func (v ValueFix) FixKind() string { return v.Kind }
+
 // valueObjectMinClump is the minimum params in a fixable clump.
 const valueObjectMinClump = 2
 
 // valueObjectMinFuncs is the minimum functions sharing a clump.
 const valueObjectMinFuncs = 3
+
+// funcDoc records a function's doc comment for restoration.
+type funcDoc struct {
+	funcName string
+	docText  string
+}
+
+// funcParamInfo pairs a function with its primitive param set.
+type funcParamInfo struct {
+	decl *ast.FuncDecl
+	keys map[string]ClumpParam
+}
+
+// sigBuilder accumulates the rewritten param list.
+type sigBuilder struct {
+	clumpKeys  map[string]bool
+	paramName  string
+	structType string
+	newList    []*ast.Field
+	inserted   bool
+}
+
+// visitField processes one param field, dropping clump params.
+func (b *sigBuilder) visitField(field *ast.Field) {
+	primType, ok := primitiveTypeName(field.Type)
+	var keep []*ast.Ident
+	for _, name := range field.Names {
+		if ok && b.clumpKeys[name.Name+":"+primType] {
+			b.insertStructParam()
+			continue
+		}
+		keep = append(keep, name)
+	}
+	if len(keep) > 0 {
+		field.Names = keep
+		b.newList = append(b.newList, field)
+	}
+}
+
+// insertStructParam adds the struct param once.
+func (b *sigBuilder) insertStructParam() {
+	if b.inserted {
+		return
+	}
+	b.newList = append(b.newList, &ast.Field{
+		Names: []*ast.Ident{{Name: b.paramName}},
+		Type:  &ast.Ident{Name: b.structType},
+	})
+	b.inserted = true
+}
 
 // FixValueObjects extracts data clumps into value-object structs.
 // It returns the rewritten source (gofmt-clean) and the fixes applied.
@@ -73,12 +132,6 @@ func FixValueObjects(fset *token.FileSet, f *ast.File, src []byte) ([]byte, []Va
 	}
 	out = restoreFuncDocs(out, docComments)
 	return out, fixes, nil
-}
-
-// funcDoc records a function's doc comment for restoration.
-type funcDoc struct {
-	funcName string
-	docText  string
 }
 
 // saveFuncDocs captures doc comments of all functions in the file.
@@ -232,12 +285,6 @@ func FindValueClumps(f *ast.File) []ValueClump {
 		}
 	}
 	return maximalValueClumps(clumps)
-}
-
-// funcParamInfo pairs a function with its primitive param set.
-type funcParamInfo struct {
-	decl *ast.FuncDecl
-	keys map[string]ClumpParam
 }
 
 // collectFuncParams gathers primitive params for each function with enough.
@@ -719,44 +766,6 @@ func rewriteFuncSignature(fn *ast.FuncDecl, params []ClumpParam, paramName, stru
 	return true
 }
 
-// sigBuilder accumulates the rewritten param list.
-type sigBuilder struct {
-	clumpKeys  map[string]bool
-	paramName  string
-	structType string
-	newList    []*ast.Field
-	inserted   bool
-}
-
-// visitField processes one param field, dropping clump params.
-func (b *sigBuilder) visitField(field *ast.Field) {
-	primType, ok := primitiveTypeName(field.Type)
-	var keep []*ast.Ident
-	for _, name := range field.Names {
-		if ok && b.clumpKeys[name.Name+":"+primType] {
-			b.insertStructParam()
-			continue
-		}
-		keep = append(keep, name)
-	}
-	if len(keep) > 0 {
-		field.Names = keep
-		b.newList = append(b.newList, field)
-	}
-}
-
-// insertStructParam adds the struct param once.
-func (b *sigBuilder) insertStructParam() {
-	if b.inserted {
-		return
-	}
-	b.newList = append(b.newList, &ast.Field{
-		Names: []*ast.Ident{{Name: b.paramName}},
-		Type:  &ast.Ident{Name: b.structType},
-	})
-	b.inserted = true
-}
-
 // rewriteBodyIdents replaces param uses with struct field accesses.
 // E.g. `amount` becomes `amountCurrency.Amount`.
 func rewriteBodyIdents(body *ast.BlockStmt, params []ClumpParam, paramName string) {
@@ -907,12 +916,3 @@ func spliceStructArg(args []ast.Expr, positions []int, lit *ast.CompositeLit) []
 	}
 	return newArgs
 }
-
-// rewriteBodyIdents replaces param uses with struct field accesses.
-// E.g. `amount` becomes `amountCurrency.Amount`.
-
-// FixLine implements gopatterns.Fix.
-func (v ValueFix) FixLine() int { return v.Line }
-
-// FixKind implements gopatterns.Fix.
-func (v ValueFix) FixKind() string { return v.Kind }

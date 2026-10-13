@@ -51,6 +51,15 @@ type RuleViolation struct {
 	Rule   MinedRuleDef
 }
 
+// callPostings is an inverted index from call name to the sorted list of
+// function indices containing that call. Built once per MineRules call so
+// co-occurrence counts become postings-list intersections instead of
+// full scans over all functions.
+type callPostings struct {
+	lists map[string][]int
+	total int
+}
+
 // MineRules extracts implicit call-co-occurrence rules from function call sets.
 func MineRules(sets []CallSet) []MinedRuleDef {
 	if len(sets) == 0 {
@@ -61,15 +70,6 @@ func MineRules(sets []CallSet) []MinedRuleDef {
 	rules = append(rules, mineSingleAntecedent(p)...)
 	rules = append(rules, mineDoubleAntecedent(p, sets)...)
 	return rules
-}
-
-// callPostings is an inverted index from call name to the sorted list of
-// function indices containing that call. Built once per MineRules call so
-// co-occurrence counts become postings-list intersections instead of
-// full scans over all functions.
-type callPostings struct {
-	lists map[string][]int
-	total int
 }
 
 // buildPostings indexes which functions contain each call.

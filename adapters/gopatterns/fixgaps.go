@@ -40,6 +40,21 @@ type caseEntry struct {
 	fn    string
 }
 
+// dispatchPlan bundles a validated switch with its derived cases.
+type dispatchPlan struct {
+	sw      *ast.SwitchStmt
+	cases   []caseEntry
+	keyType string
+}
+
+// generalizeParams extracts the parameters for generalization.
+type generalizeParams struct {
+	baseName   string
+	typeVars   map[string]string
+	constraint string
+	genericFn  string
+}
+
 func applyEnumDispatchFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
 	fset, f, err := parseSpec(spec, src)
 	if err != nil {
@@ -142,13 +157,6 @@ func inferKeyType(val ast.Expr, keyType string) string {
 		return keyType
 	}
 	return xIdent.Name
-}
-
-// dispatchPlan bundles a validated switch with its derived cases.
-type dispatchPlan struct {
-	sw      *ast.SwitchStmt
-	cases   []caseEntry
-	keyType string
 }
 
 // buildDispatchFix creates the text edits for the dispatch table.
@@ -314,14 +322,6 @@ func generalizeGroup(fset *token.FileSet, f *ast.File, group []*ast.FuncDecl, sr
 		out = ensureImport(out, "cmp")
 	}
 	return out, nil
-}
-
-// generalizeParams extracts the parameters for generalization.
-type generalizeParams struct {
-	baseName   string
-	typeVars   map[string]string
-	constraint string
-	genericFn  string
 }
 
 func extractGeneralizeParams(fset *token.FileSet, group []*ast.FuncDecl, src []byte) (*generalizeParams, error) {

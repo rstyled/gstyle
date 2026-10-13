@@ -22,6 +22,17 @@ type stdlibRule struct {
 	names []string
 }
 
+func (r stdlibRule) prefixes() []Prefix {
+	if len(r.names) == 0 {
+		return []Prefix{{r.pkg + ".", r.kind}}
+	}
+	result := make([]Prefix, len(r.names))
+	for index, name := range r.names {
+		result[index] = Prefix{r.pkg + "." + name, r.kind}
+	}
+	return result
+}
+
 // stdlibRules is the curated classification of the Go standard library.
 // TestStdlibCoverage fails if go list std reports a package with no entry
 // here, so newly added stdlib packages force a classification decision.
@@ -491,6 +502,11 @@ var stdlibRules = []stdlibRule{
 	{pkg: "error", kind: None, names: []string{"Error"}},
 }
 
+var (
+	classifyOnce     sync.Once
+	classifyPrefixes []Prefix
+)
+
 // stdlibPrefixes builds the classification prefixes from stdlibRules.
 func stdlibPrefixes() []Prefix {
 	parts := make([][]Prefix, len(stdlibRules))
@@ -498,17 +514,6 @@ func stdlibPrefixes() []Prefix {
 		parts[index] = rule.prefixes()
 	}
 	return slices.Concat(parts...)
-}
-
-func (r stdlibRule) prefixes() []Prefix {
-	if len(r.names) == 0 {
-		return []Prefix{{r.pkg + ".", r.kind}}
-	}
-	result := make([]Prefix, len(r.names))
-	for index, name := range r.names {
-		result[index] = Prefix{r.pkg + "." + name, r.kind}
-	}
-	return result
 }
 
 // ClassifyCallee returns the side-effect Kind for a callee ID (e.g.
@@ -520,11 +525,6 @@ func ClassifyCallee(callee string) Kind {
 	kind, _ := prefixKind(NormalizeCallee(callee), classifyPrefixes)
 	return kind
 }
-
-var (
-	classifyOnce     sync.Once
-	classifyPrefixes []Prefix
-)
 
 func buildClassifyPrefixes() {
 	classifyPrefixes = defaultPrefixes()

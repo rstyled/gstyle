@@ -97,6 +97,129 @@ type Extraction struct {
 	DomainServices []patterns.DomainServiceHit
 }
 
+// extractCtx carries per-package maps for entity pairing.
+type extractCtx struct {
+	sourceIdentities map[string]string
+	pool             *pdg.Builder
+	structLocs       map[string]structLoc
+	mutated          map[string]bool
+}
+
+// newExtractCtx builds the struct location and mutation maps for pairing
+// missing_identity with entity_identity.
+func newExtractCtx(pkg *packages.Package, root string) extractCtx {
+	structLocs := map[string]structLoc{}
+	for _, sd := range collectStructs(pkg, root) {
+		if _, ok := structLocs[sd.name]; !ok {
+			structLocs[sd.name] = structLoc{path: sd.path, line: sd.line}
+		}
+	}
+	return extractCtx{
+		structLocs: structLocs,
+		mutated:    collectMutatedStructs(pkg),
+	}
+}
+
+// ctrlFrame is one level of the control stack: nodes lowered inside it gain a
+// Ctrl edge from owner with this arm index. This is lexical nesting (like
+// rstyle's pdg.rs), not full post-dominator control dependence.
+type ctrlFrame struct {
+	owner int
+	arm   int
+}
+
+// loopCtx records an enclosing iteration for the loop-element
+// canonicalization: coll[counter] resolves to the Iterate node, so
+// `for i ... { f(names[i]) }` and `for _, n := range names { f(n) }`
+// produce the same shape.
+type loopCtx struct {
+	counter types.Object // loop counter variable (nil for range loops)
+	coll    int          // node index of the iterated collection
+	iterate int          // Iterate node index
+}
+
+// builder lowers one function body to a PDG. Bindings are flow-insensitive
+// (first binding wins, like rstyle): a variable use resolves to its
+// declaration/parameter/loop-variable node.
+type builder struct {
+	info      *types.Info
+	fset      *token.FileSet
+	ir        *irBuilder
+	origin    ast.Node
+	parameter int
+	binds     map[types.Object]int
+	ctrl      []ctrlFrame
+	loops     []loopCtx
+}
+
+func (b *builder) line(pos token.Pos) int {
+	return b.fset.PositionFor(pos, false).Line
+}
+
+// node appends a node, wiring a Ctrl edge from the enclosing control owner.
+func (b *builder) node(n patterns.PdgNode) int {
+	index := b.matchingNode(n)
+	if len(b.ctrl) > 0 {
+		top := b.ctrl[len(b.ctrl)-1]
+		b.ir.miningEdge(top.owner, index, top.arm, pdg.ControlEdge)
+	}
+	return index
+}
+
+func (b *builder) data(from, to, pos int) {
+	if from == none {
+		return
+	}
+	b.ir.miningEdge(from, to, pos, pdg.Data)
+}
+
+func (b *builder) under(owner, arm int, f func()) {
+	b.ctrl = append(b.ctrl, ctrlFrame{owner, arm})
+	f()
+	b.ctrl = b.ctrl[:len(b.ctrl)-1]
+}
+
+// bind records the node a variable resolves to. First binding wins:
+// reassignments do not move the binding (flow-insensitive, like rstyle).
+func (b *builder) bind(obj types.Object, node int) {
+	if obj == nil || node == none {
+		return
+	}
+	if _, ok := b.binds[obj]; !ok {
+		b.binds[obj] = node
+	}
+}
+
+func (b *builder) lookup(obj types.Object) (int, bool) {
+	n, ok := b.binds[obj]
+	return n, ok
+}
+
+func (b *builder) params(fn *ast.FuncDecl) {
+	add := func(fields *ast.FieldList) {
+		if fields == nil {
+			return
+		}
+		for _, field := range fields.List {
+			typ := patterns.TypeClass(b.info.TypeOf(field.Type))
+			for _, name := range field.Names {
+				obj := b.info.Defs[name]
+				n := b.node(patterns.PdgNode{Kind: patterns.Param, TyClass: typ, Line: b.line(name.Pos())})
+				b.bind(obj, n)
+			}
+			if len(field.Names) == 0 {
+				b.node(patterns.PdgNode{Kind: patterns.Param, TyClass: typ, Line: b.line(field.Pos())})
+			}
+		}
+	}
+	add(fn.Recv)
+	add(fn.Type.Params)
+}
+
+// none is returned by expr when an expression produces no PDG node
+// (a variable use resolved through binds, blank, or unresolvable).
+const none = -1
+
 // Extract loads the packages enclosing paths and returns PDGs per
 // function plus anemic-model hits. Paths are directories (".", "./...")
 // or .go files, resolved under root.
@@ -238,29 +361,6 @@ func filePdgs(pkg *packages.Package, file *ast.File, root string, ctx extractCtx
 	return out, nil
 }
 
-// extractCtx carries per-package maps for entity pairing.
-type extractCtx struct {
-	sourceIdentities map[string]string
-	pool             *pdg.Builder
-	structLocs       map[string]structLoc
-	mutated          map[string]bool
-}
-
-// newExtractCtx builds the struct location and mutation maps for pairing
-// missing_identity with entity_identity.
-func newExtractCtx(pkg *packages.Package, root string) extractCtx {
-	structLocs := map[string]structLoc{}
-	for _, sd := range collectStructs(pkg, root) {
-		if _, ok := structLocs[sd.name]; !ok {
-			structLocs[sd.name] = structLoc{path: sd.path, line: sd.line}
-		}
-	}
-	return extractCtx{
-		structLocs: structLocs,
-		mutated:    collectMutatedStructs(pkg),
-	}
-}
-
 func patternsQuery(root string, paths []string) ([]string, error) {
 	if len(paths) == 0 {
 		paths = []string{"."}
@@ -394,106 +494,6 @@ func primitiveParams(fn *ast.FuncDecl, info *types.Info) []patterns.ParamInfo {
 		}
 	}
 	return out
-}
-
-// ctrlFrame is one level of the control stack: nodes lowered inside it gain a
-// Ctrl edge from owner with this arm index. This is lexical nesting (like
-// rstyle's pdg.rs), not full post-dominator control dependence.
-type ctrlFrame struct {
-	owner int
-	arm   int
-}
-
-// loopCtx records an enclosing iteration for the loop-element
-// canonicalization: coll[counter] resolves to the Iterate node, so
-// `for i ... { f(names[i]) }` and `for _, n := range names { f(n) }`
-// produce the same shape.
-type loopCtx struct {
-	counter types.Object // loop counter variable (nil for range loops)
-	coll    int          // node index of the iterated collection
-	iterate int          // Iterate node index
-}
-
-// builder lowers one function body to a PDG. Bindings are flow-insensitive
-// (first binding wins, like rstyle): a variable use resolves to its
-// declaration/parameter/loop-variable node.
-type builder struct {
-	info      *types.Info
-	fset      *token.FileSet
-	ir        *irBuilder
-	origin    ast.Node
-	parameter int
-	binds     map[types.Object]int
-	ctrl      []ctrlFrame
-	loops     []loopCtx
-}
-
-// none is returned by expr when an expression produces no PDG node
-// (a variable use resolved through binds, blank, or unresolvable).
-const none = -1
-
-func (b *builder) line(pos token.Pos) int {
-	return b.fset.PositionFor(pos, false).Line
-}
-
-// node appends a node, wiring a Ctrl edge from the enclosing control owner.
-func (b *builder) node(n patterns.PdgNode) int {
-	index := b.matchingNode(n)
-	if len(b.ctrl) > 0 {
-		top := b.ctrl[len(b.ctrl)-1]
-		b.ir.miningEdge(top.owner, index, top.arm, pdg.ControlEdge)
-	}
-	return index
-}
-
-func (b *builder) data(from, to, pos int) {
-	if from == none {
-		return
-	}
-	b.ir.miningEdge(from, to, pos, pdg.Data)
-}
-
-func (b *builder) under(owner, arm int, f func()) {
-	b.ctrl = append(b.ctrl, ctrlFrame{owner, arm})
-	f()
-	b.ctrl = b.ctrl[:len(b.ctrl)-1]
-}
-
-// bind records the node a variable resolves to. First binding wins:
-// reassignments do not move the binding (flow-insensitive, like rstyle).
-func (b *builder) bind(obj types.Object, node int) {
-	if obj == nil || node == none {
-		return
-	}
-	if _, ok := b.binds[obj]; !ok {
-		b.binds[obj] = node
-	}
-}
-
-func (b *builder) lookup(obj types.Object) (int, bool) {
-	n, ok := b.binds[obj]
-	return n, ok
-}
-
-func (b *builder) params(fn *ast.FuncDecl) {
-	add := func(fields *ast.FieldList) {
-		if fields == nil {
-			return
-		}
-		for _, field := range fields.List {
-			typ := patterns.TypeClass(b.info.TypeOf(field.Type))
-			for _, name := range field.Names {
-				obj := b.info.Defs[name]
-				n := b.node(patterns.PdgNode{Kind: patterns.Param, TyClass: typ, Line: b.line(name.Pos())})
-				b.bind(obj, n)
-			}
-			if len(field.Names) == 0 {
-				b.node(patterns.PdgNode{Kind: patterns.Param, TyClass: typ, Line: b.line(field.Pos())})
-			}
-		}
-	}
-	add(fn.Recv)
-	add(fn.Type.Params)
 }
 
 func pdgSourceIdentity(pool *pdg.Builder, digest string) pdg.Fact {

@@ -16,6 +16,14 @@ import (
 // HoleKind is the kind of a hole: what differs at the aligned sites.
 type HoleKind string
 
+// Prefix is the hole variable prefix of the kind: T, M, F, L, D, O, E.
+func (k HoleKind) Prefix() byte {
+	if p, ok := holeKindPrefixes[k]; ok {
+		return p
+	}
+	return 'O'
+}
+
 const (
 	HoleType    HoleKind = "type"
 	HoleMethod  HoleKind = "method"
@@ -26,14 +34,6 @@ const (
 	HoleEffect  HoleKind = "effect"
 )
 
-// Prefix is the hole variable prefix of the kind: T, M, F, L, D, O, E.
-func (k HoleKind) Prefix() byte {
-	if p, ok := holeKindPrefixes[k]; ok {
-		return p
-	}
-	return 'O'
-}
-
 var holeKindPrefixes = map[HoleKind]byte{
 	HoleType:    'T',
 	HoleMethod:  'M',
@@ -41,29 +41,6 @@ var holeKindPrefixes = map[HoleKind]byte{
 	HoleLiteral: 'L',
 	HoleField:   'D',
 	HoleEffect:  'E',
-}
-
-// HoleVar is the variable name of the index-th hole of a kind: T0, M1, ...
-func HoleVar(kind HoleKind, index int) string {
-	return string([]byte{kind.Prefix()}) + strconv.Itoa(index)
-}
-
-// holeRank reproduces Rust's HoleKind declaration order for sorting holes.
-func holeRank(k HoleKind) int {
-	switch k {
-	case HoleType:
-		return 0
-	case HoleMethod:
-		return 1
-	case HoleFreeFn:
-		return 2
-	case HoleLiteral:
-		return 3
-	case HoleField:
-		return 4
-	default:
-		return 5
-	}
 }
 
 // Hole is one substitution a -> b. Every site where the same pair occurs
@@ -126,45 +103,6 @@ func (c *ctx) atLevel(level int) *ctx {
 	}
 }
 
-// childrenOf returns the out-neighbours of v ordered for DFS: ascending by
-// (edge tag, color, index), reversed so the stack pops the smallest first.
-func childrenOf(w *Wl, colors []uint64, v int) []int {
-	kids := append([]Nb(nil), w.graph.out[v]...)
-	sort.Slice(kids, func(i, j int) bool {
-		if kids[i].tag != kids[j].tag {
-			return kids[i].tag < kids[j].tag
-		}
-		ci, cj := colors[kids[i].node], colors[kids[j].node]
-		if ci != cj {
-			return ci < cj
-		}
-		return kids[i].node < kids[j].node
-	})
-	out := make([]int, len(kids))
-	for i, nb := range kids {
-		out[len(kids)-1-i] = int(nb.node)
-	}
-	return out
-}
-
-// rootsByColor lists the nodes with no incoming edges, sorted by (color,
-// index).
-func rootsByColor(w *Wl, colors []uint64) []int {
-	var roots []int
-	for v := range colors {
-		if len(w.graph.inc[v]) == 0 {
-			roots = append(roots, v)
-		}
-	}
-	sort.Slice(roots, func(i, j int) bool {
-		if colors[roots[i]] != colors[roots[j]] {
-			return colors[roots[i]] < colors[roots[j]]
-		}
-		return roots[i] < roots[j]
-	})
-	return roots
-}
-
 // dfs carries the state of one deterministic depth-first traversal,
 // mirroring Rust's Dfs.
 type dfs struct {
@@ -186,25 +124,6 @@ func (d *dfs) from(start int) {
 		d.order = append(d.order, v)
 		stack = append(stack, childrenOf(d.w, d.colors, v)...)
 	}
-}
-
-// ordinals is the deterministic DFS ordinal of every node: roots by (color,
-// index), then anything left (cycles) by index. Symmetric graphs still get
-// one fixed order.
-func ordinals(w *Wl, colors []uint64) []int {
-	n := len(colors)
-	d := &dfs{w: w, colors: colors, seen: make([]bool, n)}
-	for _, r := range rootsByColor(w, colors) {
-		d.from(r)
-	}
-	for v := 0; v < n; v++ {
-		d.from(v)
-	}
-	ordinal := make([]int, n)
-	for i, v := range d.order {
-		ordinal[v] = i
-	}
-	return ordinal
 }
 
 // matching is a partial bijection between the node indices of the two
@@ -246,6 +165,148 @@ func (m *matching) pairs() [][2]int {
 		}
 	}
 	return out
+}
+
+// holeDiff is one detected difference between two aligned nodes.
+type holeDiff struct {
+	kind HoleKind
+	a, b string
+}
+
+type effectFlagName struct {
+	bit  uint16
+	name string
+}
+
+var effectFlagNames = []effectFlagName{
+	{EffectMutates, "mutates"},
+	{EffectIO, "io"},
+	{EffectNetwork, "network"},
+	{EffectGlobal, "global"},
+	{EffectUnsafe, "unsafe"},
+	{EffectTime, "time"},
+	{EffectRandom, "random"},
+	{EffectPanic, "panic"},
+	{EffectUnknown, "unknown"},
+}
+
+// holeKey identifies one substitution: equal triples share a variable.
+type holeKey struct {
+	kind HoleKind
+	a, b string
+}
+
+// Stage is the matching after one pipeline step, for the walkthrough.
+type Stage struct {
+	Name  string
+	Pairs [][2]int
+}
+
+// Variant selects an alignment pipeline; Baseline is Align.
+type Variant int
+
+const (
+	Baseline Variant = iota
+	// LabelsOnly skips the refined-color stages; starts from raw labels.
+	LabelsOnly
+	// NoFinalPrune omits the prune after complete.
+	NoFinalPrune
+	// CompleteChecked makes complete reject pairs with reverse conflicts.
+	CompleteChecked
+	// CoarseToFine seeds and settles at every WL level from deepest to raw
+	// labels, pruning after each.
+	CoarseToFine
+	// Combined is CoarseToFine plus CompleteChecked.
+	Combined
+)
+
+// step is one named pipeline stage.
+type step struct {
+	name string
+	run  func(*matching) *matching
+}
+
+var levelNames = [4]string{"level0", "level1", "level2", "level3"}
+
+// HoleVar is the variable name of the index-th hole of a kind: T0, M1, ...
+func HoleVar(kind HoleKind, index int) string {
+	return string([]byte{kind.Prefix()}) + strconv.Itoa(index)
+}
+
+// holeRank reproduces Rust's HoleKind declaration order for sorting holes.
+func holeRank(k HoleKind) int {
+	switch k {
+	case HoleType:
+		return 0
+	case HoleMethod:
+		return 1
+	case HoleFreeFn:
+		return 2
+	case HoleLiteral:
+		return 3
+	case HoleField:
+		return 4
+	default:
+		return 5
+	}
+}
+
+// childrenOf returns the out-neighbours of v ordered for DFS: ascending by
+// (edge tag, color, index), reversed so the stack pops the smallest first.
+func childrenOf(w *Wl, colors []uint64, v int) []int {
+	kids := append([]Nb(nil), w.graph.out[v]...)
+	sort.Slice(kids, func(i, j int) bool {
+		if kids[i].tag != kids[j].tag {
+			return kids[i].tag < kids[j].tag
+		}
+		ci, cj := colors[kids[i].node], colors[kids[j].node]
+		if ci != cj {
+			return ci < cj
+		}
+		return kids[i].node < kids[j].node
+	})
+	out := make([]int, len(kids))
+	for i, nb := range kids {
+		out[len(kids)-1-i] = int(nb.node)
+	}
+	return out
+}
+
+// rootsByColor lists the nodes with no incoming edges, sorted by (color,
+// index).
+func rootsByColor(w *Wl, colors []uint64) []int {
+	var roots []int
+	for v := range colors {
+		if len(w.graph.inc[v]) == 0 {
+			roots = append(roots, v)
+		}
+	}
+	sort.Slice(roots, func(i, j int) bool {
+		if colors[roots[i]] != colors[roots[j]] {
+			return colors[roots[i]] < colors[roots[j]]
+		}
+		return roots[i] < roots[j]
+	})
+	return roots
+}
+
+// ordinals is the deterministic DFS ordinal of every node: roots by (color,
+// index), then anything left (cycles) by index. Symmetric graphs still get
+// one fixed order.
+func ordinals(w *Wl, colors []uint64) []int {
+	n := len(colors)
+	d := &dfs{w: w, colors: colors, seen: make([]bool, n)}
+	for _, r := range rootsByColor(w, colors) {
+		d.from(r)
+	}
+	for v := 0; v < n; v++ {
+		d.from(v)
+	}
+	ordinal := make([]int, n)
+	for i, v := range d.order {
+		ordinal[v] = i
+	}
+	return ordinal
 }
 
 func hasEdge(list []Nb, node int, tag uint64) bool {
@@ -501,12 +562,6 @@ func prune(c *ctx, m *matching) *matching {
 	}
 }
 
-// holeDiff is one detected difference between two aligned nodes.
-type holeDiff struct {
-	kind HoleKind
-	a, b string
-}
-
 // hasReceiver reports whether a Go callee id names a method. FuncID renders
 // methods as "pkgpath.Type.Method" and free functions as "pkgpath.Func", so
 // the segment after the last "/" carries two dots for a method and one for a
@@ -615,23 +670,6 @@ func effectName(e uint16) string {
 	return strings.Join(parts, "|")
 }
 
-type effectFlagName struct {
-	bit  uint16
-	name string
-}
-
-var effectFlagNames = []effectFlagName{
-	{EffectMutates, "mutates"},
-	{EffectIO, "io"},
-	{EffectNetwork, "network"},
-	{EffectGlobal, "global"},
-	{EffectUnsafe, "unsafe"},
-	{EffectTime, "time"},
-	{EffectRandom, "random"},
-	{EffectPanic, "panic"},
-	{EffectUnknown, "unknown"},
-}
-
 // nodeDiffs collects every hole between two aligned nodes.
 func nodeDiffs(a, b *PdgNode) []holeDiff {
 	var out []holeDiff
@@ -645,12 +683,6 @@ func nodeDiffs(a, b *PdgNode) []holeDiff {
 		out = append(out, d)
 	}
 	return append(out, typeDiffs(a, b)...)
-}
-
-// holeKey identifies one substitution: equal triples share a variable.
-type holeKey struct {
-	kind HoleKind
-	a, b string
 }
 
 // holeTable groups the detected diffs by substitution, sites in pair order.
@@ -697,36 +729,6 @@ func holesOf(c *ctx, pairs [][2]int) []Hole {
 	return holes
 }
 
-// Stage is the matching after one pipeline step, for the walkthrough.
-type Stage struct {
-	Name  string
-	Pairs [][2]int
-}
-
-// Variant selects an alignment pipeline; Baseline is Align.
-type Variant int
-
-const (
-	Baseline Variant = iota
-	// LabelsOnly skips the refined-color stages; starts from raw labels.
-	LabelsOnly
-	// NoFinalPrune omits the prune after complete.
-	NoFinalPrune
-	// CompleteChecked makes complete reject pairs with reverse conflicts.
-	CompleteChecked
-	// CoarseToFine seeds and settles at every WL level from deepest to raw
-	// labels, pruning after each.
-	CoarseToFine
-	// Combined is CoarseToFine plus CompleteChecked.
-	Combined
-)
-
-// step is one named pipeline stage.
-type step struct {
-	name string
-	run  func(*matching) *matching
-}
-
 func grow(c *ctx, name string, greedy bool) step {
 	return step{name, func(m *matching) *matching {
 		return settle(c, seeded(c, m), greedy)
@@ -736,8 +738,6 @@ func grow(c *ctx, name string, greedy bool) step {
 func pruneStep(c *ctx, name string) step {
 	return step{name, func(m *matching) *matching { return prune(c, m) }}
 }
-
-var levelNames = [4]string{"level0", "level1", "level2", "level3"}
 
 // pairingSteps are the refined-color stages, then raw labels (the pipeline
 // before complete).

@@ -27,6 +27,11 @@ type AnalysisCoverage struct {
 
 var semanticAnalysisKinds = []CandidateKind{TaintFlowKind, BarrierSliceKind, ThinSliceKind, ChopKind}
 
+var sourceFeatureCapabilities = map[string]string{
+	"*ast.ForStmt": "loop_carried_dependencies", "*ast.RangeStmt": "loop_carried_dependencies",
+	"*ast.FuncLit": "closures", "*ast.GoStmt": "concurrency", "*ast.SelectStmt": "concurrency", "*ast.SendStmt": "concurrency",
+}
+
 func analysisEvidence(f *MiningFacts, kind CandidateKind, nodes ...string) *AnalysisEvidence {
 	ids := nonemptyStrings(nodes)
 	if f == nil {
@@ -214,11 +219,6 @@ func HasIncompleteAnalysis(coverage []AnalysisCoverage) bool {
 		}
 	}
 	return false
-}
-
-var sourceFeatureCapabilities = map[string]string{
-	"*ast.ForStmt": "loop_carried_dependencies", "*ast.RangeStmt": "loop_carried_dependencies",
-	"*ast.FuncLit": "closures", "*ast.GoStmt": "concurrency", "*ast.SelectStmt": "concurrency", "*ast.SendStmt": "concurrency",
 }
 
 func sourceFeatureRequirements(graph *pdg.Graph) []string {

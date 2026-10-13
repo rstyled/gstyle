@@ -30,11 +30,6 @@ type Builder struct {
 	singleExtensions map[Extension][]Extension
 }
 
-type provenanceKey struct {
-	Description Text
-	Origin      Origin
-}
-
 func NewBuilder() *Builder {
 	return &Builder{
 		Tables: &Tables{}, labels: map[MatchLabel]Ref{}, strings: map[string]Text{},
@@ -114,13 +109,6 @@ func (b *Builder) AddProvenance(p Provenance) Ref {
 	return Ref(len(b.Tables.Provenance))
 }
 
-var RequiredCapabilities = [...]string{
-	"node_extraction", "scalar_reaching_definitions", "branch_merges",
-	"loop_carried_dependencies", "control_dependencies", "execution_dependencies",
-	"returns", "calls", "parameters", "closures", "macros", "memory_aliases",
-	"exceptional_flow", "concurrency", "reference_counting",
-}
-
 func (b *Builder) MatchLabel(label MatchLabel) Ref {
 	if ref, ok := b.labels[label]; ok {
 		return ref
@@ -129,4 +117,16 @@ func (b *Builder) MatchLabel(label MatchLabel) Ref {
 	ref := Ref(len(b.Tables.MatchLabels))
 	b.labels[label] = ref
 	return ref
+}
+
+type provenanceKey struct {
+	Description Text
+	Origin      Origin
+}
+
+var RequiredCapabilities = [...]string{
+	"node_extraction", "scalar_reaching_definitions", "branch_merges",
+	"loop_carried_dependencies", "control_dependencies", "execution_dependencies",
+	"returns", "calls", "parameters", "closures", "macros", "memory_aliases",
+	"exceptional_flow", "concurrency", "reference_counting",
 }

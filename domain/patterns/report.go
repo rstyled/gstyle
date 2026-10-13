@@ -60,46 +60,6 @@ type Options struct {
 	cloneGroups [][]string
 }
 
-// Build keeps groups at or above minScoreMilli, then the first top (all when
-// top is nil). Candidates and suppressed start empty; Run fills them in.
-func Build(groups []SigGroup, minScoreMilli uint32, top *int) PatternsReport {
-	return PatternsReport{
-		SignatureGroups: keepGroups(groups, minScoreMilli, top),
-		Candidates:      []Candidate{},
-		Suppressed:      []Suppressed{},
-	}
-}
-
-// Run is the full pipeline over driver facts: prepare (merge duplicate
-// targets, hide implements), layer 1 (signature groups), layer 2
-// (candidates), then filter and rank.
-func RunMining(facts []*MiningFacts, options Options) PatternsReport {
-	prepared := hideImplements(mergeFacts(facts), options.HideImplements)
-	groups := MineGroups(prepared) // layer 1: sigmine
-	// Layer 2: candidates. NOTE: candidates.go is ported in parallel with the
-	// contract `func Mine(facts []*MiningFacts, groups []SigGroup, params Params) Mined`,
-	// which collides with sigmine.go's `func Mine`; see the commit report.
-	mined := MineCached(prepared, groups, defaultParams(options.Params), options.WlCache)
-	// Type switches: same-method arms want interface dispatch, also
-	// single-pass and fixed-score.
-	if tss := typeSwitchCandidates(prepared); len(tss) > 0 {
-		mined.Candidates = append(mined.Candidates, tss...)
-		sortMined(&mined)
-	}
-	// Enum dispatch: value switches that want to be dispatch tables,
-	// single-pass AST findings, fixed score.
-	if eds := enumDispatchCandidates(prepared); len(eds) > 0 {
-		mined.Candidates = append(mined.Candidates, eds...)
-		sortMined(&mined)
-	}
-	addSingleFunctionCandidates(&mined, prepared, options)
-	return PatternsReport{
-		SignatureGroups: keepGroups(groups, options.MinScoreMilli, options.Top),
-		Candidates:      keepCandidates(mined.Candidates, options.MinScoreMilli, options.Top),
-		Suppressed:      mined.Suppressed, AnalysisCoverage: reportSemanticCoverage(prepared, options),
-	}
-}
-
 // singleFunctionBuilder pairs a pattern kind with its candidate builder.
 type singleFunctionBuilder struct {
 	kind  CandidateKind
@@ -213,6 +173,46 @@ var singleFunctionBuilders = []singleFunctionBuilder{
 		violations := FindObligationViolations(prepared)
 		return ObligationCandidates(violations, prepared)
 	}},
+}
+
+// Build keeps groups at or above minScoreMilli, then the first top (all when
+// top is nil). Candidates and suppressed start empty; Run fills them in.
+func Build(groups []SigGroup, minScoreMilli uint32, top *int) PatternsReport {
+	return PatternsReport{
+		SignatureGroups: keepGroups(groups, minScoreMilli, top),
+		Candidates:      []Candidate{},
+		Suppressed:      []Suppressed{},
+	}
+}
+
+// Run is the full pipeline over driver facts: prepare (merge duplicate
+// targets, hide implements), layer 1 (signature groups), layer 2
+// (candidates), then filter and rank.
+func RunMining(facts []*MiningFacts, options Options) PatternsReport {
+	prepared := hideImplements(mergeFacts(facts), options.HideImplements)
+	groups := MineGroups(prepared) // layer 1: sigmine
+	// Layer 2: candidates. NOTE: candidates.go is ported in parallel with the
+	// contract `func Mine(facts []*MiningFacts, groups []SigGroup, params Params) Mined`,
+	// which collides with sigmine.go's `func Mine`; see the commit report.
+	mined := MineCached(prepared, groups, defaultParams(options.Params), options.WlCache)
+	// Type switches: same-method arms want interface dispatch, also
+	// single-pass and fixed-score.
+	if tss := typeSwitchCandidates(prepared); len(tss) > 0 {
+		mined.Candidates = append(mined.Candidates, tss...)
+		sortMined(&mined)
+	}
+	// Enum dispatch: value switches that want to be dispatch tables,
+	// single-pass AST findings, fixed score.
+	if eds := enumDispatchCandidates(prepared); len(eds) > 0 {
+		mined.Candidates = append(mined.Candidates, eds...)
+		sortMined(&mined)
+	}
+	addSingleFunctionCandidates(&mined, prepared, options)
+	return PatternsReport{
+		SignatureGroups: keepGroups(groups, options.MinScoreMilli, options.Top),
+		Candidates:      keepCandidates(mined.Candidates, options.MinScoreMilli, options.Top),
+		Suppressed:      mined.Suppressed, AnalysisCoverage: reportSemanticCoverage(prepared, options),
+	}
 }
 
 // addSingleFunctionCandidates appends fixed-score candidates that need no

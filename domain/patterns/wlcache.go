@@ -18,73 +18,9 @@ type WlCache struct {
 	misses  int
 }
 
-// wlCacheVersion versions the cache format AND the WL computation. Bump it
-// whenever label(), the kernel, or canonicalization changes, so stale
-// entries from an older miner are never reused.
-const wlCacheVersion = 4
-
-// wlCacheFile is the JSON-serialized cache with a version header.
-type wlCacheFile struct {
-	Version int                     `json:"version"`
-	Entries map[string]wlCacheEntry `json:"entries"`
-}
-
-// wlCacheEntry is the JSON-serializable WL state. Histograms are rebuilt
-// from rounds on load; the graph is rebuilt from the PDG on cache hit.
-type wlCacheEntry struct {
-	Rounds   [][]uint64 `json:"rounds"`
-	Diameter int        `json:"diameter"`
-	Calls    int        `json:"calls"`
-	CharVec  []float64  `json:"charVec"`
-}
-
 // NewWlCache returns an empty cache.
 func NewWlCache() *WlCache {
 	return &WlCache{entries: map[string]wlCacheEntry{}}
-}
-
-// pdgKey hashes the PDG's semantic content (kinds, labels, edges) with FNV-1a.
-// Line numbers are excluded: shifting a function in its file is not a change.
-func pdgKey(pdg *MiningGraph) string {
-	h := fnvOffset64
-	write := func(s string) {
-		for i := 0; i < len(s); i++ {
-			h ^= uint64(s[i])
-			h *= fnvPrime64
-		}
-		h ^= 0xff
-		h *= fnvPrime64
-	}
-	for _, n := range pdg.Nodes {
-		write(string(n.Kind))
-		write(n.TyClass)
-		write(n.SigClass)
-		write(n.CalleeID)
-		write(n.LitKind)
-		write(n.Detail)
-	}
-	write("|")
-	for _, e := range pdg.Edges {
-		write(strconv.Itoa(e.From))
-		write(strconv.Itoa(e.To))
-		write(string(e.Kind))
-		write(strconv.Itoa(e.ArgPos))
-	}
-	writePaperKey(write, pdg.Paper)
-	return strconv.FormatUint(h, 16)
-}
-
-// Canonical source counts can change even when the abstraction view does not.
-// Cached characteristic vectors therefore need these facts in their identity.
-func writePaperKey(write func(string), paper *PaperCharacteristics) {
-	if paper == nil {
-		write("no-source-counts")
-		return
-	}
-	write(strconv.FormatBool(paper.ReferenceKnown))
-	for _, count := range paper.Counts {
-		write(strconv.FormatFloat(count, 'g', -1, 64))
-	}
 }
 
 // Get returns the cached WL refinement for pdg, rebuilding the graph from
@@ -161,18 +97,6 @@ func (c *WlCache) Save(path string) error {
 	return nil
 }
 
-// ensureCacheDir creates the parent directory of path, unless path is bare.
-func ensureCacheDir(path string) error {
-	dir := filepath.Dir(path)
-	if dir == "." || dir == "" {
-		return nil
-	}
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("mkdir wl cache dir %s: %w", dir, err)
-	}
-	return nil
-}
-
 // Load reads a cache file written by Save. A missing file is not an error:
 // the first run simply starts cold. Files with a different version are
 // ignored (stale). Corrupt files are reported.
@@ -205,4 +129,80 @@ func (c *WlCache) cacheKeysForTest() []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+// wlCacheVersion versions the cache format AND the WL computation. Bump it
+// whenever label(), the kernel, or canonicalization changes, so stale
+// entries from an older miner are never reused.
+const wlCacheVersion = 4
+
+// wlCacheFile is the JSON-serialized cache with a version header.
+type wlCacheFile struct {
+	Version int                     `json:"version"`
+	Entries map[string]wlCacheEntry `json:"entries"`
+}
+
+// wlCacheEntry is the JSON-serializable WL state. Histograms are rebuilt
+// from rounds on load; the graph is rebuilt from the PDG on cache hit.
+type wlCacheEntry struct {
+	Rounds   [][]uint64 `json:"rounds"`
+	Diameter int        `json:"diameter"`
+	Calls    int        `json:"calls"`
+	CharVec  []float64  `json:"charVec"`
+}
+
+// pdgKey hashes the PDG's semantic content (kinds, labels, edges) with FNV-1a.
+// Line numbers are excluded: shifting a function in its file is not a change.
+func pdgKey(pdg *MiningGraph) string {
+	h := fnvOffset64
+	write := func(s string) {
+		for i := 0; i < len(s); i++ {
+			h ^= uint64(s[i])
+			h *= fnvPrime64
+		}
+		h ^= 0xff
+		h *= fnvPrime64
+	}
+	for _, n := range pdg.Nodes {
+		write(string(n.Kind))
+		write(n.TyClass)
+		write(n.SigClass)
+		write(n.CalleeID)
+		write(n.LitKind)
+		write(n.Detail)
+	}
+	write("|")
+	for _, e := range pdg.Edges {
+		write(strconv.Itoa(e.From))
+		write(strconv.Itoa(e.To))
+		write(string(e.Kind))
+		write(strconv.Itoa(e.ArgPos))
+	}
+	writePaperKey(write, pdg.Paper)
+	return strconv.FormatUint(h, 16)
+}
+
+// Canonical source counts can change even when the abstraction view does not.
+// Cached characteristic vectors therefore need these facts in their identity.
+func writePaperKey(write func(string), paper *PaperCharacteristics) {
+	if paper == nil {
+		write("no-source-counts")
+		return
+	}
+	write(strconv.FormatBool(paper.ReferenceKnown))
+	for _, count := range paper.Counts {
+		write(strconv.FormatFloat(count, 'g', -1, 64))
+	}
+}
+
+// ensureCacheDir creates the parent directory of path, unless path is bare.
+func ensureCacheDir(path string) error {
+	dir := filepath.Dir(path)
+	if dir == "." || dir == "" {
+		return nil
+	}
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("mkdir wl cache dir %s: %w", dir, err)
+	}
+	return nil
 }

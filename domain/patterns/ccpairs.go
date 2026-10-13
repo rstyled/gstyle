@@ -53,6 +53,27 @@ type astShape struct {
 	total  int
 }
 
+func (a astShape) bypass(b astShape) bool {
+	if len(a.counts) == 0 || len(b.counts) == 0 {
+		return false
+	}
+	// Intersection cannot exceed the smaller total; union is at least
+	// the larger. Reject only pairs that cannot reach the same threshold.
+	largest := max(a.total, b.total)
+	if largest == 0 {
+		return true
+	}
+	if float64(min(a.total, b.total))/float64(largest) < astBypassThreshold {
+		return false
+	}
+	inter := 0
+	for i, count := range a.counts {
+		inter += min(count, b.counts[i])
+	}
+	union := a.total + b.total - inter
+	return float64(inter)/float64(union) >= astBypassThreshold
+}
+
 func ccASTShapes(ids []string, types map[string]map[string]int) []astShape {
 	columns := map[string]int{}
 	for _, id := range ids {
@@ -79,25 +100,4 @@ func denseASTShape(types map[string]int, columns map[string]int) astShape {
 		shape.total += count
 	}
 	return shape
-}
-
-func (a astShape) bypass(b astShape) bool {
-	if len(a.counts) == 0 || len(b.counts) == 0 {
-		return false
-	}
-	// Intersection cannot exceed the smaller total; union is at least
-	// the larger. Reject only pairs that cannot reach the same threshold.
-	largest := max(a.total, b.total)
-	if largest == 0 {
-		return true
-	}
-	if float64(min(a.total, b.total))/float64(largest) < astBypassThreshold {
-		return false
-	}
-	inter := 0
-	for i, count := range a.counts {
-		inter += min(count, b.counts[i])
-	}
-	union := a.total + b.total - inter
-	return float64(inter)/float64(union) >= astBypassThreshold
 }

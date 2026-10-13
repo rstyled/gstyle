@@ -198,14 +198,6 @@ func (b *irBuilder) removeFirstBindingEdges() {
 	})
 }
 
-func reachingConsumers(flow *cfg.CFG) []int {
-	consumers := make([]int, len(flow.Blocks))
-	for i, block := range flow.Blocks {
-		consumers[i] = len(block.Succs)
-	}
-	return consumers
-}
-
 func (b *irBuilder) bindingDescription() string {
 	if b.bindingOperations {
 		return interfaceFlowDescription
@@ -218,4 +210,12 @@ func (b *irBuilder) valueSubkind() string {
 		return "binding-value"
 	}
 	return "scalar-value"
+}
+
+func reachingConsumers(flow *cfg.CFG) []int {
+	consumers := make([]int, len(flow.Blocks))
+	for i, block := range flow.Blocks {
+		consumers[i] = len(block.Succs)
+	}
+	return consumers
 }

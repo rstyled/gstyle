@@ -33,6 +33,39 @@ type AnnotationStore interface {
 	DeleteAnnotation(repository string, id string) error
 }
 
+// sourceRowCounter snapshots the selected source and wrapping width for one
+// measurement operation. It does not persist derived state on the model.
+type sourceRowCounter struct {
+	function        domain.Function
+	annotations     []Annotation
+	patterns        []PatternMarker
+	patternPath     string
+	width           int
+	lastSourceIndex int
+}
+
+func (c sourceRowCounter) count(start int, end int) int {
+	if end < start {
+		return 0
+	}
+
+	count := end - start + 1
+	firstLine, lastLine := c.function.Line+start, c.function.Line+end
+	count += sourceDeletedRowCount(c.function.DiffLines, firstLine, lastLine)
+	count += sourceAnnotationRowCount(c.annotations, firstLine, lastLine, c.width)
+	count += sourcePatternRowCount(c.patterns, c.patternPath, firstLine, lastLine, c.width)
+	if start <= c.lastSourceIndex && c.lastSourceIndex <= end {
+		count += sourceDeletedRowCount(c.function.DiffLines, c.function.EndLine+1, c.function.EndLine+1)
+	}
+	return count
+}
+
+type annotationTarget struct {
+	Annotation
+	fileIndex     int
+	functionIndex int
+}
+
 func (m Model) resetSourceWorkspace() Model {
 	m.sourceWorkspace = sourceWorkspace{}
 	return m
@@ -82,17 +115,6 @@ func (m Model) sourceDisplayRowCount(start int, end int) int {
 	return m.sourceRowCounter().count(start, end)
 }
 
-// sourceRowCounter snapshots the selected source and wrapping width for one
-// measurement operation. It does not persist derived state on the model.
-type sourceRowCounter struct {
-	function        domain.Function
-	annotations     []Annotation
-	patterns        []PatternMarker
-	patternPath     string
-	width           int
-	lastSourceIndex int
-}
-
 func (m Model) sourceRowCounter() sourceRowCounter {
 	function, _ := m.selectedFunction()
 	return sourceRowCounter{
@@ -103,46 +125,6 @@ func (m Model) sourceRowCounter() sourceRowCounter {
 		width:           paneContentWidth(m.sourcePaneWidth()),
 		lastSourceIndex: sourceLineCount(function.Source) - 1,
 	}
-}
-
-func (c sourceRowCounter) count(start int, end int) int {
-	if end < start {
-		return 0
-	}
-
-	count := end - start + 1
-	firstLine, lastLine := c.function.Line+start, c.function.Line+end
-	count += sourceDeletedRowCount(c.function.DiffLines, firstLine, lastLine)
-	count += sourceAnnotationRowCount(c.annotations, firstLine, lastLine, c.width)
-	count += sourcePatternRowCount(c.patterns, c.patternPath, firstLine, lastLine, c.width)
-	if start <= c.lastSourceIndex && c.lastSourceIndex <= end {
-		count += sourceDeletedRowCount(c.function.DiffLines, c.function.EndLine+1, c.function.EndLine+1)
-	}
-	return count
-}
-
-func sourceDeletedRowCount(lines []domain.DiffLine, start int, end int) int {
-	count := 0
-	for _, line := range lines {
-		if line.Kind != domain.DiffDeleted || line.NewLine < start || line.NewLine > end {
-			continue
-		}
-		count++
-	}
-	return count
-}
-
-func sourceAnnotationRowCount(annotations []Annotation, start int, end int, width int) int {
-	count := 0
-	for index, annotation := range annotations {
-		if annotation.EndLine < start || annotation.EndLine > end {
-			continue
-		}
-		prefix := sourceAnnotationPrefix(index, len(annotations))
-		messageWidth := max(width-ansi.StringWidth(prefix), 1)
-		count += strings.Count(ansi.Wrap(annotation.Message, messageWidth, ""), "\n") + 1
-	}
-	return count
 }
 
 func (m Model) toggleVisualSelection() Model {
@@ -204,14 +186,6 @@ func (m Model) updateAnnotationInput(message tea.KeyPressMsg) Model {
 	return m
 }
 
-func trimLastRune(value string) string {
-	runes := []rune(value)
-	if len(runes) == 0 {
-		return value
-	}
-	return string(runes[:len(runes)-1])
-}
-
 func (m Model) saveDraftAnnotation() Model {
 	message := strings.TrimSpace(m.annotationDraft)
 	if message == "" || m.lineSelection == nil {
@@ -257,18 +231,6 @@ func (m Model) loadAnnotations() Model {
 	m.nextAnnotationID = nextAnnotationSequence(annotations)
 	m.annotationError = nil
 	return m
-}
-
-func nextAnnotationSequence(annotations []Annotation) int {
-	next := 0
-	for _, annotation := range annotations {
-		value := strings.TrimPrefix(annotation.ID, "annotation-")
-		sequence, err := strconv.Atoi(value)
-		if err == nil {
-			next = max(next, sequence)
-		}
-	}
-	return next
 }
 
 func (m *Model) newAnnotation(startLine int, endLine int, message string) (Annotation, bool) {
@@ -321,13 +283,6 @@ func (m Model) selectedSourceLineCount() int {
 	return sourceLineCount(function.Source)
 }
 
-func sourceLineCount(source string) int {
-	if source == "" {
-		return 0
-	}
-	return strings.Count(source, "\n") + 1
-}
-
 func (m Model) sourceLine() int {
 	function, ok := m.selectedFunction()
 	if !ok {
@@ -353,13 +308,6 @@ func (m Model) visibleAnnotations() []Annotation {
 		return annotationBefore(result[left], result[right])
 	})
 	return result
-}
-
-func annotationBefore(left Annotation, right Annotation) bool {
-	if left.StartLine != right.StartLine {
-		return left.StartLine < right.StartLine
-	}
-	return left.EndLine < right.EndLine
 }
 
 func (m Model) fileAnnotationCount(path string) int {
@@ -453,12 +401,6 @@ func (m Model) focusAdjacentAnnotation(delta int) Model {
 	return m.keepSourceCursorVisible()
 }
 
-type annotationTarget struct {
-	Annotation
-	fileIndex     int
-	functionIndex int
-}
-
 func (m Model) annotationTargets() []annotationTarget {
 	targets := make([]annotationTarget, 0, len(m.annotations))
 	for _, annotation := range m.annotations {
@@ -485,16 +427,6 @@ func (m Model) annotationTarget(annotation Annotation) annotationTarget {
 		}
 	}
 	return target
-}
-
-func annotationTargetBefore(left annotationTarget, right annotationTarget) bool {
-	if left.fileIndex != right.fileIndex {
-		return left.fileIndex < right.fileIndex
-	}
-	if left.functionIndex != right.functionIndex {
-		return left.functionIndex < right.functionIndex
-	}
-	return annotationBefore(left.Annotation, right.Annotation)
 }
 
 func (m Model) adjacentAnnotationTargetIndex(targets []annotationTarget, delta int) int {
@@ -551,4 +483,72 @@ func (m Model) annotationTargetBeforeCursor(target annotationTarget) bool {
 		return target.functionIndex < m.functionIndex
 	}
 	return target.StartLine <= m.sourceLine()
+}
+
+func sourceDeletedRowCount(lines []domain.DiffLine, start int, end int) int {
+	count := 0
+	for _, line := range lines {
+		if line.Kind != domain.DiffDeleted || line.NewLine < start || line.NewLine > end {
+			continue
+		}
+		count++
+	}
+	return count
+}
+
+func sourceAnnotationRowCount(annotations []Annotation, start int, end int, width int) int {
+	count := 0
+	for index, annotation := range annotations {
+		if annotation.EndLine < start || annotation.EndLine > end {
+			continue
+		}
+		prefix := sourceAnnotationPrefix(index, len(annotations))
+		messageWidth := max(width-ansi.StringWidth(prefix), 1)
+		count += strings.Count(ansi.Wrap(annotation.Message, messageWidth, ""), "\n") + 1
+	}
+	return count
+}
+
+func trimLastRune(value string) string {
+	runes := []rune(value)
+	if len(runes) == 0 {
+		return value
+	}
+	return string(runes[:len(runes)-1])
+}
+
+func nextAnnotationSequence(annotations []Annotation) int {
+	next := 0
+	for _, annotation := range annotations {
+		value := strings.TrimPrefix(annotation.ID, "annotation-")
+		sequence, err := strconv.Atoi(value)
+		if err == nil {
+			next = max(next, sequence)
+		}
+	}
+	return next
+}
+
+func sourceLineCount(source string) int {
+	if source == "" {
+		return 0
+	}
+	return strings.Count(source, "\n") + 1
+}
+
+func annotationBefore(left Annotation, right Annotation) bool {
+	if left.StartLine != right.StartLine {
+		return left.StartLine < right.StartLine
+	}
+	return left.EndLine < right.EndLine
+}
+
+func annotationTargetBefore(left annotationTarget, right annotationTarget) bool {
+	if left.fileIndex != right.fileIndex {
+		return left.fileIndex < right.fileIndex
+	}
+	if left.functionIndex != right.functionIndex {
+		return left.functionIndex < right.functionIndex
+	}
+	return annotationBefore(left.Annotation, right.Annotation)
 }

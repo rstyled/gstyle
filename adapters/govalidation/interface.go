@@ -15,6 +15,11 @@ var primitiveNames = map[types.BasicKind]string{
 	types.Uint: "usize", types.Uint8: "u8", types.Uint16: "u16", types.Uint32: "u32", types.Uint64: "u64", types.Uintptr: "usize",
 }
 
+type interfaceValue struct {
+	variable *types.Var
+	role     pdg.Role
+}
+
 func Primitive(typ types.Type) string {
 	if typ == nil {
 		return ""
@@ -49,11 +54,6 @@ func Interfaces(g *pdg.Graph, fn *ast.FuncDecl, info *types.Info) ([]ccgraph.Par
 
 func scalarSignature(signature *types.Signature) bool {
 	return !signature.Variadic() && signature.TypeParams().Len() == 0 && signature.RecvTypeParams().Len() == 0
-}
-
-type interfaceValue struct {
-	variable *types.Var
-	role     pdg.Role
 }
 
 func signatureInputs(signature *types.Signature) []interfaceValue {

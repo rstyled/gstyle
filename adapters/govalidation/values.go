@@ -13,6 +13,7 @@ type valueEdge struct {
 	from, to pdg.Ref
 	position pdg.Position
 }
+
 type valueCheck struct {
 	g        *pdg.Graph
 	fset     *token.FileSet
@@ -21,24 +22,6 @@ type valueCheck struct {
 	retained []bool
 	expected map[valueEdge]int
 	err      error
-}
-
-func Values(g *pdg.Graph, fn *ast.FuncDecl, fset *token.FileSet, info *types.Info) error {
-	if err := pdg.Validate(g); err != nil {
-		return err
-	}
-	a := valueCheck{g: g, fset: fset, info: info, nodes: map[site]pdg.Ref{}, retained: pdg.NormalProjection(g), expected: map[valueEdge]int{}}
-	if a.retained == nil {
-		return fmt.Errorf("value reachability is missing")
-	}
-	for i, node := range g.Nodes {
-		a.nodes[site{g.Spans[node.Span-1], node.Category, node.Synthetic}] = pdg.Ref(i + 1)
-	}
-	ast.Inspect(fn.Body, a.source)
-	if a.err != nil {
-		return a.err
-	}
-	return a.compare()
 }
 
 func (a *valueCheck) ref(node ast.Node, category pdg.Category, synthetic bool) pdg.Ref {
@@ -191,4 +174,22 @@ func (a *valueCheck) consume(edge pdg.Edge) error {
 	}
 	a.expected[key]--
 	return nil
+}
+
+func Values(g *pdg.Graph, fn *ast.FuncDecl, fset *token.FileSet, info *types.Info) error {
+	if err := pdg.Validate(g); err != nil {
+		return err
+	}
+	a := valueCheck{g: g, fset: fset, info: info, nodes: map[site]pdg.Ref{}, retained: pdg.NormalProjection(g), expected: map[valueEdge]int{}}
+	if a.retained == nil {
+		return fmt.Errorf("value reachability is missing")
+	}
+	for i, node := range g.Nodes {
+		a.nodes[site{g.Spans[node.Span-1], node.Category, node.Synthetic}] = pdg.Ref(i + 1)
+	}
+	ast.Inspect(fn.Body, a.source)
+	if a.err != nil {
+		return a.err
+	}
+	return a.compare()
 }

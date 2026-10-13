@@ -8,23 +8,6 @@ import (
 	"github.com/rstyled/gstyle/domain/patterns"
 )
 
-// findErrorCheckSites finds call sites and tracks whether the error was checked.
-// Used for deviant_behavior mining (Engler et al., SOSP 2001).
-func findErrorCheckSites(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info) []patterns.ErrorCheckSite {
-	if fn.Body == nil {
-		return nil
-	}
-	var sites []patterns.ErrorCheckSite
-	// Use a custom walker that tracks parents.
-	w := &errorCheckWalker{
-		fset:  fset,
-		info:  info,
-		sites: &sites,
-	}
-	ast.Walk(w, fn.Body)
-	return sites
-}
-
 type errorCheckWalker struct {
 	fset  *token.FileSet
 	info  *types.Info
@@ -79,6 +62,23 @@ func (w *errorCheckWalker) isChecked(call *ast.CallExpr) bool {
 		return false // Result ignored: `f()` without assignment.
 	}
 	return true
+}
+
+// findErrorCheckSites finds call sites and tracks whether the error was checked.
+// Used for deviant_behavior mining (Engler et al., SOSP 2001).
+func findErrorCheckSites(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info) []patterns.ErrorCheckSite {
+	if fn.Body == nil {
+		return nil
+	}
+	var sites []patterns.ErrorCheckSite
+	// Use a custom walker that tracks parents.
+	w := &errorCheckWalker{
+		fset:  fset,
+		info:  info,
+		sites: &sites,
+	}
+	ast.Walk(w, fn.Body)
+	return sites
 }
 
 // isBlankAssignment checks if a node is an assignment with `_` on the LHS.

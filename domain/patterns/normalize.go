@@ -62,14 +62,14 @@ type Rules struct {
 	Propagate bool
 }
 
+// IsNone reports whether no rule is enabled.
+func (r Rules) IsNone() bool { return r == Rules{} }
+
 // RulesAll enables every rule. (A var: Go cannot const a struct.)
 var RulesAll = Rules{
 	Ctor: true, Pred: true, Case: true, Exit: true,
 	Counter: true, Cmp: true, Propagate: true,
 }
-
-// IsNone reports whether no rule is enabled.
-func (r Rules) IsNone() bool { return r == Rules{} }
 
 // ruleSetters maps a rule name to the field it enables. "all" resets first,
 // mirroring the Rust struct-update order.
@@ -82,6 +82,55 @@ var ruleSetters = map[string]func(*Rules){
 	"counter": func(r *Rules) { r.Counter = true },
 	"cmp":     func(r *Rules) { r.Cmp = true },
 	"try":     func(r *Rules) { r.Propagate = true },
+}
+
+type predLeaf struct {
+	node    int
+	negated bool
+}
+
+type litHit struct{ b, op, lit, x int }
+
+// ---- R4: exits -----------------------------------------------------------------
+
+// macroKind is rstyle's Macro node kind. The Go schema has no Macro kind and
+// no macro_name field, so this never matches extractor output; the rule is
+// kept so a front end that does emit macro nodes still gets the R4
+// treatment. The detail text stands in for Rust's macro_name.
+const macroKind NodeKind = "macro"
+
+// goProp is a residual Go error-propagate shape: the branch, the !=/==
+// comparison, the nil literal, the checked value, and the return.
+type goProp struct {
+	branch int
+	op     int
+	nilLit int
+	x      int
+	ret    int
+}
+
+// ---- R5-R7: loops and counters -------------------------------------------------
+
+var compares = []string{"<", "<=", "==", ">=", ">", "!="}
+
+type rangeLoop struct {
+	iterate int
+	call    int
+	bounds  []int
+}
+
+type counterFound struct {
+	step   int
+	init   int
+	amount int // -1 for ++/-- steps, which have no amount node
+	looped int
+}
+
+type guardFound struct {
+	guard int
+	owner int
+	op    int
+	bound int
 }
 
 // ParseRules parses "ctor,pred", "all" or "". Unknown names are an error,
@@ -522,11 +571,6 @@ func predicateTree(pdg *MiningGraph, node int) bool {
 	return true
 }
 
-type predLeaf struct {
-	node    int
-	negated bool
-}
-
 // predLeaves: call leaves under node, each with whether an odd number of
 // ! sits above it.
 func predLeaves(pdg *MiningGraph, node int, negated bool) []predLeaf {
@@ -735,8 +779,6 @@ func litScrutinee(pdg *MiningGraph, b int) (op, lit, x int, ok bool) {
 	return litScrutineeOp(pdg, b)
 }
 
-type litHit struct{ b, op, lit, x int }
-
 func litScrutineeHits(pdg *MiningGraph) []litHit {
 	var hits []litHit
 	for b := range pdg.Nodes {
@@ -878,14 +920,6 @@ func unifyCase(pdg *MiningGraph) *MiningGraph {
 	return flattenElseIf(relabelCases(literalScrutinees(contractLets(pdg))))
 }
 
-// ---- R4: exits -----------------------------------------------------------------
-
-// macroKind is rstyle's Macro node kind. The Go schema has no Macro kind and
-// no macro_name field, so this never matches extractor output; the rule is
-// kept so a front end that does emit macro nodes still gets the R4
-// treatment. The detail text stands in for Rust's macro_name.
-const macroKind NodeKind = "macro"
-
 // dropUnreachable: unreachable!() closes a `for` that always returns inside;
 // the loop form has no such tail.
 func dropUnreachable(pdg *MiningGraph) *MiningGraph {
@@ -957,16 +991,6 @@ func propagations(pdg *MiningGraph) [][3]int {
 		}
 	}
 	return out
-}
-
-// goProp is a residual Go error-propagate shape: the branch, the !=/==
-// comparison, the nil literal, the checked value, and the return.
-type goProp struct {
-	branch int
-	op     int
-	nilLit int
-	x      int
-	ret    int
 }
 
 func isNilLit(n *PdgNode) bool {
@@ -1119,22 +1143,12 @@ func propagateErrors(pdg *MiningGraph) *MiningGraph {
 	return without(&MiningGraph{Nodes: nodes, Edges: edges}, propagationDead(found, goFound))
 }
 
-// ---- R5-R7: loops and counters -------------------------------------------------
-
-var compares = []string{"<", "<=", "==", ">=", ">", "!="}
-
 func isCompare(n *PdgNode) bool {
 	return n.Kind == Op && slices.Contains(compares, opSuffix(n.Detail))
 }
 
 func isIntLit(n *PdgNode) bool {
 	return isValueLeaf(n) && n.LitKind == "int"
-}
-
-type rangeLoop struct {
-	iterate int
-	call    int
-	bounds  []int
 }
 
 func isRangeCall(pdg *MiningGraph, call int) bool {
@@ -1310,13 +1324,6 @@ func manualCounter(pdg *MiningGraph, step int) (init, amount, looped int, ok boo
 	return init, amount, looped, true
 }
 
-type counterFound struct {
-	step   int
-	init   int
-	amount int // -1 for ++/-- steps, which have no amount node
-	looped int
-}
-
 func counterMaps(founds []counterFound) (map[int]int, map[int]bool) {
 	loopOf := make(map[int]int, len(founds))
 	steps := make(map[int]bool, len(founds))
@@ -1373,13 +1380,6 @@ func manualCounters(pdg *MiningGraph) *MiningGraph {
 	}
 	edges := dedupEdges(append(append([]PdgEdge{}, pdg.Edges...), counterReads(pdg, founds)...))
 	return without(&MiningGraph{Nodes: pdg.Nodes, Edges: edges}, counterDead(founds))
-}
-
-type guardFound struct {
-	guard int
-	owner int
-	op    int
-	bound int
 }
 
 func loopGuardOwner(pdg *MiningGraph, g int) (int, bool) {

@@ -13,6 +13,12 @@ import (
 
 var errorType = types.Universe.Lookup("error").Type().Underlying().(*types.Interface)
 
+// nilErrCheck holds the parsed `if err != nil` / `if err == nil` condition.
+type nilErrCheck struct {
+	errVal   ast.Expr
+	isNotNil bool
+}
+
 // findNilErrHits finds `if err != nil { return nil }` and
 // the equivalent `if err == nil { ... } else { return nil }` pattern.
 func findNilErrHits(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info) []patterns.NilErrHit {
@@ -92,12 +98,6 @@ func isNilErrErrorType(t types.Type) bool {
 func isErrorASTType(e ast.Expr) bool {
 	ident, ok := e.(*ast.Ident)
 	return ok && ident.Name == "error"
-}
-
-// nilErrCheck holds the parsed `if err != nil` / `if err == nil` condition.
-type nilErrCheck struct {
-	errVal   ast.Expr
-	isNotNil bool
 }
 
 // checkNilErrIf checks one if statement for the nilerr pattern.

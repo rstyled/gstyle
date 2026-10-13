@@ -56,16 +56,6 @@ func (x *extractor) bindAssignments(places, values []ast.Expr) {
 	}
 }
 
-func assignmentValue(values []ast.Expr, index, placeCount int) ast.Expr {
-	if len(values) == 0 {
-		return nil
-	}
-	if len(values) == placeCount {
-		return values[index]
-	}
-	return values[0]
-}
-
 func (x *extractor) addressBinding(value *ast.UnaryExpr) {
 	if value.Op != token.AND {
 		return
@@ -107,11 +97,6 @@ func (x *extractor) mutate(place ast.Expr, pos token.Pos, storage bool) {
 	})
 }
 
-func discardedPlace(place ast.Expr) bool {
-	id, ok := ast.Unparen(place).(*ast.Ident)
-	return ok && id.Name == "_"
-}
-
 func (x *extractor) placeRoot(place ast.Expr) (types.Object, []string) {
 	switch place := place.(type) {
 	case *ast.Ident:
@@ -140,21 +125,6 @@ func (x *extractor) mutationProvenance(place ast.Expr, storage bool) quality.Pro
 	return x.placeProvenance(place)
 }
 
-func projectedBase(place ast.Expr) ast.Expr {
-	switch place := place.(type) {
-	case *ast.IndexExpr:
-		return place.X
-	case *ast.SliceExpr:
-		return place.X
-	case *ast.StarExpr:
-		return place.X
-	case *ast.ParenExpr:
-		return place.X
-	default:
-		return nil
-	}
-}
-
 func (x *extractor) selectorRoot(place *ast.SelectorExpr) (types.Object, []string) {
 	object := x.pkg.TypesInfo.ObjectOf(place.Sel)
 	if object != nil && packageVariable(object) {
@@ -162,13 +132,6 @@ func (x *extractor) selectorRoot(place *ast.SelectorExpr) (types.Object, []strin
 	}
 	root, fields := x.placeRoot(place.X)
 	return root, append(fields, place.Sel.Name)
-}
-
-func underlying(typ types.Type) types.Type {
-	if typ == nil {
-		return nil
-	}
-	return typ.Underlying()
 }
 
 func (x *extractor) placeProvenance(place ast.Expr) quality.Provenance {
@@ -196,24 +159,6 @@ func (x *extractor) selectorProvenance(place *ast.SelectorExpr) quality.Provenan
 		return x.origin(place.X, map[types.Object]bool{})
 	}
 	return x.placeProvenance(place.X)
-}
-
-func embeddedPointer(selection *types.Selection) bool {
-	if selection == nil {
-		return false
-	}
-	typ := underlying(selection.Recv())
-	if pointer, ok := typ.(*types.Pointer); ok {
-		typ = underlying(pointer.Elem())
-	}
-	// The compiler supplies struct fields for every step before the final field.
-	for _, index := range selection.Index()[:len(selection.Index())-1] {
-		typ = underlying(typ.(*types.Struct).Field(index).Type())
-		if _, ok := typ.(*types.Pointer); ok {
-			return true
-		}
-	}
-	return false
 }
 
 func (x *extractor) indexProvenance(place *ast.IndexExpr) quality.Provenance {
@@ -330,4 +275,59 @@ func (x *extractor) bindingOrigin(binding referenceBinding, seen map[types.Objec
 		}
 	}
 	return result
+}
+
+func assignmentValue(values []ast.Expr, index, placeCount int) ast.Expr {
+	if len(values) == 0 {
+		return nil
+	}
+	if len(values) == placeCount {
+		return values[index]
+	}
+	return values[0]
+}
+
+func discardedPlace(place ast.Expr) bool {
+	id, ok := ast.Unparen(place).(*ast.Ident)
+	return ok && id.Name == "_"
+}
+
+func projectedBase(place ast.Expr) ast.Expr {
+	switch place := place.(type) {
+	case *ast.IndexExpr:
+		return place.X
+	case *ast.SliceExpr:
+		return place.X
+	case *ast.StarExpr:
+		return place.X
+	case *ast.ParenExpr:
+		return place.X
+	default:
+		return nil
+	}
+}
+
+func underlying(typ types.Type) types.Type {
+	if typ == nil {
+		return nil
+	}
+	return typ.Underlying()
+}
+
+func embeddedPointer(selection *types.Selection) bool {
+	if selection == nil {
+		return false
+	}
+	typ := underlying(selection.Recv())
+	if pointer, ok := typ.(*types.Pointer); ok {
+		typ = underlying(pointer.Elem())
+	}
+	// The compiler supplies struct fields for every step before the final field.
+	for _, index := range selection.Index()[:len(selection.Index())-1] {
+		typ = underlying(typ.(*types.Struct).Field(index).Type())
+		if _, ok := typ.(*types.Pointer); ok {
+			return true
+		}
+	}
+	return false
 }

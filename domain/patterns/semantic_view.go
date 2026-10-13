@@ -2,6 +2,13 @@ package patterns
 
 import "github.com/rstyled/gstyle/domain/pdg"
 
+var semanticKinds = map[pdg.Category]NodeKind{
+	pdg.Entry: "entry", pdg.Exit: "exit", pdg.FormalInput: Param,
+	pdg.FormalOutput: "formal_output", pdg.Declaration: Let, pdg.Assignment: Op,
+	pdg.Computation: Op, pdg.Read: Field, pdg.Call: Call, pdg.Control: Branch,
+	pdg.Return: Return, pdg.Other: Op,
+}
+
 // semanticFact borrows the canonical graph and builds scratch for one function.
 // It does not retain a second full-corpus graph or copy symbols and evidence.
 func semanticFact(f *MiningFacts) *MiningFacts {
@@ -52,13 +59,6 @@ func semanticCallee(graph *pdg.Graph, attrs pdg.Attributes) string {
 		return ""
 	}
 	return graph.Tables.Text(attrs.Callee.Value)
-}
-
-var semanticKinds = map[pdg.Category]NodeKind{
-	pdg.Entry: "entry", pdg.Exit: "exit", pdg.FormalInput: Param,
-	pdg.FormalOutput: "formal_output", pdg.Declaration: Let, pdg.Assignment: Op,
-	pdg.Computation: Op, pdg.Read: Field, pdg.Call: Call, pdg.Control: Branch,
-	pdg.Return: Return, pdg.Other: Op,
 }
 
 func semanticEdge(edge pdg.Edge) PdgEdge {

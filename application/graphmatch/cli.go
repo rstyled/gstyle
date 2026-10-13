@@ -19,11 +19,18 @@ type inputFile struct {
 	InputScope string                  `json:"input_scope"`
 	Functions  []ccgraph.StageFunction `json:"functions"`
 }
+
 type record struct {
 	Type  string        `json:"type"`
 	Pair  *ccgraph.Pair `json:"pair,omitempty"`
 	Run   *ccgraph.Run  `json:"run,omitempty"`
 	Error string        `json:"error,omitempty"`
+}
+
+type options struct {
+	input, config         string
+	timeout               time.Duration
+	source, contextOutput string
 }
 
 // Run writes JSON Lines pair traces followed by a complete/incomplete summary.
@@ -42,12 +49,6 @@ func Run(ctx context.Context, args []string, output io.Writer) error {
 		return err
 	}
 	return runDeadline(ctx, options{input: *path, config: *configPath, timeout: *timeout, source: *source, contextOutput: *contextPath}, output)
-}
-
-type options struct {
-	input, config         string
-	timeout               time.Duration
-	source, contextOutput string
 }
 
 func runDeadline(ctx context.Context, opts options, output io.Writer) error {

@@ -20,6 +20,23 @@ type checker struct {
 	output  *checkerOutput
 }
 
+func newChecker(options options) (*checker, func(), error) {
+	executable, err := exec.LookPath(options.command[0])
+	if err != nil {
+		return nil, nil, fmt.Errorf("find checker: %w", err)
+	}
+	temporaryRoot, err := filepath.Abs(os.TempDir())
+	if err != nil {
+		return nil, nil, fmt.Errorf("resolve temporary directory: %w", err)
+	}
+	workspace, err := os.MkdirTemp(temporaryRoot, "gstyle-bug-reducer-")
+	if err != nil {
+		return nil, nil, fmt.Errorf("create workspace: %w", err)
+	}
+	command := append([]string{executable}, options.command[1:]...)
+	return &checker{command: command, path: filepath.Join(workspace, filepath.Base(options.input)), timeout: options.timeout}, func() { os.RemoveAll(workspace) }, nil
+}
+
 func (c *checker) check(ctx context.Context, candidate []byte) (bool, error) {
 	if ctx.Err() != nil {
 		return false, ctx.Err()
@@ -59,21 +76,4 @@ func checkResult(ctx context.Context, err error) (bool, error) {
 		return false, nil
 	}
 	return false, fmt.Errorf("run checker: %w", err)
-}
-
-func newChecker(options options) (*checker, func(), error) {
-	executable, err := exec.LookPath(options.command[0])
-	if err != nil {
-		return nil, nil, fmt.Errorf("find checker: %w", err)
-	}
-	temporaryRoot, err := filepath.Abs(os.TempDir())
-	if err != nil {
-		return nil, nil, fmt.Errorf("resolve temporary directory: %w", err)
-	}
-	workspace, err := os.MkdirTemp(temporaryRoot, "gstyle-bug-reducer-")
-	if err != nil {
-		return nil, nil, fmt.Errorf("create workspace: %w", err)
-	}
-	command := append([]string{executable}, options.command[1:]...)
-	return &checker{command: command, path: filepath.Join(workspace, filepath.Base(options.input)), timeout: options.timeout}, func() { os.RemoveAll(workspace) }, nil
 }
