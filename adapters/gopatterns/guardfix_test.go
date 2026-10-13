@@ -1,8 +1,11 @@
 package gopatterns
 
 import (
+	"github.com/rstyled/gstyle/domain/patterns"
+	"go/ast"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"strings"
 	"testing"
 )
@@ -190,5 +193,99 @@ func f(x int) int {
 	twice := fixSource(t, once)
 	if once != twice {
 		t.Errorf("not idempotent:\nfirst:\n%s\nsecond:\n%s", once, twice)
+	}
+}
+
+func TestGuardFixCommentMarkersInLiterals(t *testing.T) {
+	for _, literal := range []string{`"/*"`, `"//"`, "`/* raw */`"} {
+		source := "package p\nfunc classify(value string) int {\n if value == " + literal + " {\n value += \"accepted\"\n println(value)\n } else { return 0 }\n return 1\n}\n"
+		output := fixSource(t, source)
+		if strings.Contains(output, "} else {") {
+			t.Fatalf("literal mistaken for comment: %s", output)
+		}
+		if !strings.Contains(output, literal) {
+			t.Fatal("literal lost")
+		}
+	}
+}
+
+func TestGuardFixPreservesActualConditionComments(t *testing.T) {
+	source := "package p\nfunc classify(value string) int {\n if value /* preserve */ == \"/*\" {\n value += \"accepted\"\n println(value)\n } else { return 0 }\n return 1\n}\n"
+	if output := fixSource(t, source); output != source {
+		t.Fatalf("condition comment changed: %s", output)
+	}
+}
+
+func TestGuardFixNestedElseIfKeepsHappyPathConditional(t *testing.T) {
+	source := `package p
+func classify(first, second bool) int {
+ result := 0
+ if first {
+  result = 1
+ } else if second {
+  result = 2
+  result += 10
+ } else {
+  return 3
+ }
+ return result
+}
+`
+	output := fixSource(t, source)
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "fixed.go", output, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fn := file.Decls[0].(*ast.FuncDecl)
+	outer := fn.Body.List[1].(*ast.IfStmt)
+	branch, ok := outer.Else.(*ast.BlockStmt)
+	if !ok {
+		t.Fatalf("else-if remains unscoped: %s", output)
+	}
+	if len(branch.List) != 3 {
+		t.Fatalf("happy path escapes else: %s", output)
+	}
+	guard := branch.List[0].(*ast.IfStmt)
+	if guard.Else != nil || !blockEndsReturn(guard.Body) {
+		t.Fatal("missing terminal guard")
+	}
+	if len(fn.Body.List) != 3 {
+		t.Fatal("happy path moved outside conditional branch")
+	}
+	info := &types.Info{}
+	config := types.Config{}
+	if _, err := config.Check("p", fset, []*ast.File{file}, info); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestApplyGuardLiteralElseIfSpec(t *testing.T) {
+	source := `package p
+func classify(value string) int {
+ if value == "line" { return 1 } else if value == "/*" {
+  value += "block"
+  println(value)
+ } else { return 0 }
+ return 2
+}
+`
+	spec := &patterns.FixSpec{Kind: patterns.GuardClause, File: "sample.go", Params: map[string]string{"if_line": "3"}}
+	// Two ifs share a line: the spec must select the matching inner guard.
+	output, err := ApplyFix(spec, []byte(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(output), "else {") || !strings.Contains(string(output), `if value != "/*"`) {
+		t.Fatalf("incorrect nested guard: %s", output)
+	}
+}
+
+func TestGuardFixPreservesHeaderComments(t *testing.T) {
+	for _, condition := range []string{`/* before */ value == "/*"`, `value == "/*" /* after */`} {
+		source := "package p\nfunc classify(value string) int {\n if " + condition + " {\n value += \"accepted\"\n println(value)\n } else { return 0 }\n return 1\n}\n"
+		if output := fixSource(t, source); output != source {
+			t.Fatalf("header comment lost: %s", output)
+		}
 	}
 }

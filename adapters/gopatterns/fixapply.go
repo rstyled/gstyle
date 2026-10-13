@@ -28,7 +28,7 @@ func applyGuardFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
 	if target == nil {
 		return nil, fmt.Errorf("guard_clause: no if statement at line %d", ifLine)
 	}
-	edit, _, ok := guardEdit(fset, target, src)
+	edit, _, ok := guardFileEdit(fset, f, target, src)
 	if !ok {
 		return nil, fmt.Errorf("guard_clause: cannot fix if at line %d", ifLine)
 	}
@@ -57,7 +57,7 @@ func findIfAtLine(fset *token.FileSet, f *ast.File, line int) *ast.IfStmt {
 		if !ok {
 			return true
 		}
-		if fset.Position(ifStmt.Pos()).Line == line {
+		if fset.Position(ifStmt.Pos()).Line == line && isInvertedGuard(ifStmt) {
 			target = ifStmt
 			return false
 		}

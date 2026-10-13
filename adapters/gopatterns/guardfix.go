@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/format"
+	"go/scanner"
 	"go/token"
 )
 
@@ -40,7 +41,7 @@ func FixInvertedGuards(fset *token.FileSet, f *ast.File, src []byte) ([]byte, []
 		if !isInvertedGuard(ifStmt) {
 			return true
 		}
-		edit, fix, ok := guardEdit(fset, ifStmt, src)
+		edit, fix, ok := guardFileEdit(fset, f, ifStmt, src)
 		if !ok {
 			return true
 		}
@@ -110,7 +111,7 @@ func guardEdit(fset *token.FileSet, ifStmt *ast.IfStmt, src []byte) (textEdit, G
 
 	// Safety: if the condition contained comments, format.Node may have
 	// dropped them. Bail out rather than silently deleting comments.
-	if hasComments(ifStmt.Cond, fset, src) {
+	if guardHeaderHasComments(ifStmt, fset, src) {
 		return textEdit{}, GuardFix{}, false
 	}
 
@@ -151,15 +152,29 @@ func guardEdit(fset *token.FileSet, ifStmt *ast.IfStmt, src []byte) (textEdit, G
 		true
 }
 
-// hasComments reports whether there are comments within the node's span.
-func hasComments(n ast.Node, fset *token.FileSet, src []byte) bool {
+// guardHeaderHasComments protects comments that a rewritten header would drop.
+func guardHeaderHasComments(n *ast.IfStmt, fset *token.FileSet, src []byte) bool {
 	start := fset.PositionFor(n.Pos(), false).Offset
-	end := fset.PositionFor(n.End(), false).Offset
+	end := fset.PositionFor(n.Body.Lbrace, false).Offset
 	if start < 0 || end > len(src) || start >= end {
 		return false
 	}
-	seg := src[start:end]
-	return bytes.Contains(seg, []byte("//")) || bytes.Contains(seg, []byte("/*"))
+	return conditionHasComments(src[start:end])
+}
+
+func conditionHasComments(segment []byte) bool {
+	var lexer scanner.Scanner
+	file := token.NewFileSet().AddFile("condition", -1, len(segment))
+	lexer.Init(file, segment, nil, scanner.ScanComments)
+	for {
+		_, kind, _ := lexer.Scan()
+		if kind == token.COMMENT {
+			return true
+		}
+		if kind == token.EOF {
+			return false
+		}
+	}
 }
 
 // safeInit reports whether the init statement can be hoisted before the if.
@@ -246,4 +261,28 @@ func invertOrdering(op token.Token) token.Token {
 	default: // token.GTR
 		return token.LEQ
 	}
+}
+
+// A rewritten else-if must stay within its original conditional branch.
+func guardFileEdit(fset *token.FileSet, file *ast.File, target *ast.IfStmt, src []byte) (textEdit, GuardFix, bool) {
+	edit, fix, ok := guardEdit(fset, target, src)
+	if !ok {
+		return edit, fix, false
+	}
+	if elseIfInFile(file, target) {
+		edit.replacement = append([]byte("{\n"), edit.replacement...)
+		edit.replacement = append(edit.replacement, []byte("\n}")...)
+	}
+	return edit, fix, true
+}
+
+func elseIfInFile(file *ast.File, target *ast.IfStmt) bool {
+	found := false
+	ast.Inspect(file, func(node ast.Node) bool {
+		if statement, ok := node.(*ast.IfStmt); ok && statement.Else == target {
+			found = true
+		}
+		return !found
+	})
+	return found
 }
