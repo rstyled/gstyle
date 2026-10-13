@@ -38,7 +38,7 @@ func init() {}
 func init() {}
 `)
 	spec := &patterns.FixSpec{Kind: patterns.DeclarationOrder, File: "example.go"}
-	fixed, err := ApplyFix(spec, src)
+	fixed, err := applyProjectedFix(t, spec, src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func init() {}
 			t.Errorf("comment lost: %s\n%s", comment, fixed)
 		}
 	}
-	again, err := ApplyFix(spec, fixed)
+	again, err := applyProjectedFix(t, spec, fixed)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestDeclarationOrderKeepsDirectivesAndCgo(t *testing.T) {
 		"package example\nfunc helper() {}\n//go:noinline\nfunc NewThing() *Thing { return nil }\ntype Thing struct{}\n",
 		"package example\n/* preamble */\nimport \"C\"\nfunc helper() {}\ntype Thing struct{}\nfunc (t Thing) Run() {}\n",
 	} {
-		out, err := ApplyFix(&patterns.FixSpec{Kind: patterns.DeclarationOrder, File: "example.go"}, []byte(src))
+		out, err := applyProjectedFix(t, &patterns.FixSpec{Kind: patterns.DeclarationOrder, File: "example.go"}, []byte(src))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -76,7 +76,7 @@ func TestDeclarationOrderKeepsDirectivesAndCgo(t *testing.T) {
 }
 
 func TestDeclarationOrderParseError(t *testing.T) {
-	_, err := ApplyFix(&patterns.FixSpec{Kind: patterns.DeclarationOrder, File: "example.go"}, []byte("package example\nfunc ("))
+	_, err := applyProjectedFix(t, &patterns.FixSpec{Kind: patterns.DeclarationOrder, File: "example.go"}, []byte("package example\nfunc ("))
 	if err == nil {
 		t.Fatal("expected parse error")
 	}
@@ -106,7 +106,7 @@ func declarationNames(t *testing.T, src []byte) []string {
 
 func TestDeclarationOrderLeavesScalarFactoriesAsFunctions(t *testing.T) {
 	src := []byte("package example\n\nfunc helper() {}\nfunc NewCount() int { return 1 }\n")
-	out, err := ApplyFix(&patterns.FixSpec{Kind: patterns.DeclarationOrder, File: "example.go"}, src)
+	out, err := applyProjectedFix(t, &patterns.FixSpec{Kind: patterns.DeclarationOrder, File: "example.go"}, src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestDeclarationOrderLeavesScalarFactoriesAsFunctions(t *testing.T) {
 
 func TestDeclarationOrderKeepsSameLineDeclarations(t *testing.T) {
 	src := []byte("package example\nfunc helper() {}; type Thing struct{}; func (t Thing) Run() {}\n")
-	out, err := ApplyFix(&patterns.FixSpec{Kind: patterns.DeclarationOrder, File: "example.go"}, src)
+	out, err := applyProjectedFix(t, &patterns.FixSpec{Kind: patterns.DeclarationOrder, File: "example.go"}, src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func (s Second) Public() {}
 func (f First) private() {}
 func helper() {}
 `)
-	out, err := ApplyFix(&patterns.FixSpec{Kind: patterns.DeclarationOrder, File: "example.go"}, src)
+	out, err := applyProjectedFix(t, &patterns.FixSpec{Kind: patterns.DeclarationOrder, File: "example.go"}, src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +177,7 @@ func helper() {}
 func TestDeclarationOrderWithoutFinalNewline(t *testing.T) {
 	src := []byte("package example\n\nfunc helper() {}\n\ntype Thing struct{}\n\nfunc (t Thing) private() {}\n\nfunc (t Thing) Public() {}")
 	spec := &patterns.FixSpec{Kind: patterns.DeclarationOrder, File: "example.go"}
-	out, err := ApplyFix(spec, src)
+	out, err := applyProjectedFix(t, spec, src)
 	if err != nil {
 		t.Fatal(err)
 	}

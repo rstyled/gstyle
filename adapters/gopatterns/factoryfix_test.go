@@ -37,7 +37,7 @@ func b() {
 			"type": "Config",
 		},
 	}
-	out, err := applyFactoryFix(spec, []byte(src))
+	out, err := applyProjectedFix(t, spec, []byte(src))
 	if err != nil {
 		t.Fatalf("apply: %v", err)
 	}
@@ -81,7 +81,7 @@ func a() {
 		Line:   13,
 		Params: map[string]string{"type": "Config"},
 	}
-	out, err := applyFactoryFix(spec, []byte(src))
+	out, err := applyProjectedFix(t, spec, []byte(src))
 	if err != nil {
 		t.Fatalf("apply: %v", err)
 	}
@@ -117,7 +117,7 @@ func a() {
 		Line:   17,
 		Params: map[string]string{"type": "Config"},
 	}
-	out, err := applyFactoryFix(spec, []byte(src))
+	out, err := applyProjectedFix(t, spec, []byte(src))
 	if err != nil {
 		t.Fatalf("apply: %v", err)
 	}
@@ -152,7 +152,7 @@ func b() *Config {
 		Line:   14,
 		Params: map[string]string{"type": "Config"},
 	}
-	out, err := applyFactoryFix(spec, []byte(src))
+	out, err := applyProjectedFix(t, spec, []byte(src))
 	if err != nil {
 		t.Fatalf("apply: %v", err)
 	}

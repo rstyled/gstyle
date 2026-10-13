@@ -1,0 +1,135 @@
+package gopatterns
+
+import (
+	"go/ast"
+	"go/token"
+	"go/types"
+	"strings"
+
+	"github.com/rstyled/gstyle/domain/patterns"
+	"github.com/rstyled/gstyle/domain/pdg"
+	"golang.org/x/tools/go/packages"
+)
+
+func collectSourceReferences(sources *pdg.SourceContext, pkgs []*packages.Package) {
+	seen := make(map[string]bool)
+	for _, pkg := range pkgs {
+		for _, file := range pkg.Syntax {
+			path := pkg.Fset.PositionFor(file.Pos(), false).Filename
+			if seen[path] {
+				continue
+			}
+			seen[path] = true
+			collectFileReferences(sources, pkg, file, sources.Reference(path))
+		}
+	}
+}
+
+func collectFileReferences(sources *pdg.SourceContext, pkg *packages.Package, file *ast.File, ref pdg.Ref) {
+	direct := make(map[*ast.Ident]*ast.CallExpr)
+	ast.Inspect(file, func(node ast.Node) bool {
+		recordDirectCall(direct, node)
+		return true
+	})
+	ast.Inspect(file, func(node ast.Node) bool {
+		ident, ok := node.(*ast.Ident)
+		if !ok {
+			return true
+		}
+		_, ok = pkg.TypesInfo.Uses[ident].(*types.Func)
+		if !ok {
+			return true
+		}
+		sources.References = append(sources.References, sourceReference(pkg, ref, ident, direct[ident]))
+		return true
+	})
+	for _, decl := range file.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok || fn.Body == nil {
+			continue
+		}
+		sources.Functions = append(sources.Functions, sourceFunction(pkg, fn, ref))
+	}
+}
+
+func withinNode(node ast.Node, parent ast.Node) bool {
+	return node.Pos() >= parent.Pos() && node.End() <= parent.End()
+}
+
+func recordDirectCall(direct map[*ast.Ident]*ast.CallExpr, node ast.Node) {
+	call, ok := node.(*ast.CallExpr)
+	if !ok {
+		return
+	}
+	ident, ok := call.Fun.(*ast.Ident)
+	if !ok {
+		return
+	}
+	direct[ident] = call
+}
+
+// The caller accepts only compiler-resolved function uses.
+func sourceReference(pkg *packages.Package, ref pdg.Ref, ident *ast.Ident, call *ast.CallExpr) pdg.SourceReference {
+	fset := pkg.Fset
+	function := pkg.TypesInfo.Uses[ident].(*types.Func)
+	result := pdg.SourceReference{Target: strings.Clone(patterns.FuncID(function.Origin())), Source: ref, Range: nodeByteRange(fset, ident), Callee: nodeByteRange(fset, ident)}
+	if call == nil {
+		return result
+	}
+	result.Direct = true
+	result.Variadic = call.Ellipsis.IsValid()
+	result.Range = nodeByteRange(fset, call)
+	for _, arg := range call.Args {
+		result.Arguments = append(result.Arguments, nodeByteRange(fset, arg))
+	}
+	return result
+}
+
+// Successful typed loading guarantees a function object and signature here.
+func sourceFunction(pkg *packages.Package, fn *ast.FuncDecl, ref pdg.Ref) pdg.SourceFunction {
+	object := pkg.TypesInfo.Defs[fn.Name].(*types.Func)
+	signature := object.Type().(*types.Signature)
+	result := pdg.SourceFunction{ID: strings.Clone(patterns.FuncID(object)), Name: strings.Clone(fn.Name.Name), Package: strings.Clone(pkg.PkgPath), Source: ref, Declaration: nodeByteRange(pkg.Fset, fn), NameRange: nodeByteRange(pkg.Fset, fn.Name), Parameters: nodeByteRange(pkg.Fset, fn.Type.Params), Method: fn.Recv != nil, Generic: signature.TypeParams().Len() > 0, Variadic: signature.Variadic()}
+	for _, field := range fn.Type.Params.List {
+		for _, name := range field.Names {
+			result.ParametersList = append(result.ParametersList, sourceParameter(pkg, fn, field, name))
+		}
+	}
+	ast.Inspect(fn, func(node ast.Node) bool {
+		ident, ok := node.(*ast.Ident)
+		if ok && pkg.TypesInfo.Defs[ident] != nil {
+			result.Bindings = append(result.Bindings, strings.Clone(ident.Name))
+		}
+		return true
+	})
+	return result
+}
+
+func sourceParameter(pkg *packages.Package, fn *ast.FuncDecl, field *ast.Field, name *ast.Ident) pdg.SourceParameter {
+	object := pkg.TypesInfo.Defs[name]
+	result := pdg.SourceParameter{Name: strings.Clone(name.Name), Type: strings.Clone(types.TypeString(object.Type(), nil)), TypeSyntax: types.ExprString(field.Type)}
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		if parameterAddressed(pkg, node, object) {
+			result.Addressed = true
+		}
+		ident, ok := node.(*ast.Ident)
+		if ok && pkg.TypesInfo.Uses[ident] == object {
+			result.Uses = append(result.Uses, nodeByteRange(pkg.Fset, ident))
+		}
+		return true
+	})
+	return result
+}
+
+func nodeByteRange(fset *token.FileSet, node ast.Node) pdg.ByteRange {
+	return pdg.ByteRange{Start: uint32(fset.PositionFor(node.Pos(), false).Offset), End: uint32(fset.PositionFor(node.End(), false).Offset)}
+}
+
+func parameterAddressed(pkg *packages.Package, node ast.Node, object types.Object) bool {
+	unary, ok := node.(*ast.UnaryExpr)
+	if !ok || unary.Op != token.AND {
+		return false
+	}
+	ident, ok := ast.Unparen(unary.X).(*ast.Ident)
+	return ok && pkg.TypesInfo.Uses[ident] == object
+}

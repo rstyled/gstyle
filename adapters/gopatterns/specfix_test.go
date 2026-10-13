@@ -43,7 +43,7 @@ func check2(user User) bool {
 			"rulekey": "User|Age:>:18,Active:truthy:",
 		},
 	}
-	out, err := ApplyFix(spec, []byte(src))
+	out, err := applyProjectedFix(t, spec, []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func check2(args apidomain.AgentArgs) bool {
 			"rulekey": `apidomain.AgentArgs|Action:==:"pause",Action:==:"cancel"`,
 		},
 	}
-	out, err := ApplyFix(spec, []byte(src))
+	out, err := applyProjectedFix(t, spec, []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func check1(user User) bool {
 			"rulekey": "User|Age:>:18,Active:truthy:",
 		},
 	}
-	out, err := ApplyFix(spec, []byte(src))
+	out, err := applyProjectedFix(t, spec, []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +212,7 @@ func check2(r Response) bool {
 			"rulekey": "Response|StatusCode:<:200,StatusCode:>=:300",
 		},
 	}
-	out, err := ApplyFix(spec, []byte(src))
+	out, err := applyProjectedFix(t, spec, []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,7 +253,7 @@ func check2(response *http.Response) bool {
 			"rulekey": "*http.Response|StatusCode:<:200,StatusCode:>=:300",
 		},
 	}
-	out, err := ApplyFix(spec, []byte(src))
+	out, err := applyProjectedFix(t, spec, []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}

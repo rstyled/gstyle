@@ -38,7 +38,7 @@ func doBlue() {}
 		File: "test.go",
 		Line: 12, // line of switch
 	}
-	out, err := applyEnumDispatchFix(spec, []byte(src))
+	out, err := applyProjectedFix(t, spec, []byte(src))
 	if err != nil {
 		t.Fatalf("applyEnumDispatchFix failed: %v", err)
 	}
@@ -73,7 +73,7 @@ func handle(x interface{}) {
 		File: "test.go",
 		Line: 4,
 	}
-	_, err := applyEnumDispatchFix(spec, []byte(src))
+	_, err := applyProjectedFix(t, spec, []byte(src))
 	if err == nil {
 		t.Error("expected error for type switch")
 	}
@@ -101,7 +101,7 @@ func maxFloat(a, b float64) float64 {
 		File: "test.go",
 		Line: 3,
 	}
-	out, err := applyGenericFnFix(spec, []byte(src))
+	out, err := applyProjectedFix(t, spec, []byte(src))
 	if err != nil {
 		t.Fatalf("applyGenericFnFix failed: %v", err)
 	}
@@ -140,7 +140,7 @@ func subFloat(a, b float64) float64 {
 		File: "test.go",
 		Line: 3,
 	}
-	_, err := applyGenericFnFix(spec, []byte(src))
+	_, err := applyProjectedFix(t, spec, []byte(src))
 	if err == nil {
 		t.Error("expected error for different bodies")
 	}

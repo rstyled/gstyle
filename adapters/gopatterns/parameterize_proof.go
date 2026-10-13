@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/ast"
-	"go/parser"
 	"go/token"
-	"os"
 	"strings"
 
 	"github.com/rstyled/gstyle/domain/patterns"
@@ -101,6 +99,10 @@ type callableProof struct{ canonical, source string }
 // VerifyParameterizations uses canonical IR facts, not a second compiler load.
 // AST matching checks the complete source; it does not establish type safety.
 func VerifyParameterizations(report *patterns.PatternsReport, extraction *Extraction) error {
+	if err := CheckFixSources(extraction.Sources); err != nil {
+		rejectStaleParameterizations(report)
+		return nil
+	}
 	graphs := make(map[string]*pdg.Graph)
 	for i := range extraction.Funcs {
 		fp := &extraction.Funcs[i]
@@ -129,23 +131,22 @@ func verifyParameterization(c patterns.Candidate, graphs map[string]*pdg.Graph, 
 	if !compatibleInterfaces(left, right) {
 		return unverifiedParameterization(c, "PDG function interfaces have unknown or incompatible types"), nil
 	}
-	source, err := parameterizationFile(c.Sites[0].Path, files, names[functionPackage(c.Sites[0].ID)])
+	source, err := parameterizationFile(c.Sites[0].Path, files, names[functionPackage(c.Sites[0].ID)], left.Tables.Sources)
 	if err != nil {
 		return c, err
 	}
 	return source.verifyCandidate(c, left, right), nil
 }
 
-func parameterizationFile(path string, files map[string]*parameterizationSource, names []string) (*parameterizationSource, error) {
+func parameterizationFile(path string, files map[string]*parameterizationSource, names []string, sources *pdg.SourceContext) (*parameterizationSource, error) {
 	if source := files[path]; source != nil {
 		return source, nil
 	}
-	src, err := os.ReadFile(path)
+	src, err := revisionSource(path, sources)
 	if err != nil {
 		return nil, err
 	}
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, path, src, parser.ParseComments)
+	fset, file, err := sourceSyntaxTree(fixSourcePath(sources.Root, path), sources)
 	if err != nil {
 		return nil, err
 	}
@@ -282,4 +283,14 @@ func functionPackage(id string) string {
 		return id[:dot]
 	}
 	return ""
+}
+
+func rejectStaleParameterizations(report *patterns.PatternsReport) {
+	for i, candidate := range report.Candidates {
+		if candidate.Kind != patterns.Parameterize {
+			continue
+		}
+		candidate.FixSpec = nil
+		report.Candidates[i] = unverifiedParameterization(candidate, "PDG evidence does not match the current source snapshot")
+	}
 }

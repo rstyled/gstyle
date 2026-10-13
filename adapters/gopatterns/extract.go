@@ -81,6 +81,7 @@ type FuncPdg struct {
 // Extraction is the full result of package analysis: per-function PDGs
 // plus package-level type findings (anemic models).
 type Extraction struct {
+	Sources *pdg.SourceContext
 	// PackageNames contains only declaration spellings, not compiler objects.
 	// It lets helper extraction avoid collisions with declarations in other files.
 	PackageNames      map[string][]string
@@ -221,10 +222,37 @@ func (b *builder) params(fn *ast.FuncDecl) {
 // (a variable use resolved through binds, blank, or unresolvable).
 const none = -1
 
+type sourceLoadOptions struct {
+	disk      *pdg.SourceContext
+	overlay   map[string][]byte
+	snapshots *pdg.SourceContext
+	tests     bool
+}
+
+// SourceOverlay holds a simulated source revision and its original disk evidence.
+type SourceOverlay struct {
+	Files map[string][]byte
+	Disk  *pdg.SourceContext
+}
+
 // Extract loads the packages enclosing paths and returns PDGs per
 // function plus anemic-model hits. Paths are directories (".", "./...")
 // or .go files, resolved under root.
 func Extract(ctx context.Context, root string, paths []string) (*Extraction, error) {
+	return extractWithSources(ctx, root, paths, sourceLoadOptions{})
+}
+
+// ExtractForFix includes test callers in the shared typed source inventory.
+func ExtractForFix(ctx context.Context, root string, paths []string) (*Extraction, error) {
+	return extractWithSources(ctx, root, paths, sourceLoadOptions{tests: true})
+}
+
+// ExtractFixOverlay builds fresh PDG facts for a preview revision without writes.
+func ExtractFixOverlay(ctx context.Context, root string, paths []string, revision SourceOverlay) (*Extraction, error) {
+	return extractWithSources(ctx, root, paths, sourceLoadOptions{tests: true, overlay: revision.Files, disk: revision.Disk})
+}
+
+func extractWithSources(ctx context.Context, root string, paths []string, options sourceLoadOptions) (*Extraction, error) {
 	abs, err := absRoot(root)
 	if err != nil {
 		return nil, err
@@ -233,10 +261,22 @@ func Extract(ctx context.Context, root string, paths []string) (*Extraction, err
 	if err != nil {
 		return nil, err
 	}
-	pkgs, sourceIdentities, err := loadPatternSources(ctx, abs, query)
+	sources := pdg.NewSourceContext(abs, query)
+	sources.Disk, sources.Overlay = options.disk, options.overlay
+	options.snapshots = sources
+	if options.tests {
+		return extractBoundedFix(ctx, abs, paths, options)
+	}
+	return extractNormalPackages(ctx, abs, paths, options)
+}
+
+func extractNormalPackages(ctx context.Context, abs string, paths []string, options sourceLoadOptions) (*Extraction, error) {
+	sources, query := options.snapshots, options.snapshots.Queries
+	pkgs, sourceIdentities, err := loadPatternSourcesForFix(ctx, abs, query, options)
 	if err != nil {
 		return nil, err
 	}
+	collectFixReferences(sources, pkgs, options.tests)
 	var funcsOut []FuncPdg
 	var orders []patterns.Candidate
 	var ranges []patterns.Candidate
@@ -244,20 +284,22 @@ func Extract(ctx context.Context, root string, paths []string) (*Extraction, err
 	var missing []patterns.MissingIdentityHit
 	var services []patterns.DomainServiceHit
 	pool := pdg.NewBuilder()
-	for _, pkg := range pkgs {
+	pool.Tables.Sources = sources
+	internSourceMetadata(pool)
+	for _, pkg := range productionPatternPackages(pkgs) {
 		funcs, err := packagePdgsWithSources(pkg, abs, pool, sourceIdentities)
 		if err != nil {
 			return nil, err
 		}
-		orders = append(orders, findDeclarationOrders(pkg, abs, paths)...)
-		ranges = append(ranges, findOffsetFallbacks(pkg, abs, paths, sourceIdentities)...)
+		orders = append(orders, findDeclarationOrders(pkg, abs, paths, sources)...)
+		ranges = append(ranges, findOffsetFallbacks(pkg, abs, paths, sources)...)
 		funcsOut = append(funcsOut, funcs...)
 		anemic = append(anemic, findAnemicModels(pkg, abs)...)
 		missing = append(missing, findMissingIdentities(pkg, abs)...)
 		services = append(services, findDomainServices(pkg, abs)...)
 	}
 	populateInterfaceNilHits(funcsOut)
-	return &Extraction{PackageNames: packageBindingNames(pkgs), Funcs: funcsOut, DeclarationOrders: orders, OffsetFallbacks: ranges, AnemicModels: anemic, MissingIdentities: missing, DomainServices: services}, nil
+	return &Extraction{Sources: sources, PackageNames: packageBindingNames(pkgs), Funcs: funcsOut, DeclarationOrders: orders, OffsetFallbacks: ranges, AnemicModels: anemic, MissingIdentities: missing, DomainServices: services}, nil
 }
 
 func packageBindingNames(pkgs []*packages.Package) map[string][]string {
@@ -292,24 +334,30 @@ func loadPatternPackages(ctx context.Context, dir string, query []string) ([]*pa
 }
 
 func loadPatternSources(ctx context.Context, dir string, query []string) ([]*packages.Package, map[string]string, error) {
-	sources := make(map[string]string)
-	var lock sync.Mutex
-	parse := func(fset *token.FileSet, filename string, src []byte) (*ast.File, error) {
-		file, err := parser.ParseFile(fset, filename, src, parser.ParseComments|parser.SkipObjectResolution)
-		if err != nil {
-			return nil, err
-		}
-		identity := fmt.Sprintf("%x", sha256.Sum256(src))
-		lock.Lock()
-		sources[filename] = identity
-		lock.Unlock()
-		return file, nil
+	return loadPatternSourcesInto(ctx, dir, query, nil)
+}
+
+func loadPatternSourcesInto(ctx context.Context, dir string, query []string, snapshots *pdg.SourceContext) ([]*packages.Package, map[string]string, error) {
+	return loadPatternSourcesForFix(ctx, dir, query, sourceLoadOptions{snapshots: snapshots})
+}
+
+func loadPatternSourcesForFix(ctx context.Context, dir string, query []string, options sourceLoadOptions) ([]*packages.Package, map[string]string, error) {
+	if err := captureFixConfiguration(options.snapshots, options); err != nil {
+		return nil, nil, err
 	}
-	config := &packages.Config{Context: ctx, Dir: dir, Mode: packages.LoadSyntax, ParseFile: parse}
-	pkgs, err := packages.Load(config, query...)
+	sources := make(map[string]string)
+	config := &packages.Config{Context: ctx, Dir: dir, Mode: packages.LoadSyntax, Tests: options.tests, ParseFile: patternSourceParser(sources, options.snapshots)}
+	pkgs, err := loadSourcePackages(config, query, options.overlay)
 	if err != nil {
 		return nil, nil, fmt.Errorf("load Go packages: %w", err)
 	}
+	if err := patternPackageErrors(pkgs, dir); err != nil {
+		return nil, nil, err
+	}
+	return pkgs, sources, nil
+}
+
+func patternPackageErrors(pkgs []*packages.Package, dir string) error {
 	var errs []string
 	for _, pkg := range pkgs {
 		for _, e := range pkg.Errors {
@@ -317,9 +365,9 @@ func loadPatternSources(ctx context.Context, dir string, query []string) ([]*pac
 		}
 	}
 	if len(errs) > 0 {
-		return nil, nil, fmt.Errorf("Go analysis fails:\n%s", strings.Join(errs, "\n"))
+		return fmt.Errorf("Go analysis fails:\n%s", strings.Join(errs, "\n"))
 	}
-	return pkgs, sources, nil
+	return nil
 }
 
 func packagePdgs(pkg *packages.Package, root string, pool *pdg.Builder) ([]FuncPdg, error) {
@@ -359,6 +407,7 @@ func filePdgs(pkg *packages.Package, file *ast.File, root string, ctx extractCtx
 			return nil, err
 		}
 		graph.Pdg.Sources[0].ContentIdentity = identity
+		graph.Pdg.Sources[0].Snapshot = sourceSnapshotReference(ctx.pool.Tables.Sources, filename)
 		out = append(out, graph)
 	}
 	return out, nil
@@ -517,4 +566,72 @@ func populateInterfaceNilHits(functions []FuncPdg) {
 			functions[i].TypedNilHits = append(functions[i].TypedNilHits, patterns.TypedNilHit{Line: int(graphs[i].Nodes[ref-1].Line), ExprText: "interface value is provably non-nil"})
 		}
 	}
+}
+
+func patternSourceParser(sources map[string]string, snapshots *pdg.SourceContext) func(*token.FileSet, string, []byte) (*ast.File, error) {
+	var lock sync.Mutex
+	return func(fset *token.FileSet, filename string, src []byte) (*ast.File, error) {
+		content, err := patternSourceBytes(filename, src)
+		if err != nil {
+			return nil, err
+		}
+		file, err := parser.ParseFile(fset, filename, content, parser.ParseComments|parser.SkipObjectResolution)
+		if err != nil {
+			return nil, err
+		}
+		lock.Lock()
+		defer lock.Unlock()
+		sources[filename] = fmt.Sprintf("%x", sha256.Sum256(content))
+		if err := publishSourceSnapshot(snapshots, filename, content, fset, file); err != nil {
+			return nil, err
+		}
+		return file, nil
+	}
+}
+
+func publishSourceSnapshot(snapshots *pdg.SourceContext, filename string, content []byte, fset *token.FileSet, file *ast.File) error {
+	if snapshots == nil {
+		return nil
+	}
+	if snapshots.Reference(filename) != 0 {
+		return snapshots.Check(filename, content)
+	}
+	ref := snapshots.AddOwned(filename, content, sourceCommentRanges(fset, file, content), sourceCommentOwners(fset, file, content))
+	// Tests retain exact bytes and typed caller ranges for signature fixes. They
+	// are not local rewrite targets, so they need no full syntax projection.
+	if strings.HasSuffix(filename, "_test.go") {
+		return nil
+	}
+	syntax, err := captureSourceSyntax(fset, file, content)
+	if err != nil {
+		return err
+	}
+	return snapshots.SetSyntax(ref, sourceSyntaxProfile, syntax)
+}
+
+func collectFixReferences(sources *pdg.SourceContext, pkgs []*packages.Package, fixes bool) {
+	if fixes {
+		collectSourceReferences(sources, pkgs)
+	}
+}
+
+func testPackageVariant(id string) bool {
+	return strings.Contains(id, " [") || strings.HasSuffix(id, ".test")
+}
+
+func sourceSnapshotReference(sources *pdg.SourceContext, path string) pdg.Ref {
+	if sources == nil {
+		return 0
+	}
+	return sources.Reference(path)
+}
+
+func productionPatternPackages(pkgs []*packages.Package) []*packages.Package {
+	var production []*packages.Package
+	for _, pkg := range pkgs {
+		if !testPackageVariant(pkg.ID) {
+			production = append(production, pkg)
+		}
+	}
+	return production
 }

@@ -149,6 +149,7 @@ func (v *validator) sources() {
 		ids = append(ids, s.ID)
 		v.text(s.Path, true)
 		v.fact(s.ContentIdentity)
+		v.sourceSnapshot(s)
 	}
 	v.unique(ids)
 	for _, span := range v.g.Spans {
@@ -159,6 +160,7 @@ func (v *validator) sources() {
 func (v *validator) span(s Span) {
 	v.ref(Ref(s.Source), len(v.g.Sources), true)
 	v.require(s.Start <= s.End, "span start exceeds end")
+	v.snapshotSpan(s)
 }
 
 func (v *validator) symbols() {
@@ -406,6 +408,33 @@ func (v *validator) matchLabels() {
 		for _, id := range []Text{label.TypeClass, label.SignatureClass, label.Callee, label.LiteralKind, label.Detail} {
 			v.text(id, false)
 		}
+	}
+}
+
+func (v *validator) sourceSnapshot(source Source) {
+	if source.Snapshot == 0 {
+		return
+	}
+	context := v.g.Tables.Sources
+	v.require(context != nil, "source snapshot has no shared context")
+	if context == nil {
+		return
+	}
+	_, _, ok := context.Source(source.Snapshot)
+	v.require(ok, "source snapshot reference out of bounds")
+}
+
+func (v *validator) snapshotSpan(span Span) {
+	if span.Source == 0 || uint64(span.Source) > uint64(len(v.g.Sources)) {
+		return
+	}
+	source := v.g.Sources[span.Source-1]
+	if source.Snapshot == 0 || v.g.Tables.Sources == nil {
+		return
+	}
+	_, content, ok := v.g.Tables.Sources.Source(source.Snapshot)
+	if ok {
+		v.require(uint64(span.End) <= uint64(len(content)), "span exceeds source snapshot")
 	}
 }
 

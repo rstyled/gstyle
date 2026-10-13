@@ -272,7 +272,7 @@ func classify(value string) int {
 `
 	spec := &patterns.FixSpec{Kind: patterns.GuardClause, File: "sample.go", Params: map[string]string{"if_line": "3"}}
 	// Two ifs share a line: the spec must select the matching inner guard.
-	output, err := ApplyFix(spec, []byte(source))
+	output, err := applyProjectedFix(t, spec, []byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}

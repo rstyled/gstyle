@@ -139,28 +139,6 @@ func findIfAtLine(fset *token.FileSet, f *ast.File, line int) *ast.IfStmt {
 	return target
 }
 
-// applyValueObjectFix applies a value_object FixSpec: extract the param
-// group into a struct.
-func applyValueObjectFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
-	// The value fixer re-detects within the file but scoped by the spec's
-	// group param. For now, delegate to the existing fixer which finds
-	// the clump matching the spec's group.
-	fset, f, err := parseSpec(spec, src)
-	if err != nil {
-		return nil, err
-	}
-	group := spec.Params["group"]
-	if group == "" {
-		return nil, fmt.Errorf("value_object FixSpec missing group")
-	}
-	// Use the existing fixer; it will find and fix the matching clump.
-	out, _, err := FixValueObjects(fset, f, src)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // applyInterfaceFix generates a Go interface for trait_method and
 // capability_set candidates. The fix emits the interface definition;
 // the types already implement it implicitly.
@@ -179,7 +157,7 @@ func applyInterfaceFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
 	ifaceName := interfaceNameFor(spec.Kind)
 	if declaresType(f, ifaceName) {
 		// Idempotent: a previous fix already generated this interface.
-		// Returning src unchanged keeps re-runs (and --phased re-mining)
+		// Returning src unchanged keeps re-runs (and phase re-mining)
 		// from redeclaring it.
 		return src, nil
 	}
@@ -411,19 +389,6 @@ func packageEndOffset(fset *token.FileSet, f *ast.File, src []byte) int {
 		offset++
 	}
 	return offset + 1
-}
-
-// applyAnemicModelFix applies an anemic_model FixSpec.
-func applyAnemicModelFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
-	fset, f, err := parseSpec(spec, src)
-	if err != nil {
-		return nil, err
-	}
-	out, _, err := FixAnemicModels(fset, f, src)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 // applyPrimitiveObsessionFix applies a primitive_obsession FixSpec.

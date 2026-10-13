@@ -31,6 +31,7 @@ package patterns
 
 import (
 	"fmt"
+	"github.com/rstyled/gstyle/domain/pdg"
 	"math"
 	"sort"
 	"strings"
@@ -288,10 +289,12 @@ type Candidate struct {
 }
 
 // FixSpec carries the exact positions and parameters a fixer needs to
-// apply a candidate without re-detecting. It is JSON-serializable so
-// `gstyle patterns --format json` output can be piped to `gstyle fix`.
+// apply a candidate. Execution requires the shared extraction Context; the
+// JSON form describes the proposal and does not authorize a source rewrite.
 type FixSpec struct {
-	Kind CandidateKind `json:"kind"`
+	Context *pdg.SourceContext `json:"-"`
+	Targets []string           `json:"-"`
+	Kind    CandidateKind      `json:"kind"`
 	// File is the path to the source file containing the pattern.
 	File string `json:"file"`
 	// Line and EndLine bound the primary location (e.g. the if statement
