@@ -5,6 +5,7 @@ import "strings"
 // Tables retains only unique values. The construction maps belong to Builder
 // and are released when that builder is discarded. No compiler objects remain.
 type Tables struct {
+	Sources     *SourceContext `json:"-"`
 	MatchLabels []MatchLabel
 	Strings     []string
 	Policies    []Profile

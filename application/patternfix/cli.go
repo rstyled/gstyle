@@ -1,5 +1,5 @@
 // Package patternfix is the IO boundary for gstyle fix: static auto-fix
-// for patterns miner candidates. No LLM, no tokens — pure AST mechanics.
+// for patterns miner candidates. Shared PDG source evidence bounds each batch.
 // Dry-run by default (prints a diff); --apply writes files.
 //
 // Unified pipeline: runs the miner, gets candidates with FixSpecs, and
@@ -8,11 +8,13 @@ package patternfix
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -24,7 +26,7 @@ import (
 const usage = `Usage: gstyle fix [OPTIONS] [DIRECTORIES OR GO FILES...]
 
 Statically apply fixes for patterns miner candidates. No LLM, no tokens:
-pure AST rewrites that are provably behavior-preserving.
+Source rewrites with conservative safety checks and whole-result type checks.
 Runs the miner, then applies each candidate's fix.
 Dry-run by default (shows a diff); --apply writes the files.
 
@@ -216,7 +218,10 @@ func runPhasedPhase(ctx context.Context, opts options, output io.Writer, pp phas
 	if len(specs) == 0 {
 		return 0, nil, nil
 	}
-	fixed, written := applyAndTrack(ctx, specs, opts, output)
+	fixed, written, err := applyAndTrack(ctx, specs, opts, output)
+	if err != nil {
+		return fixed, written, err
+	}
 	fmt.Fprintf(output, "phase %d (%s): fixed %d candidate(s)\n",
 		pp.phaseIdx+1, phaseNames(pp.phase), fixed)
 	return fixed, written, nil
@@ -352,24 +357,12 @@ func keepCandidateSpec(c patterns.Candidate, opts options) ([]*patterns.FixSpec,
 }
 
 // applyAndTrack applies specs and returns the files that were written.
-func applyAndTrack(ctx context.Context, specs []*patterns.FixSpec, opts options, output io.Writer) (int, []string) {
-	byFile := groupByFile(specs)
-	var fixed int
-	var written []string
-	for file, fileSpecs := range byFile {
-		if err := ctx.Err(); err != nil {
-			return fixed, written
-		}
-		n, err := fixFileWithSpecs(file, fileSpecs, opts, output)
-		if err != nil {
-			continue
-		}
-		fixed += n
-		if n > 0 && opts.apply {
-			written = append(written, file)
-		}
+func applyAndTrack(ctx context.Context, specs []*patterns.FixSpec, opts options, output io.Writer) (int, []string, error) {
+	plan, err := buildFixPlan(ctx, specs)
+	if err != nil {
+		return 0, nil, err
 	}
-	return fixed, dedupe(written)
+	return executeFixPlan(ctx, plan, opts, output)
 }
 
 // dedupe removes duplicate strings, preserving order.
@@ -401,7 +394,7 @@ func collectFixSpecs(ctx context.Context, opts options) ([]*patterns.FixSpec, er
 // mineCandidates runs the miner and keeps candidates with a FixSpec of the
 // requested kind.
 func mineCandidates(ctx context.Context, opts options) ([]patterns.Candidate, error) {
-	ext, err := gopatterns.Extract(ctx, "", opts.paths)
+	ext, err := gopatterns.ExtractForFix(ctx, "", opts.paths)
 	if err != nil {
 		return nil, fmt.Errorf("extract: %w", err)
 	}
@@ -410,7 +403,14 @@ func mineCandidates(ctx context.Context, opts options) ([]patterns.Candidate, er
 	if err := gopatterns.VerifyParameterizations(&report, ext); err != nil {
 		return nil, fmt.Errorf("verify parameterization: %w", err)
 	}
-	return fixableCandidates(report, opts.kind), nil
+	candidates := fixableCandidates(report, opts.kind)
+	for i := range candidates {
+		candidates[i].FixSpec.Context = ext.Sources
+		for _, site := range candidates[i].Sites {
+			candidates[i].FixSpec.Targets = append(candidates[i].FixSpec.Targets, site.ID)
+		}
+	}
+	return candidates, nil
 }
 
 func fixableCandidates(report patterns.PatternsReport, kind string) []patterns.Candidate {
@@ -464,19 +464,12 @@ func onlyChangedSpecs(candidates []patterns.Candidate, opts options) ([]*pattern
 
 // applyFixSpecs groups specs by file and applies them.
 func applyFixSpecs(ctx context.Context, specs []*patterns.FixSpec, opts options, output io.Writer) (int, error) {
-	byFile := groupByFile(specs)
-	var fixed int
-	for file, fileSpecs := range byFile {
-		if err := ctx.Err(); err != nil {
-			return fixed, err
-		}
-		n, err := fixFileWithSpecs(file, fileSpecs, opts, output)
-		if err != nil {
-			return fixed, err
-		}
-		fixed += n
+	plan, err := buildFixPlan(ctx, specs)
+	if err != nil {
+		return 0, err
 	}
-	return fixed, nil
+	fixed, _, err := executeFixPlan(ctx, plan, opts, output)
+	return fixed, err
 }
 
 // groupByFile groups FixSpecs by their file.
@@ -486,22 +479,6 @@ func groupByFile(specs []*patterns.FixSpec) map[string][]*patterns.FixSpec {
 		byFile[s.File] = append(byFile[s.File], s)
 	}
 	return byFile
-}
-
-// fixFileWithSpecs applies FixSpecs to a file.
-func fixFileWithSpecs(path string, specs []*patterns.FixSpec, opts options, output io.Writer) (int, error) {
-	src, err := os.ReadFile(path)
-	if err != nil {
-		return 0, err
-	}
-	out, applied := applySpecsToSource(path, specs, src)
-	if applied == 0 {
-		return 0, nil
-	}
-	if opts.apply {
-		return writeFixed(path, out, applied, output)
-	}
-	return showDiff(path, src, out, applied, output)
 }
 
 // applySpecsToSource applies each spec, skipping failures. Specs run in
@@ -542,50 +519,44 @@ func sortSpecsForApply(specs []*patterns.FixSpec) []*patterns.FixSpec {
 	return ordered
 }
 
-// writeFixed writes the fixed source and reports.
-func writeFixed(path string, out []byte, applied int, output io.Writer) (int, error) {
-	if err := os.WriteFile(path, out, 0644); err != nil {
-		return 0, err
-	}
-	fmt.Fprintf(output, "fixed %d candidate(s) in %s\n", applied, path)
-	return applied, nil
-}
-
 // showDiff prints a unified diff for dry-run.
 func showDiff(path string, src, out []byte, n int, output io.Writer) (int, error) {
 	diff, err := unifiedDiff(path, src, out)
 	if err != nil {
-		fmt.Fprintf(output, "%s: would fix %d candidate(s)\n", path, n)
-		return n, nil
+		return 0, err
 	}
-	io.WriteString(output, diff)
-	return n, nil
+	_, err = io.WriteString(output, diff)
+	return n, err
 }
 
-// unifiedDiff returns a unified diff of old -> new via diff -u.
+// unifiedDiff reports IO failures; diff's exit code 1 means a valid difference.
 func unifiedDiff(path string, old, new []byte) (string, error) {
-	oldFile, err := os.CreateTemp("", "gstyle-fix-old-*.go")
+	directory, err := os.MkdirTemp("", "gstyle-fix-diff-*")
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove(oldFile.Name())
-	newFile, err := os.CreateTemp("", "gstyle-fix-new-*.go")
-	if err != nil {
+	defer os.RemoveAll(directory)
+	oldPath, newPath := filepath.Join(directory, "old.go"), filepath.Join(directory, "new.go")
+	if err := os.WriteFile(oldPath, old, 0600); err != nil {
 		return "", err
 	}
-	defer os.Remove(newFile.Name())
-	if _, err := oldFile.Write(old); err != nil {
+	if err := os.WriteFile(newPath, new, 0600); err != nil {
 		return "", err
 	}
-	if _, err := newFile.Write(new); err != nil {
-		return "", err
-	}
-	oldFile.Close()
-	newFile.Close()
+	cmd := exec.Command("diff", "-u", "--label", "a/"+path, "--label", "b/"+path, oldPath, newPath)
+	return diffCommandOutput(cmd)
+}
 
-	cmd := exec.Command("diff", "-u", "--label", "a/"+path, "--label", "b/"+path, oldFile.Name(), newFile.Name())
-	out, _ := cmd.Output()
-	return string(out), nil
+func diffCommandOutput(cmd *exec.Cmd) (string, error) {
+	output, err := cmd.Output()
+	if err == nil {
+		return string(output), nil
+	}
+	var exit *exec.ExitError
+	if errors.As(err, &exit) && exit.ExitCode() == 1 {
+		return string(output), nil
+	}
+	return "", fmt.Errorf("create fix diff: %w", err)
 }
 
 func parseOptions(args []string) (options, error) {

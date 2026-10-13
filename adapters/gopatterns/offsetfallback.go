@@ -11,13 +11,15 @@ import (
 	"strings"
 
 	"github.com/rstyled/gstyle/domain/patterns"
+	"github.com/rstyled/gstyle/domain/pdg"
 	"golang.org/x/tools/go/packages"
 )
 
 type offsetFallbackSource struct {
-	pkg  *packages.Package
-	path string
-	src  []byte
+	pkg      *packages.Package
+	path     string
+	src      []byte
+	comments []pdg.ByteRange
 }
 
 func findOffsetFallbacks(pkg *packages.Package, root string, paths []string, identities map[string]string) []patterns.Candidate {
@@ -45,7 +47,7 @@ func offsetFallbacksForFile(pkg *packages.Package, file *ast.File, root, identit
 	if err != nil {
 		return nil
 	}
-	source := offsetFallbackSource{pkg: pkg, path: filepath.ToSlash(rel), src: src}
+	source := offsetFallbackSource{pkg: pkg, path: filepath.ToSlash(rel), src: src, comments: sourceCommentRanges(pkg.Fset, file, src)}
 	var out []patterns.Candidate
 	for _, decl := range file.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
@@ -99,7 +101,7 @@ func offsetFallbackCandidate(fn *ast.FuncDecl, guard *offsetFallback, source off
 	end := fset.PositionFor(guard.stmt.End(), false).Offset + len(fixed) - len(source.src)
 	after := strings.TrimSpace(string(fixed[start:end]))
 	candidate.PossibleRefactor = "review this empty-result proposal:\n" + offsetFallbackDiff(before, after)
-	if offsetFallbackAutoSafe(guard, source.pkg) && !guardHeaderHasComments(guard.stmt, fset, source.src) {
+	if offsetFallbackAutoSafe(guard, source.pkg) && !guardHeaderHasComments(guard.stmt, fset, pdg.SourceSnapshot{Comments: source.comments}) {
 		candidate.FixSpec = spec
 		candidate.Inference = "the existing end-slice fallback explicitly selects empty results; clamping preserves that behavior"
 	} else {

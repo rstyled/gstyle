@@ -61,6 +61,7 @@ type Provenance struct {
 type Extension struct{ Name, Value Text }
 
 type Source struct {
+	Snapshot        Ref `json:"-"` // Shared source context index; omitted from interchange JSON.
 	ID, Path        Text
 	ContentIdentity Fact
 }

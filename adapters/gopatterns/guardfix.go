@@ -3,9 +3,9 @@ package gopatterns
 import (
 	"bytes"
 	"fmt"
+	"github.com/rstyled/gstyle/domain/pdg"
 	"go/ast"
 	"go/format"
-	"go/scanner"
 	"go/token"
 )
 
@@ -94,7 +94,7 @@ func applyEdits(src []byte, edits []textEdit) []byte {
 
 // guardEdit computes the text edit that turns ifStmt into a guard clause.
 // It returns false when the transform cannot be proven safe.
-func guardEdit(fset *token.FileSet, ifStmt *ast.IfStmt, src []byte) (textEdit, GuardFix, bool) {
+func guardEdit(fset *token.FileSet, ifStmt *ast.IfStmt, src []byte, snapshot pdg.SourceSnapshot) (textEdit, GuardFix, bool) {
 	// Else must be a plain block: an else-if chain or missing else is not
 	// a guard-clause candidate the transform can handle.
 	elseBlock, ok := ifStmt.Else.(*ast.BlockStmt)
@@ -111,7 +111,7 @@ func guardEdit(fset *token.FileSet, ifStmt *ast.IfStmt, src []byte) (textEdit, G
 
 	// Safety: if the condition contained comments, format.Node may have
 	// dropped them. Bail out rather than silently deleting comments.
-	if guardHeaderHasComments(ifStmt, fset, src) {
+	if guardHeaderHasComments(ifStmt, fset, snapshot) {
 		return textEdit{}, GuardFix{}, false
 	}
 
@@ -153,28 +153,16 @@ func guardEdit(fset *token.FileSet, ifStmt *ast.IfStmt, src []byte) (textEdit, G
 }
 
 // guardHeaderHasComments protects comments that a rewritten header would drop.
-func guardHeaderHasComments(n *ast.IfStmt, fset *token.FileSet, src []byte) bool {
-	start := fset.PositionFor(n.Pos(), false).Offset
-	end := fset.PositionFor(n.Body.Lbrace, false).Offset
-	if start < 0 || end > len(src) || start >= end {
+func guardHeaderHasComments(n *ast.IfStmt, fset *token.FileSet, source pdg.SourceSnapshot) bool {
+	header := pdg.ByteRange{Start: uint32(fset.PositionFor(n.Pos(), false).Offset), End: uint32(fset.PositionFor(n.Body.Lbrace, false).Offset)}
+	if source.HasComment(header) {
+		return true
+	}
+	if n.Else == nil {
 		return false
 	}
-	return conditionHasComments(src[start:end])
-}
-
-func conditionHasComments(segment []byte) bool {
-	var lexer scanner.Scanner
-	file := token.NewFileSet().AddFile("condition", -1, len(segment))
-	lexer.Init(file, segment, nil, scanner.ScanComments)
-	for {
-		_, kind, _ := lexer.Scan()
-		if kind == token.COMMENT {
-			return true
-		}
-		if kind == token.EOF {
-			return false
-		}
-	}
+	gap := pdg.ByteRange{Start: uint32(fset.PositionFor(n.Body.End(), false).Offset), End: uint32(fset.PositionFor(n.Else.Pos(), false).Offset)}
+	return source.HasComment(gap)
 }
 
 // safeInit reports whether the init statement can be hoisted before the if.
@@ -265,7 +253,7 @@ func invertOrdering(op token.Token) token.Token {
 
 // A rewritten else-if must stay within its original conditional branch.
 func guardFileEdit(fset *token.FileSet, file *ast.File, target *ast.IfStmt, src []byte) (textEdit, GuardFix, bool) {
-	edit, fix, ok := guardEdit(fset, target, src)
+	edit, fix, ok := guardEdit(fset, target, src, pdg.SourceSnapshot{Comments: sourceCommentRanges(fset, file, src)})
 	if !ok {
 		return edit, fix, false
 	}

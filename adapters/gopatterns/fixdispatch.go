@@ -17,13 +17,11 @@ var appliers = map[patterns.CandidateKind]fixApplier{
 	patterns.DeclarationOrder:   applyDeclarationOrderFix,
 	patterns.GuardClause:        applyGuardFix,
 	patterns.OffsetFallback:     applyOffsetFallbackFix,
-	patterns.ValueObject:        applyValueObjectFix,
 	patterns.Parameterize:       applyParameterizeFix,
 	patterns.TraitMethod:        applyInterfaceFix,
 	patterns.CapabilitySet:      applyInterfaceFix,
 	patterns.EnumDispatch:       applyEnumDispatchFix,
 	patterns.GenericFn:          applyGenericFnFix,
-	patterns.AnemicModel:        applyAnemicModelFix,
 	patterns.PrimitiveObsession: applyPrimitiveObsessionFix,
 	patterns.TypeSwitch:         applyTypeSwitchFix,
 	patterns.EntityIdentity:     applyEntityIdentityFix,
@@ -36,8 +34,8 @@ var appliers = map[patterns.CandidateKind]fixApplier{
 }
 
 // ApplyFix applies the transform for a candidate's FixSpec to src.
-// It is a pure AST transform: no re-detection, the miner already did the
-// analysis. Each kind has its own applier.
+// This is a single-file code generator. Signature fixes use PlanSignatureFix
+// so typed callers cannot be dropped. The IO boundary validates every result.
 func ApplyFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
 	if spec == nil {
 		return nil, fmt.Errorf("nil FixSpec")

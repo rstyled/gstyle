@@ -25,7 +25,7 @@ func offsetFallbackTestSource(t *testing.T, src string) []patterns.Candidate {
 	if err != nil {
 		t.Fatal(err)
 	}
-	source := offsetFallbackSource{pkg: &packages.Package{Fset: fset, TypesInfo: info, Types: pkg}, path: "test.go", src: []byte(src)}
+	source := offsetFallbackSource{pkg: &packages.Package{Fset: fset, TypesInfo: info, Types: pkg}, path: "test.go", src: []byte(src), comments: sourceCommentRanges(fset, file, []byte(src))}
 	var out []patterns.Candidate
 	for _, decl := range file.Decls {
 		if fn, ok := decl.(*ast.FuncDecl); ok {
