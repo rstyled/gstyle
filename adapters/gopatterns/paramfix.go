@@ -267,14 +267,15 @@ func adjacent(fset *token.FileSet, a, b *ast.FuncDecl, src []byte) bool {
 				return true
 			}
 			between = bytes.TrimSpace(between[idx+1:])
-		} else if bytes.HasPrefix(between, []byte("/*")) {
+		} else {
+			if !bytes.HasPrefix(between, []byte("/*")) {
+				return false
+			}
 			idx := bytes.Index(between, []byte("*/"))
 			if idx < 0 {
 				return false
 			}
 			between = bytes.TrimSpace(between[idx+2:])
-		} else {
-			return false
 		}
 	}
 	return true
