@@ -30,8 +30,8 @@ type Options struct {
 	semantic *semanticResults
 	// DeclarationOrders are file-level source-order proposals.
 	DeclarationOrders []Candidate
-	// SliceOffsets are guarded suffix-slice findings from typed source analysis.
-	SliceOffsets []Candidate
+	// OffsetFallbacks are guarded suffix-slice findings from typed source analysis.
+	OffsetFallbacks []Candidate
 	// MinScoreMilli drops groups and candidates scoring below this.
 	MinScoreMilli uint32
 	// Top keeps only the first N groups and candidates (all when nil).
@@ -74,7 +74,7 @@ type singleFunctionBuilder struct {
 // type-creating passes. Detection-only kinds sort last.
 var singleFunctionBuilders = []singleFunctionBuilder{
 	{GuardClause, func(prepared []*MiningFacts, options Options) []Candidate { return guardCandidates(prepared) }},
-	{SliceOffsetFallback, func(_ []*MiningFacts, options Options) []Candidate { return options.SliceOffsets }},
+	{OffsetFallback, func(_ []*MiningFacts, options Options) []Candidate { return options.OffsetFallbacks }},
 	{PrimitiveObsession, func(prepared []*MiningFacts, options Options) []Candidate {
 		return primitiveObsessionCandidates(prepared)
 	}},

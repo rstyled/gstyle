@@ -31,7 +31,7 @@ Dry-run by default (shows a diff); --apply writes the files.
   --kind KIND   which fixes to apply: guard_clause, value_object, parameterize,
                 trait_method, capability_set, enum_dispatch, generic_fn,
                 anemic_model, primitive_obsession, declaration_order,
-                slice_offset_fallback, or all (default)
+                offset_fallback, or all (default)
   --apply       write the fixes to disk (default: dry-run diff only)
   --changed     only fix candidates in functions touched by the git diff
   --base REF    git base for --changed (default: merge-base with main/master)
@@ -51,7 +51,7 @@ type options struct {
 }
 
 func (opts options) validate() error {
-	valid := []string{"guard_clause", "slice_offset_fallback", "value_object", "parameterize", "trait_method", "capability_set", "enum_dispatch", "generic_fn", "anemic_model", "primitive_obsession", "type_switch", "entity_identity", "missing_identity", "mutable_identity", "aggregate", "repository", "factory", "specification", "domain_service", "declaration_order", "all"}
+	valid := []string{"guard_clause", "offset_fallback", "value_object", "parameterize", "trait_method", "capability_set", "enum_dispatch", "generic_fn", "anemic_model", "primitive_obsession", "type_switch", "entity_identity", "missing_identity", "mutable_identity", "aggregate", "repository", "factory", "specification", "domain_service", "declaration_order", "all"}
 	if !slices.Contains(valid, opts.kind) {
 		return fmt.Errorf("kind must be one of %v", valid)
 	}
@@ -70,7 +70,7 @@ func (opts options) validate() error {
 //  3. factory + specification + independent semantic fixes: use the bundled types
 //  4. parameterize: PDG-based, most sensitive to code shape, runs last
 var fixPhases = [][]patterns.CandidateKind{
-	{patterns.GuardClause, patterns.SliceOffsetFallback, patterns.PrimitiveObsession},
+	{patterns.GuardClause, patterns.OffsetFallback, patterns.PrimitiveObsession},
 	{patterns.ValueObject},
 	{patterns.Factory, patterns.Specification, patterns.MissingIdentity, patterns.EntityIdentity,
 		patterns.DomainService, patterns.AnemicModel, patterns.TypeSwitch, patterns.EnumDispatch,
@@ -406,7 +406,7 @@ func mineCandidates(ctx context.Context, opts options) ([]patterns.Candidate, er
 		return nil, fmt.Errorf("extract: %w", err)
 	}
 	facts, anemicHits, missingHits, serviceHits := toFacts(ext)
-	report := patterns.Run(facts, patterns.Options{DeclarationOrders: ext.DeclarationOrders, SliceOffsets: ext.SliceOffsets, AnemicModels: anemicHits, MissingIdentities: missingHits, DomainServices: serviceHits})
+	report := patterns.Run(facts, patterns.Options{DeclarationOrders: ext.DeclarationOrders, OffsetFallbacks: ext.OffsetFallbacks, AnemicModels: anemicHits, MissingIdentities: missingHits, DomainServices: serviceHits})
 	if err := gopatterns.VerifyParameterizations(&report, ext); err != nil {
 		return nil, fmt.Errorf("verify parameterization: %w", err)
 	}

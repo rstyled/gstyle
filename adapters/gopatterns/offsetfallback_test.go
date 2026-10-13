@@ -13,7 +13,7 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-func sliceOffsetTestSource(t *testing.T, src string) []patterns.Candidate {
+func offsetFallbackTestSource(t *testing.T, src string) []patterns.Candidate {
 	t.Helper()
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
@@ -25,17 +25,17 @@ func sliceOffsetTestSource(t *testing.T, src string) []patterns.Candidate {
 	if err != nil {
 		t.Fatal(err)
 	}
-	source := sliceOffsetSource{pkg: &packages.Package{Fset: fset, TypesInfo: info, Types: pkg}, path: "test.go", src: []byte(src)}
+	source := offsetFallbackSource{pkg: &packages.Package{Fset: fset, TypesInfo: info, Types: pkg}, path: "test.go", src: []byte(src)}
 	var out []patterns.Candidate
 	for _, decl := range file.Decls {
 		if fn, ok := decl.(*ast.FuncDecl); ok {
-			out = append(out, sliceOffsetCandidates(fn, source)...)
+			out = append(out, offsetFallbackCandidates(fn, source)...)
 		}
 	}
 	return out
 }
 
-func TestSliceOffsetFallback(t *testing.T) {
+func TestOffsetFallback(t *testing.T) {
 	for _, tc := range []struct {
 		name, body string
 		find, fix  bool
@@ -58,7 +58,7 @@ func TestSliceOffsetFallback(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			src := "package example\nfunc page(items []int, offset int) []int { seen := 0; _ = seen; " + tc.body + "; return items }"
-			candidates := sliceOffsetTestSource(t, src)
+			candidates := offsetFallbackTestSource(t, src)
 			if (len(candidates) != 0) != tc.find {
 				t.Fatalf("got %d candidates, want finding=%v", len(candidates), tc.find)
 			}
@@ -76,7 +76,7 @@ func TestSliceOffsetFallback(t *testing.T) {
 	}
 }
 
-func TestSliceOffsetFixPreservesCommentsAndRejectsStaleSource(t *testing.T) {
+func TestOffsetFallbackFixPreservesCommentsAndRejectsStaleSource(t *testing.T) {
 	src := []byte(`package example
 func page(items []int, offset int) []int {
  if offset > 0 && offset <= len(items) {
@@ -86,7 +86,7 @@ func page(items []int, offset int) []int {
  return items
 }
 `)
-	c := sliceOffsetTestSource(t, string(src))[0]
+	c := offsetFallbackTestSource(t, string(src))[0]
 	fixed, err := ApplyFix(c.FixSpec, src)
 	if err != nil {
 		t.Fatal(err)
@@ -97,7 +97,7 @@ func page(items []int, offset int) []int {
 	if _, err := ApplyFix(c.FixSpec, append(src, '\n')); err == nil {
 		t.Fatal("stale source accepted")
 	}
-	if len(sliceOffsetTestSource(t, string(fixed))) != 0 {
+	if len(offsetFallbackTestSource(t, string(fixed))) != 0 {
 		t.Fatal("fixed source still reports the pattern")
 	}
 }

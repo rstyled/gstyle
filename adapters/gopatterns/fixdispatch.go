@@ -14,21 +14,21 @@ type fixApplier func(*patterns.FixSpec, []byte) ([]byte, error)
 
 // appliers maps each fixable kind to its applier.
 var appliers = map[patterns.CandidateKind]fixApplier{
-	patterns.DeclarationOrder:    applyDeclarationOrderFix,
-	patterns.GuardClause:         applyGuardFix,
-	patterns.SliceOffsetFallback: applySliceOffsetFix,
-	patterns.ValueObject:         applyValueObjectFix,
-	patterns.Parameterize:        applyParameterizeFix,
-	patterns.TraitMethod:         applyInterfaceFix,
-	patterns.CapabilitySet:       applyInterfaceFix,
-	patterns.EnumDispatch:        applyEnumDispatchFix,
-	patterns.GenericFn:           applyGenericFnFix,
-	patterns.AnemicModel:         applyAnemicModelFix,
-	patterns.PrimitiveObsession:  applyPrimitiveObsessionFix,
-	patterns.TypeSwitch:          applyTypeSwitchFix,
-	patterns.EntityIdentity:      applyEntityIdentityFix,
-	patterns.Factory:             applyFactoryFix,
-	patterns.Specification:       applySpecificationFix,
+	patterns.DeclarationOrder:   applyDeclarationOrderFix,
+	patterns.GuardClause:        applyGuardFix,
+	patterns.OffsetFallback:     applyOffsetFallbackFix,
+	patterns.ValueObject:        applyValueObjectFix,
+	patterns.Parameterize:       applyParameterizeFix,
+	patterns.TraitMethod:        applyInterfaceFix,
+	patterns.CapabilitySet:      applyInterfaceFix,
+	patterns.EnumDispatch:       applyEnumDispatchFix,
+	patterns.GenericFn:          applyGenericFnFix,
+	patterns.AnemicModel:        applyAnemicModelFix,
+	patterns.PrimitiveObsession: applyPrimitiveObsessionFix,
+	patterns.TypeSwitch:         applyTypeSwitchFix,
+	patterns.EntityIdentity:     applyEntityIdentityFix,
+	patterns.Factory:            applyFactoryFix,
+	patterns.Specification:      applySpecificationFix,
 	// MutableIdentity is detection-only: no safe mechanical fix exists.
 	// Aggregate is detection-only: choosing the root is design.
 	// Repository is detection-only: extraction is design.

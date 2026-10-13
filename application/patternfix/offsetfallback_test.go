@@ -13,7 +13,7 @@ import (
 	"github.com/rstyled/gstyle/domain/patterns"
 )
 
-func TestSliceOffsetAdvisoryShowsDiffWithoutApplying(t *testing.T) {
+func TestOffsetFallbackAdvisoryShowsDiffWithoutApplying(t *testing.T) {
 	src := `package example
 func page(items []int, offset int) []int {
  if offset > 0 && offset <= len(items) { items = items[offset:] }
@@ -25,13 +25,13 @@ func page(items []int, offset int) []int {
 	if err := patterncheck.Run(context.Background(), []string{path}, &report); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"slice_offset_fallback", "- if offset > 0 &&", "min(offset, len(items))", "proposal only"} {
+	for _, want := range []string{"offset_fallback", "- if offset > 0 &&", "min(offset, len(items))", "proposal only"} {
 		if !strings.Contains(report.String(), want) {
 			t.Errorf("report missing %q:\n%s", want, report.String())
 		}
 	}
 	var output bytes.Buffer
-	if err := Run(context.Background(), []string{"--kind", "slice_offset_fallback", "--apply", path}, &output); err != nil {
+	if err := Run(context.Background(), []string{"--kind", "offset_fallback", "--apply", path}, &output); err != nil {
 		t.Fatal(err)
 	}
 	content, err := os.ReadFile(path)
@@ -43,7 +43,7 @@ func page(items []int, offset int) []int {
 	}
 }
 
-func TestSliceOffsetFixPreservesRuntimeResults(t *testing.T) {
+func TestOffsetFallbackFixPreservesRuntimeResults(t *testing.T) {
 	src := `package example
 func page(items []int, offset int) []int {
  if offset > 0 && offset <= len(items) { items = items[offset:] } else { items = items[len(items):] }
@@ -56,7 +56,7 @@ func page(items []int, offset int) []int {
 	}
 	t.Chdir(filepath.Dir(path))
 	var output bytes.Buffer
-	if err := Run(context.Background(), []string{"--kind", "slice_offset_fallback", "--apply", path}, &output); err != nil {
+	if err := Run(context.Background(), []string{"--kind", "offset_fallback", "--apply", path}, &output); err != nil {
 		t.Fatal(err)
 	}
 	content, err := os.ReadFile(path)
@@ -93,11 +93,11 @@ func TestEquivalent(t *testing.T) {
 	}
 }
 
-func TestSliceOffsetKindIsAvailableInPhases(t *testing.T) {
-	if err := (options{kind: "slice_offset_fallback"}).validate(); err != nil {
+func TestOffsetFallbackKindIsAvailableInPhases(t *testing.T) {
+	if err := (options{kind: "offset_fallback"}).validate(); err != nil {
 		t.Fatal(err)
 	}
-	if !phaseHas(fixPhases[0], patterns.SliceOffsetFallback) {
+	if !phaseHas(fixPhases[0], patterns.OffsetFallback) {
 		t.Fatal("range guard fix missing from phased workflow")
 	}
 }
