@@ -119,12 +119,11 @@ Declaration ordering groups each type with its constructors, exported methods,
 and unexported methods. Other functions come last. The rewrite carries comments
 with declarations and preserves function bodies and initialization order.
 
-For fixes that depend on earlier changes, use `--phased` to re-analyze between
-phases:
+Fixes always run in dependency order and re-analyze after edits:
 
 ```sh
-gstyle fix --phased .         # preview
-# gstyle fix --phased --apply .
+gstyle fix .         # preview
+# gstyle fix --apply .
 ```
 
 ## Use with agents and scripts

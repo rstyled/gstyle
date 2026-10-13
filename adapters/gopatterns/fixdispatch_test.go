@@ -122,7 +122,7 @@ func TestApplyFixTraitMethodQualifiedDefinitions(t *testing.T) {
 }
 
 // TestApplyFixTraitMethodIdempotent verifies a second application is a
-// no-op: re-running the fixer (or --phased re-mining) must not redeclare
+// no-op: re-running the fixer (or phase re-mining) must not redeclare
 // the interface and break the build. The second spec uses fresh line
 // numbers, as the miner would re-emit them after the first fix shifted
 // the file.

@@ -223,6 +223,8 @@ func (b *builder) params(fn *ast.FuncDecl) {
 const none = -1
 
 type sourceLoadOptions struct {
+	disk      *pdg.SourceContext
+	overlay   map[string][]byte
 	snapshots *pdg.SourceContext
 	tests     bool
 }
@@ -231,15 +233,26 @@ type sourceLoadOptions struct {
 // function plus anemic-model hits. Paths are directories (".", "./...")
 // or .go files, resolved under root.
 func Extract(ctx context.Context, root string, paths []string) (*Extraction, error) {
-	return extractWithSources(ctx, root, paths, false)
+	return extractWithSources(ctx, root, paths, sourceLoadOptions{})
 }
 
 // ExtractForFix includes test callers in the shared typed source inventory.
 func ExtractForFix(ctx context.Context, root string, paths []string) (*Extraction, error) {
-	return extractWithSources(ctx, root, paths, true)
+	return extractWithSources(ctx, root, paths, sourceLoadOptions{tests: true})
 }
 
-func extractWithSources(ctx context.Context, root string, paths []string, fixes bool) (*Extraction, error) {
+// SourceOverlay holds a simulated source revision and its original disk evidence.
+type SourceOverlay struct {
+	Files map[string][]byte
+	Disk  *pdg.SourceContext
+}
+
+// ExtractFixOverlay builds fresh PDG facts for a preview revision without writes.
+func ExtractFixOverlay(ctx context.Context, root string, paths []string, revision SourceOverlay) (*Extraction, error) {
+	return extractWithSources(ctx, root, paths, sourceLoadOptions{tests: true, overlay: revision.Files, disk: revision.Disk})
+}
+
+func extractWithSources(ctx context.Context, root string, paths []string, options sourceLoadOptions) (*Extraction, error) {
 	abs, err := absRoot(root)
 	if err != nil {
 		return nil, err
@@ -249,11 +262,13 @@ func extractWithSources(ctx context.Context, root string, paths []string, fixes 
 		return nil, err
 	}
 	sources := pdg.NewSourceContext(abs, query)
-	pkgs, sourceIdentities, err := loadPatternSourcesForFix(ctx, abs, query, sourceLoadOptions{snapshots: sources, tests: fixes})
+	sources.Disk, sources.Overlay = options.disk, options.overlay
+	options.snapshots = sources
+	pkgs, sourceIdentities, err := loadPatternSourcesForFix(ctx, abs, query, options)
 	if err != nil {
 		return nil, err
 	}
-	collectFixReferences(sources, pkgs, fixes)
+	collectFixReferences(sources, pkgs, options.tests)
 	var funcsOut []FuncPdg
 	var orders []patterns.Candidate
 	var ranges []patterns.Candidate
@@ -268,8 +283,8 @@ func extractWithSources(ctx context.Context, root string, paths []string, fixes 
 		if err != nil {
 			return nil, err
 		}
-		orders = append(orders, findDeclarationOrders(pkg, abs, paths)...)
-		ranges = append(ranges, findOffsetFallbacks(pkg, abs, paths, sourceIdentities)...)
+		orders = append(orders, findDeclarationOrders(pkg, abs, paths, sources)...)
+		ranges = append(ranges, findOffsetFallbacks(pkg, abs, paths, sources)...)
 		funcsOut = append(funcsOut, funcs...)
 		anemic = append(anemic, findAnemicModels(pkg, abs)...)
 		missing = append(missing, findMissingIdentities(pkg, abs)...)
@@ -323,7 +338,7 @@ func loadPatternSourcesForFix(ctx context.Context, dir string, query []string, o
 		return nil, nil, err
 	}
 	sources := make(map[string]string)
-	config := &packages.Config{Context: ctx, Dir: dir, Mode: packages.LoadSyntax, Tests: options.tests, ParseFile: patternSourceParser(sources, options.snapshots)}
+	config := &packages.Config{Context: ctx, Dir: dir, Mode: packages.LoadSyntax, Tests: options.tests, Overlay: options.overlay, ParseFile: patternSourceParser(sources, options.snapshots)}
 	pkgs, err := packages.Load(config, query...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("load Go packages: %w", err)

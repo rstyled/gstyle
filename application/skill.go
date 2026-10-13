@@ -102,7 +102,7 @@ Run ` + "`gstyle patterns [paths...]`" + ` to find mechanical code patterns acro
 
 Run ` + "`gstyle fix --kind all [paths...]`" + ` to auto-fix them. Dry-run by default (shows a diff); add ` + "`--apply`" + ` to write. No LLM, no tokens — pure static analysis. Use ` + "`--kind guard_clause|value_object|parameterize|anemic_model|primitive_obsession|type_switch|enum_dispatch|trait_method|capability_set|generic_fn|entity_identity|missing_identity|factory|specification|domain_service`" + ` to fix one kind.
 
-Use ` + "`gstyle fix --phased --apply [paths...]`" + ` when fixes interact: it mines, applies one phase, re-mines, and repeats to a fixpoint (max 3 cycles). Phases run guard/value-object work first, structural patterns next, parameterize next, and declaration ordering last.
+Every fix run uses ordered phases. PDG facts are reused until edits change the source, then refreshed for the complete input scope (max 3 cycles). Preview simulates the same edits without writing. Phases run guard/value-object work first, structural patterns next, parameterize next, and declaration ordering last.
 
 ` + "`domain_service`" + ` is detection-only: it identifies stateless functions operating on 2+ domain types as legitimate Domain Services (Evans), and suppresses the corresponding ` + "`anemic_model`" + ` suggestions. ` + "`specification`" + ` extracts repeated boolean business rules into named predicates (a method on the type, or a function for external types). ` + "`trait_method`" + ` proposes interfaces from parallel methods on types in the same package.
 

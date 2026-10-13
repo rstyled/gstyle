@@ -5,12 +5,12 @@ import (
 	"go/ast"
 	"go/format"
 	"go/token"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/rstyled/gstyle/domain/patterns"
+	"github.com/rstyled/gstyle/domain/pdg"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -23,14 +23,14 @@ type declarationBlock struct {
 	anchor int
 }
 
-func findDeclarationOrders(pkg *packages.Package, root string, paths []string) []patterns.Candidate {
+func findDeclarationOrders(pkg *packages.Package, root string, paths []string, sources *pdg.SourceContext) []patterns.Candidate {
 	var out []patterns.Candidate
 	for _, file := range pkg.Syntax {
 		path := pkg.Fset.Position(file.Pos()).Filename
 		if !declarationPathSelected(root, path, paths) {
 			continue
 		}
-		candidate, ok := declarationOrderForFile(pkg.Fset, file, root, path)
+		candidate, ok := declarationOrderForFile(pkg.Fset, file, root, sources)
 		if ok {
 			out = append(out, candidate)
 		}
@@ -38,8 +38,9 @@ func findDeclarationOrders(pkg *packages.Package, root string, paths []string) [
 	return out
 }
 
-func declarationOrderForFile(fset *token.FileSet, file *ast.File, root, path string) (patterns.Candidate, bool) {
-	src, err := os.ReadFile(path)
+func declarationOrderForFile(fset *token.FileSet, file *ast.File, root string, sources *pdg.SourceContext) (patterns.Candidate, bool) {
+	path := fset.PositionFor(file.Pos(), false).Filename
+	src, err := revisionSource(path, sources)
 	if err != nil {
 		return patterns.Candidate{}, false
 	}

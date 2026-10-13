@@ -6,7 +6,6 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -22,25 +21,22 @@ type offsetFallbackSource struct {
 	comments []pdg.ByteRange
 }
 
-func findOffsetFallbacks(pkg *packages.Package, root string, paths []string, identities map[string]string) []patterns.Candidate {
+func findOffsetFallbacks(pkg *packages.Package, root string, paths []string, sources *pdg.SourceContext) []patterns.Candidate {
 	var out []patterns.Candidate
 	for _, file := range pkg.Syntax {
 		path := pkg.Fset.PositionFor(file.Pos(), false).Filename
 		if !declarationPathSelected(root, path, paths) {
 			continue
 		}
-		out = append(out, offsetFallbacksForFile(pkg, file, root, identities[path])...)
+		out = append(out, offsetFallbacksForFile(pkg, file, root, sources)...)
 	}
 	return out
 }
 
-func offsetFallbacksForFile(pkg *packages.Package, file *ast.File, root, identity string) []patterns.Candidate {
+func offsetFallbacksForFile(pkg *packages.Package, file *ast.File, root string, sources *pdg.SourceContext) []patterns.Candidate {
 	path := pkg.Fset.PositionFor(file.Pos(), false).Filename
-	src, err := os.ReadFile(path)
+	src, err := revisionSource(path, sources)
 	if err != nil {
-		return nil
-	}
-	if fmt.Sprintf("%x", sha256.Sum256(src)) != identity {
 		return nil
 	}
 	rel, err := filepath.Rel(root, path)

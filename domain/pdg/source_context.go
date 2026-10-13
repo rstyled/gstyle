@@ -38,6 +38,9 @@ func (s SourceSnapshot) HasComment(span ByteRange) bool {
 // SourceContext contains source evidence for one extraction revision.
 // It does not retain compiler objects. File indexes are one-based.
 type SourceContext struct {
+	// Preview inputs retain the original disk evidence and cumulative edits.
+	Disk       *SourceContext    `json:"-"`
+	Overlay    map[string][]byte `json:"-"`
 	Functions  []SourceFunction
 	References []SourceReference
 	Root       string

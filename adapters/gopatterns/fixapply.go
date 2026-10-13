@@ -157,7 +157,7 @@ func applyInterfaceFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
 	ifaceName := interfaceNameFor(spec.Kind)
 	if declaresType(f, ifaceName) {
 		// Idempotent: a previous fix already generated this interface.
-		// Returning src unchanged keeps re-runs (and --phased re-mining)
+		// Returning src unchanged keeps re-runs (and phase re-mining)
 		// from redeclaring it.
 		return src, nil
 	}

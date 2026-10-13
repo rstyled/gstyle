@@ -18,7 +18,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/rstyled/gstyle/adapters/gitchanged"
 	"github.com/rstyled/gstyle/adapters/gopatterns"
 	"github.com/rstyled/gstyle/domain/patterns"
 )
@@ -27,7 +26,8 @@ const usage = `Usage: gstyle fix [OPTIONS] [DIRECTORIES OR GO FILES...]
 
 Statically apply fixes for patterns miner candidates. No LLM, no tokens:
 Source rewrites with conservative safety checks and whole-result type checks.
-Runs the miner, then applies each candidate's fix.
+Runs fixes in dependency order. Reuses PDG facts until an edit changes the source.
+Preview simulates the same phases as apply and shows the final combined diff.
 Dry-run by default (shows a diff); --apply writes the files.
 
   --kind KIND   which fixes to apply: guard_clause, value_object, parameterize,
@@ -37,8 +37,6 @@ Dry-run by default (shows a diff); --apply writes the files.
   --apply       write the fixes to disk (default: dry-run diff only)
   --changed     only fix candidates in functions touched by the git diff
   --base REF    git base for --changed (default: merge-base with main/master)
-  --phased      run fixes in dependency order, refreshing PDG facts
-                after writes and reusing them while source is unchanged
 
 Exit 0: always, on success (even with no fixes). Exit 2: parse or IO failure.
 `
@@ -48,7 +46,7 @@ type options struct {
 	base    string
 	apply   bool
 	changed bool
-	phased  bool
+	preview *previewRevision
 	paths   []string
 }
 
@@ -87,36 +85,20 @@ func Run(ctx context.Context, args []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if opts.phased {
-		return runPhased(ctx, opts, output)
-	}
-	return runSinglePass(ctx, opts, output)
-}
-
-// runSinglePass is the original fix flow: mine once, apply all.
-func runSinglePass(ctx context.Context, opts options, output io.Writer) error {
-	specs, err := collectFixSpecs(ctx, opts)
-	if err != nil {
-		return err
-	}
-	fixed, err := applyFixSpecs(ctx, specs, opts, output)
-	if err != nil {
-		return err
-	}
-	reportDryRun(opts, output, fixed)
-	return nil
+	return runPhased(ctx, opts, output)
 }
 
 // reportDryRun prints the dry-run summary.
-func reportDryRun(opts options, output io.Writer, fixed int) {
+func reportDryRun(opts options, output io.Writer, fixed int) error {
 	if opts.apply {
-		return
+		return nil
 	}
+	scope := ""
 	if opts.changed {
-		fmt.Fprintf(output, "%d fixable candidate(s) in changed functions (dry-run; use --apply to write)\n", fixed)
-	} else {
-		fmt.Fprintf(output, "%d fixable candidate(s) (dry-run; use --apply to write)\n", fixed)
+		scope = " in changed functions"
 	}
+	_, err := fmt.Fprintf(output, "%d fixable candidate(s)%s (dry-run; use --apply to write)\n", fixed, scope)
+	return err
 }
 
 // runPhased applies fixes in dependency phases, re-mining changed files
@@ -124,7 +106,7 @@ func reportDryRun(opts options, output io.Writer, fixed int) {
 // input scope, including cross-file callers. Repeats until a full
 // cycle produces no fixes or maxPhasedCycles is reached.
 func runPhased(ctx context.Context, opts options, output io.Writer) error {
-	if !opts.apply {
+	if !opts.apply && opts.preview == nil {
 		return runPhasedDryRun(ctx, opts, output)
 	}
 	st := &phasedState{revision: fixRevision{mine: mineCandidates}}
@@ -138,8 +120,15 @@ func runPhased(ctx context.Context, opts options, output io.Writer) error {
 			break
 		}
 	}
-	fmt.Fprintf(output, "phased fix: %d candidate(s) fixed\n", st.totalFixed)
-	return nil
+	return reportPhaseRun(opts, output, st.totalFixed)
+}
+
+func reportPhaseRun(opts options, output io.Writer, count int) error {
+	if !opts.apply {
+		return reportDryRun(opts, output, count)
+	}
+	_, err := fmt.Fprintf(output, "phased fix: %d candidate(s) fixed\n", count)
+	return err
 }
 
 // runPhasedCycle runs one full pass through all phases. Returns the number
@@ -182,39 +171,9 @@ func runRevisionPhase(ctx context.Context, opts options, output io.Writer, pp ph
 	if err != nil {
 		return fixed, written, err
 	}
-	fmt.Fprintf(output, "phase %d (%s): fixed %d candidate(s)\n",
+	_, err = fmt.Fprintf(output, "phase %d (%s): fixed %d candidate(s)\n",
 		pp.phaseIdx+1, phaseNames(pp.phase), fixed)
-	return fixed, written, nil
-}
-
-// runPhasedDryRun shows what phased fixing would do without writing.
-// Single full mine, specs grouped and displayed in phase order.
-func runPhasedDryRun(ctx context.Context, opts options, output io.Writer) error {
-	specs, err := collectFixSpecs(ctx, opts)
-	if err != nil {
-		return err
-	}
-	byPhase, other := groupSpecsByPhase(specs)
-	fixed, err := showPhasedSpecs(ctx, opts, output, byPhase, other)
-	if err != nil {
-		return err
-	}
-	fmt.Fprintf(output, "%d fixable candidate(s) across %d phases (dry-run; use --apply to write)\n", fixed, len(fixPhases))
-	return nil
-}
-
-// groupSpecsByPhase buckets specs by their phase; unlisted kinds go to other.
-func groupSpecsByPhase(specs []*patterns.FixSpec) ([][]*patterns.FixSpec, []*patterns.FixSpec) {
-	byPhase := make([][]*patterns.FixSpec, len(fixPhases))
-	var other []*patterns.FixSpec
-	for _, s := range specs {
-		if idx := phaseIndex(s.Kind); idx >= 0 {
-			byPhase[idx] = append(byPhase[idx], s)
-		} else {
-			other = append(other, s)
-		}
-	}
-	return byPhase, other
+	return fixed, written, err
 }
 
 // phaseIndex returns the phase containing kind, or -1.
@@ -225,30 +184,6 @@ func phaseIndex(kind patterns.CandidateKind) int {
 		}
 	}
 	return -1
-}
-
-// showPhasedSpecs displays specs grouped by phase. Returns total shown.
-func showPhasedSpecs(ctx context.Context, opts options, output io.Writer, byPhase [][]*patterns.FixSpec, other []*patterns.FixSpec) (int, error) {
-	var fixed int
-	for i, phaseSpecs := range byPhase {
-		if len(phaseSpecs) == 0 {
-			continue
-		}
-		fmt.Fprintf(output, "--- phase %d (%s) ---\n", i+1, phaseNames(fixPhases[i]))
-		n, err := applyFixSpecs(ctx, phaseSpecs, opts, output)
-		if err != nil {
-			return fixed, err
-		}
-		fixed += n
-	}
-	if len(other) > 0 {
-		n, err := applyFixSpecs(ctx, other, opts, output)
-		if err != nil {
-			return fixed, err
-		}
-		fixed += n
-	}
-	return fixed, nil
 }
 
 // phaseHas reports whether a phase includes a kind.
@@ -291,6 +226,9 @@ func applyAndTrack(ctx context.Context, specs []*patterns.FixSpec, opts options,
 	if err != nil {
 		return 0, nil, err
 	}
+	if opts.preview != nil {
+		return opts.preview.advance(ctx, plan)
+	}
 	return executeFixPlan(ctx, plan, opts, output)
 }
 
@@ -310,7 +248,7 @@ func collectFixSpecs(ctx context.Context, opts options) ([]*patterns.FixSpec, er
 // mineCandidates runs the miner and keeps candidates with a FixSpec of the
 // requested kind.
 func mineCandidates(ctx context.Context, opts options) ([]patterns.Candidate, error) {
-	ext, err := gopatterns.ExtractForFix(ctx, "", opts.paths)
+	ext, err := extractFixRevision(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("extract: %w", err)
 	}
@@ -361,7 +299,7 @@ func onlyChangedSpecs(candidates []patterns.Candidate, opts options) ([]*pattern
 	if err != nil {
 		return nil, err
 	}
-	diff, err := gitchanged.NewDiff(cwd, opts.paths, opts.base)
+	diff, err := fixChangedDiff(cwd, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -376,16 +314,6 @@ func onlyChangedSpecs(candidates []patterns.Candidate, opts options) ([]*pattern
 		}
 	}
 	return kept, nil
-}
-
-// applyFixSpecs groups specs by file and applies them.
-func applyFixSpecs(ctx context.Context, specs []*patterns.FixSpec, opts options, output io.Writer) (int, error) {
-	plan, err := buildFixPlan(ctx, specs)
-	if err != nil {
-		return 0, err
-	}
-	fixed, _, err := executeFixPlan(ctx, plan, opts, output)
-	return fixed, err
 }
 
 // groupByFile groups FixSpecs by their file.
@@ -482,11 +410,10 @@ func parseOptions(args []string) (options, error) {
 	apply := flags.Bool("apply", false, "write fixes to disk")
 	changed := flags.Bool("changed", false, "only fix candidates in diff-touched functions")
 	base := flags.String("base", "", "git base for --changed")
-	phased := flags.Bool("phased", false, "run in dependency phases with re-mining")
 	if err := flags.Parse(args); err != nil {
 		return options{}, err
 	}
-	result := options{kind: *kind, apply: *apply, changed: *changed, base: *base, phased: *phased, paths: flags.Args()}
+	result := options{kind: *kind, apply: *apply, changed: *changed, base: *base, paths: flags.Args()}
 	return result, result.validate()
 }
 

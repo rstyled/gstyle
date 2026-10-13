@@ -17,6 +17,9 @@ func CheckFixSources(sources *pdg.SourceContext) error {
 	if sources == nil {
 		return fmt.Errorf("fix source context is missing")
 	}
+	if sources.Disk != nil {
+		return CheckFixSources(sources.Disk)
+	}
 	for _, path := range sources.Paths() {
 		content, err := os.ReadFile(path)
 		if err != nil {
@@ -37,7 +40,7 @@ func ValidateFixOverlay(ctx context.Context, sources *pdg.SourceContext, overlay
 	if err := checkOverlayComments(sources, overlay); err != nil {
 		return err
 	}
-	config := &packages.Config{Context: ctx, Dir: sources.Root, Mode: packages.LoadSyntax, Tests: true, Overlay: overlay}
+	config := &packages.Config{Context: ctx, Dir: sources.Root, Mode: packages.LoadSyntax, Tests: true, Overlay: mergedFixOverlay(sources.Overlay, overlay)}
 	pkgs, err := packages.Load(config, sources.Queries...)
 	if err != nil {
 		return fmt.Errorf("validate fixes: %w", err)
@@ -105,4 +108,15 @@ func checkMissingFixSources(sources *pdg.SourceContext) error {
 		}
 	}
 	return nil
+}
+
+func mergedFixOverlay(previous, next map[string][]byte) map[string][]byte {
+	result := make(map[string][]byte, len(previous)+len(next))
+	for path, content := range previous {
+		result[path] = content
+	}
+	for path, content := range next {
+		result[path] = content
+	}
+	return result
 }
