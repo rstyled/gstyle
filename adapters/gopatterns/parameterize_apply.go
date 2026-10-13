@@ -20,16 +20,19 @@ func applyParameterizeFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
 		return nil, err
 	}
 	candidates := []patterns.Candidate{{Kind: patterns.Parameterize, Sites: []patterns.Site{{Name: a}, {Name: b}}}}
-	out, _, err := fixParameterizeWithTypes(fset, file, src, parameterizeConfig{candidates, signatures})
+	out, _, err := fixParameterizeWithTypes(fset, file, src, parameterizeConfig{candidates: candidates, signatures: signatures, helperName: spec.Params["helper_name"]})
 	return out, err
 }
 
 func parameterizationProof(spec *patterns.FixSpec, src []byte) (string, string, map[string]string, error) {
+	if spec.Params["substitution_policy"] != substitutionPolicy || !validHelperIdentifier(spec.Params["helper_name"]) {
+		return "", "", nil, fmt.Errorf("parameterization requires a current substitution proof; re-run patterns")
+	}
 	if spec.Params["source_sha256"] != fmt.Sprintf("%x", sha256.Sum256(src)) {
 		return "", "", nil, fmt.Errorf("parameterization requires a current typed source proof; re-run patterns")
 	}
 	a, b := spec.Params["pair_a"], spec.Params["pair_b"]
-	if a == "" || b == "" || a == b {
+	if !validParameterizationPair(a, b) {
 		return "", "", nil, fmt.Errorf("parameterization requires one explicit function pair")
 	}
 	var signatures map[string]string
@@ -39,3 +42,5 @@ func parameterizationProof(spec *patterns.FixSpec, src []byte) (string, string, 
 
 	return a, b, signatures, nil
 }
+
+func validParameterizationPair(a, b string) bool { return a != "" && b != "" && a != b }

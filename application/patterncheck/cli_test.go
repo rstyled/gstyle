@@ -188,3 +188,36 @@ func Flow(r *http.Request, db *sql.DB) {
 		t.Fatal("native Go method flow was not detected")
 	}
 }
+
+func TestNativeParameterizationAutoFixAllowsPartialFlowCoverage(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example\n\ngo 1.24\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	const source = `package example
+func First(x int)(int,error){ value,err:=left(x);if err!=nil{return 0,err};return len(value),nil }
+func Second(x int)(int,error){ value,err:=right(x);if err!=nil{return 0,err};return len(value),nil }
+func left(int)(string,error){return "a",nil}
+func right(int)(string,error){return "bb",nil}
+`
+	if err := os.WriteFile(filepath.Join(dir, "sample.go"), []byte(source), 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+	report, err := GetReport(context.Background(), []string{"."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, candidate := range report.Candidates {
+		if candidate.Kind == patterns.Parameterize && candidate.FixSpec != nil {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("partial whole-function coverage blocked a proven substitution")
+	}
+	if !patterns.HasIncompleteAnalysis(report.AnalysisCoverage) {
+		t.Fatal("test must exercise the partial native producer")
+	}
+}

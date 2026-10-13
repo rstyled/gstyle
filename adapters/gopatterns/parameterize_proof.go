@@ -27,7 +27,7 @@ func VerifyParameterizations(report *patterns.PatternsReport, extraction *Extrac
 		if candidate.Kind != patterns.Parameterize {
 			continue
 		}
-		verified, err := verifyParameterization(candidate, graphs, files)
+		verified, err := verifyParameterization(candidate, graphs, files, extraction.PackageNames)
 		if err != nil {
 			return err
 		}
@@ -37,13 +37,14 @@ func VerifyParameterizations(report *patterns.PatternsReport, extraction *Extrac
 }
 
 type parameterizationSource struct {
-	fset   *token.FileSet
-	file   *ast.File
-	src    []byte
-	digest string
+	fset         *token.FileSet
+	file         *ast.File
+	src          []byte
+	digest       string
+	packageNames []string
 }
 
-func verifyParameterization(c patterns.Candidate, graphs map[string]*pdg.Graph, files map[string]*parameterizationSource) (patterns.Candidate, error) {
+func verifyParameterization(c patterns.Candidate, graphs map[string]*pdg.Graph, files map[string]*parameterizationSource, names map[string][]string) (patterns.Candidate, error) {
 	c.FixSpec = nil
 	if len(c.Sites) != 2 || c.Sites[0].Path != c.Sites[1].Path {
 		return unverifiedParameterization(c, "automatic extraction requires exactly two functions in one file"), nil
@@ -52,23 +53,29 @@ func verifyParameterization(c patterns.Candidate, graphs map[string]*pdg.Graph, 
 	if !compatibleInterfaces(left, right) {
 		return unverifiedParameterization(c, "PDG function interfaces have unknown or incompatible types"), nil
 	}
-	source, err := parameterizationFile(c.Sites[0].Path, files)
+	source, err := parameterizationFile(c.Sites[0].Path, files, names[functionPackage(c.Sites[0].ID)])
 	if err != nil {
 		return c, err
 	}
+	return source.verifyCandidate(c, left, right), nil
+}
+
+func (source *parameterizationSource) verifyCandidate(c patterns.Candidate, left, right *pdg.Graph) patterns.Candidate {
 	spec, reason := source.prove(c.Sites, left, right)
 	if spec == nil {
-		return unverifiedParameterization(c, reason), nil
+		return unverifiedParameterization(c, reason)
 	}
 	return patterns.Candidate{
 		Kind: c.Kind, ScoreMilli: c.ScoreMilli, Breakdown: c.Breakdown, Observation: c.Observation,
 		Inference:        "complete source bodies match under substitutions with compatible PDG callable types",
 		PossibleRefactor: "extract the verified pair into a shared helper with the differing callables as parameters",
 		Sites:            c.Sites, Definitions: c.Definitions, CounterEvidence: c.CounterEvidence, FixSpec: spec,
-	}, nil
+	}
 }
 
-func parameterizationFile(path string, files map[string]*parameterizationSource) (*parameterizationSource, error) {
+const substitutionPolicy = "gstyle.parameterization/0.2.0"
+
+func parameterizationFile(path string, files map[string]*parameterizationSource, names []string) (*parameterizationSource, error) {
 	if source := files[path]; source != nil {
 		return source, nil
 	}
@@ -81,7 +88,8 @@ func parameterizationFile(path string, files map[string]*parameterizationSource)
 	if err != nil {
 		return nil, err
 	}
-	source := &parameterizationSource{fset, file, src, fmt.Sprintf("%x", sha256.Sum256(src))}
+	source := &parameterizationSource{fset: fset, file: file, src: src, digest: fmt.Sprintf("%x", sha256.Sum256(src)),
+		packageNames: names}
 	files[path] = source
 	return source, nil
 }
@@ -93,6 +101,9 @@ func unverifiedParameterization(c patterns.Candidate, reason string) patterns.Ca
 
 func compatibleInterfaces(a, b *pdg.Graph) bool {
 	if a == nil || b == nil {
+		return false
+	}
+	if a.Tables == nil || b.Tables == nil {
 		return false
 	}
 	return compatibleParameters(a, a.Function.Inputs, b, b.Function.Inputs) && compatibleParameters(a, a.Function.Outputs, b, b.Function.Outputs)
@@ -142,6 +153,9 @@ func (s *parameterizationSource) prove(sites []patterns.Site, left, right *pdg.G
 	if !ok {
 		return nil, "PDG callable types are unknown or incompatible"
 	}
+	if reason := s.rewriteRisk(pair); reason != "" {
+		return nil, reason
+	}
 	return s.proofSpec(sites[0].Path, pair, signatures)
 }
 
@@ -163,6 +177,9 @@ func (s *parameterizationSource) pairHoles(pair *parameterizationPair) ([]hole, 
 	if !safeToExtract(s.fset, pair.a, pair.b) || !adjacent(s.fset, pair.a, pair.b, s.src) {
 		return nil, false
 	}
+	if !matchingCallSpreads(pair.a, pair.b) {
+		return nil, false
+	}
 	_, holes, ok := diffPair(pair.a, pair.b)
 	return holes, ok
 }
@@ -174,10 +191,14 @@ func (s *parameterizationSource) proofSpec(path string, pair *parameterizationPa
 	}
 	return &patterns.FixSpec{Kind: patterns.Parameterize, File: path,
 		Line: s.fset.Position(pair.a.Pos()).Line, EndLine: s.fset.Position(pair.b.End()).Line,
-		Params: map[string]string{"pair_a": pair.a.Name.Name, "pair_b": pair.b.Name.Name, "callee_types": string(encoded), "source_sha256": s.digest}}, ""
+		Params: map[string]string{"pair_a": pair.a.Name.Name, "pair_b": pair.b.Name.Name, "callee_types": string(encoded), "source_sha256": s.digest, "substitution_policy": substitutionPolicy, "helper_name": freshHelperName(s, pair)}}, ""
 }
 
 func currentGraphSource(graph *pdg.Graph, digest string) bool {
+	// Validate before source/call lookups dereference graph-local records.
+	if pdg.Validate(graph) != nil {
+		return false
+	}
 	if len(graph.Sources) != 1 {
 		return false
 	}
@@ -216,7 +237,7 @@ func graphCallable(graph *pdg.Graph, offset int) callableProof {
 			continue
 		}
 		attrs := graph.NodeAttributes(node)
-		if attrs.CallForm != pdg.DirectCall || attrs.Callee.Status != pdg.Known {
+		if attrs.CallForm != pdg.DirectCall || attrs.Callee.Status != pdg.Known || !strings.Contains(graph.Tables.Text(attrs.Callee.Value), ".") {
 			return callableProof{}
 		}
 		return callableExtensionValues(graph, attrs.Extensions)
@@ -254,4 +275,11 @@ func callableExtensionString(graph *pdg.Graph, extension pdg.Extension) string {
 
 func compatibleCallableProofs(a, b callableProof) bool {
 	return a.canonical != "" && a.source != "" && a.canonical == b.canonical && a.source == b.source
+}
+
+func functionPackage(id string) string {
+	if dot := strings.LastIndex(id, "."); dot >= 0 {
+		return id[:dot]
+	}
+	return ""
 }
