@@ -13,7 +13,7 @@ import (
 
 func TestImportedGraphCommandDispatch(t *testing.T) {
 	var output bytes.Buffer
-	err := run([]string{"match-graphs", "--input", "domain/ccgraph/testdata/imported-graphs.json"}, &output)
+	err := run([]string{"match-graphs", "--input", "../../domain/ccgraph/testdata/imported-graphs.json"}, &output)
 	if err != nil {
 		t.Fatal(err)
 	}

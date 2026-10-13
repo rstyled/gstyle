@@ -6,5 +6,5 @@ output_dir=$(mktemp -d "${TMPDIR:-/tmp}/gstyle-bug-reducer-demo.XXXXXX")
 printf 'Demo output: %s/reduced.txt\n' "$output_dir"
 
 cd "$example_dir/../.."
-exec go run . bug-reducer --output "$output_dir/reduced.txt" "$@" \
+exec go run ./cmd/gstyle bug-reducer --output "$output_dir/reduced.txt" "$@" \
   "$example_dir/input.txt" -- sh "$example_dir/checker.sh"

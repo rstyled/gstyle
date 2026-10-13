@@ -23,7 +23,7 @@ usage() {
 cmd_build() {
   local run_dir="$1"
   mkdir -p "$run_dir/scratch" "$run_dir/evidence"
-  (cd "$REPO" && go build -buildvcs=false -o "$run_dir/gstyle" .)
+  (cd "$REPO" && go build -buildvcs=false -o "$run_dir/gstyle" ./cmd/gstyle)
   echo "built $run_dir/gstyle"
 }
 
