@@ -57,15 +57,19 @@ func (p *previewRevision) show(output io.Writer) error {
 
 func extractFixRevision(ctx context.Context, opts options) (*gopatterns.Extraction, error) {
 	if opts.preview == nil {
+		if opts.extractor != nil {
+			return opts.extractor.Extract(ctx, "", opts.paths, gopatterns.SourceOverlay{})
+		}
 		return gopatterns.ExtractForFix(ctx, "", opts.paths)
 	}
 	p := opts.preview
-	ext, err := gopatterns.ExtractFixOverlay(ctx, "", opts.paths, gopatterns.SourceOverlay{Files: maps.Clone(p.overlay), Disk: p.disk})
+	revision := gopatterns.SourceOverlay{Files: maps.Clone(p.overlay), Disk: p.disk}
+	ext, err := extractPreviewRevision(ctx, opts, revision)
 	if err != nil {
 		return nil, err
 	}
 	if p.disk == nil {
-		p.disk = ext.Sources
+		p.disk = ext.Sources.EvidenceOnly()
 	}
 	return ext, nil
 }
@@ -87,4 +91,11 @@ func fixChangedDiff(cwd string, opts options) (*gitchanged.Diff, error) {
 		return gitchanged.NewDiff(cwd, opts.paths, opts.base)
 	}
 	return gitchanged.NewOverlayDiff(cwd, opts.paths, opts.base, opts.preview.overlay)
+}
+
+func extractPreviewRevision(ctx context.Context, opts options, revision gopatterns.SourceOverlay) (*gopatterns.Extraction, error) {
+	if opts.extractor != nil {
+		return opts.extractor.Extract(ctx, "", opts.paths, revision)
+	}
+	return gopatterns.ExtractFixOverlay(ctx, "", opts.paths, revision)
 }

@@ -5,11 +5,15 @@ import "github.com/rstyled/gstyle/domain/pdg"
 // Source metadata uses the same interned strings as graph facts. The builder's
 // construction maps disappear after extraction; source bytes stay file-local.
 func internSourceMetadata(pool *pdg.Builder) {
+	internSourceMetadataFrom(pool, 0, 0)
+}
+
+func internSourceMetadataFrom(pool *pdg.Builder, functionStart, referenceStart int) {
 	sources := pool.Tables.Sources
-	for i := range sources.Functions {
+	for i := functionStart; i < len(sources.Functions); i++ {
 		sources.Functions[i] = internSourceFunction(pool, sources.Functions[i])
 	}
-	for i := range sources.References {
+	for i := referenceStart; i < len(sources.References); i++ {
 		sources.References[i].Target = internSourceText(pool, sources.References[i].Target)
 	}
 }

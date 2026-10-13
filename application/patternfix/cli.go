@@ -42,12 +42,13 @@ Exit 0: always, on success (even with no fixes). Exit 2: parse or IO failure.
 `
 
 type options struct {
-	kind    string
-	base    string
-	apply   bool
-	changed bool
-	preview *previewRevision
-	paths   []string
+	kind      string
+	base      string
+	apply     bool
+	changed   bool
+	preview   *previewRevision
+	extractor *gopatterns.FixExtractor
+	paths     []string
 }
 
 func (opts options) validate() error {
@@ -109,6 +110,7 @@ func runPhased(ctx context.Context, opts options, output io.Writer) error {
 	if !opts.apply && opts.preview == nil {
 		return runPhasedDryRun(ctx, opts, output)
 	}
+	opts.extractor = &gopatterns.FixExtractor{}
 	st := &phasedState{revision: fixRevision{mine: mineCandidates}}
 	for cycle := 0; cycle < maxPhasedCycles; cycle++ {
 		fixed, err := runPhasedCycle(ctx, opts, output, st)
@@ -147,6 +149,9 @@ func runPhasedCycle(ctx context.Context, opts options, output io.Writer, st *pha
 		}
 		if len(written) > 0 {
 			st.revision.invalidate()
+			if opts.extractor != nil {
+				opts.extractor.Invalidate(written)
+			}
 		}
 		cycleFixed += fixed
 	}

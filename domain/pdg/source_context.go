@@ -48,6 +48,7 @@ type SourceContext struct {
 	files      []SourceSnapshot
 	paths      map[string]Ref
 	missing    map[string]bool
+	vacancies  map[string]Ref
 }
 
 func NewSourceContext(root string, queries []string) *SourceContext {
@@ -63,7 +64,14 @@ func (c *SourceContext) AddOwned(path string, content []byte, comments []ByteRan
 	if ref := c.paths[path]; ref != 0 {
 		return ref
 	}
-	c.files = append(c.files, SourceSnapshot{Path: path, Content: string(content), Identity: sha256.Sum256(content), Comments: append([]ByteRange(nil), comments...), Owners: append([]SourceCommentOwner(nil), owners...)})
+	snapshot := SourceSnapshot{Path: path, Content: string(content), Identity: sha256.Sum256(content), Comments: append([]ByteRange(nil), comments...), Owners: append([]SourceCommentOwner(nil), owners...)}
+	if ref := c.vacancies[path]; ref != 0 {
+		c.files[ref-1] = snapshot
+		c.paths[path] = ref
+		delete(c.vacancies, path)
+		return ref
+	}
+	c.files = append(c.files, snapshot)
 	ref := Ref(len(c.files))
 	c.paths[path] = ref
 	return ref

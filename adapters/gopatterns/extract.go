@@ -264,6 +264,14 @@ func extractWithSources(ctx context.Context, root string, paths []string, option
 	sources := pdg.NewSourceContext(abs, query)
 	sources.Disk, sources.Overlay = options.disk, options.overlay
 	options.snapshots = sources
+	if options.tests {
+		return extractBoundedFix(ctx, abs, paths, options)
+	}
+	return extractNormalPackages(ctx, abs, paths, options)
+}
+
+func extractNormalPackages(ctx context.Context, abs string, paths []string, options sourceLoadOptions) (*Extraction, error) {
+	sources, query := options.snapshots, options.snapshots.Queries
 	pkgs, sourceIdentities, err := loadPatternSourcesForFix(ctx, abs, query, options)
 	if err != nil {
 		return nil, err
@@ -343,6 +351,13 @@ func loadPatternSourcesForFix(ctx context.Context, dir string, query []string, o
 	if err != nil {
 		return nil, nil, fmt.Errorf("load Go packages: %w", err)
 	}
+	if err := patternPackageErrors(pkgs, dir); err != nil {
+		return nil, nil, err
+	}
+	return pkgs, sources, nil
+}
+
+func patternPackageErrors(pkgs []*packages.Package, dir string) error {
 	var errs []string
 	for _, pkg := range pkgs {
 		for _, e := range pkg.Errors {
@@ -350,9 +365,9 @@ func loadPatternSourcesForFix(ctx context.Context, dir string, query []string, o
 		}
 	}
 	if len(errs) > 0 {
-		return nil, nil, fmt.Errorf("Go analysis fails:\n%s", strings.Join(errs, "\n"))
+		return fmt.Errorf("Go analysis fails:\n%s", strings.Join(errs, "\n"))
 	}
-	return pkgs, sources, nil
+	return nil
 }
 
 func packagePdgs(pkg *packages.Package, root string, pool *pdg.Builder) ([]FuncPdg, error) {

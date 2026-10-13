@@ -40,7 +40,7 @@ func ValidateFixOverlay(ctx context.Context, sources *pdg.SourceContext, overlay
 	if err := checkOverlayComments(sources, overlay); err != nil {
 		return err
 	}
-	config := &packages.Config{Context: ctx, Dir: sources.Root, Mode: packages.LoadTypes, Tests: true}
+	config := &packages.Config{Context: ctx, Dir: sources.Root, Mode: packages.LoadFiles | packages.NeedExportFile, Tests: true}
 	pkgs, err := loadSourcePackages(config, sources.Queries, mergedFixOverlay(sources.Overlay, overlay))
 	if err != nil {
 		return fmt.Errorf("validate fixes: %w", err)
