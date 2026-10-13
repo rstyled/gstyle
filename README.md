@@ -303,10 +303,11 @@ go run ./examples/gstyle-hunt path/to/input.go
 See [the Gstyle checker guide](examples/gstyle-hunt/README.md) for its supported inputs
 and checks. The exploratory fixture generators have been removed.
 
-## Match imported graphs against compat's strict profile
+## Match graphs against compat's strict profile
 
 ```sh
 gstyle match-graphs --input domain/ccgraph/testdata/imported-graphs.json
+gstyle match-graphs --source . --context-output /tmp/gstyle-context.jsonl
 go test ./domain/ccgraph -run TestCompat -count=1
 ```
 
@@ -319,9 +320,18 @@ Configuration overrides use exact decimal strings, for example
 `--timeout 30s` stops resource use with an incomplete-run diagnostic; it never
 shortens WL depth or silently truncates pairs.
 
-This is imported-graph matching, not certification of native Go extraction.
-Native PDG exports require a separate CFG/source/evidence validator before strict
-matching. The existing `patterns` matcher remains the Gstyle adaptation. Pair
+`--source` registers `gstyle.go.scalar-normal/0.2.0` and independently checks
+typed source, operation inventory, bindings, CFG transitions and outcomes,
+dependencies, interfaces, and target width before strict matching. It reports
+excluded functions separately. Optional context output preserves exact source
+snapshots and paired PDG 0.1.0 / CFG 0.2.0 documents; the output path must be new.
+See the [bounded Go extraction contract](docs/papers.md#gstyle-go-scalar-normal).
+Unspecified sibling-operand order is rejected. Calls, memory operations, loops,
+closures, and concurrency remain outside this initial source profile.
+
+The labeled development/held-out quality study remains pending; this command is
+a conformance path, not detector certification. The existing `patterns` matcher
+remains the Gstyle adaptation. Pair
 results do not establish semantic equivalence or safe refactoring. Required
 unknown facts are diagnosed; cancellation or output failure leaves an incomplete run.
 
@@ -337,8 +347,9 @@ pattern mining and preserves extraction limits as explicit evidence. The existin
 The schema lives in [rstyled/compat](https://github.com/rstyled/compat/blob/56edd6bb804b10edaf9bbc2343d69e5e298d8c1a/schemas/pdg.schema.json).
 The root extraction profile governs counts, dependencies, capabilities and
 provenance. Records have no separate policy fields; conformance is one assessment
-of the root profile. Gstyle's native reference count still counts recorded
-reference-bearing bindings; it is not the strict matcher's retained-read count.
+of the root profile. `gstyle.go.scalar-normal/0.1.0` counts distinct local/parameter
+bindings read by reachable read operations. The broader `gstyle.abstraction/0.2.0`
+profile retains its reference-bearing binding count; these policies are distinct.
 To check the export fixture against a compat checkout, install Python `jsonschema`
 and run:
 
@@ -351,11 +362,24 @@ Scope IDs use relative paths and lexical byte ranges; they stay deterministic fo
 unchanged source and extraction root. Dependencies remain approximate; structural
 schema validity does not establish compat extraction or matching conformance.
 
-For acyclic integer/boolean local code, native data edges now identify reaching
-definitions across reassignment and `if` branches, with RHS reads before writes.
-This replaces first-binding data edges in that subset. Calls, memory, loops and
-short-circuit expressions remain unsupported by this analysis; control dependence,
-value joins and strict reference-count/projection validation remain incomplete.
+The scalar normal profile covers typed local integer/boolean code, declarations,
+assignment, compound assignment, shadowing, `if` branches, `&&`/`||`, and returns.
+It records distinct read occurrences, reaching definitions, explicit value joins,
+post-dominator control edges, and nearest-operation-dominator execution edges.
+Go leaves some operand orders unspecified: the selected source-order execution
+basis remains approximate, not a proof of language-mandated sequencing.
+Short-circuit RHS operations are conditional; branch joins do not require a skipped
+arm. Compiler CFG context uses compact indexes and remains beside the closed PDG
+interchange document. Validation recomputes reachability and retained-read counts;
+matching excludes unreachable operations while export preserves source facts.
+
+The profile excludes calls, memory, loops, closures, concurrency, generics and
+non-scalar types, including unsupported unreachable source. Exceptional flow is
+omitted and remains unsupported. Its extraction conformance remains nonconformant:
+operation inventory and independent source/CFG/type/provenance validation still
+need the separate Go profile and conformance harness required by
+[compat's strict contract](https://github.com/rstyled/compat/blob/56edd6bb804b10edaf9bbc2343d69e5e298d8c1a/schemas/ccgraph-profile.md#L19-L60).
+These changes do not switch the default matcher to certified strict matching.
 
 ## Order declarations by type
 
@@ -408,3 +432,9 @@ Fix specs carry the current substitution policy; re-run patterns for older specs
 The fix targets only that pair. If another fix changes the source first, re-mine
 with `gstyle fix --phased` before parameterizing. Callable types are interned PDG
 extensions; no second compiler load is required.
+
+Interface nil checks use supported PDG binding and value dependencies, with
+compiler type facts and direct-call return summaries. The original synthetic
+corpus is in `adapters/gopatterns/testdata/interface-nil`. Mixed nil paths and
+unsupported mutation paths remain unflagged; these warnings do not authorize
+an automatic fix.

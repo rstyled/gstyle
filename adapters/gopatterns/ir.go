@@ -27,7 +27,12 @@ type irBuilder struct {
 	stack                                []ast.Node
 	policy, sourceEvidence, sourceOrigin pdg.Ref
 	executionEvidence, executionOrigin   pdg.Ref
+	bindingOperations                    bool
 	scalarDefinitions                    bool
+	scalarOperations                     bool
+	implicitReads                        map[ast.Node][]pdg.Ref
+	normalDependencies                   bool
+	scalarOrderKnown                     bool
 }
 
 func newIRBuilder(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.Builder) *irBuilder {
@@ -41,6 +46,7 @@ func newIRBuilder(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pd
 	b.sourceEvidence = pool.Evidence(pdg.Approximated, "Operation identified in typed source; dependency completeness is separate.")
 	b.sourceOrigin = pool.Origin(pdg.SourceOrigin, "Go source operation; abstraction lowering is approximate.")
 	b.header(pkg, fn, path)
+	b.buildEvidence(pkg)
 	return b
 }
 
@@ -125,7 +131,7 @@ func (b *irBuilder) symbol(id *ast.Ident, role pdg.Role) pdg.Ref {
 	ref := pdg.Ref(len(b.graph.Symbols) + 1)
 	b.graph.Symbols = append(b.graph.Symbols, pdg.Symbol{
 		ID: b.pool.Text("s" + strconv.Itoa(int(ref))), Scope: b.scope(obj),
-		Name: b.pool.Known(obj.Name()), Type: b.pool.Known(irTypeString(obj.Type())), Role: role,
+		Name: b.pool.Known(obj.Name()), Type: b.pool.Known(irTypeString(obj.Type())), Role: role, Extensions: b.resolvedType(obj.Type()),
 	})
 	b.symbols[obj] = ref
 	return ref
@@ -144,6 +150,13 @@ func (b *irBuilder) definition(node, symbol pdg.Ref) {
 	attrs.Defines = append(attrs.Defines, id)
 }
 
+func (b *irBuilder) sourceLine(node ast.Node) uint32 {
+	if node == nil {
+		return 0
+	}
+	return uint32(b.fset.PositionFor(node.Pos(), false).Line)
+}
+
 // buildGraph is the sole production graph construction path.
 func buildGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.Builder) (pdg.Graph, error) {
 	file := pkg.Fset.File(fn.Pos())
@@ -154,11 +167,15 @@ func buildGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.
 	b.ir.interfaces(fn)
 	b.params(fn)
 	b.stmt(fn.Body)
+	b.ir.selectScalarLowering(fn)
+	b.ir.implicitReads = map[ast.Node][]pdg.Ref{}
 	b.ir.enrich(fn.Body)
+	b.ir.interfaceValueFacts()
 	b.ir.returnValues(fn.Body)
 	b.ir.references()
 	flow, dom := b.ir.execution(fn.Body)
-	b.ir.reachingDefinitions(fn.Body, flow, dom)
+	flow, dom = b.ir.reachingDefinitions(fn.Body, flow, dom)
+	b.ir.normalDependenciesFor(flow, dom)
 	b.ir.capabilities()
 	if err := b.ir.pack(); err != nil {
 		return pdg.Graph{}, err
@@ -166,9 +183,8 @@ func buildGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.
 	return b.ir.graph, nil
 }
 
-func (b *irBuilder) sourceLine(node ast.Node) uint32 {
-	if node == nil {
-		return 0
-	}
-	return uint32(b.fset.PositionFor(node.Pos(), false).Line)
+func (b *irBuilder) selectScalarLowering(fn *ast.FuncDecl) {
+	b.scalarOperations = b.scalarInterface(fn) && b.reachingSubset(fn.Body)
+	b.bindingOperations = !b.scalarOperations && b.interfaceBindingSubset(fn)
+	b.scalarOrderKnown = scalarOrderKnown(fn.Body) && len(b.graph.Function.Outputs) <= 1
 }

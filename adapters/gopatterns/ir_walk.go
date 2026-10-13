@@ -37,6 +37,7 @@ func (b *irBuilder) operation(n ast.Node) {
 		b.declaration(n)
 	case *ast.Ident:
 		b.read(n)
+		b.scalarConstant(n)
 	case *ast.CallExpr:
 		b.call(n)
 	default:
@@ -91,6 +92,8 @@ func (b *irBuilder) otherStatement(n ast.Node) {
 
 func (b *irBuilder) expressionOperation(n ast.Node) {
 	switch n := n.(type) {
+	case *ast.ParenExpr:
+		b.parenthesizedValue(n)
 	case *ast.BasicLit:
 		b.addNode(n, pdg.Computation, pdg.Attributes{Literal: b.pool.Known(n.Value), Operator: b.pool.Known("literal")})
 	case *ast.BinaryExpr:
@@ -102,6 +105,13 @@ func (b *irBuilder) expressionOperation(n ast.Node) {
 	default:
 		b.accessOperation(n)
 	}
+}
+
+func (b *irBuilder) parenthesizedValue(n *ast.ParenExpr) {
+	if (!b.scalarOperations && !b.bindingOperations) || b.writeTargets[n] {
+		return
+	}
+	b.addNode(n, pdg.Computation, pdg.Attributes{Operator: b.pool.Known("parentheses")})
 }
 
 func (b *irBuilder) accessOperation(n ast.Node) {
@@ -131,7 +141,7 @@ func (b *irBuilder) assignment(n *ast.AssignStmt) {
 			b.write(id, lhs)
 			continue
 		}
-		b.modify(id, lhs)
+		b.modify(n, id, lhs)
 	}
 }
 
@@ -144,7 +154,7 @@ func (b *irBuilder) declaration(n *ast.ValueSpec) {
 
 func (b *irBuilder) increment(n *ast.IncDecStmt) {
 	id := b.addNode(n, pdg.Assignment, pdg.Attributes{WriteForm: b.pool.Text(n.Tok.String())})
-	b.modify(id, n.X)
+	b.modify(n, id, n.X)
 }
 
 func (b *irBuilder) rangeOperation(n *ast.RangeStmt) {
@@ -158,6 +168,7 @@ func (b *irBuilder) rangeOperation(n *ast.RangeStmt) {
 }
 
 func (b *irBuilder) write(node pdg.Ref, expr ast.Expr) {
+	b.writeTargetSyntax(expr)
 	expr = unparen(expr)
 	b.writeTargets[expr] = true
 	access := pdg.Access{UnresolvedReason: b.pool.Text("Memory target and aliases are unresolved.")}
@@ -175,9 +186,20 @@ func (b *irBuilder) write(node pdg.Ref, expr ast.Expr) {
 	}
 }
 
+func (b *irBuilder) writeTargetSyntax(expr ast.Expr) {
+	for {
+		b.writeTargets[expr] = true
+		paren, ok := expr.(*ast.ParenExpr)
+		if !ok {
+			return
+		}
+		expr = paren.X
+	}
+}
+
 // Read-modify-write operations read the same target they write. The access
 // remains unresolved for memory targets; no alias or reaching-definition claim.
-func (b *irBuilder) modify(node pdg.Ref, expr ast.Expr) {
+func (b *irBuilder) modify(owner ast.Node, node pdg.Ref, expr ast.Expr) {
 	b.write(node, expr)
 	attrs := &b.attributes[b.graph.Nodes[node-1].Attributes-1]
 	if len(attrs.Writes) == 0 {
@@ -185,6 +207,10 @@ func (b *irBuilder) modify(node pdg.Ref, expr ast.Expr) {
 	}
 	read := attrs.Writes[len(attrs.Writes)-1]
 	read.Position = 1
+	if b.scalarOperations {
+		b.implicitScalarRead(owner, unparen(expr), read)
+		return
+	}
 	attrs.Reads = append(attrs.Reads, read)
 }
 
@@ -209,7 +235,7 @@ func (b *irBuilder) read(id *ast.Ident) {
 		role = pdg.GlobalRole
 	}
 	symbol := b.symbol(id, role)
-	node := b.readOwner(id)
+	node := b.scalarReadOwner(id)
 	attrs := &b.attributes[b.graph.Nodes[node-1].Attributes-1]
 	attrs.Reads = append(attrs.Reads, pdg.Access{Symbol: symbol, Position: b.readPosition(node, id)})
 }

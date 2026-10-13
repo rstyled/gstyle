@@ -21,12 +21,13 @@ func (t *Tables) Text(id Text) string {
 
 // Builder owns interning maps for one extraction. Do not use it concurrently.
 type Builder struct {
-	labels   map[MatchLabel]Ref
-	Tables   *Tables
-	strings  map[string]Text
-	policies map[Profile]Ref
-	evidence map[Capability]Ref
-	origins  map[provenanceKey]Ref
+	labels           map[MatchLabel]Ref
+	Tables           *Tables
+	strings          map[string]Text
+	policies         map[Profile]Ref
+	evidence         map[Capability]Ref
+	origins          map[provenanceKey]Ref
+	singleExtensions map[Extension][]Extension
 }
 
 type provenanceKey struct {
@@ -38,8 +39,21 @@ func NewBuilder() *Builder {
 	return &Builder{
 		Tables: &Tables{}, labels: map[MatchLabel]Ref{}, strings: map[string]Text{},
 		policies: map[Profile]Ref{}, evidence: map[Capability]Ref{},
-		origins: map[provenanceKey]Ref{},
+		origins:          map[provenanceKey]Ref{},
+		singleExtensions: map[Extension][]Extension{},
 	}
+}
+
+// SingletonExtension shares immutable one-element extension lists across the
+// extraction. Consumers must replace lists rather than mutate their elements.
+func (b *Builder) SingletonExtension(name, value string) []Extension {
+	extension := Extension{Name: b.Text(name), Value: b.Text(value)}
+	if list, ok := b.singleExtensions[extension]; ok {
+		return list
+	}
+	list := []Extension{extension}
+	b.singleExtensions[extension] = list
+	return list
 }
 
 func (b *Builder) Text(value string) Text {

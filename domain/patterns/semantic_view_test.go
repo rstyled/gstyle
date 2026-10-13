@@ -191,3 +191,28 @@ func TestUnsupportedLoopFlowIsReportedInCoverage(t *testing.T) {
 		t.Fatalf("unsupported loop flow hidden: %+v", evidence)
 	}
 }
+
+func TestSemanticViewUsesKnownNormalReachability(t *testing.T) {
+	pool := pdg.NewBuilder()
+	graph := &pdg.Graph{Tables: pool.Tables, Nodes: []pdg.Node{
+		{ID: pool.Text("input"), Category: pdg.FormalInput},
+		{ID: pool.Text("live-return"), Category: pdg.Return},
+		{ID: pool.Text("dead-return"), Category: pdg.Return},
+	}, Edges: []pdg.Edge{{Source: 1, Target: 2, Kind: pdg.Data}, {Source: 1, Target: 3, Kind: pdg.Data}}, NormalFlow: &pdg.NormalFlow{Entry: 1, Blocks: []pdg.FlowBlock{
+		{Operations: []pdg.Ref{2}, Reachable: true},
+		{Operations: []pdg.Ref{3}, Reachable: false},
+	}}}
+	view := semanticView(graph)
+	if len(view.Nodes) != len(graph.Nodes) {
+		t.Fatal("canonical node indexes are remapped")
+	}
+	if view.Nodes[1].Kind != Return || view.Nodes[2].Kind == Return {
+		t.Fatal("unreachable return participates in slicing")
+	}
+	if len(view.Edges) != 1 || view.Edges[0].To != 1 {
+		t.Fatal("unreachable data edge retained or canonical index changed")
+	}
+	if canonicalNodeID(graph, 2) != "dead-return" {
+		t.Fatal("source navigation identity is lost")
+	}
+}

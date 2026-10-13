@@ -59,10 +59,62 @@ edges supply two of the numerical features. The shared contract is tracked in [c
 establish compat conformance or reproduction of the original paper. The separately named
 `match-graphs` command now implements imported projected-stage matching against
 `compat.ccgraph.strict/0.1.0` at revision `04d9aa0`; its shared stage fixtures test
-projection, features, interfaces, directed WL, scoring and boundaries. It does
-not validate native extraction or reproduce the original CCGraph tool.
+projection, features, interfaces, directed WL, scoring and boundaries. It
+also accepts native source through the bounded Go contract below. It does not
+reproduce the original CCGraph tool or establish detector quality.
 
-**What gstyle adds:** AST bypass, parallel pair checks, shared IR label hashes,
+### Gstyle Go scalar normal
+
+The explicit conformance path `gstyle match-graphs --source ROOT` registers
+`gstyle.go.scalar-normal/0.2.0` in its run manifest. Admission follows
+[compat's validation and projection contract](https://github.com/rstyled/compat/blob/56edd6bb804b10edaf9bbc2343d69e5e298d8c1a/schemas/ccgraph-profile.md#1-boundary-versions-and-admitted-evidence).
+This is a Go extraction policy; it does not claim Rust HIR extraction.
+
+- Admit acyclic integer/bool local and parameter operations, variable declarations,
+  single ordinary assignments, increment/decrement, `if`, explicit returns,
+  single named-result bare returns, unary expressions, and short-circuit logic.
+  Check the complete body, including unreachable syntax. Reject calls, memory
+  operations, loops, transfers, closures, concurrency, generic functions/receivers,
+  and variadic inputs.
+- Reject independently evaluated sibling operands, compound assignments,
+  multiple initializer/return expressions, and multiple result slots. A selected
+  source order is not a Go execution proof. This follows
+  [compat's unspecified-order policy](https://github.com/rstyled/compat/blob/56edd6bb804b10edaf9bbc2343d69e5e298d8c1a/schemas/ccgraph-decisions.md)
+  and [Go's evaluation-order rules](https://go.dev/ref/spec#Order_of_evaluation).
+- Preserve every operation occurrence, including literal and variable reads.
+  Parenthesized values have explicit identity computations; write-target
+  parentheses do not create value operations. Logical tests are source-backed
+  lowered predicates. Reaching-definition joins are nonexecuting values.
+  Actual formal inputs are retained even when unused. Meaningful formal outputs
+  represent result slots, including named-result initial zero definitions;
+  unreachable returns cannot transfer into live outputs. Void fallthrough has
+  no fabricated value operation.
+- Count distinct local/parameter symbols read on reachable normal flow. Receivers
+  use parameter binding roles; named results use local roles. Interface receiver
+  and return roles remain distinct. Resolve integer/bool aliases and named types
+  from compiler facts, preserving original type spellings. Transport primitives
+  in `gstyle.go.scalar-normal:resolved-type` on symbols/interface elements;
+  native integer width comes from the actual loaded target.
+- A separate validator checks source inventory/kinds/operators/literals,
+  scopes/roles/reads/writes/types, CFG entry/transitions/true-false outcomes,
+  sparse dominator execution and post-dominator control edges, scalar definition
+  paths/joins, operand/return edges, interfaces, and projected reference counts.
+  Normal CFGs exclude nonexecuting entities. Optional context output uses one
+  operation per CFG node, source spans and operation IDs shared with the PDG,
+  synthetic administrative entry/exit, and explicit return transfers.
+- Preserve panic/unwinding omissions: paired CFG evidence stays `partial`.
+  Emit source content identities, Go toolchain/flags/OS/architecture/target width,
+  root profile registration, and every projection decision. No producer JSON
+  claim alone passes native admission. Repeated primitive evidence lists share
+  storage; source bytes/compiler objects are not retained in routine PDGs.
+
+The imported matcher fixtures remain pinned to `04d9aa0`; native admission targets
+`56edd6b`, whose matching-stage conventions are unchanged. The
+[independently labeled development/held-out study](https://github.com/rstyled/compat/blob/56edd6bb804b10edaf9bbc2343d69e5e298d8c1a/schemas/ccgraph-profile.md#10-fixtures-quality-and-implementation-gate)
+remains separate and pending. Do not use this implementation to claim complete
+Go coverage, original-tool reproduction, detector quality, or safe refactoring.
+
+**What the advisory `patterns` matcher adds:** AST bypass, parallel pair checks, shared IR label hashes,
 cached vector norms, a safe WL upper bound, and bounded match batches. These
 additions are separate from the paper's algorithm. Removing LSH retains these
 filters; it does not enable exhaustive matching over all usable functions.

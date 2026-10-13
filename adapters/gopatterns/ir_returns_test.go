@@ -11,17 +11,18 @@ func TestReturnValuesReachEachFormalOutput(t *testing.T) {
 	cases := []struct {
 		name, source     string
 		returns, outputs int
+		supported        bool
 	}{
-		{"identity", "func f(x int) int { return x }", 1, 1},
-		{"branch", "func f(x int,c bool) int { if c { return x }; return 0 }", 2, 1},
-		{"reassignment", "func f(x int) int { x=1; x=2; return x }", 1, 1},
-		{"loop", "func f(x int) int { for x>0 { x--; if x==2 { return x } }; return x }", 2, 1},
-		{"multiple results", "func f(x int) (int,bool) { return x,true }", 1, 2},
-		{"tuple call", "func f() (int,bool) { return pair() }; func pair() (int,bool) { return 1,true }", 1, 2},
-		{"named bare return", "func f(x int) (a,b int) { a=x; b=x+1; return }", 1, 2},
-		{"deferred write", "func f() (x int) { defer func(){x++}(); return 1 }", 1, 1},
-		{"closure", "func f(x int) int { g:=func() int { return x }; return g() }", 1, 1},
-		{"void", "func f() { return }", 1, 0},
+		{"identity", "func f(x int) int { return x }", 1, 1, true},
+		{"branch", "func f(x int,c bool) int { if c { return x }; return 0 }", 2, 1, true},
+		{"reassignment", "func f(x int) int { x=1; x=2; return x }", 1, 1, true},
+		{"loop", "func f(x int) int { for x>0 { x--; if x==2 { return x } }; return x }", 2, 1, false},
+		{"multiple results", "func f(x int) (int,bool) { return x,true }", 1, 2, true},
+		{"tuple call", "func f() (int,bool) { return pair() }; func pair() (int,bool) { return 1,true }", 1, 2, false},
+		{"named bare return", "func f(x int) (a,b int) { a=x; b=x+1; return }", 1, 2, true},
+		{"deferred write", "func f() (x int) { defer func(){x++}(); return 1 }", 1, 1, false},
+		{"closure", "func f(x int) int { g:=func() int { return x }; return g() }", 1, 1, false},
+		{"void", "func f() { return }", 1, 0, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -52,7 +53,11 @@ func TestReturnValuesReachEachFormalOutput(t *testing.T) {
 				}
 				found[edge.Source][edge.Position] = true
 				evidence := g.Tables.Evidence[edge.Evidence-1]
-				if evidence.Status != pdg.Approximated || edge.Definition != 0 {
+				wantStatus := pdg.Approximated
+				if tc.supported {
+					wantStatus = pdg.Supported
+				}
+				if evidence.Status != wantStatus || edge.Definition != 0 {
 					t.Fatal("return edge overstates dependency precision")
 				}
 			}
@@ -71,13 +76,18 @@ func TestReturnValuesReachEachFormalOutput(t *testing.T) {
 	}
 }
 
-func TestBareReturnReadsNamedResultsWithoutDefUseClaims(t *testing.T) {
+func TestBareReturnReadsNamedResults(t *testing.T) {
 	g := parseIR(t, "package example; func f(x int) (a,b int) { a=x; b=x+1; return }", pdg.NewBuilder())
 	for _, node := range g.Nodes {
 		if node.Category != pdg.Return {
 			continue
 		}
 		reads := g.NodeAttributes(node).Reads
+		for _, edge := range g.Edges {
+			if g.Tables.Text(edge.Subkind) == "scalar-value" && edge.Target == pdg.Ref(indexNode(g, node)) && g.Nodes[edge.Source-1].Category == pdg.Read {
+				reads = append(reads, g.NodeAttributes(g.Nodes[edge.Source-1]).Reads...)
+			}
+		}
 		if len(reads) != 2 {
 			t.Fatalf("named result reads=%v", reads)
 		}
@@ -92,7 +102,7 @@ func TestBareReturnReadsNamedResultsWithoutDefUseClaims(t *testing.T) {
 }
 
 func TestReturnCapabilityStatesRemainingLimits(t *testing.T) {
-	g := parseIR(t, "package example; func f(x int) int { return x }", pdg.NewBuilder())
+	g := parseIR(t, "package example; func f(x int) int { defer func(){}(); return x }", pdg.NewBuilder())
 	for _, c := range g.Capabilities {
 		if g.Tables.Text(c.Name) != "returns" {
 			continue
@@ -104,4 +114,13 @@ func TestReturnCapabilityStatesRemainingLimits(t *testing.T) {
 		return
 	}
 	t.Fatal("return capability missing")
+}
+
+func indexNode(g pdg.Graph, node pdg.Node) int {
+	for i, n := range g.Nodes {
+		if n.ID == node.ID {
+			return i + 1
+		}
+	}
+	return 0
 }

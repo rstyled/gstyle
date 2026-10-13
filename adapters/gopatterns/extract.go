@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/rstyled/gstyle/domain/interfacenil"
 	"github.com/rstyled/gstyle/domain/patterns"
 	"github.com/rstyled/gstyle/domain/pdg"
 	"golang.org/x/tools/go/packages"
@@ -129,6 +130,7 @@ func Extract(ctx context.Context, root string, paths []string) (*Extraction, err
 		missing = append(missing, findMissingIdentities(pkg, abs)...)
 		services = append(services, findDomainServices(pkg, abs)...)
 	}
+	populateInterfaceNilHits(funcsOut)
 	return &Extraction{PackageNames: packageBindingNames(pkgs), Funcs: funcsOut, DeclarationOrders: orders, AnemicModels: anemic, MissingIdentities: missing, DomainServices: services}, nil
 }
 
@@ -368,7 +370,7 @@ func extractFunc(pkg *packages.Package, fn *ast.FuncDecl, path string, ctx extra
 		// ForceTypeAssertHits are unchecked `x.(T)` (gostaticanalysis).
 		ForceTypeAssertHits: findForceTypeAssertHits(fn, pkg.Fset, pkg.TypesInfo),
 		// TypedNilHits are typed-nil comparisons (gostaticanalysis).
-		TypedNilHits: findTypedNilHits(fn, pkg.Fset, pkg.TypesInfo),
+		TypedNilHits: nil,
 		// ErrorCheckSites tracks per-call error checking for deviant_behavior.
 		ErrorCheckSites: findErrorCheckSites(fn, pkg.Fset, pkg.TypesInfo),
 	}, nil
@@ -499,4 +501,17 @@ func pdgSourceIdentity(pool *pdg.Builder, digest string) pdg.Fact {
 		return pool.Missing(pdg.Unknown, "Compiler source snapshot was not captured.")
 	}
 	return pool.Known(digest)
+}
+
+// Findings derive from the same graphs exported and consumed by matching.
+func populateInterfaceNilHits(functions []FuncPdg) {
+	graphs := make([]pdg.Graph, len(functions))
+	for i := range functions {
+		graphs[i] = functions[i].Pdg
+	}
+	for i, hits := range interfacenil.Find(graphs) {
+		for _, ref := range hits {
+			functions[i].TypedNilHits = append(functions[i].TypedNilHits, patterns.TypedNilHit{Line: int(graphs[i].Nodes[ref-1].Line), ExprText: "interface value is provably non-nil"})
+		}
+	}
 }

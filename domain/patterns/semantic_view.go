@@ -13,15 +13,24 @@ func semanticFact(f *MiningFacts) *MiningFacts {
 	return &out
 }
 
-// Node and edge indexes correspond exactly to the canonical records. Callers
+// Node indexes correspond exactly to canonical records. Unreachable operation
+// slots remain as nonsemantic placeholders; incident edges are omitted. Callers
 // can resolve binding, definition, memory, and evidence facts through Canonical.
 func semanticView(graph *pdg.Graph) *MiningGraph {
-	view := &MiningGraph{Nodes: make([]PdgNode, len(graph.Nodes)), Edges: make([]PdgEdge, len(graph.Edges))}
+	kept := pdg.NormalProjection(graph)
+	view := &MiningGraph{Nodes: make([]PdgNode, len(graph.Nodes)), Edges: make([]PdgEdge, 0, len(graph.Edges))}
 	for i, node := range graph.Nodes {
+		if normalNodeRemoved(kept, i) {
+			view.Nodes[i] = PdgNode{Kind: "unreachable", Line: int(node.Line)}
+			continue
+		}
 		view.Nodes[i] = semanticNode(graph, node)
 	}
-	for i, edge := range graph.Edges {
-		view.Edges[i] = semanticEdge(edge)
+	for _, edge := range graph.Edges {
+		if normalEdgeRemoved(kept, edge) {
+			continue
+		}
+		view.Edges = append(view.Edges, semanticEdge(edge))
 	}
 	return view
 }

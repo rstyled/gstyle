@@ -63,6 +63,18 @@ func TestIRWriteTargetsAndReadModifyWrite(t *testing.T) {
 			if tc.modifies {
 				wantReads = 1
 			}
+			if !tc.memory && tc.modifies {
+				for _, node := range graph.Nodes {
+					if node.Category != pdg.Read || !node.Synthetic {
+						continue
+					}
+					for _, read := range graph.NodeAttributes(node).Reads {
+						if read.Symbol != 0 && read.Position == 1 {
+							targetReads++
+						}
+					}
+				}
+			}
 			if writes != 1 || targetReads != wantReads {
 				t.Fatalf("writes=%d target reads=%d, want 1/%d", writes, targetReads, wantReads)
 			}

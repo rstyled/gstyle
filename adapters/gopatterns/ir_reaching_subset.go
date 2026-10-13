@@ -17,10 +17,38 @@ func (b *irBuilder) reachingSubset(body *ast.BlockStmt) bool {
 		if !supported {
 			return false
 		}
-		supported = scalarSource(node)
+		supported = scalarSource(node) && b.scalarSourceBinding(node) && b.scalarSourceType(node)
 		return supported
 	})
 	return supported
+}
+
+func (b *irBuilder) scalarSourceBinding(node ast.Node) bool {
+	id, ok := node.(*ast.Ident)
+	if !ok {
+		return true
+	}
+	object := b.info.ObjectOf(id)
+	if _, ok := object.(*types.Var); !ok {
+		return true
+	}
+	return scalarBinding(object)
+}
+
+func (b *irBuilder) scalarSourceType(node ast.Node) bool {
+	if declaration, ok := node.(*ast.GenDecl); ok {
+		return declaration.Tok == token.VAR
+	}
+	expression, ok := node.(ast.Expr)
+	if !ok {
+		return true
+	}
+	value, ok := b.info.Types[expression]
+	if !ok || value.IsType() {
+		return true
+	}
+	basic, ok := value.Type.Underlying().(*types.Basic)
+	return ok && basic.Info()&(types.IsInteger|types.IsBoolean) != 0
 }
 
 func scalarBinding(object types.Object) bool {
@@ -49,8 +77,6 @@ func scalarSource(node ast.Node) bool {
 
 func scalarExpression(node ast.Node) bool {
 	switch node := node.(type) {
-	case *ast.BinaryExpr:
-		return node.Op != token.LAND && node.Op != token.LOR
 	case *ast.UnaryExpr:
 		return node.Op != token.AND && node.Op != token.ARROW
 	default:
