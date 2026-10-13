@@ -19,19 +19,6 @@ type GoParser struct {
 	Library string
 }
 
-type node struct {
-	XMLName     xml.Name
-	StartRow    int    `xml:"srow,attr"`
-	StartColumn int    `xml:"scol,attr"`
-	EndRow      int    `xml:"erow,attr"`
-	EndColumn   int    `xml:"ecol,attr"`
-	Children    []node `xml:",any"`
-}
-
-type document struct {
-	Root node `xml:"source>source_file"`
-}
-
 func (p GoParser) Valid(source []byte) (bool, error) {
 	_, valid, err := p.parse(source)
 	return valid, err
@@ -81,6 +68,19 @@ func (p GoParser) parse(source []byte) (node, bool, error) {
 		return node{}, false, err
 	}
 	return decode(output, stderr.String(), runErr)
+}
+
+type node struct {
+	XMLName     xml.Name
+	StartRow    int    `xml:"srow,attr"`
+	StartColumn int    `xml:"scol,attr"`
+	EndRow      int    `xml:"erow,attr"`
+	EndColumn   int    `xml:"ecol,attr"`
+	Children    []node `xml:",any"`
+}
+
+type document struct {
+	Root node `xml:"source>source_file"`
 }
 
 func writeSource(file *os.File, source []byte) error {

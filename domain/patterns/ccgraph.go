@@ -23,6 +23,133 @@ const (
 	ccMatchThreshold = 900
 )
 
+// ccPairJob is one unordered function pair to check.
+type ccPairJob struct{ a, b string }
+
+// ccPairFilters contains immutable pair inputs shared by striped workers.
+// Algorithm 1 admits a numerical match before trying the string fallback.
+// The paper prose and swapped threshold symbols are ambiguous; see docs/papers.md.
+type ccPairFilters struct {
+	vecs   [][]float64
+	names  [][]rune
+	shapes []astShape
+	norms  []float64
+}
+
+func (f ccPairFilters) stripes(out *ccPairs, worker, workers int) {
+	matcher := newNameMatcher(f.names)
+	for i := worker; i < len(f.vecs); i += workers {
+		for j := i + 1; j < len(f.vecs); j++ {
+			if f.accepts(i, j, matcher) {
+				out.add(i, j)
+			}
+		}
+	}
+}
+
+func (f ccPairFilters) accepts(i, j int, matcher nameMatcher) bool {
+	if f.shapes[i].bypass(f.shapes[j]) {
+		return true
+	}
+	// Unknown source features cannot establish a numerical rejection.
+	if len(f.vecs[i]) == 0 || len(f.vecs[j]) == 0 {
+		return true
+	}
+	if f.cosine(i, j) >= charVecThreshold {
+		return true
+	}
+	return matcher.similar(f.names[i], f.names[j])
+}
+
+func (f ccPairFilters) cosine(i, j int) float64 {
+	if len(f.vecs[i]) != len(f.vecs[j]) || f.norms[i] == 0 || f.norms[j] == 0 {
+		return 0
+	}
+	return dot(f.vecs[i], f.vecs[j]) / (f.norms[i] * f.norms[j])
+}
+
+// nameMatcher owns scratch buffers for one worker; workers never share them.
+type nameMatcher struct{ seen1, seen2 []bool }
+
+func newNameMatcher(names [][]rune) nameMatcher {
+	size := 0
+	for _, name := range names {
+		size = max(size, len(name))
+	}
+	return nameMatcher{make([]bool, size), make([]bool, size)}
+}
+
+func (m nameMatcher) similar(a, b []rune) bool {
+	if len(a) == 0 || len(b) == 0 {
+		return true
+	}
+	prefix := commonRunePrefix(a, b, 4)
+	if nameScoreLowerBound(len(a), len(b), prefix) >= ccStage2NameThreshold {
+		return true
+	}
+	seen1, seen2 := m.seen1[:len(a)], m.seen2[:len(b)]
+	clear(seen1)
+	clear(seen2)
+	j := jaroRunes(a, b, seen1, seen2)
+	return j+float64(prefix)*0.1*(1-j) >= ccStage2NameThreshold
+}
+
+// ccPairMatcher owns aligned, immutable inputs shared by its striped workers.
+// Accepted pairs arrive in bounded batches; only the consumer mutates parents.
+type ccPairMatcher struct {
+	ids        []string
+	indices    []int
+	candidates *ccPairs
+	similar    func(a, b int) bool
+}
+
+func newCCPairMatcher(ids []string, candidates *ccPairs, idToIndex map[string]int, similar func(a, b int) bool) ccPairMatcher {
+	indices := make([]int, len(ids))
+	for i, id := range ids {
+		indices[i] = idToIndex[id]
+	}
+	return ccPairMatcher{ids: ids, indices: indices, candidates: candidates, similar: similar}
+}
+
+func (m ccPairMatcher) union(parent map[string]string) {
+	workers := min(runtime.NumCPU(), len(m.ids))
+	found := make(chan []ccPairJob, workers)
+	var wg sync.WaitGroup
+	for worker := 0; worker < workers; worker++ {
+		wg.Add(1)
+		go func(worker int) {
+			defer wg.Done()
+			m.stripe(worker, workers, found)
+		}(worker)
+	}
+	go func() {
+		wg.Wait()
+		close(found)
+	}()
+	for pairs := range found {
+		for _, pair := range pairs {
+			union(parent, pair.a, pair.b)
+		}
+	}
+}
+
+func (m ccPairMatcher) stripe(worker, workers int, found chan<- []ccPairJob) {
+	batch := ccPairBatch{pairs: make([]ccPairJob, 0, 64), found: found}
+	defer batch.flush()
+	for i := worker; i < len(m.ids); i += workers {
+		for j := i + 1; j < len(m.ids); j++ {
+			a, b := m.indices[i], m.indices[j]
+			if !m.candidates.has(a, b) {
+				continue
+			}
+			if !m.similar(a, b) {
+				continue
+			}
+			batch.add(ccPairJob{a: m.ids[i], b: m.ids[j]})
+		}
+	}
+}
+
 // CCGraphClones finds clone groups with characteristic/name admission and
 // WL verification of every admitted pair. Missing names skip the name filter.
 // No AST data: the AST admission bypass is disabled.
@@ -118,19 +245,6 @@ func ccSortableIDs(pdgs map[string]*MiningGraph) []string {
 	return ids
 }
 
-// ccPairJob is one unordered function pair to check.
-type ccPairJob struct{ a, b string }
-
-// ccPairFilters contains immutable pair inputs shared by striped workers.
-// Algorithm 1 admits a numerical match before trying the string fallback.
-// The paper prose and swapped threshold symbols are ambiguous; see docs/papers.md.
-type ccPairFilters struct {
-	vecs   [][]float64
-	names  [][]rune
-	shapes []astShape
-	norms  []float64
-}
-
 func ccCandidatePairs(vecs [][]float64, names []string, shapes []astShape) *ccPairs {
 	out := newCCPairs(len(vecs))
 	filters := ccPairFilters{vecs: vecs, names: ccNameRunes(names), shapes: shapes, norms: vectorNorms(vecs)}
@@ -147,31 +261,6 @@ func ccCandidatePairs(vecs [][]float64, names []string, shapes []astShape) *ccPa
 	return out
 }
 
-func (f ccPairFilters) stripes(out *ccPairs, worker, workers int) {
-	matcher := newNameMatcher(f.names)
-	for i := worker; i < len(f.vecs); i += workers {
-		for j := i + 1; j < len(f.vecs); j++ {
-			if f.accepts(i, j, matcher) {
-				out.add(i, j)
-			}
-		}
-	}
-}
-
-func (f ccPairFilters) accepts(i, j int, matcher nameMatcher) bool {
-	if f.shapes[i].bypass(f.shapes[j]) {
-		return true
-	}
-	// Unknown source features cannot establish a numerical rejection.
-	if len(f.vecs[i]) == 0 || len(f.vecs[j]) == 0 {
-		return true
-	}
-	if f.cosine(i, j) >= charVecThreshold {
-		return true
-	}
-	return matcher.similar(f.names[i], f.names[j])
-}
-
 // ccNameRunes extracts each function or method name outside the candidate-pair loop.
 func ccNameRunes(names []string) [][]rune {
 	out := make([][]rune, len(names))
@@ -179,32 +268,6 @@ func ccNameRunes(names []string) [][]rune {
 		out[i] = []rune(shortName(name))
 	}
 	return out
-}
-
-// nameMatcher owns scratch buffers for one worker; workers never share them.
-type nameMatcher struct{ seen1, seen2 []bool }
-
-func newNameMatcher(names [][]rune) nameMatcher {
-	size := 0
-	for _, name := range names {
-		size = max(size, len(name))
-	}
-	return nameMatcher{make([]bool, size), make([]bool, size)}
-}
-
-func (m nameMatcher) similar(a, b []rune) bool {
-	if len(a) == 0 || len(b) == 0 {
-		return true
-	}
-	prefix := commonRunePrefix(a, b, 4)
-	if nameScoreLowerBound(len(a), len(b), prefix) >= ccStage2NameThreshold {
-		return true
-	}
-	seen1, seen2 := m.seen1[:len(a)], m.seen2[:len(b)]
-	clear(seen1)
-	clear(seen2)
-	j := jaroRunes(a, b, seen1, seen2)
-	return j+float64(prefix)*0.1*(1-j) >= ccStage2NameThreshold
 }
 
 // Equal leading runes always match under Jaro's greedy search. With at
@@ -255,62 +318,6 @@ func ccBuildNeighborhoodWLs(ids []string, candidates *ccPairs, pdgs map[string]*
 		out[id] = NewNeighborhoodWL(pdgs[id])
 	}
 	return out
-}
-
-// ccPairMatcher owns aligned, immutable inputs shared by its striped workers.
-// Accepted pairs arrive in bounded batches; only the consumer mutates parents.
-type ccPairMatcher struct {
-	ids        []string
-	indices    []int
-	candidates *ccPairs
-	similar    func(a, b int) bool
-}
-
-func newCCPairMatcher(ids []string, candidates *ccPairs, idToIndex map[string]int, similar func(a, b int) bool) ccPairMatcher {
-	indices := make([]int, len(ids))
-	for i, id := range ids {
-		indices[i] = idToIndex[id]
-	}
-	return ccPairMatcher{ids: ids, indices: indices, candidates: candidates, similar: similar}
-}
-
-func (m ccPairMatcher) union(parent map[string]string) {
-	workers := min(runtime.NumCPU(), len(m.ids))
-	found := make(chan []ccPairJob, workers)
-	var wg sync.WaitGroup
-	for worker := 0; worker < workers; worker++ {
-		wg.Add(1)
-		go func(worker int) {
-			defer wg.Done()
-			m.stripe(worker, workers, found)
-		}(worker)
-	}
-	go func() {
-		wg.Wait()
-		close(found)
-	}()
-	for pairs := range found {
-		for _, pair := range pairs {
-			union(parent, pair.a, pair.b)
-		}
-	}
-}
-
-func (m ccPairMatcher) stripe(worker, workers int, found chan<- []ccPairJob) {
-	batch := ccPairBatch{pairs: make([]ccPairJob, 0, 64), found: found}
-	defer batch.flush()
-	for i := worker; i < len(m.ids); i += workers {
-		for j := i + 1; j < len(m.ids); j++ {
-			a, b := m.indices[i], m.indices[j]
-			if !m.candidates.has(a, b) {
-				continue
-			}
-			if !m.similar(a, b) {
-				continue
-			}
-			batch.add(ccPairJob{a: m.ids[i], b: m.ids[j]})
-		}
-	}
 }
 
 // ccMakeParent initializes union-find parent pointers.
@@ -541,13 +548,6 @@ func vectorNorms(vecs [][]float64) []float64 {
 		norms[i] = math.Sqrt(dot(vec, vec))
 	}
 	return norms
-}
-
-func (f ccPairFilters) cosine(i, j int) float64 {
-	if len(f.vecs[i]) != len(f.vecs[j]) || f.norms[i] == 0 || f.norms[j] == 0 {
-		return 0
-	}
-	return dot(f.vecs[i], f.vecs[j]) / (f.norms[i] * f.norms[j])
 }
 
 // defaultCloneGroups keeps report routing separate from explicit pair profiles.

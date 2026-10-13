@@ -15,6 +15,38 @@ var idFieldNames = map[string]bool{
 	"id": true, "uuid": true, "guid": true,
 }
 
+// structLoc is a struct definition's file and line.
+type structLoc struct {
+	path string
+	line int
+}
+
+// noIDScanCtx carries the per-package context for no-ID entity detection.
+type noIDScanCtx struct {
+	fset       *token.FileSet
+	info       *types.Info
+	structLocs map[string]structLoc
+	mutated    map[string]bool
+}
+
+// fieldComparison is one `a.Field == b.Field` comparison.
+type fieldComparison struct {
+	left     string // "a"
+	right    string // "b"
+	field    string // "Name"
+	typeName string // "User"
+	idField  string // "ID"
+	line     int
+}
+
+// identityScan carries the per-package facts missingIdentityFor needs.
+type identityScan struct {
+	uses         map[string]int
+	mutated      map[string]bool
+	attrEquality map[string]bool
+	pkg          *packages.Package
+}
+
 // isIDField reports whether name looks like an identity field.
 func isIDField(name string) bool {
 	return idFieldNames[strings.ToLower(name)]
@@ -61,20 +93,6 @@ func boolExpr(n ast.Node) ast.Expr {
 		}
 	}
 	return nil
-}
-
-// structLoc is a struct definition's file and line.
-type structLoc struct {
-	path string
-	line int
-}
-
-// noIDScanCtx carries the per-package context for no-ID entity detection.
-type noIDScanCtx struct {
-	fset       *token.FileSet
-	info       *types.Info
-	structLocs map[string]structLoc
-	mutated    map[string]bool
 }
 
 // findEntityIdentitiesNoID finds attribute-based equality on struct types
@@ -202,16 +220,6 @@ func addUniqueHit(out *[]patterns.EntityIdentityHit, seen map[int]bool, hit patt
 		seen[pos.Line] = true
 		*out = append(*out, hit)
 	}
-}
-
-// fieldComparison is one `a.Field == b.Field` comparison.
-type fieldComparison struct {
-	left     string // "a"
-	right    string // "b"
-	field    string // "Name"
-	typeName string // "User"
-	idField  string // "ID"
-	line     int
 }
 
 // checkAttrEquality checks if cond is an &&-chain of field == comparisons
@@ -586,14 +594,6 @@ func idAssignments(assign *ast.AssignStmt, fset *token.FileSet, funcName string)
 		})
 	}
 	return out
-}
-
-// identityScan carries the per-package facts missingIdentityFor needs.
-type identityScan struct {
-	uses         map[string]int
-	mutated      map[string]bool
-	attrEquality map[string]bool
-	pkg          *packages.Package
 }
 
 // findMissingIdentities scans pkg for struct types used as entities (in

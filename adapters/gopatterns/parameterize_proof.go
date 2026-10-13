@@ -14,6 +14,90 @@ import (
 	"github.com/rstyled/gstyle/domain/pdg"
 )
 
+type parameterizationSource struct {
+	fset         *token.FileSet
+	file         *ast.File
+	src          []byte
+	digest       string
+	packageNames []string
+}
+
+func (source *parameterizationSource) verifyCandidate(c patterns.Candidate, left, right *pdg.Graph) patterns.Candidate {
+	spec, reason := source.prove(c.Sites, left, right)
+	if spec == nil {
+		return unverifiedParameterization(c, reason)
+	}
+	return patterns.Candidate{
+		Kind: c.Kind, ScoreMilli: c.ScoreMilli, Breakdown: c.Breakdown, Observation: c.Observation,
+		Inference:        "complete source bodies match under substitutions with compatible PDG callable types",
+		PossibleRefactor: "extract the verified pair into a shared helper with the differing callables as parameters",
+		Sites:            c.Sites, Definitions: c.Definitions, CounterEvidence: c.CounterEvidence, FixSpec: spec,
+	}
+}
+
+func (s *parameterizationSource) prove(sites []patterns.Site, left, right *pdg.Graph) (*patterns.FixSpec, string) {
+	pair, reason := s.sourcePair(sites, left, right)
+	if pair == nil {
+		return nil, reason
+	}
+	holes, ok := s.pairHoles(pair)
+	if !ok {
+		return nil, "full source bodies or placement do not match the supported extraction subset"
+	}
+	signatures, ok := verifiedHoleTypes(s.fset, holes, pair.left, pair.right)
+	if !ok {
+		return nil, "PDG callable types are unknown or incompatible"
+	}
+	if reason := s.rewriteRisk(pair); reason != "" {
+		return nil, reason
+	}
+	return s.proofSpec(sites[0].Path, pair, signatures)
+}
+
+func (s *parameterizationSource) sourcePair(sites []patterns.Site, left, right *pdg.Graph) (*parameterizationPair, string) {
+	if !currentGraphSource(left, s.digest) || !currentGraphSource(right, s.digest) {
+		return nil, "PDG evidence does not match the current source snapshot"
+	}
+	a, b := namedFreeFunction(s.file, sites[0].Name), namedFreeFunction(s.file, sites[1].Name)
+	if a == nil || b == nil {
+		return nil, "source functions are unavailable or have receivers"
+	}
+	if a.Pos() > b.Pos() {
+		return &parameterizationPair{b, a, right, left}, ""
+	}
+	return &parameterizationPair{a, b, left, right}, ""
+}
+
+func (s *parameterizationSource) pairHoles(pair *parameterizationPair) ([]hole, bool) {
+	if !safeToExtract(s.fset, pair.a, pair.b) || !adjacent(s.fset, pair.a, pair.b, s.src) {
+		return nil, false
+	}
+	if !matchingCallSpreads(pair.a, pair.b) {
+		return nil, false
+	}
+	_, holes, ok := diffPair(pair.a, pair.b)
+	return holes, ok
+}
+
+func (s *parameterizationSource) proofSpec(path string, pair *parameterizationPair, signatures map[string]string) (*patterns.FixSpec, string) {
+	encoded, err := json.Marshal(signatures)
+	if err != nil {
+		return nil, "callable types could not be encoded"
+	}
+	return &patterns.FixSpec{Kind: patterns.Parameterize, File: path,
+		Line: s.fset.Position(pair.a.Pos()).Line, EndLine: s.fset.Position(pair.b.End()).Line,
+		Params: map[string]string{"pair_a": pair.a.Name.Name, "pair_b": pair.b.Name.Name, "callee_types": string(encoded), "source_sha256": s.digest, "substitution_policy": substitutionPolicy, "helper_name": freshHelperName(s, pair)}}, ""
+}
+
+const substitutionPolicy = "gstyle.parameterization/0.2.0"
+
+type parameterizationPair struct {
+	a, b        *ast.FuncDecl
+	left, right *pdg.Graph
+}
+
+type callableProof struct{ canonical, source string }
+
 // VerifyParameterizations uses canonical IR facts, not a second compiler load.
 // AST matching checks the complete source; it does not establish type safety.
 func VerifyParameterizations(report *patterns.PatternsReport, extraction *Extraction) error {
@@ -36,14 +120,6 @@ func VerifyParameterizations(report *patterns.PatternsReport, extraction *Extrac
 	return nil
 }
 
-type parameterizationSource struct {
-	fset         *token.FileSet
-	file         *ast.File
-	src          []byte
-	digest       string
-	packageNames []string
-}
-
 func verifyParameterization(c patterns.Candidate, graphs map[string]*pdg.Graph, files map[string]*parameterizationSource, names map[string][]string) (patterns.Candidate, error) {
 	c.FixSpec = nil
 	if len(c.Sites) != 2 || c.Sites[0].Path != c.Sites[1].Path {
@@ -59,21 +135,6 @@ func verifyParameterization(c patterns.Candidate, graphs map[string]*pdg.Graph, 
 	}
 	return source.verifyCandidate(c, left, right), nil
 }
-
-func (source *parameterizationSource) verifyCandidate(c patterns.Candidate, left, right *pdg.Graph) patterns.Candidate {
-	spec, reason := source.prove(c.Sites, left, right)
-	if spec == nil {
-		return unverifiedParameterization(c, reason)
-	}
-	return patterns.Candidate{
-		Kind: c.Kind, ScoreMilli: c.ScoreMilli, Breakdown: c.Breakdown, Observation: c.Observation,
-		Inference:        "complete source bodies match under substitutions with compatible PDG callable types",
-		PossibleRefactor: "extract the verified pair into a shared helper with the differing callables as parameters",
-		Sites:            c.Sites, Definitions: c.Definitions, CounterEvidence: c.CounterEvidence, FixSpec: spec,
-	}
-}
-
-const substitutionPolicy = "gstyle.parameterization/0.2.0"
 
 func parameterizationFile(path string, files map[string]*parameterizationSource, names []string) (*parameterizationSource, error) {
 	if source := files[path]; source != nil {
@@ -135,65 +196,6 @@ func sameTypeFact(a *pdg.Graph, ap pdg.Fact, b *pdg.Graph, bp pdg.Fact) bool {
 	return ap.Status == pdg.Known && bp.Status == pdg.Known && a.Tables.Text(ap.Value) == b.Tables.Text(bp.Value)
 }
 
-type parameterizationPair struct {
-	a, b        *ast.FuncDecl
-	left, right *pdg.Graph
-}
-
-func (s *parameterizationSource) prove(sites []patterns.Site, left, right *pdg.Graph) (*patterns.FixSpec, string) {
-	pair, reason := s.sourcePair(sites, left, right)
-	if pair == nil {
-		return nil, reason
-	}
-	holes, ok := s.pairHoles(pair)
-	if !ok {
-		return nil, "full source bodies or placement do not match the supported extraction subset"
-	}
-	signatures, ok := verifiedHoleTypes(s.fset, holes, pair.left, pair.right)
-	if !ok {
-		return nil, "PDG callable types are unknown or incompatible"
-	}
-	if reason := s.rewriteRisk(pair); reason != "" {
-		return nil, reason
-	}
-	return s.proofSpec(sites[0].Path, pair, signatures)
-}
-
-func (s *parameterizationSource) sourcePair(sites []patterns.Site, left, right *pdg.Graph) (*parameterizationPair, string) {
-	if !currentGraphSource(left, s.digest) || !currentGraphSource(right, s.digest) {
-		return nil, "PDG evidence does not match the current source snapshot"
-	}
-	a, b := namedFreeFunction(s.file, sites[0].Name), namedFreeFunction(s.file, sites[1].Name)
-	if a == nil || b == nil {
-		return nil, "source functions are unavailable or have receivers"
-	}
-	if a.Pos() > b.Pos() {
-		return &parameterizationPair{b, a, right, left}, ""
-	}
-	return &parameterizationPair{a, b, left, right}, ""
-}
-
-func (s *parameterizationSource) pairHoles(pair *parameterizationPair) ([]hole, bool) {
-	if !safeToExtract(s.fset, pair.a, pair.b) || !adjacent(s.fset, pair.a, pair.b, s.src) {
-		return nil, false
-	}
-	if !matchingCallSpreads(pair.a, pair.b) {
-		return nil, false
-	}
-	_, holes, ok := diffPair(pair.a, pair.b)
-	return holes, ok
-}
-
-func (s *parameterizationSource) proofSpec(path string, pair *parameterizationPair, signatures map[string]string) (*patterns.FixSpec, string) {
-	encoded, err := json.Marshal(signatures)
-	if err != nil {
-		return nil, "callable types could not be encoded"
-	}
-	return &patterns.FixSpec{Kind: patterns.Parameterize, File: path,
-		Line: s.fset.Position(pair.a.Pos()).Line, EndLine: s.fset.Position(pair.b.End()).Line,
-		Params: map[string]string{"pair_a": pair.a.Name.Name, "pair_b": pair.b.Name.Name, "callee_types": string(encoded), "source_sha256": s.digest, "substitution_policy": substitutionPolicy, "helper_name": freshHelperName(s, pair)}}, ""
-}
-
 func currentGraphSource(graph *pdg.Graph, digest string) bool {
 	// Validate before source/call lookups dereference graph-local records.
 	if pdg.Validate(graph) != nil {
@@ -215,8 +217,6 @@ func namedFreeFunction(file *ast.File, name string) *ast.FuncDecl {
 	}
 	return nil
 }
-
-type callableProof struct{ canonical, source string }
 
 func verifiedHoleTypes(fset *token.FileSet, holes []hole, a, b *pdg.Graph) (map[string]string, bool) {
 	signatures := make(map[string]string)

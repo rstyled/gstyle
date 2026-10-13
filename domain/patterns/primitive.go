@@ -62,6 +62,20 @@ var primitiveConceptKeywords = []string{
 	"serial",
 }
 
+// primitiveOccurrence is one function using a concept as a raw primitive.
+type primitiveOccurrence struct {
+	fact    *MiningFacts
+	param   string
+	concept string
+	typ     string
+}
+
+// primitiveInitialisms maps concepts to their Go initialism form.
+var primitiveInitialisms = map[string]string{
+	"id": "ID", "url": "URL", "uri": "URI", "uuid": "UUID", "guid": "GUID",
+	"api": "API", "ssn": "SSN", "isbn": "ISBN", "iban": "IBAN", "sku": "SKU",
+}
+
 // splitWords splits a param name into lowercase words on camelCase and
 // snake_case/kebab boundaries: "userEmail" -> ["user", "email"].
 func splitWords(name string) []string {
@@ -99,8 +113,11 @@ func isCamelBoundary(runes []rune, i int) bool {
 }
 
 func isUpper(r rune) bool { return r >= 'A' && r <= 'Z' }
+
 func isLower(r rune) bool { return r >= 'a' && r <= 'z' }
+
 func isDigit(r rune) bool { return r >= '0' && r <= '9' }
+
 func toLower(r rune) rune {
 	if isUpper(r) {
 		return r + ('a' - 'A')
@@ -121,14 +138,6 @@ func primitiveConcept(name string) string {
 		}
 	}
 	return ""
-}
-
-// primitiveOccurrence is one function using a concept as a raw primitive.
-type primitiveOccurrence struct {
-	fact    *MiningFacts
-	param   string
-	concept string
-	typ     string
 }
 
 // primitiveObsessionCandidates finds domain concepts used as raw string/int
@@ -196,12 +205,6 @@ func buildCandidates(byConcept map[string][]primitiveOccurrence) []Candidate {
 	return out
 }
 
-// primitiveInitialisms maps concepts to their Go initialism form.
-var primitiveInitialisms = map[string]string{
-	"id": "ID", "url": "URL", "uri": "URI", "uuid": "UUID", "guid": "GUID",
-	"api": "API", "ssn": "SSN", "isbn": "ISBN", "iban": "IBAN", "sku": "SKU",
-}
-
 // primitiveTypeName renders the Go type name for a concept, honoring
 // common initialisms: "id" -> "ID", "url" -> "URL".
 func primitiveTypeName(concept string) string {
@@ -210,6 +213,7 @@ func primitiveTypeName(concept string) string {
 	}
 	return capitalize(concept)
 }
+
 func buildPrimitiveObsessionCandidate(key string, occs []primitiveOccurrence) Candidate {
 	parts := strings.SplitN(key, ":", 2)
 	concept, typ := parts[0], parts[1]

@@ -67,6 +67,12 @@ func (s complexitySummary) averages() (average, cognitiveAverage float64) {
 		float64(s.cognitiveTotal) / float64(s.functions)
 }
 
+type functionRange struct {
+	endOffset int
+	endLine   int
+	node      ast.Node
+}
+
 func summarizeFunctions(functions []domain.Function) complexitySummary {
 	summary := complexitySummary{}
 	for _, function := range functions {
@@ -288,12 +294,6 @@ func cognitiveDiagnostics(diagnostics []cognit.Diagnostic) []domain.CognitiveDia
 		})
 	}
 	return result
-}
-
-type functionRange struct {
-	endOffset int
-	endLine   int
-	node      ast.Node
 }
 
 func functionRanges(file *ast.File, fileSet *token.FileSet) map[int]functionRange {

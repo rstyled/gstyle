@@ -25,42 +25,6 @@ type reductionResult struct {
 	at      time.Time
 }
 
-func (r reduction) runDashboard() error {
-	ctx, cancel := context.WithCancel(r.ctx)
-	defer cancel()
-	r.check.output = &checkerOutput{}
-	model := r.newDashboard(ctx, cancel)
-	program := tea.NewProgram(model, tea.WithInput(os.Stdin), tea.WithOutput(r.output), tea.WithoutSignalHandler())
-	done := make(chan reductionResult, 1)
-	go func() {
-		result := r.reduceForDashboard(program.Send)
-		done <- result
-		program.Send(result)
-	}()
-	_, programErr := program.Run()
-	// A renderer/input failure must also stop the checker and save its best input.
-	cancel()
-	result := <-done
-	_, reportErr := io.WriteString(r.output, result.summary)
-	return errors.Join(programErr, result.err, reportErr)
-}
-
-func (r reduction) reduceForDashboard(send func(tea.Msg)) reductionResult {
-	observe := func(progress reducer.Progress) {
-		if progress.Checking {
-			r.check.output.reset()
-		}
-		send(progressMsg{progress: progress, at: time.Now()})
-	}
-	reduced, err := r.reduce(observe)
-	// The dashboard keeps the run's report in its summary instead of printing it.
-	var summary bytes.Buffer
-	summarized := r
-	summarized.output = &summary
-	err = summarized.finish(reduced, err)
-	return reductionResult{err: err, summary: summary.String(), at: time.Now()}
-}
-
 type dashboardTick time.Time
 
 type sizePoint struct {
@@ -94,20 +58,7 @@ type dashboard struct {
 	expanded bool
 }
 
-func (r reduction) newDashboard(ctx context.Context, cancel context.CancelFunc) dashboard {
-	now := time.Now()
-	return dashboard{
-		ctx: ctx, cancel: cancel, options: r.options, output: r.check.output,
-		started: now, now: now, original: len(r.source), best: r.source,
-		width: 120, height: 36, history: []sizePoint{{bytes: len(r.source)}},
-	}
-}
-
 func (m dashboard) Init() tea.Cmd { return dashboardClock() }
-
-func dashboardClock() tea.Cmd {
-	return tea.Tick(100*time.Millisecond, func(now time.Time) tea.Msg { return dashboardTick(now) })
-}
 
 func (m dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -256,11 +207,6 @@ func (m dashboard) recordCandidate(p reducer.Progress) dashboard {
 	return m
 }
 
-// boundRecent keeps the newest deletion-preview entries.
-func boundRecent(recent []string) []string {
-	return recent[:min(len(recent), 300)]
-}
-
 func (m dashboard) deletion(p reducer.Progress) []string {
 	header := fmt.Sprintf("Check #%d · %d → %d bytes · line %d", m.checks, len(m.best), len(p.Candidate), p.StartLine+1)
 	removed := removedBytes(m.best, p)
@@ -270,6 +216,60 @@ func (m dashboard) deletion(p reducer.Progress) []string {
 		result = append(result, "- "+line)
 	}
 	return append(result, "")
+}
+
+func (r reduction) runDashboard() error {
+	ctx, cancel := context.WithCancel(r.ctx)
+	defer cancel()
+	r.check.output = &checkerOutput{}
+	model := r.newDashboard(ctx, cancel)
+	program := tea.NewProgram(model, tea.WithInput(os.Stdin), tea.WithOutput(r.output), tea.WithoutSignalHandler())
+	done := make(chan reductionResult, 1)
+	go func() {
+		result := r.reduceForDashboard(program.Send)
+		done <- result
+		program.Send(result)
+	}()
+	_, programErr := program.Run()
+	// A renderer/input failure must also stop the checker and save its best input.
+	cancel()
+	result := <-done
+	_, reportErr := io.WriteString(r.output, result.summary)
+	return errors.Join(programErr, result.err, reportErr)
+}
+
+func (r reduction) reduceForDashboard(send func(tea.Msg)) reductionResult {
+	observe := func(progress reducer.Progress) {
+		if progress.Checking {
+			r.check.output.reset()
+		}
+		send(progressMsg{progress: progress, at: time.Now()})
+	}
+	reduced, err := r.reduce(observe)
+	// The dashboard keeps the run's report in its summary instead of printing it.
+	var summary bytes.Buffer
+	summarized := r
+	summarized.output = &summary
+	err = summarized.finish(reduced, err)
+	return reductionResult{err: err, summary: summary.String(), at: time.Now()}
+}
+
+func (r reduction) newDashboard(ctx context.Context, cancel context.CancelFunc) dashboard {
+	now := time.Now()
+	return dashboard{
+		ctx: ctx, cancel: cancel, options: r.options, output: r.check.output,
+		started: now, now: now, original: len(r.source), best: r.source,
+		width: 120, height: 36, history: []sizePoint{{bytes: len(r.source)}},
+	}
+}
+
+func dashboardClock() tea.Cmd {
+	return tea.Tick(100*time.Millisecond, func(now time.Time) tea.Msg { return dashboardTick(now) })
+}
+
+// boundRecent keeps the newest deletion-preview entries.
+func boundRecent(recent []string) []string {
+	return recent[:min(len(recent), 300)]
 }
 
 func removedBytes(source []byte, p reducer.Progress) []byte {

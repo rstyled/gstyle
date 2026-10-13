@@ -8,29 +8,59 @@ import (
 )
 
 type Histogram map[int]uint64
+
 type Round struct {
 	Weight                       int
 	ColorsA, ColorsB             []int
 	HistogramA, HistogramB       Histogram
 	Overlap, Cross, SelfA, SelfB *big.Int
 }
+
 type Kernel struct {
 	Depth, DiameterA, DiameterB int
 	Rounds                      []Round
 	Overlap, LargerCoverage     *big.Rat
 	Cosine                      Cosine
 }
+
 type neighbor struct {
 	family int
 	node   int
 }
+
 type indexedGraph struct {
 	incoming, outgoing [][]neighbor
 	colors             []int
 }
 
 var initialColors = map[Label]int{Decl: 1, Assign: 2, Control: 3, State: 4, Other: 5}
+
 var familyOrder = map[Family]int{Data: 0, Ctrl: 1, Execution: 2}
+
+type kernelPair struct {
+	a, b                 Graph
+	diameterA, diameterB int
+}
+
+func (p kernelPair) compare(ctx context.Context) (Kernel, error) {
+	a, b := p.a, p.b
+	da, db := p.diameterA, p.diameterB
+	h := Depth(len(a.Nodes), len(b.Nodes), da, db)
+	ga, gb := indexGraph(a), indexGraph(b)
+	ca, cb := ga.colors, gb.colors
+	out := Kernel{Depth: h, DiameterA: da, DiameterB: db}
+	out.Rounds = append(out.Rounds, makeRound(ca, cb, h+1))
+	for round := 1; round <= h; round++ {
+		if err := ctx.Err(); err != nil {
+			return Kernel{}, err
+		}
+		intern := map[string]int{}
+		ca, cb = refine(ga, ca, intern), refine(gb, cb, intern)
+		out.Rounds = append(out.Rounds, makeRound(ca, cb, h+1-round))
+	}
+	setScores(&out, len(a.Nodes), len(b.Nodes))
+	return out, nil
+}
 
 func indexGraph(g Graph) indexedGraph {
 	index, _ := g.validate() // boundary validation precedes this helper
@@ -119,31 +149,6 @@ func CompareWL(ctx context.Context, a, b Graph) (Kernel, error) {
 		return Kernel{}, err
 	}
 	return (kernelPair{a, b, da, db}).compare(ctx)
-}
-
-type kernelPair struct {
-	a, b                 Graph
-	diameterA, diameterB int
-}
-
-func (p kernelPair) compare(ctx context.Context) (Kernel, error) {
-	a, b := p.a, p.b
-	da, db := p.diameterA, p.diameterB
-	h := Depth(len(a.Nodes), len(b.Nodes), da, db)
-	ga, gb := indexGraph(a), indexGraph(b)
-	ca, cb := ga.colors, gb.colors
-	out := Kernel{Depth: h, DiameterA: da, DiameterB: db}
-	out.Rounds = append(out.Rounds, makeRound(ca, cb, h+1))
-	for round := 1; round <= h; round++ {
-		if err := ctx.Err(); err != nil {
-			return Kernel{}, err
-		}
-		intern := map[string]int{}
-		ca, cb = refine(ga, ca, intern), refine(gb, cb, intern)
-		out.Rounds = append(out.Rounds, makeRound(ca, cb, h+1-round))
-	}
-	setScores(&out, len(a.Nodes), len(b.Nodes))
-	return out, nil
 }
 
 func setScores(out *Kernel, sizeA, sizeB int) {

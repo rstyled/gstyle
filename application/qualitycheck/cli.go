@@ -41,6 +41,20 @@ type options struct {
 	paths                               []string
 }
 
+func (opts options) validate() error {
+	if !slices.Contains([]string{"text", "json", "facts"}, opts.format) {
+		return fmt.Errorf("format must be text, json, or facts")
+	}
+	if opts.factsIn != "" && opts.hasSourceOptions() {
+		return fmt.Errorf("facts-in cannot be combined with source paths, tests, tags, or facts export")
+	}
+	return nil
+}
+
+func (opts options) hasSourceOptions() bool {
+	return len(opts.paths) > 0 || opts.tests || opts.tags != "" || opts.format == "facts"
+}
+
 type FactsFile struct {
 	SchemaVersion int                `json:"schema_version"`
 	Functions     []quality.Function `json:"functions"`
@@ -133,20 +147,6 @@ func parseOptions(args []string) (options, error) {
 	}
 	result.paths = flags.Args()
 	return result, result.validate()
-}
-
-func (opts options) validate() error {
-	if !slices.Contains([]string{"text", "json", "facts"}, opts.format) {
-		return fmt.Errorf("format must be text, json, or facts")
-	}
-	if opts.factsIn != "" && opts.hasSourceOptions() {
-		return fmt.Errorf("facts-in cannot be combined with source paths, tests, tags, or facts export")
-	}
-	return nil
-}
-
-func (opts options) hasSourceOptions() bool {
-	return len(opts.paths) > 0 || opts.tests || opts.tags != "" || opts.format == "facts"
 }
 
 func inputFacts(ctx context.Context, opts options) ([]quality.Function, error) {

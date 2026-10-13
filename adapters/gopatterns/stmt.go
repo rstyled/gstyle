@@ -108,23 +108,6 @@ func (b *builder) assignOperand(n int, lhs, rhs ast.Expr, pos int) int {
 	return pos
 }
 
-func assignClass(tok token.Token) string {
-	if tok == token.ASSIGN {
-		return "assign"
-	}
-	return "assignop"
-}
-
-func assignRhs(s *ast.AssignStmt, index, lhsCount int) ast.Expr {
-	if len(s.Rhs) == 0 {
-		return nil
-	}
-	if len(s.Rhs) == lhsCount {
-		return s.Rhs[index]
-	}
-	return s.Rhs[0]
-}
-
 // define handles `:=`. A single name bound to a single-valued expression is
 // transparent (x IS e's node); anything else (including `_, err := f()` where
 // f is multi-valued) is a destructuring Let.
@@ -149,17 +132,6 @@ func (b *builder) destructure(s *ast.AssignStmt, idents []*ast.Ident) {
 	for _, id := range idents {
 		b.bind(b.info.Defs[id], n)
 	}
-}
-
-// definedIdents returns the non-blank identifiers defined by an LHS list.
-func definedIdents(lhs []ast.Expr) []*ast.Ident {
-	idents := make([]*ast.Ident, 0, len(lhs))
-	for _, e := range lhs {
-		if id, ok := unparen(e).(*ast.Ident); ok && id.Name != "_" {
-			idents = append(idents, id)
-		}
-	}
-	return idents
 }
 
 // singleValued reports whether an expression produces exactly one value.
@@ -225,15 +197,6 @@ func (b *builder) tryCond(cond ast.Expr) (types.Object, bool) {
 	return obj, true
 }
 
-// neqNil matches `<x> != nil` and returns the comparison.
-func neqNil(cond ast.Expr) (*ast.BinaryExpr, bool) {
-	bin, ok := unparen(cond).(*ast.BinaryExpr)
-	if !ok || bin.Op != token.NEQ || !isNil(bin.Y) {
-		return nil, false
-	}
-	return bin, true
-}
-
 // tryBody matches `return <id>` for the same object.
 func (b *builder) tryBody(s ast.Stmt, obj types.Object) bool {
 	ret, ok := s.(*ast.ReturnStmt)
@@ -242,11 +205,6 @@ func (b *builder) tryBody(s ast.Stmt, obj types.Object) bool {
 	}
 	r, ok := unparen(ret.Results[0]).(*ast.Ident)
 	return ok && b.info.ObjectOf(r) == obj
-}
-
-func isNil(e ast.Expr) bool {
-	id, ok := unparen(e).(*ast.Ident)
-	return ok && id.Name == "nil"
 }
 
 // tryNode emits the Try node plus its controlled `return err`, matching the
@@ -327,10 +285,6 @@ func (b *builder) counterInit(init ast.Stmt) (types.Object, bool) {
 	return obj, true
 }
 
-func isSingleDefine(assign *ast.AssignStmt) bool {
-	return assign.Tok == token.DEFINE && len(assign.Lhs) == 1 && len(assign.Rhs) == 1
-}
-
 // counterPost matches `i++` / `i--` on the counter.
 func (b *builder) counterPost(post ast.Stmt, counter types.Object) bool {
 	inc, ok := post.(*ast.IncDecStmt)
@@ -339,62 +293,6 @@ func (b *builder) counterPost(post ast.Stmt, counter types.Object) bool {
 	}
 	id, ok := unparen(inc.X).(*ast.Ident)
 	return ok && b.info.ObjectOf(id) == counter
-}
-
-// lenBound finds `len(coll)` in a `counter < len(coll)`-shaped comparison and
-// returns coll when it is a plain identifier.
-func lenBound(cond ast.Expr, counter types.Object, info *types.Info) (ast.Expr, bool) {
-	bin, ok := unparen(cond).(*ast.BinaryExpr)
-	if !ok {
-		return nil, false
-	}
-	switch bin.Op {
-	case token.LSS, token.LEQ, token.GTR, token.GEQ:
-	default:
-		return nil, false
-	}
-	if coll, ok := lenSide(bin.X, bin.Y, counter, info); ok {
-		return coll, true
-	}
-	return lenSide(bin.Y, bin.X, counter, info)
-}
-
-// lenSide checks whether side is `len(coll)` and other is the counter.
-func lenSide(side, other ast.Expr, counter types.Object, info *types.Info) (ast.Expr, bool) {
-	coll, ok := lenCallArg(side, info)
-	if !ok {
-		return nil, false
-	}
-	id, ok := unparen(other).(*ast.Ident)
-	if !ok || info.ObjectOf(id) != counter {
-		return nil, false
-	}
-	return coll, true
-}
-
-// lenCallArg extracts coll from `len(coll)` when coll is a plain identifier.
-func lenCallArg(side ast.Expr, info *types.Info) (ast.Expr, bool) {
-	call, ok := unparen(side).(*ast.CallExpr)
-	if !ok || len(call.Args) != 1 {
-		return nil, false
-	}
-	if !isLenCall(call, info) {
-		return nil, false
-	}
-	coll, ok := unparen(call.Args[0]).(*ast.Ident)
-	if !ok {
-		return nil, false
-	}
-	return coll, true
-}
-
-func isLenCall(call *ast.CallExpr, info *types.Info) bool {
-	fun, ok := unparen(call.Fun).(*ast.Ident)
-	if !ok {
-		return false
-	}
-	builtin, ok := info.ObjectOf(fun).(*types.Builtin)
-	return ok && builtin.Name() == "len"
 }
 
 // rangeStmt lowers `for k, v := range coll`: Iterate over coll, with the
@@ -508,4 +406,106 @@ func (b *builder) wrappedCall(call *ast.CallExpr, kind patterns.NodeKind, pos to
 	c := b.expr(call)
 	n := b.node(patterns.PdgNode{Kind: kind, Line: b.line(pos)})
 	b.data(c, n, 0)
+}
+
+func assignClass(tok token.Token) string {
+	if tok == token.ASSIGN {
+		return "assign"
+	}
+	return "assignop"
+}
+
+func assignRhs(s *ast.AssignStmt, index, lhsCount int) ast.Expr {
+	if len(s.Rhs) == 0 {
+		return nil
+	}
+	if len(s.Rhs) == lhsCount {
+		return s.Rhs[index]
+	}
+	return s.Rhs[0]
+}
+
+// definedIdents returns the non-blank identifiers defined by an LHS list.
+func definedIdents(lhs []ast.Expr) []*ast.Ident {
+	idents := make([]*ast.Ident, 0, len(lhs))
+	for _, e := range lhs {
+		if id, ok := unparen(e).(*ast.Ident); ok && id.Name != "_" {
+			idents = append(idents, id)
+		}
+	}
+	return idents
+}
+
+// neqNil matches `<x> != nil` and returns the comparison.
+func neqNil(cond ast.Expr) (*ast.BinaryExpr, bool) {
+	bin, ok := unparen(cond).(*ast.BinaryExpr)
+	if !ok || bin.Op != token.NEQ || !isNil(bin.Y) {
+		return nil, false
+	}
+	return bin, true
+}
+
+func isNil(e ast.Expr) bool {
+	id, ok := unparen(e).(*ast.Ident)
+	return ok && id.Name == "nil"
+}
+
+func isSingleDefine(assign *ast.AssignStmt) bool {
+	return assign.Tok == token.DEFINE && len(assign.Lhs) == 1 && len(assign.Rhs) == 1
+}
+
+// lenBound finds `len(coll)` in a `counter < len(coll)`-shaped comparison and
+// returns coll when it is a plain identifier.
+func lenBound(cond ast.Expr, counter types.Object, info *types.Info) (ast.Expr, bool) {
+	bin, ok := unparen(cond).(*ast.BinaryExpr)
+	if !ok {
+		return nil, false
+	}
+	switch bin.Op {
+	case token.LSS, token.LEQ, token.GTR, token.GEQ:
+	default:
+		return nil, false
+	}
+	if coll, ok := lenSide(bin.X, bin.Y, counter, info); ok {
+		return coll, true
+	}
+	return lenSide(bin.Y, bin.X, counter, info)
+}
+
+// lenSide checks whether side is `len(coll)` and other is the counter.
+func lenSide(side, other ast.Expr, counter types.Object, info *types.Info) (ast.Expr, bool) {
+	coll, ok := lenCallArg(side, info)
+	if !ok {
+		return nil, false
+	}
+	id, ok := unparen(other).(*ast.Ident)
+	if !ok || info.ObjectOf(id) != counter {
+		return nil, false
+	}
+	return coll, true
+}
+
+// lenCallArg extracts coll from `len(coll)` when coll is a plain identifier.
+func lenCallArg(side ast.Expr, info *types.Info) (ast.Expr, bool) {
+	call, ok := unparen(side).(*ast.CallExpr)
+	if !ok || len(call.Args) != 1 {
+		return nil, false
+	}
+	if !isLenCall(call, info) {
+		return nil, false
+	}
+	coll, ok := unparen(call.Args[0]).(*ast.Ident)
+	if !ok {
+		return nil, false
+	}
+	return coll, true
+}
+
+func isLenCall(call *ast.CallExpr, info *types.Info) bool {
+	fun, ok := unparen(call.Fun).(*ast.Ident)
+	if !ok {
+		return false
+	}
+	builtin, ok := info.ObjectOf(fun).(*types.Builtin)
+	return ok && builtin.Name() == "len"
 }

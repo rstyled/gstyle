@@ -17,42 +17,6 @@ type sourceFlow struct {
 	err      error
 }
 
-// CFG checks operation transitions and entry correspondence against a separate
-// structured-source walk. Empty compiler blocks are navigation only. This check
-// accepts only the scalar source subset with known evaluation order.
-func CFG(g *pdg.Graph, fn *ast.FuncDecl, fset *token.FileSet) error {
-	if err := pdg.Validate(g); err != nil {
-		return err
-	}
-	if g.NormalFlow == nil {
-		return fmt.Errorf("paired normal CFG is missing")
-	}
-	nodes, err := sourceSites(g)
-	if err != nil {
-		return err
-	}
-	a := sourceFlow{fset: fset, nodes: nodes, next: map[pdg.Ref][]pdg.Ref{}, branches: map[pdg.Ref][2][]pdg.Ref{}}
-	entry := a.statements(fn.Body.List, nil)
-	if a.err != nil {
-		return a.err
-	}
-	if err := compareSourceFlow(g.NormalFlow, entry, a.next); err != nil {
-		return err
-	}
-	return compareSourceBranches(g.NormalFlow, a.branches)
-}
-
-func sourceSites(g *pdg.Graph) (map[site]pdg.Ref, error) {
-	nodes := map[site]pdg.Ref{}
-	for i, node := range g.Nodes {
-		if node.Span == 0 {
-			return nil, fmt.Errorf("operation has no source span")
-		}
-		nodes[site{g.Spans[node.Span-1], node.Category, node.Synthetic}] = pdg.Ref(i + 1)
-	}
-	return nodes, nil
-}
-
 func (a *sourceFlow) ref(node ast.Node, category pdg.Category, synthetic bool) pdg.Ref {
 	span := pdg.Span{Source: 1, Start: uint32(a.fset.PositionFor(node.Pos(), false).Offset), End: uint32(a.fset.PositionFor(node.End(), false).Offset)}
 	ref := a.nodes[site{span, category, synthetic}]
@@ -214,4 +178,40 @@ func (a *sourceFlow) logical(node *ast.BinaryExpr, next []pdg.Ref) []pdg.Ref {
 		a.branches[predicate[0]] = [2][]pdg.Ref{next, right}
 	}
 	return a.expression(node.X, predicate)
+}
+
+// CFG checks operation transitions and entry correspondence against a separate
+// structured-source walk. Empty compiler blocks are navigation only. This check
+// accepts only the scalar source subset with known evaluation order.
+func CFG(g *pdg.Graph, fn *ast.FuncDecl, fset *token.FileSet) error {
+	if err := pdg.Validate(g); err != nil {
+		return err
+	}
+	if g.NormalFlow == nil {
+		return fmt.Errorf("paired normal CFG is missing")
+	}
+	nodes, err := sourceSites(g)
+	if err != nil {
+		return err
+	}
+	a := sourceFlow{fset: fset, nodes: nodes, next: map[pdg.Ref][]pdg.Ref{}, branches: map[pdg.Ref][2][]pdg.Ref{}}
+	entry := a.statements(fn.Body.List, nil)
+	if a.err != nil {
+		return a.err
+	}
+	if err := compareSourceFlow(g.NormalFlow, entry, a.next); err != nil {
+		return err
+	}
+	return compareSourceBranches(g.NormalFlow, a.branches)
+}
+
+func sourceSites(g *pdg.Graph) (map[site]pdg.Ref, error) {
+	nodes := map[site]pdg.Ref{}
+	for i, node := range g.Nodes {
+		if node.Span == 0 {
+			return nil, fmt.Errorf("operation has no source span")
+		}
+		nodes[site{g.Spans[node.Span-1], node.Category, node.Synthetic}] = pdg.Ref(i + 1)
+	}
+	return nodes, nil
 }

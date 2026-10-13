@@ -7,28 +7,6 @@ import (
 	"strconv"
 )
 
-// AntiUnify computes the most specific generalization (anti-unification) of
-// two AST nodes, following Bulychev & Minea (2008). Where the trees differ,
-// a hole variable is introduced; where they agree, the structure is kept.
-//
-// Returns the template (with hole variables as *ast.Ident) and the
-// substitutions: for each hole, the differing subtrees from each side.
-// The template + substitutions can reconstruct both originals, and any
-// other common generalization is less specific.
-func AntiUnify(a, b ast.Node) (template ast.Node, subs []Substitution) {
-	return AntiUnifyWithRenames(a, b, nil)
-}
-
-// AntiUnifyWithRenames is AntiUnify with an optional variable rename map.
-// renames maps identifiers in `a` to their counterparts in `b`; renamed
-// identifiers are treated as identical, not as holes. This is used by the
-// parameterize fixer, which normalizes local variable names before diffing.
-func AntiUnifyWithRenames(a, b ast.Node, renames map[string]string) (template ast.Node, subs []Substitution) {
-	au := &antiUnifier{subs: []Substitution{}, renames: renames}
-	tmpl := au.unify(a, b)
-	return tmpl, au.subs
-}
-
 // Substitution is one hole variable and the differing values from each side.
 type Substitution struct {
 	// Name is the hole variable, e.g. "hole0".
@@ -161,13 +139,6 @@ func (au *antiUnifier) unifyForStmt(at *ast.ForStmt, b ast.Node) ast.Node {
 	return &ast.ForStmt{Init: parts.init, Cond: parts.cond, Post: parts.post, Body: parts.body}
 }
 
-type forParts struct {
-	init ast.Stmt
-	cond ast.Expr
-	post ast.Stmt
-	body *ast.BlockStmt
-}
-
 // unifyForParts unifies the components of two for loops.
 // Returns nil if they can't be unified.
 func (au *antiUnifier) unifyForParts(at, bt *ast.ForStmt) *forParts {
@@ -205,67 +176,6 @@ func (au *antiUnifier) unifyDeclStmt(at *ast.DeclStmt, b ast.Node) ast.Node {
 		return at
 	}
 	return au.freshHole(at, b)
-}
-
-// declsEqual reports whether two DeclStmts are structurally identical.
-// For parameterize, we only need the common case: `var x T` with the same
-// names and types. Uses a simple syntactic check.
-func declsEqual(a, b *ast.DeclStmt) bool {
-	ag, okA := a.Decl.(*ast.GenDecl)
-	bg, okB := b.Decl.(*ast.GenDecl)
-	if !okA || !okB {
-		return false
-	}
-	return genDeclsEqual(ag, bg)
-}
-
-// genDeclsEqual compares two GenDecls.
-func genDeclsEqual(ag, bg *ast.GenDecl) bool {
-	if ag.Tok != bg.Tok || len(ag.Specs) != len(bg.Specs) {
-		return false
-	}
-	for i := range ag.Specs {
-		if !valueSpecsEqual(ag.Specs[i], bg.Specs[i]) {
-			return false
-		}
-	}
-	return true
-}
-
-// valueSpecsEqual compares two Specs (must be ValueSpecs).
-func valueSpecsEqual(a, b ast.Spec) bool {
-	as, okA := a.(*ast.ValueSpec)
-	bs, okB := b.(*ast.ValueSpec)
-	if !okA || !okB {
-		return false
-	}
-	return namesEqual(as.Names, bs.Names) && typesEqual(as.Type, bs.Type)
-}
-
-// namesEqual compares identifier lists.
-func namesEqual(a, b []*ast.Ident) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i].Name != b[i].Name {
-			return false
-		}
-	}
-	return true
-}
-
-// typesEqual compares type expressions (nil-safe, Ident-only).
-func typesEqual(a, b ast.Expr) bool {
-	if (a == nil) != (b == nil) {
-		return false
-	}
-	if a == nil {
-		return true
-	}
-	at, okA := a.(*ast.Ident)
-	bt, okB := b.(*ast.Ident)
-	return okA && okB && at.Name == bt.Name
 }
 
 func (au *antiUnifier) unifyIdent(at *ast.Ident, b ast.Node) ast.Node {
@@ -336,20 +246,6 @@ func (au *antiUnifier) unifyAssignStmt(at *ast.AssignStmt, b ast.Node) ast.Node 
 	lhs := unifyExprList(au, at.Lhs, bt.Lhs)
 	rhs := unifyExprList(au, at.Rhs, bt.Rhs)
 	return &ast.AssignStmt{Lhs: lhs, Tok: at.Tok, Rhs: rhs}
-}
-
-// assignShapesMatch checks if two assignments have compatible shapes.
-func assignShapesMatch(at, bt *ast.AssignStmt) bool {
-	return at.Tok == bt.Tok && len(at.Lhs) == len(bt.Lhs) && len(at.Rhs) == len(bt.Rhs)
-}
-
-// unifyExprList unifies two expression lists element-wise.
-func unifyExprList(au *antiUnifier, a, b []ast.Expr) []ast.Expr {
-	out := make([]ast.Expr, len(a))
-	for i := range a {
-		out[i] = au.unifyExpr(a[i], b[i])
-	}
-	return out
 }
 
 func (au *antiUnifier) unifyExprStmt(at *ast.ExprStmt, b ast.Node) ast.Node {
@@ -431,6 +327,113 @@ func (au *antiUnifier) unifyBlock(a, b *ast.BlockStmt) *ast.BlockStmt {
 	return &ast.BlockStmt{List: list}
 }
 
+type forParts struct {
+	init ast.Stmt
+	cond ast.Expr
+	post ast.Stmt
+	body *ast.BlockStmt
+}
+
+// Ensure token is used (for Op preservation).
+var _ = token.ILLEGAL
+
+// AntiUnify computes the most specific generalization (anti-unification) of
+// two AST nodes, following Bulychev & Minea (2008). Where the trees differ,
+// a hole variable is introduced; where they agree, the structure is kept.
+//
+// Returns the template (with hole variables as *ast.Ident) and the
+// substitutions: for each hole, the differing subtrees from each side.
+// The template + substitutions can reconstruct both originals, and any
+// other common generalization is less specific.
+func AntiUnify(a, b ast.Node) (template ast.Node, subs []Substitution) {
+	return AntiUnifyWithRenames(a, b, nil)
+}
+
+// AntiUnifyWithRenames is AntiUnify with an optional variable rename map.
+// renames maps identifiers in `a` to their counterparts in `b`; renamed
+// identifiers are treated as identical, not as holes. This is used by the
+// parameterize fixer, which normalizes local variable names before diffing.
+func AntiUnifyWithRenames(a, b ast.Node, renames map[string]string) (template ast.Node, subs []Substitution) {
+	au := &antiUnifier{subs: []Substitution{}, renames: renames}
+	tmpl := au.unify(a, b)
+	return tmpl, au.subs
+}
+
+// declsEqual reports whether two DeclStmts are structurally identical.
+// For parameterize, we only need the common case: `var x T` with the same
+// names and types. Uses a simple syntactic check.
+func declsEqual(a, b *ast.DeclStmt) bool {
+	ag, okA := a.Decl.(*ast.GenDecl)
+	bg, okB := b.Decl.(*ast.GenDecl)
+	if !okA || !okB {
+		return false
+	}
+	return genDeclsEqual(ag, bg)
+}
+
+// genDeclsEqual compares two GenDecls.
+func genDeclsEqual(ag, bg *ast.GenDecl) bool {
+	if ag.Tok != bg.Tok || len(ag.Specs) != len(bg.Specs) {
+		return false
+	}
+	for i := range ag.Specs {
+		if !valueSpecsEqual(ag.Specs[i], bg.Specs[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+// valueSpecsEqual compares two Specs (must be ValueSpecs).
+func valueSpecsEqual(a, b ast.Spec) bool {
+	as, okA := a.(*ast.ValueSpec)
+	bs, okB := b.(*ast.ValueSpec)
+	if !okA || !okB {
+		return false
+	}
+	return namesEqual(as.Names, bs.Names) && typesEqual(as.Type, bs.Type)
+}
+
+// namesEqual compares identifier lists.
+func namesEqual(a, b []*ast.Ident) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].Name != b[i].Name {
+			return false
+		}
+	}
+	return true
+}
+
+// typesEqual compares type expressions (nil-safe, Ident-only).
+func typesEqual(a, b ast.Expr) bool {
+	if (a == nil) != (b == nil) {
+		return false
+	}
+	if a == nil {
+		return true
+	}
+	at, okA := a.(*ast.Ident)
+	bt, okB := b.(*ast.Ident)
+	return okA && okB && at.Name == bt.Name
+}
+
+// assignShapesMatch checks if two assignments have compatible shapes.
+func assignShapesMatch(at, bt *ast.AssignStmt) bool {
+	return at.Tok == bt.Tok && len(at.Lhs) == len(bt.Lhs) && len(at.Rhs) == len(bt.Rhs)
+}
+
+// unifyExprList unifies two expression lists element-wise.
+func unifyExprList(au *antiUnifier, a, b []ast.Expr) []ast.Expr {
+	out := make([]ast.Expr, len(a))
+	for i := range a {
+		out[i] = au.unifyExpr(a[i], b[i])
+	}
+	return out
+}
+
 // blocksCompatible checks if two blocks can be unified.
 func blocksCompatible(a, b *ast.BlockStmt) bool {
 	if a == nil || b == nil {
@@ -445,6 +448,3 @@ func TemplateString(tmpl ast.Node) string {
 	// In practice, use go/printer for full fidelity.
 	return fmt.Sprintf("%T", tmpl)
 }
-
-// Ensure token is used (for Op preservation).
-var _ = token.ILLEGAL

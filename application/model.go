@@ -293,10 +293,6 @@ func (m Model) advanceNavigationRevision(before Model) Model {
 	return m
 }
 
-func nextPane(current pane, delta int) pane {
-	return pane((int(current) + delta + 3) % 3)
-}
-
 func (m Model) move(delta int) Model {
 	if m.focus == filesPane {
 		return m.moveFile(delta)
@@ -322,6 +318,27 @@ func (m Model) moveFile(delta int) Model {
 	m.fileIndex = next
 	m.functionIndex = 0
 	return m.resetSourceWorkspace()
+}
+
+func (m Model) selectedFile() (domain.File, bool) {
+	if m.fileIndex < 0 || m.fileIndex >= len(m.report.Files) {
+		return domain.File{}, false
+	}
+
+	return m.report.Files[m.fileIndex], true
+}
+
+func (m Model) selectedFunction() (domain.Function, bool) {
+	file, ok := m.selectedFile()
+	if !ok || m.functionIndex < 0 || m.functionIndex >= len(file.Functions) {
+		return domain.Function{}, false
+	}
+
+	return file.Functions[m.functionIndex], true
+}
+
+func nextPane(current pane, delta int) pane {
+	return pane((int(current) + delta + 3) % 3)
 }
 
 func moveIndex(current int, delta int, length int) int {
@@ -377,21 +394,4 @@ func functionRanksBefore(left domain.Function, right domain.Function) bool {
 	}
 
 	return left.Name < right.Name
-}
-
-func (m Model) selectedFile() (domain.File, bool) {
-	if m.fileIndex < 0 || m.fileIndex >= len(m.report.Files) {
-		return domain.File{}, false
-	}
-
-	return m.report.Files[m.fileIndex], true
-}
-
-func (m Model) selectedFunction() (domain.Function, bool) {
-	file, ok := m.selectedFile()
-	if !ok || m.functionIndex < 0 || m.functionIndex >= len(file.Functions) {
-		return domain.Function{}, false
-	}
-
-	return file.Functions[m.functionIndex], true
 }

@@ -53,17 +53,6 @@ func (b *irBuilder) executionAnchors(block *cfg.Block, controls map[ast.Node]pdg
 	return anchors
 }
 
-func (d *executionDominators) previousAnchor(index int, anchors [][]pdg.Ref) pdg.Ref {
-	for index != 0 {
-		index = d.idom[index]
-		nodes := anchors[index]
-		if len(nodes) > 0 {
-			return nodes[len(nodes)-1]
-		}
-	}
-	return 0
-}
-
 func (b *irBuilder) executionEdge(from, to pdg.Ref) {
 	if from == 0 || from == to {
 		return
@@ -105,6 +94,23 @@ func (b *irBuilder) executionControls(body *ast.BlockStmt) map[ast.Node]pdg.Ref 
 	return controls
 }
 
+func (b *irBuilder) executionMetadata() {
+	description := "Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete."
+	b.executionEvidence = b.pool.Evidence(pdg.Approximated, description)
+	b.executionOrigin = b.pool.Origin(pdg.Analysis, description)
+}
+
+func (d *executionDominators) previousAnchor(index int, anchors [][]pdg.Ref) pdg.Ref {
+	for index != 0 {
+		index = d.idom[index]
+		nodes := anchors[index]
+		if len(nodes) > 0 {
+			return nodes[len(nodes)-1]
+		}
+	}
+	return 0
+}
+
 func executionCondition(node ast.Node) ast.Node {
 	switch node := node.(type) {
 	case *ast.IfStmt:
@@ -116,10 +122,4 @@ func executionCondition(node ast.Node) ast.Node {
 	default:
 		return nil
 	}
-}
-
-func (b *irBuilder) executionMetadata() {
-	description := "Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete."
-	b.executionEvidence = b.pool.Evidence(pdg.Approximated, description)
-	b.executionOrigin = b.pool.Origin(pdg.Analysis, description)
 }

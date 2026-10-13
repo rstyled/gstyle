@@ -20,12 +20,54 @@ type LineRange struct {
 	Start, End int
 }
 
+var hunkHeader = regexp.MustCompile(`^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@`)
+
+// Diff is a git diff scoped to pathspecs: the repo root, the working
+// directory it was computed from, and the per-file touch ranges.
+type Diff struct {
+	Root   string
+	Cwd    string
+	Ranges map[string][]LineRange
+}
+
+// NewDiff resolves the repo root and diff base, then maps the diff onto
+// touch ranges for paths (repo-root-relative pathspecs, defaulting to the
+// whole tree when empty).
+func NewDiff(cwd string, paths []string, base string) (*Diff, error) {
+	root, err := GitRoot(cwd)
+	if err != nil {
+		return nil, err
+	}
+	resolved, err := ResolveBase(root, base)
+	if err != nil {
+		return nil, err
+	}
+	ranges, err := ChangedRanges(root, resolved, RootSpecs(paths, root, cwd))
+	if err != nil {
+		return nil, err
+	}
+	return &Diff{Root: root, Cwd: cwd, Ranges: ranges}, nil
+}
+
+// Touched reports whether the line range [startLine, endLine] of path (any
+// absolute path, or relative to the working directory) intersects the diff.
+func (d *Diff) Touched(path string, startLine, endLine int) bool {
+	fileRanges, ok := d.Ranges[RootRelative(path, d.Root, d.Cwd)]
+	if !ok {
+		return false
+	}
+	for _, r := range fileRanges {
+		if Overlaps(startLine, endLine, r) {
+			return true
+		}
+	}
+	return false
+}
+
 // Overlaps reports whether [start, end] intersects r.
 func Overlaps(start, end int, r LineRange) bool {
 	return start <= r.End && r.Start <= end
 }
-
-var hunkHeader = regexp.MustCompile(`^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@`)
 
 func gitOutput(dir string, args ...string) (string, error) {
 	command := exec.Command("git", args...)
@@ -120,48 +162,6 @@ func RootRelative(path, root, cwd string) string {
 		return rel
 	}
 	return path
-}
-
-// Diff is a git diff scoped to pathspecs: the repo root, the working
-// directory it was computed from, and the per-file touch ranges.
-type Diff struct {
-	Root   string
-	Cwd    string
-	Ranges map[string][]LineRange
-}
-
-// NewDiff resolves the repo root and diff base, then maps the diff onto
-// touch ranges for paths (repo-root-relative pathspecs, defaulting to the
-// whole tree when empty).
-func NewDiff(cwd string, paths []string, base string) (*Diff, error) {
-	root, err := GitRoot(cwd)
-	if err != nil {
-		return nil, err
-	}
-	resolved, err := ResolveBase(root, base)
-	if err != nil {
-		return nil, err
-	}
-	ranges, err := ChangedRanges(root, resolved, RootSpecs(paths, root, cwd))
-	if err != nil {
-		return nil, err
-	}
-	return &Diff{Root: root, Cwd: cwd, Ranges: ranges}, nil
-}
-
-// Touched reports whether the line range [startLine, endLine] of path (any
-// absolute path, or relative to the working directory) intersects the diff.
-func (d *Diff) Touched(path string, startLine, endLine int) bool {
-	fileRanges, ok := d.Ranges[RootRelative(path, d.Root, d.Cwd)]
-	if !ok {
-		return false
-	}
-	for _, r := range fileRanges {
-		if Overlaps(startLine, endLine, r) {
-			return true
-		}
-	}
-	return false
 }
 
 // untrackedRanges treats every untracked Go file as fully changed.

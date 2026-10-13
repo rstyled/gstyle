@@ -24,15 +24,44 @@ const minClumpSize = 2
 // minClumpFuncs is the minimum functions sharing a clump.
 const minClumpFuncs = 3
 
-// paramKey joins a param's name and type for set operations.
-func paramKey(p ParamInfo) string {
-	return p.Name + ":" + p.Type
-}
-
 // clump is a set of param keys shared by a group of functions.
 type clump struct {
 	keys  map[string]bool
 	facts map[*MiningFacts]bool
+}
+
+// funcParams pairs a function with its primitive param key set.
+type funcParams struct {
+	fact *MiningFacts
+	keys map[string]bool
+}
+
+// genericParamNames are placeholder names that carry no domain meaning.
+// A data clump made entirely of these is not a domain concept — it's just
+// convention (x, y for coordinates in a math helper; a, b for comparables).
+var genericParamNames = map[string]bool{
+	// Single letters.
+	"a": true, "b": true, "c": true, "d": true, "e": true,
+	"f": true, "g": true, "h": true, "i": true, "j": true,
+	"k": true, "l": true, "m": true, "n": true, "o": true,
+	"p": true, "q": true, "r": true, "s": true, "t": true,
+	"u": true, "v": true, "w": true, "x": true, "y": true,
+	"z": true,
+	// Common placeholders.
+	"foo": true, "bar": true, "baz": true, "qux": true,
+	"tmp": true, "temp": true, "val": true, "var": true,
+	"arg": true, "args": true, "param": true, "params": true,
+	"obj": true, "item": true, "elem": true, "el": true,
+	// Numbered placeholders.
+	"p1": true, "p2": true, "p3": true,
+	"a1": true, "a2": true, "a3": true,
+	"v1": true, "v2": true,
+	"x1": true, "x2": true, "y1": true, "y2": true,
+}
+
+// paramKey joins a param's name and type for set operations.
+func paramKey(p ParamInfo) string {
+	return p.Name + ":" + p.Type
 }
 
 // valueObjectCandidates finds data clumps: groups of primitive params that
@@ -43,12 +72,6 @@ func valueObjectCandidates(facts []*MiningFacts) []Candidate {
 	clumps := findClumps(fps)
 	clumps = maximalClumps(clumps)
 	return buildValueObjectCandidates(clumps)
-}
-
-// funcParams pairs a function with its primitive param key set.
-type funcParams struct {
-	fact *MiningFacts
-	keys map[string]bool
 }
 
 // indexFuncParams builds the param key set for each function with enough
@@ -103,29 +126,6 @@ func recordIntersection(byKey map[string]*clump, a, b funcParams) {
 	}
 	c.facts[a.fact] = true
 	c.facts[b.fact] = true
-}
-
-// genericParamNames are placeholder names that carry no domain meaning.
-// A data clump made entirely of these is not a domain concept — it's just
-// convention (x, y for coordinates in a math helper; a, b for comparables).
-var genericParamNames = map[string]bool{
-	// Single letters.
-	"a": true, "b": true, "c": true, "d": true, "e": true,
-	"f": true, "g": true, "h": true, "i": true, "j": true,
-	"k": true, "l": true, "m": true, "n": true, "o": true,
-	"p": true, "q": true, "r": true, "s": true, "t": true,
-	"u": true, "v": true, "w": true, "x": true, "y": true,
-	"z": true,
-	// Common placeholders.
-	"foo": true, "bar": true, "baz": true, "qux": true,
-	"tmp": true, "temp": true, "val": true, "var": true,
-	"arg": true, "args": true, "param": true, "params": true,
-	"obj": true, "item": true, "elem": true, "el": true,
-	// Numbered placeholders.
-	"p1": true, "p2": true, "p3": true,
-	"a1": true, "a2": true, "a3": true,
-	"v1": true, "v2": true,
-	"x1": true, "x2": true, "y1": true, "y2": true,
 }
 
 // isGenericParamName reports whether a param name is a meaningless

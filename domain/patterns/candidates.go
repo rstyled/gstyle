@@ -243,18 +243,6 @@ var FixKindOrder = []CandidateKind{
 	Obligation,
 }
 
-// FixKindRank returns the application-order rank for a pattern kind.
-// Lower runs first. Kinds not in FixKindOrder (including detection-only
-// kinds, which never produce FixSpecs) sort last.
-func FixKindRank(k CandidateKind) int {
-	for i, kind := range FixKindOrder {
-		if kind == k {
-			return i
-		}
-	}
-	return len(FixKindOrder)
-}
-
 // Site is one function that shows the pattern.
 type Site struct {
 	Path string
@@ -370,6 +358,107 @@ func newCandidateIndex(facts []*MiningFacts, groups []SigGroup, params Params) *
 	return ix
 }
 
+// display renders an id: the function name when known, else the short name
+// after the last '.'.
+func (ix *candidateIndex) display(value string) string {
+	if f, ok := ix.byID[value]; ok {
+		return f.Name
+	}
+	return shortName(value)
+}
+
+// displayCallee renders a callee id: external ones keep their owner
+// ("Tcp.Connect", not "Connect").
+func (ix *candidateIndex) displayCallee(value string) string {
+	if f, ok := ix.byID[value]; ok {
+		return f.Name
+	}
+	if owner, ok := ix.calleeOwners[value]; ok {
+		return owner + "." + shortName(value)
+	}
+	return lastTwo(value)
+}
+
+// existing is a method column that is already an interface method on every
+// owner type.
+type existing struct {
+	reason string
+	// traitMethod is the interface method id; "" when unknown (Go records
+	// Implements as a bool, so the id is never known).
+	traitMethod string
+	owners      map[string]bool
+}
+
+type verdictKind int
+
+const (
+	verdictSkip verdictKind = iota
+	verdictTrait
+	verdictSuppressed
+)
+
+// verdict is what a set of hole values (callee ids) amounts to.
+type verdict struct {
+	kind     verdictKind
+	group    *SigGroup
+	defs     []*MiningFacts
+	existing *existing
+}
+
+// traitVerdict pairs a joined signature group with its definitions.
+type traitVerdict struct {
+	group *SigGroup
+	defs  []*MiningFacts
+}
+
+// candidateEvidence is the finished evidence for one candidate, shared by the
+// cluster and dispatch paths.
+type candidateEvidence struct {
+	kind      CandidateKind
+	breakdown Breakdown
+	sites     []*MiningFacts
+	verdicts  []traitVerdict
+	summary   string
+	// existingTrait is the interface method id of a suppressed column in the
+	// same cluster: extend that interface instead. "" when unknown (always,
+	// in Go: Implements is a bool).
+	existingTrait string
+}
+
+type outcomeKind int
+
+const (
+	outcomeNothing outcomeKind = iota
+	outcomeFound
+	// outcomeReady is a candidate that needs no trait evidence
+	// (type-only clusters).
+	outcomeReady
+	outcomeHidden
+)
+
+type outcome struct {
+	kind       outcomeKind
+	ev         *candidateEvidence
+	candidate  *Candidate
+	suppressed *Suppressed
+}
+
+// minGenericCalls: fewer calls than this is a delegation or accessor, not a
+// body worth generalizing.
+const minGenericCalls = 2
+
+// FixKindRank returns the application-order rank for a pattern kind.
+// Lower runs first. Kinds not in FixKindOrder (including detection-only
+// kinds, which never produce FixSpecs) sort last.
+func FixKindRank(k CandidateKind) int {
+	for i, kind := range FixKindOrder {
+		if kind == k {
+			return i
+		}
+	}
+	return len(FixKindOrder)
+}
+
 // calleeOwners maps every called id seen in a PDG to its owner type.
 // Go adaptation: rstyle reads the callee's signature owner; the Go schema
 // keeps no callee signatures, so the owner is derived from the callee id:
@@ -404,27 +493,6 @@ func calleeOwner(id string) (string, bool) {
 		return "", false
 	}
 	return shortGoPaths(id[:strings.LastIndexByte(id, '.')]), true
-}
-
-// display renders an id: the function name when known, else the short name
-// after the last '.'.
-func (ix *candidateIndex) display(value string) string {
-	if f, ok := ix.byID[value]; ok {
-		return f.Name
-	}
-	return shortName(value)
-}
-
-// displayCallee renders a callee id: external ones keep their owner
-// ("Tcp.Connect", not "Connect").
-func (ix *candidateIndex) displayCallee(value string) string {
-	if f, ok := ix.byID[value]; ok {
-		return f.Name
-	}
-	if owner, ok := ix.calleeOwners[value]; ok {
-		return owner + "." + shortName(value)
-	}
-	return lastTwo(value)
 }
 
 // lastTwo keeps the last two '.' segments ("a.Tcp.Connect" ->
@@ -478,32 +546,6 @@ func sitesOfFacts(fns []*MiningFacts) []Site {
 		sites[i] = makeSite(f)
 	}
 	return sites
-}
-
-// existing is a method column that is already an interface method on every
-// owner type.
-type existing struct {
-	reason string
-	// traitMethod is the interface method id; "" when unknown (Go records
-	// Implements as a bool, so the id is never known).
-	traitMethod string
-	owners      map[string]bool
-}
-
-type verdictKind int
-
-const (
-	verdictSkip verdictKind = iota
-	verdictTrait
-	verdictSuppressed
-)
-
-// verdict is what a set of hole values (callee ids) amounts to.
-type verdict struct {
-	kind     verdictKind
-	group    *SigGroup
-	defs     []*MiningFacts
-	existing *existing
 }
 
 func distinctSorted(values []string) []string {
@@ -790,26 +832,6 @@ func traitRefactor(ev *candidateEvidence, methods []string, impls string) string
 		strings.Join(methods, " "), impls)
 }
 
-// traitVerdict pairs a joined signature group with its definitions.
-type traitVerdict struct {
-	group *SigGroup
-	defs  []*MiningFacts
-}
-
-// candidateEvidence is the finished evidence for one candidate, shared by the
-// cluster and dispatch paths.
-type candidateEvidence struct {
-	kind      CandidateKind
-	breakdown Breakdown
-	sites     []*MiningFacts
-	verdicts  []traitVerdict
-	summary   string
-	// existingTrait is the interface method id of a suppressed column in the
-	// same cluster: extend that interface instead. "" when unknown (always,
-	// in Go: Implements is a bool).
-	existingTrait string
-}
-
 func definitionSites(defs []*MiningFacts) []Site {
 	seen := map[string]bool{}
 	var out []Site
@@ -898,24 +920,6 @@ func columnsTextOf(ix *candidateIndex, columns []*Column) string {
 	return strings.Join(parts, "; ")
 }
 
-type outcomeKind int
-
-const (
-	outcomeNothing outcomeKind = iota
-	outcomeFound
-	// outcomeReady is a candidate that needs no trait evidence
-	// (type-only clusters).
-	outcomeReady
-	outcomeHidden
-)
-
-type outcome struct {
-	kind       outcomeKind
-	ev         *candidateEvidence
-	candidate  *Candidate
-	suppressed *Suppressed
-}
-
 func sitesOf(fns []*MiningFacts, cluster *Cluster) []*MiningFacts {
 	sites := make([]*MiningFacts, len(cluster.Members))
 	for i, m := range cluster.Members {
@@ -958,10 +962,6 @@ func liftOf(verdicts []traitVerdict) uint32 {
 	}
 	return lift
 }
-
-// minGenericCalls: fewer calls than this is a delegation or accessor, not a
-// body worth generalizing.
-const minGenericCalls = 2
 
 // forwardsParams reports whether every call in f is fed by parameters alone:
 // a delegation shim.

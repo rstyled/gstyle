@@ -12,6 +12,74 @@ import (
 	"github.com/rstyled/gstyle/domain/patterns"
 )
 
+// dbReceiverNames are heuristic variable names for database handles.
+var dbReceiverNames = map[string]bool{
+	"db": true, "DB": true, "tx": true, "Tx": true,
+	"conn": true, "Conn": true, "sqlDB": true, "database": true,
+}
+
+// dbMethods are methods that indicate a database call.
+var dbMethods = map[string]bool{
+	"Query": true, "QueryRow": true, "QueryContext": true,
+	"Exec": true, "ExecContext": true,
+	"Prepare": true, "PrepareContext": true,
+	"Begin": true, "BeginTx": true, "Commit": true, "Rollback": true,
+}
+
+// dbPackages are package names that indicate a database call.
+var dbPackages = map[string]bool{
+	"sql": true, "gorm": true, "pgx": true, "sqlx": true,
+	"ent": true, "bun": true, "pop": true,
+}
+
+// constructionLogicWindow is how close (in lines) an if statement must be
+// to a struct literal to count as construction logic.
+const constructionLogicWindow = 5
+
+// constructionCtx bundles the type-checking context for
+// construction-logic detection (keeps fn_params within the gate).
+type constructionCtx struct {
+	fset     *token.FileSet
+	info     *types.Info
+	typeName string
+}
+
+// ifIsLogic reports whether the if statement is construction logic for the
+// literal: close to it in the source, or referencing the struct type.
+func (ctx constructionCtx) ifIsLogic(ifStmt *ast.IfStmt, litLine int) bool {
+	ifLine := ctx.fset.Position(ifStmt.Pos()).Line
+	if ifLine >= litLine-constructionLogicWindow && ifLine <= litLine+constructionLogicWindow {
+		return true
+	}
+	return ctx.ifRefsType(ifStmt)
+}
+
+// ifRefsType reports whether the if statement mentions the struct type,
+// either by name or via a variable of that type.
+func (ctx constructionCtx) ifRefsType(ifStmt *ast.IfStmt) bool {
+	refs := false
+	ast.Inspect(ifStmt, func(n ast.Node) bool {
+		id, ok := n.(*ast.Ident)
+		if !ok {
+			return true
+		}
+		if id.Name == ctx.typeName {
+			refs = true
+			return false
+		}
+		if isStructNamed(ctx.info.TypeOf(id), ctx.typeName) {
+			refs = true
+			return false
+		}
+		return true
+	})
+	return refs
+}
+
+// specMinOperands is the minimum number of && / || operands for a boolean
+// expression to count as a business rule worth a Specification.
+const specMinOperands = 2
+
 // DDD structural extractors: aggregates, repositories, factories (Evans).
 
 // findAggregateMods records the named struct types whose fields are
@@ -115,26 +183,6 @@ func derefNamed(t types.Type) (*types.Named, bool) {
 	}
 	named, ok := t.(*types.Named)
 	return named, ok
-}
-
-// dbReceiverNames are heuristic variable names for database handles.
-var dbReceiverNames = map[string]bool{
-	"db": true, "DB": true, "tx": true, "Tx": true,
-	"conn": true, "Conn": true, "sqlDB": true, "database": true,
-}
-
-// dbMethods are methods that indicate a database call.
-var dbMethods = map[string]bool{
-	"Query": true, "QueryRow": true, "QueryContext": true,
-	"Exec": true, "ExecContext": true,
-	"Prepare": true, "PrepareContext": true,
-	"Begin": true, "BeginTx": true, "Commit": true, "Rollback": true,
-}
-
-// dbPackages are package names that indicate a database call.
-var dbPackages = map[string]bool{
-	"sql": true, "gorm": true, "pgx": true, "sqlx": true,
-	"ent": true, "bun": true, "pop": true,
 }
 
 // isRepositoryFile reports whether path looks like a repository file:
@@ -281,18 +329,6 @@ func findFactoryLits(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info, pk
 	return out
 }
 
-// constructionLogicWindow is how close (in lines) an if statement must be
-// to a struct literal to count as construction logic.
-const constructionLogicWindow = 5
-
-// constructionCtx bundles the type-checking context for
-// construction-logic detection (keeps fn_params within the gate).
-type constructionCtx struct {
-	fset     *token.FileSet
-	info     *types.Info
-	typeName string
-}
-
 // litHasConstructionLogic reports whether the struct literal's construction
 // has logic that a factory could encapsulate. The logic must be ABOUT the
 // construction, not just anywhere in the function:
@@ -320,38 +356,6 @@ func litHasConstructionLogic(fn *ast.FuncDecl, lit *ast.CompositeLit, ctx constr
 		return true
 	})
 	return logic
-}
-
-// ifIsLogic reports whether the if statement is construction logic for the
-// literal: close to it in the source, or referencing the struct type.
-func (ctx constructionCtx) ifIsLogic(ifStmt *ast.IfStmt, litLine int) bool {
-	ifLine := ctx.fset.Position(ifStmt.Pos()).Line
-	if ifLine >= litLine-constructionLogicWindow && ifLine <= litLine+constructionLogicWindow {
-		return true
-	}
-	return ctx.ifRefsType(ifStmt)
-}
-
-// ifRefsType reports whether the if statement mentions the struct type,
-// either by name or via a variable of that type.
-func (ctx constructionCtx) ifRefsType(ifStmt *ast.IfStmt) bool {
-	refs := false
-	ast.Inspect(ifStmt, func(n ast.Node) bool {
-		id, ok := n.(*ast.Ident)
-		if !ok {
-			return true
-		}
-		if id.Name == ctx.typeName {
-			refs = true
-			return false
-		}
-		if isStructNamed(ctx.info.TypeOf(id), ctx.typeName) {
-			refs = true
-			return false
-		}
-		return true
-	})
-	return refs
 }
 
 // funcReturnsStructAndError reports whether fn returns the named struct type
@@ -417,10 +421,6 @@ func litNamedStruct(t types.Type) (*types.Named, bool) {
 	}
 	return named, true
 }
-
-// specMinOperands is the minimum number of && / || operands for a boolean
-// expression to count as a business rule worth a Specification.
-const specMinOperands = 2
 
 // findSpecificationHits records boolean business-rule expressions: if
 // conditions with 2+ && / || operands. The rule key normalizes field

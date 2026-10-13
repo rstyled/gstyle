@@ -39,17 +39,6 @@ type Params struct {
 	MaxHoles int
 }
 
-// DefaultParams mirrors Rust's Default: 600/600 thresholds, no pair-coverage
-// experiment, no normalization, no single-call guard, at most 3 holes.
-func DefaultParams() Params {
-	return Params{
-		ThresholdMilli:   600,
-		MinCoverageMilli: 600,
-		Normalize:        Rules{},
-		MaxHoles:         3,
-	}
-}
-
 // Column is one hole variable across all members: Values[k] belongs to
 // Cluster.Members[k].
 type Column struct {
@@ -66,6 +55,70 @@ type Cluster struct {
 	// CoverageMilli aligns with Members: the template scores 1000.
 	CoverageMilli []uint32
 	Columns       []Column
+}
+
+// joinedMember is a non-template member aligned against the template.
+type joinedMember struct {
+	index     int
+	alignment Alignment
+}
+
+// columnKey identifies a substitution column: the hole kind plus the
+// template-side value.
+type columnKey struct {
+	kind     HoleKind
+	template string
+}
+
+type tabSlot struct {
+	// site is the first template node index where the substitution occurs.
+	site int
+	// found[k] is the value joined member k has there, or nil when its
+	// alignment has no such hole (falls back to the template value).
+	found []*string
+}
+
+const maxInt = int(^uint(0) >> 1)
+
+// holeKindRank reproduces Rust's HoleKind declaration order (Type, Method,
+// FreeFn, Literal, Field, Op) for column ordering, independent of the Go
+// constant values the align port chooses.
+var holeKindRank = map[HoleKind]int{
+	HoleType:    0,
+	HoleMethod:  1,
+	HoleFreeFn:  2,
+	HoleLiteral: 3,
+	HoleField:   4,
+	HoleOp:      5,
+}
+
+// holeVarName is the variable name of the index-th hole of a kind: T0, M1...
+// It mirrors Rust's Hole::var_name over HoleKind::prefix.
+var holeKindPrefix = map[HoleKind]string{
+	HoleType:    "T",
+	HoleMethod:  "M",
+	HoleFreeFn:  "F",
+	HoleLiteral: "L",
+	HoleField:   "D",
+	HoleOp:      "O",
+}
+
+type columnRow struct {
+	kind     HoleKind
+	template string
+	site     int
+	found    []*string
+}
+
+// DefaultParams mirrors Rust's Default: 600/600 thresholds, no pair-coverage
+// experiment, no normalization, no single-call guard, at most 3 holes.
+func DefaultParams() Params {
+	return Params{
+		ThresholdMilli:   600,
+		MinCoverageMilli: 600,
+		Normalize:        Rules{},
+		MaxHoles:         3,
+	}
 }
 
 // classesOf returns the sorted set of call classes in a graph.
@@ -282,35 +335,12 @@ func medoid(wls []*Wl, group []int) int {
 	return best
 }
 
-// joinedMember is a non-template member aligned against the template.
-type joinedMember struct {
-	index     int
-	alignment Alignment
-}
-
 func joinMember(pdgs []*MiningGraph, wls []*Wl, template, member int) joinedMember {
 	return joinedMember{
 		index:     member,
 		alignment: Align(pdgs[template], wls[template], pdgs[member], wls[member]),
 	}
 }
-
-// columnKey identifies a substitution column: the hole kind plus the
-// template-side value.
-type columnKey struct {
-	kind     HoleKind
-	template string
-}
-
-type tabSlot struct {
-	// site is the first template node index where the substitution occurs.
-	site int
-	// found[k] is the value joined member k has there, or nil when its
-	// alignment has no such hole (falls back to the template value).
-	found []*string
-}
-
-const maxInt = int(^uint(0) >> 1)
 
 // tabulate builds the template value -> (first template site, the value each
 // joined member has there) table.
@@ -336,42 +366,12 @@ func tabulate(joined []joinedMember) map[columnKey]*tabSlot {
 	return table
 }
 
-// holeKindRank reproduces Rust's HoleKind declaration order (Type, Method,
-// FreeFn, Literal, Field, Op) for column ordering, independent of the Go
-// constant values the align port chooses.
-var holeKindRank = map[HoleKind]int{
-	HoleType:    0,
-	HoleMethod:  1,
-	HoleFreeFn:  2,
-	HoleLiteral: 3,
-	HoleField:   4,
-	HoleOp:      5,
-}
-
-// holeVarName is the variable name of the index-th hole of a kind: T0, M1...
-// It mirrors Rust's Hole::var_name over HoleKind::prefix.
-var holeKindPrefix = map[HoleKind]string{
-	HoleType:    "T",
-	HoleMethod:  "M",
-	HoleFreeFn:  "F",
-	HoleLiteral: "L",
-	HoleField:   "D",
-	HoleOp:      "O",
-}
-
 func holeVarName(kind HoleKind, index int) string {
 	prefix, ok := holeKindPrefix[kind]
 	if !ok {
 		prefix = "X"
 	}
 	return prefix + strconv.Itoa(index)
-}
-
-type columnRow struct {
-	kind     HoleKind
-	template string
-	site     int
-	found    []*string
 }
 
 // sortedRows orders the substitution table by first template site, then hole

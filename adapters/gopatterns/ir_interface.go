@@ -73,19 +73,19 @@ func (b *irBuilder) parameterFacts(field *ast.Field, name *ast.Ident, role pdg.R
 	return p
 }
 
-func symbolRole(role pdg.Role) pdg.Role {
-	if role == pdg.ReturnRole {
-		return pdg.OutputRole
-	}
-	return role
-}
-
 func (b *irBuilder) typeFact(expr ast.Expr) pdg.Fact {
 	typ := b.info.TypeOf(expr)
 	if typ == nil {
 		return b.pool.Missing(pdg.Unknown, "Type is unresolved.")
 	}
 	return b.pool.Known(irTypeString(typ))
+}
+
+func symbolRole(role pdg.Role) pdg.Role {
+	if role == pdg.ReturnRole {
+		return pdg.OutputRole
+	}
+	return role
 }
 
 func irTypeString(typ types.Type) string {

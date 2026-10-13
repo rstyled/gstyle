@@ -42,6 +42,40 @@ func (m Model) loadPatternsCmd() tea.Cmd {
 	}
 }
 
+// selectedFilePath returns the selected file's path, or "" when none.
+func (m Model) selectedFilePath() string {
+	file, ok := m.selectedFile()
+	if !ok {
+		return ""
+	}
+	return file.Path
+}
+
+// visiblePatternMarkers returns markers for the selected file, or nil when
+// pattern highlights are toggled off.
+func (m Model) visiblePatternMarkers() []PatternMarker {
+	if !m.showPatterns || len(m.patternMarkers) == 0 {
+		return nil
+	}
+	path := m.selectedFilePath()
+	if path == "" {
+		return nil
+	}
+	var out []PatternMarker
+	for _, mk := range m.patternMarkers {
+		if patternPathMatches(mk.Path, path) {
+			out = append(out, mk)
+		}
+	}
+	return out
+}
+
+// togglePatterns flips pattern highlight visibility.
+func (m Model) togglePatterns() Model {
+	m.showPatterns = !m.showPatterns
+	return m
+}
+
 // patternMarkersFromReport converts pattern candidates' sites into markers.
 func patternMarkersFromReport(report *patterns.PatternsReport) []PatternMarker {
 	if report == nil {
@@ -82,15 +116,6 @@ func patternPathMatches(markerPath, filePath string) bool {
 		strings.HasSuffix(filePath, "/"+markerPath)
 }
 
-// selectedFilePath returns the selected file's path, or "" when none.
-func (m Model) selectedFilePath() string {
-	file, ok := m.selectedFile()
-	if !ok {
-		return ""
-	}
-	return file.Path
-}
-
 // patternMarkersAtLine returns markers covering path:line, deduplicated by kind.
 func patternMarkersAtLine(markers []PatternMarker, path string, line int) []PatternMarker {
 	var out []PatternMarker
@@ -114,31 +139,6 @@ func patternMarkerCovers(mk PatternMarker, path string, line int) bool {
 		end = mk.Line
 	}
 	return mk.Line <= line && line <= end
-}
-
-// visiblePatternMarkers returns markers for the selected file, or nil when
-// pattern highlights are toggled off.
-func (m Model) visiblePatternMarkers() []PatternMarker {
-	if !m.showPatterns || len(m.patternMarkers) == 0 {
-		return nil
-	}
-	path := m.selectedFilePath()
-	if path == "" {
-		return nil
-	}
-	var out []PatternMarker
-	for _, mk := range m.patternMarkers {
-		if patternPathMatches(mk.Path, path) {
-			out = append(out, mk)
-		}
-	}
-	return out
-}
-
-// togglePatterns flips pattern highlight visibility.
-func (m Model) togglePatterns() Model {
-	m.showPatterns = !m.showPatterns
-	return m
 }
 
 // highlightPatternLine applies the pattern background to a rendered line when

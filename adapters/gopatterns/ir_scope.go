@@ -25,17 +25,17 @@ func (b *irBuilder) scope(obj types.Object) pdg.Text {
 	return b.pool.Text(fmt.Sprintf("scope:%s:lexical:%d:%d", b.scopePath(start.Filename), start.Offset, end.Offset))
 }
 
-func scopePackage(obj types.Object) string {
-	if obj.Pkg() == nil {
-		return "universe"
-	}
-	return obj.Pkg().Path()
-}
-
 func (b *irBuilder) scopePath(filename string) string {
 	relative, err := filepath.Rel(filepath.Dir(b.sourceFilename), filename)
 	if err != nil {
 		return b.pool.Tables.Text(b.graph.Sources[0].Path)
 	}
 	return filepath.ToSlash(filepath.Join(filepath.Dir(b.pool.Tables.Text(b.graph.Sources[0].Path)), relative))
+}
+
+func scopePackage(obj types.Object) string {
+	if obj.Pkg() == nil {
+		return "universe"
+	}
+	return obj.Pkg().Path()
 }

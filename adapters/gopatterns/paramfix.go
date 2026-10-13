@@ -41,6 +41,138 @@ func (p ParamFix) FixKind() string { return p.Kind }
 // extraction.
 const maxParamHoles = 3
 
+type parameterizeConfig struct {
+	candidates []patterns.Candidate
+	signatures map[string]string
+	helperName string
+}
+
+// tryCtx carries the context for trying function pairs.
+type tryCtx struct {
+	helperName string
+	signatures map[string]string
+	fset       *token.FileSet
+	allow      map[[2]string]bool
+	used       map[string]bool
+	src        []byte
+}
+
+// tryPair attempts one pair, marking used on success.
+func (tc *tryCtx) tryPair(a, b *ast.FuncDecl) (textEdit, ParamFix, bool) {
+	if tc.used[a.Name.Name] || tc.used[b.Name.Name] {
+		return textEdit{}, ParamFix{}, false
+	}
+	if !pairAllowed(a, b, tc.allow) {
+		return textEdit{}, ParamFix{}, false
+	}
+	edit, fix, ok := paramEdit(tc, a, b)
+	if !ok {
+		return textEdit{}, ParamFix{}, false
+	}
+	tc.used[a.Name.Name] = true
+	tc.used[b.Name.Name] = true
+	return edit, fix, true
+}
+
+// hole is one differing subexpression between two parallel functions.
+type hole struct {
+	// aExpr, bExpr are the differing expressions.
+	aExpr, bExpr ast.Expr
+}
+
+// paramCtx carries the shared context for parameterizing a function pair.
+type paramCtx struct {
+	signatures    map[string]string
+	fset          *token.FileSet
+	a, b          *ast.FuncDecl
+	src           []byte
+	r             *renames
+	holes         []hole
+	params        []holeParam
+	extractedName string
+}
+
+// renames maps identifier names in a to the corresponding names in b,
+// for params and locally-declared variables.
+type renames struct {
+	aToB    map[string]string
+	localsA map[string]bool
+	localsB map[string]bool
+}
+
+// nameCollector accumulates declared names during an AST walk.
+type nameCollector struct {
+	out  []string
+	seen map[string]bool
+}
+
+// visit records a name if unseen.
+func (c *nameCollector) add(name string) {
+	if !c.seen[name] {
+		c.seen[name] = true
+		c.out = append(c.out, name)
+	}
+}
+
+// visit is the ast.Inspect callback.
+func (c *nameCollector) visit(n ast.Node) bool {
+	switch x := n.(type) {
+	case *ast.AssignStmt:
+		c.visitAssign(x)
+	case *ast.DeclStmt:
+		c.visitDecl(x)
+	case *ast.RangeStmt:
+		c.visitRange(x)
+	}
+	return true
+}
+
+// visitAssign records := targets.
+func (c *nameCollector) visitAssign(x *ast.AssignStmt) {
+	if x.Tok != token.DEFINE {
+		return
+	}
+	for _, lhs := range x.Lhs {
+		if id, ok := lhs.(*ast.Ident); ok {
+			c.add(id.Name)
+		}
+	}
+}
+
+// visitDecl records var names.
+func (c *nameCollector) visitDecl(x *ast.DeclStmt) {
+	gd, ok := x.Decl.(*ast.GenDecl)
+	if !ok {
+		return
+	}
+	for _, spec := range gd.Specs {
+		vs, ok := spec.(*ast.ValueSpec)
+		if !ok {
+			continue
+		}
+		for _, n := range vs.Names {
+			c.add(n.Name)
+		}
+	}
+}
+
+// visitRange records range key/value names.
+func (c *nameCollector) visitRange(x *ast.RangeStmt) {
+	for _, e := range []ast.Expr{x.Key, x.Value} {
+		if id, ok := e.(*ast.Ident); ok && id.Name != "_" {
+			c.add(id.Name)
+		}
+	}
+}
+
+// holeParam is a helper parameter derived from a hole.
+type holeParam struct {
+	name  string // param name in helper
+	typ   string // param type string
+	aExpr string // original expr text in a
+	bExpr string // original expr text in b
+}
+
 // FixParameterize finds pairs of structurally parallel functions in f and
 // extracts their common body into a helper. Holes (differing subexpressions)
 // become parameters of the helper; both originals become thin wrappers.
@@ -52,12 +184,6 @@ const maxParamHoles = 3
 // VerifyParameterizations to authorize canonical dependency and type evidence.
 func FixParameterize(fset *token.FileSet, f *ast.File, src []byte, candidates []patterns.Candidate) ([]byte, []ParamFix, error) {
 	return fixParameterizeWithTypes(fset, f, src, parameterizeConfig{candidates: candidates, signatures: localCallableTypes(fset, f)})
-}
-
-type parameterizeConfig struct {
-	candidates []patterns.Candidate
-	signatures map[string]string
-	helperName string
 }
 
 func fixParameterizeWithTypes(fset *token.FileSet, f *ast.File, src []byte, config parameterizeConfig) ([]byte, []ParamFix, error) {
@@ -87,33 +213,6 @@ func collectEdits(tc *tryCtx, funcs []*ast.FuncDecl) ([]textEdit, []ParamFix) {
 		}
 	}
 	return edits, fixes
-}
-
-// tryCtx carries the context for trying function pairs.
-type tryCtx struct {
-	helperName string
-	signatures map[string]string
-	fset       *token.FileSet
-	allow      map[[2]string]bool
-	used       map[string]bool
-	src        []byte
-}
-
-// tryPair attempts one pair, marking used on success.
-func (tc *tryCtx) tryPair(a, b *ast.FuncDecl) (textEdit, ParamFix, bool) {
-	if tc.used[a.Name.Name] || tc.used[b.Name.Name] {
-		return textEdit{}, ParamFix{}, false
-	}
-	if !pairAllowed(a, b, tc.allow) {
-		return textEdit{}, ParamFix{}, false
-	}
-	edit, fix, ok := paramEdit(tc, a, b)
-	if !ok {
-		return textEdit{}, ParamFix{}, false
-	}
-	tc.used[a.Name.Name] = true
-	tc.used[b.Name.Name] = true
-	return edit, fix, true
 }
 
 // pairAllowed reports whether the pair is in the allowlist.
@@ -164,12 +263,6 @@ func freeFuncs(f *ast.File) []*ast.FuncDecl {
 		out = append(out, fn)
 	}
 	return out
-}
-
-// hole is one differing subexpression between two parallel functions.
-type hole struct {
-	// aExpr, bExpr are the differing expressions.
-	aExpr, bExpr ast.Expr
 }
 
 // safeToExtract reports whether the pair passes the safety preconditions:
@@ -346,26 +439,6 @@ func hasNamedResults(fn *ast.FuncDecl) bool {
 	return false
 }
 
-// paramCtx carries the shared context for parameterizing a function pair.
-type paramCtx struct {
-	signatures    map[string]string
-	fset          *token.FileSet
-	a, b          *ast.FuncDecl
-	src           []byte
-	r             *renames
-	holes         []hole
-	params        []holeParam
-	extractedName string
-}
-
-// renames maps identifier names in a to the corresponding names in b,
-// for params and locally-declared variables.
-type renames struct {
-	aToB    map[string]string
-	localsA map[string]bool
-	localsB map[string]bool
-}
-
 // buildRenames builds the rename mapping from a's locals to b's locals.
 // It returns false if the declaration structures differ.
 func buildRenames(a, b *ast.FuncDecl) (*renames, bool) {
@@ -436,71 +509,6 @@ func declaredNames(body *ast.BlockStmt) []string {
 	c := &nameCollector{seen: map[string]bool{}}
 	ast.Inspect(body, c.visit)
 	return c.out
-}
-
-// nameCollector accumulates declared names during an AST walk.
-type nameCollector struct {
-	out  []string
-	seen map[string]bool
-}
-
-// visit records a name if unseen.
-func (c *nameCollector) add(name string) {
-	if !c.seen[name] {
-		c.seen[name] = true
-		c.out = append(c.out, name)
-	}
-}
-
-// visit is the ast.Inspect callback.
-func (c *nameCollector) visit(n ast.Node) bool {
-	switch x := n.(type) {
-	case *ast.AssignStmt:
-		c.visitAssign(x)
-	case *ast.DeclStmt:
-		c.visitDecl(x)
-	case *ast.RangeStmt:
-		c.visitRange(x)
-	}
-	return true
-}
-
-// visitAssign records := targets.
-func (c *nameCollector) visitAssign(x *ast.AssignStmt) {
-	if x.Tok != token.DEFINE {
-		return
-	}
-	for _, lhs := range x.Lhs {
-		if id, ok := lhs.(*ast.Ident); ok {
-			c.add(id.Name)
-		}
-	}
-}
-
-// visitDecl records var names.
-func (c *nameCollector) visitDecl(x *ast.DeclStmt) {
-	gd, ok := x.Decl.(*ast.GenDecl)
-	if !ok {
-		return
-	}
-	for _, spec := range gd.Specs {
-		vs, ok := spec.(*ast.ValueSpec)
-		if !ok {
-			continue
-		}
-		for _, n := range vs.Names {
-			c.add(n.Name)
-		}
-	}
-}
-
-// visitRange records range key/value names.
-func (c *nameCollector) visitRange(x *ast.RangeStmt) {
-	for _, e := range []ast.Expr{x.Key, x.Value} {
-		if id, ok := e.(*ast.Ident); ok && id.Name != "_" {
-			c.add(id.Name)
-		}
-	}
 }
 
 // diffBlock compares two block statements, returning holes on structural match.
@@ -999,14 +1007,6 @@ func commonSuffix(a, b string) string {
 		ib--
 	}
 	return a[ia+1:]
-}
-
-// holeParam is a helper parameter derived from a hole.
-type holeParam struct {
-	name  string // param name in helper
-	typ   string // param type string
-	aExpr string // original expr text in a
-	bExpr string // original expr text in b
 }
 
 // holeParams builds the helper parameters from holes.

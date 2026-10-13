@@ -23,6 +23,12 @@ func (g GuardFix) FixLine() int { return g.Line }
 // FixKind implements Fix.
 func (g GuardFix) FixKind() string { return g.Kind }
 
+// textEdit replaces src[start:end] with replacement.
+type textEdit struct {
+	start, end  int
+	replacement []byte
+}
+
 // FixInvertedGuards rewrites inverted conditionals in f into guard clauses.
 // It returns the rewritten source (gofmt-clean) and the fixes applied.
 // The transform is behavior-preserving: ifStmt of the form
@@ -61,12 +67,6 @@ func FixInvertedGuards(fset *token.FileSet, f *ast.File, src []byte) ([]byte, []
 		return nil, nil, fmt.Errorf("gofmt after guard fix: %w", err)
 	}
 	return formatted, fixes, nil
-}
-
-// textEdit replaces src[start:end] with replacement.
-type textEdit struct {
-	start, end  int
-	replacement []byte
 }
 
 // applyEdits applies edits to src. Edits must not overlap; they are applied

@@ -24,6 +24,163 @@ const (
 	diameterLimit        = 400
 )
 
+// Nb is a neighbour reached over a tagged edge.
+type Nb struct {
+	node uint64
+	tag  uint64
+}
+
+// Graph is the WL working graph: hashed labels plus tagged adjacency.
+type Graph struct {
+	labels []uint64
+	inc    [][]Nb
+	out    [][]Nb
+}
+
+func (g *Graph) refine(prev []uint64) []uint64 {
+	next := make([]uint64, len(prev))
+	for v := range prev {
+		inward := digest(prev[v], inSalt, g.inc[v], prev)
+		next[v] = digest(inward, outSalt, g.out[v], prev)
+	}
+	return next
+}
+
+// eccentricityWith reuses BFS storage across diameter's starting nodes.
+func (g *Graph) eccentricityWith(start int, seen []bool, queue []int) int {
+	clear(seen)
+	seen[start] = true
+	queue = append(queue[:0], start)
+	depth, head := 0, 0
+	for head < len(queue) {
+		end := len(queue)
+		for _, v := range queue[head:end] {
+			queue = appendNeighbours(queue, g.inc[v], seen)
+			queue = appendNeighbours(queue, g.out[v], seen)
+		}
+		if len(queue) == end {
+			return depth
+		}
+		head = end
+		depth++
+	}
+	return depth
+}
+
+func (g *Graph) refineRoundsDiameter(d int) [][]uint64 {
+	h := d + 1
+	if h < 1 {
+		h = 1
+	}
+	if h > maxLevels {
+		h = maxLevels
+	}
+	rounds := [][]uint64{g.labels}
+	for i := 1; i < h; i++ {
+		rounds = append(rounds, g.refine(rounds[len(rounds)-1]))
+	}
+	return rounds
+}
+
+type histEntry struct {
+	color uint64
+	count int
+}
+
+// Wl holds refined colors and histograms of one graph.
+type Wl struct {
+	graph    Graph
+	rounds   [][]uint64
+	hists    [][]histEntry
+	calls    int
+	diameter int
+	charVec  []float64
+	pdg      *MiningGraph
+	// nodeCount caches len(graph.labels). The CCGraph pipeline
+	// (SimilarityMilli) only needs hists and the node
+	// count, so NewWlLight omits graph/rounds/pdg and relies on
+	// this field. Populated by every constructor.
+	nodeCount int
+	// projCache lazily holds WL histograms for single-edge-kind projections,
+	// keyed by edge kind. Used by SimilarityWeighted; computed on demand so
+	// functions that never reach pair comparison pay nothing.
+	projCache map[EdgeKind][][]histEntry
+}
+
+// NewWl builds the WL refinement of a PDG.
+func NewWl(pdg *MiningGraph) *Wl {
+	g := buildGraph(pdg)
+	d := diameter(&g)
+	// CCGraph optimization: only compute rounds up to diameter+1 (capped),
+	// not the full maxLevels. Small-diameter graphs save refinement work.
+	rounds := (&g).refineRoundsDiameter(d)
+	return &Wl{
+		graph:     g,
+		rounds:    rounds,
+		hists:     histograms(rounds),
+		calls:     countCalls(pdg),
+		diameter:  d,
+		charVec:   miningCharacteristics(pdg, false),
+		pdg:       pdg,
+		nodeCount: len(g.labels),
+	}
+}
+
+// NewWlLight builds a Wl with only the fields needed for CCGraph
+// similarity (SimilarityMilli):
+// hists, diameter, nodeCount, charVec, and calls. It omits graph,
+// rounds, and pdg, which are only needed by PDG alignment (align.go),
+// the WL disk cache (wlcache.go), and weighted similarity
+// (SimilarityWeighted). The caller supplies the characteristic vector
+// (already computed for Stage 1) instead of recomputing it.
+//
+// Significantly reduces retained memory when building WL instances for
+// thousands of candidate functions: the refinement history (rounds)
+// and adjacency (graph) dominate per-instance memory, and neither is
+// read by the CCGraph pipeline.
+func NewWlLight(pdg *MiningGraph, charVec []float64) *Wl {
+	g := buildProfileGraph(pdg, true)
+	d := diameter(&g)
+	rounds := (&g).refineRoundsDiameter(d)
+	return &Wl{
+		hists:     histograms(rounds),
+		calls:     countCalls(pdg),
+		diameter:  d,
+		charVec:   charVec,
+		nodeCount: len(g.labels),
+	}
+}
+
+func (w *Wl) nodes() int { return w.nodeCount }
+
+// projHists returns the WL histograms for one edge-kind projection, computed
+// lazily on first use and cached. Full maxLevels rounds are kept so any pair
+// level h can slice them.
+func (w *Wl) projHists(kind EdgeKind) [][]histEntry {
+	if w.projCache == nil {
+		w.projCache = map[EdgeKind][][]histEntry{}
+	}
+	if h, ok := w.projCache[kind]; ok {
+		return h
+	}
+	g := buildProjection(w.pdg, kind)
+	rounds := refineRounds(&g)
+	hists := histograms(rounds)
+	w.projCache[kind] = hists
+	return hists
+}
+
+const charVecThreshold = 0.9
+
+// Projection weights for SimilarityWeighted: control edges count 3.0,
+// data edges 1.0, so "same logic, different data" outranks "same data,
+// different logic". The 3:1 ratio lets control dominate for parameterize
+// candidates while data still breaks ties.
+const (
+	ctrlSimWeight = 12
+	dataSimWeight = 4
+)
+
 func fnv1a(data []byte) uint64 {
 	h := fnvOffset64
 	for _, b := range data {
@@ -120,19 +277,6 @@ func edgeTag(kind EdgeKind, argPos int) uint64 {
 	return combine(isCtrl, uint64(argPos))
 }
 
-// Nb is a neighbour reached over a tagged edge.
-type Nb struct {
-	node uint64
-	tag  uint64
-}
-
-// Graph is the WL working graph: hashed labels plus tagged adjacency.
-type Graph struct {
-	labels []uint64
-	inc    [][]Nb
-	out    [][]Nb
-}
-
 func adjacency(n int, pdg *MiningGraph, forward, execution bool) [][]Nb {
 	lists := make([][]Nb, n)
 	for _, e := range pdg.Edges {
@@ -176,20 +320,6 @@ func digest(own, salt uint64, neighbours []Nb, prev []uint64) uint64 {
 	return acc
 }
 
-func (g *Graph) refine(prev []uint64) []uint64 {
-	next := make([]uint64, len(prev))
-	for v := range prev {
-		inward := digest(prev[v], inSalt, g.inc[v], prev)
-		next[v] = digest(inward, outSalt, g.out[v], prev)
-	}
-	return next
-}
-
-type histEntry struct {
-	color uint64
-	count int
-}
-
 func histogram(colors []uint64) []histEntry {
 	counts := map[uint64]int{}
 	for _, c := range colors {
@@ -201,27 +331,6 @@ func histogram(colors []uint64) []histEntry {
 	}
 	sort.Slice(h, func(i, j int) bool { return h[i].color < h[j].color })
 	return h
-}
-
-// eccentricityWith reuses BFS storage across diameter's starting nodes.
-func (g *Graph) eccentricityWith(start int, seen []bool, queue []int) int {
-	clear(seen)
-	seen[start] = true
-	queue = append(queue[:0], start)
-	depth, head := 0, 0
-	for head < len(queue) {
-		end := len(queue)
-		for _, v := range queue[head:end] {
-			queue = appendNeighbours(queue, g.inc[v], seen)
-			queue = appendNeighbours(queue, g.out[v], seen)
-		}
-		if len(queue) == end {
-			return depth
-		}
-		head = end
-		depth++
-	}
-	return depth
 }
 
 func appendNeighbours(queue []int, nbs []Nb, seen []bool) []int {
@@ -247,26 +356,6 @@ func diameter(g *Graph) int {
 		}
 	}
 	return max
-}
-
-// Wl holds refined colors and histograms of one graph.
-type Wl struct {
-	graph    Graph
-	rounds   [][]uint64
-	hists    [][]histEntry
-	calls    int
-	diameter int
-	charVec  []float64
-	pdg      *MiningGraph
-	// nodeCount caches len(graph.labels). The CCGraph pipeline
-	// (SimilarityMilli) only needs hists and the node
-	// count, so NewWlLight omits graph/rounds/pdg and relies on
-	// this field. Populated by every constructor.
-	nodeCount int
-	// projCache lazily holds WL histograms for single-edge-kind projections,
-	// keyed by edge kind. Used by SimilarityWeighted; computed on demand so
-	// functions that never reach pair comparison pay nothing.
-	projCache map[EdgeKind][][]histEntry
 }
 
 // characteristicVector counts node kinds and edge kinds for CCGraph-style
@@ -350,69 +439,8 @@ func charVecSimilar(a, b *Wl) bool {
 	return cosineSimilarity(a.charVec, b.charVec) >= charVecThreshold
 }
 
-const charVecThreshold = 0.9
-
-// NewWl builds the WL refinement of a PDG.
-func NewWl(pdg *MiningGraph) *Wl {
-	g := buildGraph(pdg)
-	d := diameter(&g)
-	// CCGraph optimization: only compute rounds up to diameter+1 (capped),
-	// not the full maxLevels. Small-diameter graphs save refinement work.
-	rounds := (&g).refineRoundsDiameter(d)
-	return &Wl{
-		graph:     g,
-		rounds:    rounds,
-		hists:     histograms(rounds),
-		calls:     countCalls(pdg),
-		diameter:  d,
-		charVec:   miningCharacteristics(pdg, false),
-		pdg:       pdg,
-		nodeCount: len(g.labels),
-	}
-}
-
-// NewWlLight builds a Wl with only the fields needed for CCGraph
-// similarity (SimilarityMilli):
-// hists, diameter, nodeCount, charVec, and calls. It omits graph,
-// rounds, and pdg, which are only needed by PDG alignment (align.go),
-// the WL disk cache (wlcache.go), and weighted similarity
-// (SimilarityWeighted). The caller supplies the characteristic vector
-// (already computed for Stage 1) instead of recomputing it.
-//
-// Significantly reduces retained memory when building WL instances for
-// thousands of candidate functions: the refinement history (rounds)
-// and adjacency (graph) dominate per-instance memory, and neither is
-// read by the CCGraph pipeline.
-func NewWlLight(pdg *MiningGraph, charVec []float64) *Wl {
-	g := buildProfileGraph(pdg, true)
-	d := diameter(&g)
-	rounds := (&g).refineRoundsDiameter(d)
-	return &Wl{
-		hists:     histograms(rounds),
-		calls:     countCalls(pdg),
-		diameter:  d,
-		charVec:   charVec,
-		nodeCount: len(g.labels),
-	}
-}
-
 func refineRounds(g *Graph) [][]uint64 {
 	return g.refineRoundsDiameter(maxLevels - 1)
-}
-
-func (g *Graph) refineRoundsDiameter(d int) [][]uint64 {
-	h := d + 1
-	if h < 1 {
-		h = 1
-	}
-	if h > maxLevels {
-		h = maxLevels
-	}
-	rounds := [][]uint64{g.labels}
-	for i := 1; i < h; i++ {
-		rounds = append(rounds, g.refine(rounds[len(rounds)-1]))
-	}
-	return rounds
 }
 
 func histograms(rounds [][]uint64) [][]histEntry {
@@ -432,8 +460,6 @@ func countCalls(pdg *MiningGraph) int {
 	}
 	return calls
 }
-
-func (w *Wl) nodes() int { return w.nodeCount }
 
 // levels caps refinement depth by the smaller graph's diameter.
 func levels(a, b *Wl) int {
@@ -534,15 +560,6 @@ func weightedIntersection(a, b *Wl, w []uint64, denom uint64, h int) (uint64, ui
 	return num, den
 }
 
-// Projection weights for SimilarityWeighted: control edges count 3.0,
-// data edges 1.0, so "same logic, different data" outranks "same data,
-// different logic". The 3:1 ratio lets control dominate for parameterize
-// candidates while data still breaks ties.
-const (
-	ctrlSimWeight = 12
-	dataSimWeight = 4
-)
-
 // buildProjection builds the WL working graph over a single edge kind.
 // For the control projection, labels are coarsened to node kinds only: the
 // control similarity must capture the skeleton (branching/looping shape),
@@ -575,23 +592,6 @@ func projectionAdjacency(pdg *MiningGraph, n int, kind EdgeKind) (inc, out [][]N
 		inc[e.To] = append(inc[e.To], Nb{node: uint64(e.From), tag: tag})
 	}
 	return inc, out
-}
-
-// projHists returns the WL histograms for one edge-kind projection, computed
-// lazily on first use and cached. Full maxLevels rounds are kept so any pair
-// level h can slice them.
-func (w *Wl) projHists(kind EdgeKind) [][]histEntry {
-	if w.projCache == nil {
-		w.projCache = map[EdgeKind][][]histEntry{}
-	}
-	if h, ok := w.projCache[kind]; ok {
-		return h
-	}
-	g := buildProjection(w.pdg, kind)
-	rounds := refineRounds(&g)
-	hists := histograms(rounds)
-	w.projCache[kind] = hists
-	return hists
 }
 
 // projSimilarity is the histogram-kernel similarity over one edge-kind

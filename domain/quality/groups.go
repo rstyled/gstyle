@@ -6,6 +6,43 @@ import (
 	"slices"
 )
 
+type functionKey struct {
+	path         string
+	line, column int
+}
+
+// fixDSU is a union-find with path compression; the smaller index wins so
+// results do not depend on union order.
+type fixDSU struct {
+	parent []int
+}
+
+func newFixDSU(size int) *fixDSU {
+	parent := make([]int, size)
+	for index := range parent {
+		parent[index] = index
+	}
+	return &fixDSU{parent: parent}
+}
+
+func (d *fixDSU) find(index int) int {
+	if d.parent[index] != index {
+		d.parent[index] = d.find(d.parent[index])
+	}
+	return d.parent[index]
+}
+
+func (d *fixDSU) union(a, b int) {
+	a, b = d.find(a), d.find(b)
+	if a == b {
+		return
+	}
+	if a > b {
+		a, b = b, a
+	}
+	d.parent[b] = a
+}
+
 // BuildFixGroups turns flat diagnostics into an ordered work plan. A
 // violation's footprint is its function plus, for signature-changing rules
 // (config.Grouping.CallerRules), its callers up to CallerHops, because a
@@ -43,11 +80,6 @@ func buildFixGroups(functions []Function, diagnostics []Diagnostic, config Confi
 		groups = append(groups, FixGroup{ID: id + 1, Functions: listed, Stacked: len(ordered) > 1})
 	}
 	return groups
-}
-
-type functionKey struct {
-	path         string
-	line, column int
 }
 
 // violatorRules maps each violating function index to its sorted violated rule IDs.
@@ -230,36 +262,4 @@ func stackReady(member int, waiting map[int]bool, callees [][]int) bool {
 		}
 	}
 	return true
-}
-
-// fixDSU is a union-find with path compression; the smaller index wins so
-// results do not depend on union order.
-type fixDSU struct {
-	parent []int
-}
-
-func newFixDSU(size int) *fixDSU {
-	parent := make([]int, size)
-	for index := range parent {
-		parent[index] = index
-	}
-	return &fixDSU{parent: parent}
-}
-
-func (d *fixDSU) find(index int) int {
-	if d.parent[index] != index {
-		d.parent[index] = d.find(d.parent[index])
-	}
-	return d.parent[index]
-}
-
-func (d *fixDSU) union(a, b int) {
-	a, b = d.find(a), d.find(b)
-	if a == b {
-		return
-	}
-	if a > b {
-		a, b = b, a
-	}
-	d.parent[b] = a
 }

@@ -27,6 +27,32 @@ type clonePairInputs struct {
 	wls     []*Wl
 }
 
+func (in *clonePairInputs) evaluate(profile CloneProfile, emit func(ClonePairEvidence) error) error {
+	for i := range in.ids {
+		for j := i + 1; j < len(in.ids); j++ {
+			if err := emit(in.evidence(profile, i, j)); err != nil {
+				return fmt.Errorf("clone pair evidence: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+func (in *clonePairInputs) evidence(profile CloneProfile, i, j int) ClonePairEvidence {
+	numerical := in.filters.cosine(i, j)
+	name := jaroWinkler(in.names[i], in.names[j])
+	admitted := numerical >= charVecThreshold || name >= ccStage2NameThreshold
+	var score uint32
+	if admitted {
+		score = SimilarityMilli(in.wls[i], in.wls[j])
+	}
+	return ClonePairEvidence{
+		Profile: profile, Left: in.ids[i], Right: in.ids[j],
+		Numerical: numerical, Name: name, Admitted: admitted,
+		WLKnown: admitted, WLMilli: score, Accepted: admitted && score >= ccMatchThreshold,
+	}
+}
+
 // EvaluateClonePairs explicitly selects pair routing without AST, LSH or grouping.
 // It streams evidence rather than retaining a quadratic list. Inputs must have
 // known nine-feature facts and names. It does not change the report default.
@@ -72,30 +98,4 @@ func validateClonePairInput(id string, graph *MiningGraph, names map[string]stri
 		return fmt.Errorf("function %q requires a known name", id)
 	}
 	return nil
-}
-
-func (in *clonePairInputs) evaluate(profile CloneProfile, emit func(ClonePairEvidence) error) error {
-	for i := range in.ids {
-		for j := i + 1; j < len(in.ids); j++ {
-			if err := emit(in.evidence(profile, i, j)); err != nil {
-				return fmt.Errorf("clone pair evidence: %w", err)
-			}
-		}
-	}
-	return nil
-}
-
-func (in *clonePairInputs) evidence(profile CloneProfile, i, j int) ClonePairEvidence {
-	numerical := in.filters.cosine(i, j)
-	name := jaroWinkler(in.names[i], in.names[j])
-	admitted := numerical >= charVecThreshold || name >= ccStage2NameThreshold
-	var score uint32
-	if admitted {
-		score = SimilarityMilli(in.wls[i], in.wls[j])
-	}
-	return ClonePairEvidence{
-		Profile: profile, Left: in.ids[i], Right: in.ids[j],
-		Numerical: numerical, Name: name, Admitted: admitted,
-		WLKnown: admitted, WLMilli: score, Accepted: admitted && score >= ccMatchThreshold,
-	}
 }

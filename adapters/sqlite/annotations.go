@@ -16,40 +16,6 @@ type Store struct {
 	database *sql.DB
 }
 
-func Open(path string) (*Store, error) {
-	if strings.TrimSpace(path) == "" {
-		return nil, errors.New("database path is required")
-	}
-	err := os.MkdirAll(filepath.Dir(path), 0o700)
-	if err != nil {
-		return nil, fmt.Errorf("create state directory: %w", err)
-	}
-
-	database, err := sql.Open("sqlite", path)
-	if err != nil {
-		return nil, fmt.Errorf("open SQLite: %w", err)
-	}
-	database.SetMaxOpenConns(1)
-	store := &Store{database: database}
-	if err := store.migrate(); err != nil {
-		_ = database.Close()
-		return nil, err
-	}
-	return store, nil
-}
-
-func StatePath() (string, error) {
-	stateHome := os.Getenv("XDG_STATE_HOME")
-	if stateHome != "" {
-		return filepath.Join(stateHome, "gstyle", "annotations.db"), nil
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("find home directory: %w", err)
-	}
-	return filepath.Join(home, ".local", "state", "gstyle", "annotations.db"), nil
-}
-
 func (s *Store) Close() error {
 	return s.database.Close()
 }
@@ -129,4 +95,38 @@ func (s *Store) migrate() error {
 		return fmt.Errorf("migrate SQLite: %w", err)
 	}
 	return nil
+}
+
+func Open(path string) (*Store, error) {
+	if strings.TrimSpace(path) == "" {
+		return nil, errors.New("database path is required")
+	}
+	err := os.MkdirAll(filepath.Dir(path), 0o700)
+	if err != nil {
+		return nil, fmt.Errorf("create state directory: %w", err)
+	}
+
+	database, err := sql.Open("sqlite", path)
+	if err != nil {
+		return nil, fmt.Errorf("open SQLite: %w", err)
+	}
+	database.SetMaxOpenConns(1)
+	store := &Store{database: database}
+	if err := store.migrate(); err != nil {
+		_ = database.Close()
+		return nil, err
+	}
+	return store, nil
+}
+
+func StatePath() (string, error) {
+	stateHome := os.Getenv("XDG_STATE_HOME")
+	if stateHome != "" {
+		return filepath.Join(stateHome, "gstyle", "annotations.db"), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("find home directory: %w", err)
+	}
+	return filepath.Join(home, ".local", "state", "gstyle", "annotations.db"), nil
 }

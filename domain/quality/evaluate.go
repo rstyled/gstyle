@@ -10,6 +10,62 @@ import (
 	"unicode/utf8"
 )
 
+// ruleCheck keeps a measurement, its policy, and supporting evidence together.
+type ruleCheck struct {
+	id        string
+	actual    int64
+	rule      Rule
+	effects   []Effect
+	mutations []Mutation
+}
+
+type kindWeight struct {
+	kind   Kind
+	weight int64
+}
+
+// densitySummary totals effect weight by kind for one finding.
+type densitySummary struct {
+	weight int64
+	kinds  []kindWeight
+}
+
+func (s densitySummary) message(actual, limit, statements int64) string {
+	parts := make([]string, len(s.kinds))
+	for i, kw := range s.kinds {
+		parts[i] = fmt.Sprintf("%s %d", kw.kind, kw.weight)
+	}
+	return fmt.Sprintf("side_effect_density %d > %d: weight %d over %d statements (%s)",
+		actual, limit, s.weight, statements, strings.Join(parts, ", "))
+}
+
+func (s densitySummary) weights() map[string]int64 {
+	weights := make(map[string]int64, len(s.kinds))
+	for _, kw := range s.kinds {
+		weights[string(kw.kind)] = kw.weight
+	}
+	return weights
+}
+
+// densityDiagnostic builds the side_effect_density finding for this result,
+// or false when the rule does not fire. The message shows the finding's
+// arithmetic so it explains itself instead of just naming a number.
+func (r FunctionResult) densityDiagnostic(statements int64, rule Rule, weights Weights, allowed []string) (Diagnostic, bool) {
+	if !rule.Enabled || r.DensityMilli <= rule.Max || slices.Contains(allowed, "side_effect_density") {
+		return Diagnostic{}, false
+	}
+	breakdown := summarizeDensity(r.Effects, weights)
+	return Diagnostic{
+		Location: r.Location, RuleID: "side_effect_density",
+		Actual: r.DensityMilli, Limit: rule.Max,
+		Message:     breakdown.message(r.DensityMilli, rule.Max, statements),
+		Effects:     r.Effects,
+		Weight:      breakdown.weight,
+		Statements:  statements,
+		KindWeights: breakdown.weights(),
+	}, true
+}
+
 // Evaluate never mutates facts or config. It rejects conflicting duplicates
 // instead of allowing package/test variant order to determine the result.
 func Evaluate(facts []Function, config Config) (Report, error) {
@@ -76,15 +132,6 @@ func compareFunction(a, b Location) int {
 		return order
 	}
 	return cmp.Compare(a.Name, b.Name)
-}
-
-// ruleCheck keeps a measurement, its policy, and supporting evidence together.
-type ruleCheck struct {
-	id        string
-	actual    int64
-	rule      Rule
-	effects   []Effect
-	mutations []Mutation
 }
 
 func evaluateFunction(f Function, c Config) (FunctionResult, []Diagnostic) {
@@ -176,36 +223,6 @@ func appendRule(ds []Diagnostic, loc Location, check ruleCheck, allowed []string
 	})
 }
 
-// densityDiagnostic builds the side_effect_density finding for this result,
-// or false when the rule does not fire. The message shows the finding's
-// arithmetic so it explains itself instead of just naming a number.
-func (r FunctionResult) densityDiagnostic(statements int64, rule Rule, weights Weights, allowed []string) (Diagnostic, bool) {
-	if !rule.Enabled || r.DensityMilli <= rule.Max || slices.Contains(allowed, "side_effect_density") {
-		return Diagnostic{}, false
-	}
-	breakdown := summarizeDensity(r.Effects, weights)
-	return Diagnostic{
-		Location: r.Location, RuleID: "side_effect_density",
-		Actual: r.DensityMilli, Limit: rule.Max,
-		Message:     breakdown.message(r.DensityMilli, rule.Max, statements),
-		Effects:     r.Effects,
-		Weight:      breakdown.weight,
-		Statements:  statements,
-		KindWeights: breakdown.weights(),
-	}, true
-}
-
-type kindWeight struct {
-	kind   Kind
-	weight int64
-}
-
-// densitySummary totals effect weight by kind for one finding.
-type densitySummary struct {
-	weight int64
-	kinds  []kindWeight
-}
-
 // summarizeDensity totals effect weight by kind, heaviest first.
 func summarizeDensity(effects []Effect, weights Weights) densitySummary {
 	byKind := map[Kind]int64{}
@@ -229,23 +246,6 @@ func summarizeDensity(effects []Effect, weights Weights) densitySummary {
 		return cmp.Compare(a.kind, b.kind)
 	})
 	return densitySummary{weight: total, kinds: kinds}
-}
-
-func (s densitySummary) message(actual, limit, statements int64) string {
-	parts := make([]string, len(s.kinds))
-	for i, kw := range s.kinds {
-		parts[i] = fmt.Sprintf("%s %d", kw.kind, kw.weight)
-	}
-	return fmt.Sprintf("side_effect_density %d > %d: weight %d over %d statements (%s)",
-		actual, limit, s.weight, statements, strings.Join(parts, ", "))
-}
-
-func (s densitySummary) weights() map[string]int64 {
-	weights := make(map[string]int64, len(s.kinds))
-	for _, kw := range s.kinds {
-		weights[string(kw.kind)] = kw.weight
-	}
-	return weights
 }
 
 func mutationTargets(mutations []Mutation, granularity string) [][]Mutation {

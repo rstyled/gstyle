@@ -42,6 +42,51 @@ type options struct {
 	tui      bool
 }
 
+// reduction carries one reduction run: the input, its checker, and where the
+// result and the report go. The run's steps are methods on it so the values
+// they all share don't thread through every signature.
+type reduction struct {
+	ctx         context.Context
+	options     options
+	source      []byte
+	check       *checker
+	destination *os.File
+	output      io.Writer
+}
+
+// run reduces the input, showing the live dashboard on terminals.
+func (r reduction) run() error {
+	if r.options.tui {
+		return r.runDashboard()
+	}
+	reduced, reduceErr := r.reduce(nil)
+	return r.finish(reduced, reduceErr)
+}
+
+func (r reduction) reduce(observe func(reducer.Progress)) ([]byte, error) {
+	predicate := func(candidate []byte) (bool, error) { return r.check.check(r.ctx, candidate) }
+	if r.options.language == "go" {
+		parser := treesitter.GoParser{Context: r.ctx, Library: r.options.goParser}
+		return reducer.ReduceSyntaxWithProgress(r.source, predicate, observe, parser)
+	}
+	return reducer.ReduceWithProgress(r.source, predicate, observe)
+}
+
+// finish saves the reduced input and reports the run. A nil result means the
+// seed was never accepted, so the destination is removed instead.
+func (r reduction) finish(reduced []byte, reduceErr error) error {
+	if reduced == nil {
+		return errors.Join(reduceErr, r.destination.Close(), os.Remove(r.destination.Name()))
+	}
+	_, writeErr := r.destination.Write(reduced)
+	closeErr := r.destination.Close()
+	if writeErr != nil || closeErr != nil {
+		return errors.Join(reduceErr, writeErr, closeErr)
+	}
+	_, reportErr := fmt.Fprintf(r.output, "%d -> %d bytes; %d checks; saved %s\n", len(r.source), len(reduced), r.check.checks, r.destination.Name())
+	return errors.Join(reduceErr, reportErr)
+}
+
 func parseOptions(args []string, output io.Writer) (options, error) {
 	flags := flag.NewFlagSet("bug-reducer", flag.ContinueOnError)
 	flags.SetOutput(output)
@@ -96,51 +141,6 @@ func runReduction(ctx context.Context, options options, output io.Writer) error 
 		return fmt.Errorf("create output: %w", err)
 	}
 	return reduction{ctx: ctx, options: options, source: source, check: check, destination: destination, output: output}.run()
-}
-
-// reduction carries one reduction run: the input, its checker, and where the
-// result and the report go. The run's steps are methods on it so the values
-// they all share don't thread through every signature.
-type reduction struct {
-	ctx         context.Context
-	options     options
-	source      []byte
-	check       *checker
-	destination *os.File
-	output      io.Writer
-}
-
-// run reduces the input, showing the live dashboard on terminals.
-func (r reduction) run() error {
-	if r.options.tui {
-		return r.runDashboard()
-	}
-	reduced, reduceErr := r.reduce(nil)
-	return r.finish(reduced, reduceErr)
-}
-
-func (r reduction) reduce(observe func(reducer.Progress)) ([]byte, error) {
-	predicate := func(candidate []byte) (bool, error) { return r.check.check(r.ctx, candidate) }
-	if r.options.language == "go" {
-		parser := treesitter.GoParser{Context: r.ctx, Library: r.options.goParser}
-		return reducer.ReduceSyntaxWithProgress(r.source, predicate, observe, parser)
-	}
-	return reducer.ReduceWithProgress(r.source, predicate, observe)
-}
-
-// finish saves the reduced input and reports the run. A nil result means the
-// seed was never accepted, so the destination is removed instead.
-func (r reduction) finish(reduced []byte, reduceErr error) error {
-	if reduced == nil {
-		return errors.Join(reduceErr, r.destination.Close(), os.Remove(r.destination.Name()))
-	}
-	_, writeErr := r.destination.Write(reduced)
-	closeErr := r.destination.Close()
-	if writeErr != nil || closeErr != nil {
-		return errors.Join(reduceErr, writeErr, closeErr)
-	}
-	_, reportErr := fmt.Fprintf(r.output, "%d -> %d bytes; %d checks; saved %s\n", len(r.source), len(reduced), r.check.checks, r.destination.Name())
-	return errors.Join(reduceErr, reportErr)
 }
 
 func terminalOutput(output io.Writer) bool {

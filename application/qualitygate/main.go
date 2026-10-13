@@ -70,6 +70,17 @@ type qualityBaseline struct {
 	Rules     map[string]ruleBaseline `json:"rules"`
 }
 
+type ruleViolation struct {
+	rule     string
+	rate     float64
+	baseline float64
+	limit    int64
+	worst    []diagnostic
+	// improved marks a rate that dropped far enough below the baseline that
+	// the ratchet itself is stale: the baseline must be regenerated.
+	improved bool
+}
+
 // aggregate folds a report's diagnostics into per-rule excess totals. Excess
 // is how far each finding overshoots its limit, so both new findings and
 // worsened ones move the number.
@@ -94,17 +105,6 @@ func excessRate(excess int64, functions int) float64 {
 		return 0
 	}
 	return float64(excess) / float64(functions) * perUnit
-}
-
-type ruleViolation struct {
-	rule     string
-	rate     float64
-	baseline float64
-	limit    int64
-	worst    []diagnostic
-	// improved marks a rate that dropped far enough below the baseline that
-	// the ratchet itself is stale: the baseline must be regenerated.
-	improved bool
 }
 
 // worstOffenders returns the n findings with the largest excess for a rule,

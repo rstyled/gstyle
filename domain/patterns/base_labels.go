@@ -12,35 +12,8 @@ type baseLabelKey struct {
 	kind         NodeKind
 	shape, scope string
 }
+
 type baseLabelCache struct{ hashes map[baseLabelKey]uint64 }
-
-func baseKey(n PdgNode) baseLabelKey {
-	switch n.Kind {
-	case Call:
-		return baseLabelKey{kind: Call, shape: n.SigClass, scope: callScope(n.CalleeID)}
-	case Lit:
-		return baseLabelKey{kind: Lit, shape: n.LitKind}
-	case Op:
-		operator, _, _ := strings.Cut(n.Detail, ":")
-		return baseLabelKey{kind: Op, shape: operator}
-	case Param:
-		return baseLabelKey{kind: Param, shape: n.TyClass}
-	default:
-		return baseLabelKey{kind: n.Kind}
-	}
-}
-
-func sharedBaseLabels(facts []*FuncFacts) *baseLabelCache {
-	cache := &baseLabelCache{hashes: map[baseLabelKey]uint64{}}
-	seen := map[*pdg.Tables]bool{}
-	for _, f := range facts {
-		if f == nil || f.Pdg == nil {
-			continue
-		}
-		cache.tables(f.Pdg.Tables, seen)
-	}
-	return cache
-}
 
 func (c *baseLabelCache) tables(t *pdg.Tables, seen map[*pdg.Tables]bool) {
 	if t == nil || seen[t] {
@@ -77,4 +50,32 @@ func (c *baseLabelCache) hash(n PdgNode) uint64 {
 	// Normalization can introduce labels absent from the extracted table.
 	// The published map stays read-only, so concurrent readers remain safe.
 	return fnv1a([]byte(label(n)))
+}
+
+func baseKey(n PdgNode) baseLabelKey {
+	switch n.Kind {
+	case Call:
+		return baseLabelKey{kind: Call, shape: n.SigClass, scope: callScope(n.CalleeID)}
+	case Lit:
+		return baseLabelKey{kind: Lit, shape: n.LitKind}
+	case Op:
+		operator, _, _ := strings.Cut(n.Detail, ":")
+		return baseLabelKey{kind: Op, shape: operator}
+	case Param:
+		return baseLabelKey{kind: Param, shape: n.TyClass}
+	default:
+		return baseLabelKey{kind: n.Kind}
+	}
+}
+
+func sharedBaseLabels(facts []*FuncFacts) *baseLabelCache {
+	cache := &baseLabelCache{hashes: map[baseLabelKey]uint64{}}
+	seen := map[*pdg.Tables]bool{}
+	for _, f := range facts {
+		if f == nil || f.Pdg == nil {
+			continue
+		}
+		cache.tables(f.Pdg.Tables, seen)
+	}
+	return cache
 }

@@ -441,6 +441,12 @@ func (m Model) controlReport() ControlReport {
 	return report
 }
 
+func (c controlCommand) answer(result any, err *controlError) {
+	if c.reply != nil {
+		c.reply <- controlReply{result: result, err: err}
+	}
+}
+
 func functionDetails(function domain.Function) FunctionDetails {
 	return FunctionDetails{FunctionSummary: functionSummary(function), Source: function.Source}
 }
@@ -457,12 +463,6 @@ func functionSummary(function domain.Function) FunctionSummary {
 		EndLine:               function.EndLine,
 		Column:                function.Column,
 		Quality:               function.Quality,
-	}
-}
-
-func (c controlCommand) answer(result any, err *controlError) {
-	if c.reply != nil {
-		c.reply <- controlReply{result: result, err: err}
 	}
 }
 

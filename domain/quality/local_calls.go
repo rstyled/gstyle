@@ -6,6 +6,7 @@ import (
 )
 
 const localDepthLimit = 32
+
 const localEffectLimit = 4096
 
 type callSummary struct {
@@ -18,16 +19,6 @@ type callResolver struct {
 	helpers  map[string]Helper
 	active   map[string]bool
 	cache    map[string]callSummary
-}
-
-func localCalls(f Function, prefixes []Prefix) ([]Effect, int) {
-	helpers := map[string]Helper{NormalizeCallee(f.Name): {Name: f.Name, Mutations: f.Mutations, Calls: f.Calls, Effects: f.Effects}}
-	for _, helper := range f.Helpers {
-		helpers[NormalizeCallee(helper.Name)] = helper
-	}
-	resolver := callResolver{prefixes: prefixes, helpers: helpers, active: map[string]bool{}, cache: map[string]callSummary{}}
-	summary := resolver.calls(f.Calls)
-	return summary.effects, summary.unclassified
 }
 
 func (r *callResolver) calls(calls []Call) callSummary {
@@ -65,17 +56,6 @@ func (r *callResolver) call(call Call) callSummary {
 	return atCall(call, r.helper(name, helper))
 }
 
-func classifiedCall(call Call, kind Kind) callSummary {
-	if kind == None {
-		return callSummary{}
-	}
-	unknown := 0
-	if kind == UnknownEffect {
-		unknown = 1
-	}
-	return callSummary{effects: []Effect{{Kind: kind, Detail: call.Callee, Line: call.Line}}, unclassified: unknown}
-}
-
 func (r *callResolver) helper(name string, helper Helper) callSummary {
 	if summary, ok := r.cache[name]; ok {
 		return summary
@@ -91,6 +71,27 @@ func (r *callResolver) helper(name string, helper Helper) callSummary {
 	}
 	r.cache[name] = summary
 	return summary
+}
+
+func localCalls(f Function, prefixes []Prefix) ([]Effect, int) {
+	helpers := map[string]Helper{NormalizeCallee(f.Name): {Name: f.Name, Mutations: f.Mutations, Calls: f.Calls, Effects: f.Effects}}
+	for _, helper := range f.Helpers {
+		helpers[NormalizeCallee(helper.Name)] = helper
+	}
+	resolver := callResolver{prefixes: prefixes, helpers: helpers, active: map[string]bool{}, cache: map[string]callSummary{}}
+	summary := resolver.calls(f.Calls)
+	return summary.effects, summary.unclassified
+}
+
+func classifiedCall(call Call, kind Kind) callSummary {
+	if kind == None {
+		return callSummary{}
+	}
+	unknown := 0
+	if kind == UnknownEffect {
+		unknown = 1
+	}
+	return callSummary{effects: []Effect{{Kind: kind, Detail: call.Callee, Line: call.Line}}, unclassified: unknown}
 }
 
 func atCall(call Call, summary callSummary) callSummary {

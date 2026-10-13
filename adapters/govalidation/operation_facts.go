@@ -24,6 +24,25 @@ func (a *inventory) operationFacts(g *pdg.Graph, node pdg.Node, source ast.Node)
 	return a.sourceLiteral(g, node, source)
 }
 
+func (a *inventory) sourceLiteral(g *pdg.Graph, node pdg.Node, source ast.Node) error {
+	if node.Category != pdg.Computation {
+		return nil
+	}
+	attrs := g.NodeAttributes(node)
+	switch source := source.(type) {
+	case *ast.BasicLit:
+		return knownValue(g, attrs.Literal, source.Value, "literal")
+	case *ast.Ident:
+		constant, ok := a.info.Uses[source].(*types.Const)
+		if !ok {
+			return nil
+		}
+		return knownValue(g, attrs.Literal, constant.Val().ExactString(), "constant value")
+	default:
+		return nil
+	}
+}
+
 func sourceWriteForm(g *pdg.Graph, attrs pdg.Attributes, source ast.Node) error {
 	write := ""
 	switch source := source.(type) {
@@ -67,24 +86,5 @@ func sourceOperator(source ast.Node) string {
 		return "parentheses"
 	default:
 		return ""
-	}
-}
-
-func (a *inventory) sourceLiteral(g *pdg.Graph, node pdg.Node, source ast.Node) error {
-	if node.Category != pdg.Computation {
-		return nil
-	}
-	attrs := g.NodeAttributes(node)
-	switch source := source.(type) {
-	case *ast.BasicLit:
-		return knownValue(g, attrs.Literal, source.Value, "literal")
-	case *ast.Ident:
-		constant, ok := a.info.Uses[source].(*types.Const)
-		if !ok {
-			return nil
-		}
-		return knownValue(g, attrs.Literal, constant.Val().ExactString(), "constant value")
-	default:
-		return nil
 	}
 }

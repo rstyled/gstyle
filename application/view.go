@@ -31,6 +31,8 @@ var (
 	border              = lipgloss.NewStyle().Foreground(lipgloss.Color("#3a464a"))
 )
 
+const scrollbarGutterWidth = 2
+
 func (m Model) View() tea.View {
 	var content string
 	if m.width > 0 && m.width < wideMinimum {
@@ -106,14 +108,6 @@ func (m Model) workspaceHeight(linesAbove int) int {
 	}
 
 	return 24
-}
-
-func workspaceWidths(width int) []int {
-	files := max(width*28/100, 22)
-	functions := max(width*31/100-10, 24)
-	source := max(width-files-functions-6, 1)
-
-	return []int{files, functions, source}
 }
 
 func (m Model) header(width int) string {
@@ -196,20 +190,6 @@ func (m Model) fileTable(width int, height int) []string {
 	return tableWindow(lines, m.fileIndex, width, height)
 }
 
-func fileTableHeader(width int) string {
-	if width < 30 {
-		nameWidth := max(width-10, 1)
-		return fmt.Sprintf("  %-*s %3s %3s", nameWidth, "FILE", "CC", "COG")
-	}
-	if width < 42 {
-		nameWidth := max(width-15, 1)
-		return fmt.Sprintf("  %-*s %3s %3s %3s", nameWidth, "FILE", "SUM", "MAX", "COG")
-	}
-
-	nameWidth := max(width-21, 1)
-	return fmt.Sprintf("  %-*s %5s %4s %3s %3s", nameWidth, "FILE", "SUM", "AVG", "MAX", "COG")
-}
-
 func (m Model) fileRow(file domain.File, width int, selected bool) string {
 	if width < 30 {
 		nameWidth := max(width-10, 1)
@@ -239,15 +219,6 @@ func (m Model) fileRow(file domain.File, width int, selected bool) string {
 	return m.selection(name+values+peak+load, filesPane, selected, m.fileAnnotationCount(file.Path) > 0)
 }
 
-func fileTablePath(root string, path string, width int) string {
-	path = displayPath(root, path)
-	if ansi.StringWidth(path) <= width {
-		return path
-	}
-
-	return truncate(filepath.Base(path), width)
-}
-
 func (m Model) functionTable(width int, height int) []string {
 	file, ok := m.selectedFile()
 	tableWidth := paneContentWidth(width)
@@ -266,11 +237,6 @@ func (m Model) functionTable(width int, height int) []string {
 	return tableWindow(lines, m.functionIndex, width, height)
 }
 
-func functionTableHeader(width int) string {
-	nameWidth := max(width-16, 1)
-	return fmt.Sprintf("  %-*s %3s %3s %5s", nameWidth, "FUNCTION", "CC", "COG", "LINES")
-}
-
 func (m Model) functionRow(function domain.Function, width int, selected bool) string {
 	nameWidth := max(width-16, 1)
 	count := 0
@@ -283,10 +249,6 @@ func (m Model) functionRow(function domain.Function, width int, selected bool) s
 	lines := muted.Render(fmt.Sprintf(" %5d", functionLineCount(function)))
 
 	return m.selection(name+complexity+load+lines, functionsPane, selected, count > 0)
-}
-
-func functionLineCount(function domain.Function) int {
-	return max(function.EndLine-function.Line+1, 1)
 }
 
 func (m Model) sourceLines(width int, height int, title string) []string {
@@ -350,10 +312,6 @@ func (m Model) sourceBody(lines []string, function domain.Function, width int, h
 	return verticalScrollbar(rendered, contentStart, position, contentLength, available, width)
 }
 
-func sourceCodeLines(function domain.Function) []string {
-	return renderSourceCodeLines(function, Model{}, false)
-}
-
 func (m Model) selectedSourceCodeLines(function domain.Function) []string {
 	lines := renderSourceCodeLines(function, m, true)
 	if function.Source == "" {
@@ -370,28 +328,6 @@ func (m Model) selectedSourceCodeLines(function domain.Function) []string {
 	return lines
 }
 
-func renderSourceCodeLines(function domain.Function, model Model, interactive bool) []string {
-	if function.Source == "" {
-		return []string{muted.Render("Source unavailable")}
-	}
-
-	lines := normalizedSourceLines(function.Source)
-	successfulReturns := successfulReturnLines(lines)
-	result := make([]string, 0, len(lines))
-	for index, line := range lines {
-		lineNumber := function.Line + index
-		numberStyle, styledLine := styledSourceLine(function, lineNumber, line, successfulReturns[index])
-		prefix := model.sourceLinePrefix(function, lineNumber, numberStyle, interactive)
-		result = append(result, prefix+styledLine)
-	}
-
-	prefixWidth := sourceLinePrefixWidth
-	if len(function.DiffLines) > 0 {
-		prefixWidth++
-	}
-	return overlayErrorPaths(result, lines, prefixWidth)
-}
-
 func (m Model) sourceLinePrefix(function domain.Function, line int, numberStyle lipgloss.Style, interactive bool) string {
 	gutter := muted.Render("  ")
 	if interactive {
@@ -403,33 +339,6 @@ func (m Model) sourceLinePrefix(function domain.Function, line int, numberStyle 
 	}
 	number := numberStyle.Render(fmt.Sprintf("%4d │ ", line))
 	return gutter + diff + number + strings.Repeat(" ", sourceOverlayPadding)
-}
-
-func styledSourceLine(function domain.Function, lineNumber int, line string, successfulReturn bool) (lipgloss.Style, string) {
-	if errorReturn(line) {
-		return muted, styledReturn(line, danger, true)
-	}
-	if successfulReturn {
-		return muted, styledReturn(line, green, false)
-	}
-	style := text
-	if cyclomaticBearingLine(function.CyclomaticDiagnostics, lineNumber) {
-		style = amber
-	}
-	if cognitiveBearingLine(function.CognitiveDiagnostics, lineNumber) {
-		style = style.Background(cognitiveBackground)
-	}
-	return muted, style.Render(line)
-}
-
-func normalizedSourceLines(source string) []string {
-	return strings.Split(normalizedSourceText(source), "\n")
-}
-
-func normalizedSourceText(source string) string {
-	source = strings.ReplaceAll(source, "\r\n", "\n")
-	source = strings.TrimSuffix(source, "\r")
-	return strings.ReplaceAll(source, "\t", "    ")
 }
 
 func (m Model) sourceGutter(line int, numberStyle lipgloss.Style) (string, lipgloss.Style) {
@@ -477,6 +386,195 @@ func (m Model) patternMarkersForDisplay() []PatternMarker {
 		return nil
 	}
 	return m.patternMarkers
+}
+
+func (m Model) highlightSourceLine(line int, rendered string, annotations []Annotation) string {
+	if m.lineSelection.contains(line) {
+		return withBackground(rendered, "\x1b[48;2;45;52;54m")
+	}
+	for _, annotation := range annotations {
+		if annotation.StartLine <= line && line <= annotation.EndLine {
+			return withBackground(rendered, "\x1b[48;2;44;34;14m")
+		}
+	}
+	return rendered
+}
+
+func (m Model) sourceViewportHeight() int {
+	if m.height == 0 {
+		return m.selectedSourceLineCount()
+	}
+	if m.width > 0 && m.width < wideMinimum {
+		return max(max(m.height-2, 2)-m.sourceHeaderHeight(), 0)
+	}
+
+	width := m.terminalWidth()
+	linesAbove := 2
+	if m.showAnalytics(width) {
+		linesAbove += analyticsHeight + 1
+	}
+	return max(m.workspaceHeight(linesAbove)-m.sourceHeaderHeight(), 0)
+}
+
+func (m Model) sourcePaneWidth() int {
+	if m.width > 0 && m.width < wideMinimum {
+		return max(m.width, 1)
+	}
+
+	return workspaceWidths(m.terminalWidth())[2]
+}
+
+func (m Model) sourceHeaderHeight() int {
+	height := 4
+	if m.annotationError != nil {
+		height++
+	}
+	return height
+}
+
+func (m Model) paneTitle(label string, target pane) string {
+	if m.focus == target {
+		return green.Bold(true).Render(label)
+	}
+
+	return blue.Render(label)
+}
+
+func (m Model) selection(label string, target pane, selected bool, annotated bool) string {
+	if !selected {
+		if annotated {
+			return amber.Render("◆ ") + label
+		}
+		return "  " + label
+	}
+
+	marker := blue.Bold(true)
+	background := "\x1b[48;2;20;31;34m"
+	if m.focus == target {
+		marker = green.Bold(true)
+		background = "\x1b[48;2;20;40;30m"
+	}
+	prefix := marker.Render("› ")
+	if annotated {
+		prefix = marker.Render("›") + amber.Render("◆")
+	}
+	return withBackground(prefix+label, background)
+}
+
+func (m Model) renderFrame(lines []string) string {
+	if m.height <= 0 || len(lines) <= m.height {
+		return strings.Join(lines, "\n")
+	}
+
+	footerLine := lines[len(lines)-1]
+	lines = append(lines[:m.height-1], footerLine)
+	return strings.Join(lines, "\n")
+}
+
+// sourceLocation renders the display path with line:column coordinates,
+// shortened to fit width. The root comes from the model that owns the report.
+func (m Model) sourceLocation(path string, line int, column int, width int) string {
+	path = displayPath(m.report.Root, path)
+	coordinates := fmt.Sprintf(":%d:%d", line, column)
+	if ansi.StringWidth(path+coordinates) <= width {
+		return path + coordinates
+	}
+
+	nameWidth := max(width-ansi.StringWidth(coordinates), 0)
+	return truncate(filepath.Base(path), nameWidth) + coordinates
+}
+
+func workspaceWidths(width int) []int {
+	files := max(width*28/100, 22)
+	functions := max(width*31/100-10, 24)
+	source := max(width-files-functions-6, 1)
+
+	return []int{files, functions, source}
+}
+
+func fileTableHeader(width int) string {
+	if width < 30 {
+		nameWidth := max(width-10, 1)
+		return fmt.Sprintf("  %-*s %3s %3s", nameWidth, "FILE", "CC", "COG")
+	}
+	if width < 42 {
+		nameWidth := max(width-15, 1)
+		return fmt.Sprintf("  %-*s %3s %3s %3s", nameWidth, "FILE", "SUM", "MAX", "COG")
+	}
+
+	nameWidth := max(width-21, 1)
+	return fmt.Sprintf("  %-*s %5s %4s %3s %3s", nameWidth, "FILE", "SUM", "AVG", "MAX", "COG")
+}
+
+func fileTablePath(root string, path string, width int) string {
+	path = displayPath(root, path)
+	if ansi.StringWidth(path) <= width {
+		return path
+	}
+
+	return truncate(filepath.Base(path), width)
+}
+
+func functionTableHeader(width int) string {
+	nameWidth := max(width-16, 1)
+	return fmt.Sprintf("  %-*s %3s %3s %5s", nameWidth, "FUNCTION", "CC", "COG", "LINES")
+}
+
+func functionLineCount(function domain.Function) int {
+	return max(function.EndLine-function.Line+1, 1)
+}
+
+func sourceCodeLines(function domain.Function) []string {
+	return renderSourceCodeLines(function, Model{}, false)
+}
+
+func renderSourceCodeLines(function domain.Function, model Model, interactive bool) []string {
+	if function.Source == "" {
+		return []string{muted.Render("Source unavailable")}
+	}
+
+	lines := normalizedSourceLines(function.Source)
+	successfulReturns := successfulReturnLines(lines)
+	result := make([]string, 0, len(lines))
+	for index, line := range lines {
+		lineNumber := function.Line + index
+		numberStyle, styledLine := styledSourceLine(function, lineNumber, line, successfulReturns[index])
+		prefix := model.sourceLinePrefix(function, lineNumber, numberStyle, interactive)
+		result = append(result, prefix+styledLine)
+	}
+
+	prefixWidth := sourceLinePrefixWidth
+	if len(function.DiffLines) > 0 {
+		prefixWidth++
+	}
+	return overlayErrorPaths(result, lines, prefixWidth)
+}
+
+func styledSourceLine(function domain.Function, lineNumber int, line string, successfulReturn bool) (lipgloss.Style, string) {
+	if errorReturn(line) {
+		return muted, styledReturn(line, danger, true)
+	}
+	if successfulReturn {
+		return muted, styledReturn(line, green, false)
+	}
+	style := text
+	if cyclomaticBearingLine(function.CyclomaticDiagnostics, lineNumber) {
+		style = amber
+	}
+	if cognitiveBearingLine(function.CognitiveDiagnostics, lineNumber) {
+		style = style.Background(cognitiveBackground)
+	}
+	return muted, style.Render(line)
+}
+
+func normalizedSourceLines(source string) []string {
+	return strings.Split(normalizedSourceText(source), "\n")
+}
+
+func normalizedSourceText(source string) string {
+	source = strings.ReplaceAll(source, "\r\n", "\n")
+	source = strings.TrimSuffix(source, "\r")
+	return strings.ReplaceAll(source, "\t", "    ")
 }
 
 // appendPatternRows appends the pattern label row for the line, if any.
@@ -584,53 +682,9 @@ func annotationMessageRows(message string, prefix string, width int) []string {
 	return rows
 }
 
-func (m Model) highlightSourceLine(line int, rendered string, annotations []Annotation) string {
-	if m.lineSelection.contains(line) {
-		return withBackground(rendered, "\x1b[48;2;45;52;54m")
-	}
-	for _, annotation := range annotations {
-		if annotation.StartLine <= line && line <= annotation.EndLine {
-			return withBackground(rendered, "\x1b[48;2;44;34;14m")
-		}
-	}
-	return rendered
-}
-
 func withBackground(rendered string, background string) string {
 	rendered = strings.ReplaceAll(rendered, "\x1b[m", "\x1b[m"+background)
 	return background + rendered + "\x1b[m"
-}
-
-func (m Model) sourceViewportHeight() int {
-	if m.height == 0 {
-		return m.selectedSourceLineCount()
-	}
-	if m.width > 0 && m.width < wideMinimum {
-		return max(max(m.height-2, 2)-m.sourceHeaderHeight(), 0)
-	}
-
-	width := m.terminalWidth()
-	linesAbove := 2
-	if m.showAnalytics(width) {
-		linesAbove += analyticsHeight + 1
-	}
-	return max(m.workspaceHeight(linesAbove)-m.sourceHeaderHeight(), 0)
-}
-
-func (m Model) sourcePaneWidth() int {
-	if m.width > 0 && m.width < wideMinimum {
-		return max(m.width, 1)
-	}
-
-	return workspaceWidths(m.terminalWidth())[2]
-}
-
-func (m Model) sourceHeaderHeight() int {
-	height := 4
-	if m.annotationError != nil {
-		height++
-	}
-	return height
 }
 
 func styledReturn(line string, style lipgloss.Style, finalValueOnly bool) string {
@@ -756,35 +810,6 @@ func cognitiveBearingLine(diagnostics []domain.CognitiveDiagnostic, line int) bo
 	return false
 }
 
-func (m Model) paneTitle(label string, target pane) string {
-	if m.focus == target {
-		return green.Bold(true).Render(label)
-	}
-
-	return blue.Render(label)
-}
-
-func (m Model) selection(label string, target pane, selected bool, annotated bool) string {
-	if !selected {
-		if annotated {
-			return amber.Render("◆ ") + label
-		}
-		return "  " + label
-	}
-
-	marker := blue.Bold(true)
-	background := "\x1b[48;2;20;31;34m"
-	if m.focus == target {
-		marker = green.Bold(true)
-		background = "\x1b[48;2;20;40;30m"
-	}
-	prefix := marker.Render("› ")
-	if annotated {
-		prefix = marker.Render("›") + amber.Render("◆")
-	}
-	return withBackground(prefix+label, background)
-}
-
 func tableWindow(lines []string, selected int, width int, height int) []string {
 	if height == 0 || len(lines) <= height {
 		return fitPaneLines(lines, width, height)
@@ -803,8 +828,6 @@ func tableWindow(lines []string, selected int, width int, height int) []string {
 func paneContentWidth(width int) int {
 	return max(width-paneRightInset(width), 1)
 }
-
-const scrollbarGutterWidth = 2
 
 func paneRightInset(width int) int {
 	if width < 30 {
@@ -911,16 +934,6 @@ func fitLines(lines []string, width int, height int) []string {
 	return result
 }
 
-func (m Model) renderFrame(lines []string) string {
-	if m.height <= 0 || len(lines) <= m.height {
-		return strings.Join(lines, "\n")
-	}
-
-	footerLine := lines[len(lines)-1]
-	lines = append(lines[:m.height-1], footerLine)
-	return strings.Join(lines, "\n")
-}
-
 func styledCell(value string, width int) string {
 	value = truncate(value, width)
 	padding := strings.Repeat(" ", max(width-ansi.StringWidth(value), 0))
@@ -978,17 +991,4 @@ func displayPath(root string, path string) string {
 	}
 
 	return relative
-}
-
-// sourceLocation renders the display path with line:column coordinates,
-// shortened to fit width. The root comes from the model that owns the report.
-func (m Model) sourceLocation(path string, line int, column int, width int) string {
-	path = displayPath(m.report.Root, path)
-	coordinates := fmt.Sprintf(":%d:%d", line, column)
-	if ansi.StringWidth(path+coordinates) <= width {
-		return path + coordinates
-	}
-
-	nameWidth := max(width-ansi.StringWidth(coordinates), 0)
-	return truncate(filepath.Base(path), nameWidth) + coordinates
 }

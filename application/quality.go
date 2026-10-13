@@ -75,55 +75,6 @@ func (m Model) qualityBodyRowCount() int {
 	return 10 + len(q.Diagnostics) + len(q.Effects) + len(q.MutationEvents)
 }
 
-func functionQualityLines(q *domain.FunctionQuality) []string {
-	coverage := "No unknown effects under policy"
-	if !q.Complete {
-		coverage = "Incomplete: unknown effects remain"
-	}
-	return slices.Concat(
-		[]string{
-			fmt.Sprintf("Density %d milli · %d mutations", q.DensityMilli, q.Mutations),
-			fmt.Sprintf("%d targets · %d unclassified calls", q.MutatedTargets, q.UnclassifiedCalls),
-			muted.Render(coverage),
-			muted.Render("Modeled effects; zero is not proof of purity"),
-			"",
-			amber.Render(fmt.Sprintf("Findings · %d", len(q.Diagnostics))),
-		},
-		diagnosticMessages(q.Diagnostics),
-		[]string{"", blue.Render(fmt.Sprintf("Effects · %d", len(q.Effects)))},
-		effectLines(q.Effects),
-		mutationQualityLines(q.MutationEvents),
-	)
-}
-
-func diagnosticMessages(diagnostics []quality.Diagnostic) []string {
-	messages := make([]string, 0, len(diagnostics))
-	for _, diagnostic := range diagnostics {
-		messages = append(messages, diagnostic.Message)
-	}
-	return messages
-}
-
-func effectLines(effects []quality.Effect) []string {
-	lines := make([]string, 0, len(effects))
-	for _, effect := range effects {
-		lines = append(lines, fmt.Sprintf("L%d %s: %s", effect.Line, effect.Kind, effect.Detail))
-	}
-	return lines
-}
-
-func mutationQualityLines(mutations []quality.Mutation) []string {
-	lines := []string{"", blue.Render(fmt.Sprintf("Mutations · %d", len(mutations)))}
-	for _, mutation := range mutations {
-		target := mutation.Root
-		if mutation.FieldPath != "" {
-			target += "." + mutation.FieldPath
-		}
-		lines = append(lines, fmt.Sprintf("L%d %s (%s)", mutation.Line, target, mutation.Provenance))
-	}
-	return lines
-}
-
 func (m Model) qualityHeader() string {
 	if m.report.Quality == nil {
 		return ""
@@ -135,13 +86,6 @@ func (m Model) qualityHeader() string {
 		return ""
 	}
 	return fmt.Sprintf(" · Q %d", len(m.report.Quality.Report.Diagnostics))
-}
-
-func qualityBadge(function domain.Function) string {
-	if function.Quality == nil {
-		return ""
-	}
-	return amber.Render(fmt.Sprintf(" · Q %d · e quality", len(function.Quality.Diagnostics)))
 }
 
 func (m Model) detailsViewName() string {
@@ -200,4 +144,60 @@ func (m Model) updateDetailsControl(command controlCommand) (Model, tea.Cmd) {
 	m = m.setFocus(detailsPane)
 	command.answer(m.controlState(), nil)
 	return m, nil
+}
+
+func functionQualityLines(q *domain.FunctionQuality) []string {
+	coverage := "No unknown effects under policy"
+	if !q.Complete {
+		coverage = "Incomplete: unknown effects remain"
+	}
+	return slices.Concat(
+		[]string{
+			fmt.Sprintf("Density %d milli · %d mutations", q.DensityMilli, q.Mutations),
+			fmt.Sprintf("%d targets · %d unclassified calls", q.MutatedTargets, q.UnclassifiedCalls),
+			muted.Render(coverage),
+			muted.Render("Modeled effects; zero is not proof of purity"),
+			"",
+			amber.Render(fmt.Sprintf("Findings · %d", len(q.Diagnostics))),
+		},
+		diagnosticMessages(q.Diagnostics),
+		[]string{"", blue.Render(fmt.Sprintf("Effects · %d", len(q.Effects)))},
+		effectLines(q.Effects),
+		mutationQualityLines(q.MutationEvents),
+	)
+}
+
+func diagnosticMessages(diagnostics []quality.Diagnostic) []string {
+	messages := make([]string, 0, len(diagnostics))
+	for _, diagnostic := range diagnostics {
+		messages = append(messages, diagnostic.Message)
+	}
+	return messages
+}
+
+func effectLines(effects []quality.Effect) []string {
+	lines := make([]string, 0, len(effects))
+	for _, effect := range effects {
+		lines = append(lines, fmt.Sprintf("L%d %s: %s", effect.Line, effect.Kind, effect.Detail))
+	}
+	return lines
+}
+
+func mutationQualityLines(mutations []quality.Mutation) []string {
+	lines := []string{"", blue.Render(fmt.Sprintf("Mutations · %d", len(mutations)))}
+	for _, mutation := range mutations {
+		target := mutation.Root
+		if mutation.FieldPath != "" {
+			target += "." + mutation.FieldPath
+		}
+		lines = append(lines, fmt.Sprintf("L%d %s (%s)", mutation.Line, target, mutation.Provenance))
+	}
+	return lines
+}
+
+func qualityBadge(function domain.Function) string {
+	if function.Quality == nil {
+		return ""
+	}
+	return amber.Render(fmt.Sprintf(" · Q %d · e quality", len(function.Quality.Diagnostics)))
 }

@@ -41,6 +41,19 @@ type options struct {
 	paths     []string
 }
 
+func (opts options) validate() error {
+	if !slices.Contains([]string{"text", "json", "pdg-json"}, opts.format) {
+		return fmt.Errorf("format must be text, json or pdg-json")
+	}
+	if opts.format == "pdg-json" && opts.useCache {
+		return fmt.Errorf("--cache is not available for pdg-json export")
+	}
+	if opts.threshold > 1000 {
+		return fmt.Errorf("threshold must be between 0 and 1000")
+	}
+	return nil
+}
+
 // Run extracts PDGs for paths, mines them for abstraction candidates, and
 // writes the report, or exports native graphs when pdg-json is selected.
 // It returns nil on success regardless of how many (or
@@ -209,6 +222,7 @@ func mutableHits(hits []patterns.MutableIdentityHit) []patterns.MutableIdentityH
 	}
 	return out
 }
+
 func parseOptions(args []string) (options, error) {
 	flags := flag.NewFlagSet("patterns", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
@@ -220,17 +234,4 @@ func parseOptions(args []string) (options, error) {
 	}
 	result := options{format: *format, threshold: *threshold, useCache: *useCache, paths: flags.Args()}
 	return result, result.validate()
-}
-
-func (opts options) validate() error {
-	if !slices.Contains([]string{"text", "json", "pdg-json"}, opts.format) {
-		return fmt.Errorf("format must be text, json or pdg-json")
-	}
-	if opts.format == "pdg-json" && opts.useCache {
-		return fmt.Errorf("--cache is not available for pdg-json export")
-	}
-	if opts.threshold > 1000 {
-		return fmt.Errorf("threshold must be between 0 and 1000")
-	}
-	return nil
 }

@@ -45,6 +45,94 @@ type primitiveConceptInfo struct {
 	typ      string // "string" or "int"
 }
 
+// primitiveFixKeywords mirrors the detector's keyword list.
+var primitiveFixKeywords = []string{
+	"email", "phone", "url", "uri", "uuid", "guid", "id", "name",
+	"address", "street", "city", "state", "zip", "postal", "country",
+	"currency", "price", "amount", "quantity", "ssn", "passport",
+	"license", "username", "password", "token", "apikey", "secret",
+	"creditcard", "iban", "isbn", "sku", "serial",
+}
+
+// primitiveFixInitialisms maps concepts to their Go initialism form.
+var primitiveFixInitialisms = map[string]string{
+	"id":   "ID",
+	"url":  "URL",
+	"uri":  "URI",
+	"uuid": "UUID",
+	"guid": "GUID",
+	"ssn":  "SSN",
+	"isbn": "ISBN",
+	"iban": "IBAN",
+	"sku":  "SKU",
+}
+
+// paramUseChecker walks a function body and reports whether every use of the
+// named parameter stays valid after its type changes to a named type.
+type paramUseChecker struct {
+	paramName string
+	groupFns  map[string]bool
+	parents   []ast.Node
+	safe      bool
+}
+
+func (c *paramUseChecker) visit(n ast.Node) bool {
+	if n == nil {
+		c.parents = c.parents[:len(c.parents)-1]
+		return true
+	}
+	c.parents = append(c.parents, n)
+	if !c.safe {
+		return false
+	}
+	if id, ok := n.(*ast.Ident); ok && c.isUnsafeUse(id) {
+		c.safe = false
+		return false
+	}
+	return true
+}
+
+// isUnsafeUse reports whether one identifier use would not compile after
+// the param's type changes.
+func (c *paramUseChecker) isUnsafeUse(id *ast.Ident) bool {
+	return id.Name == c.paramName && !paramUseSafe(c.parents, c.groupFns)
+}
+
+// callWrapper rewrites call-site args via astutil.
+type callWrapper struct {
+	funcName string
+	pos      int
+	typeName string
+	ok       bool
+}
+
+// visit handles one node during the call-site rewrite.
+func (w *callWrapper) visit(c *astutil.Cursor) bool {
+	call, isCall := c.Node().(*ast.CallExpr)
+	if !isCall || !isNamedCall(call, w.funcName) {
+		return true
+	}
+	if w.pos >= len(call.Args) {
+		w.ok = false
+		return false
+	}
+	w.wrapArg(call)
+	return true
+}
+
+// wrapArg wraps the arg at the wrapper's pos with TypeName(...), unless
+// it's an untyped constant (assignable without conversion).
+func (w *callWrapper) wrapArg(call *ast.CallExpr) {
+	arg := call.Args[w.pos]
+	if isUntypedConstant(arg) {
+		return
+	}
+	call.Args[w.pos] = &ast.CallExpr{
+		Fun:  &ast.Ident{Name: w.typeName, NamePos: token.NoPos},
+		Args: []ast.Expr{arg},
+	}
+}
+
 // FixPrimitiveObsession introduces named types for domain-concept params.
 // It returns the rewritten source (gofmt-clean) and the fixes applied.
 func FixPrimitiveObsession(fset *token.FileSet, f *ast.File, src []byte) ([]byte, []PrimitiveFix, error) {
@@ -209,15 +297,6 @@ func primitiveFixConcept(name string) string {
 	return ""
 }
 
-// primitiveFixKeywords mirrors the detector's keyword list.
-var primitiveFixKeywords = []string{
-	"email", "phone", "url", "uri", "uuid", "guid", "id", "name",
-	"address", "street", "city", "state", "zip", "postal", "country",
-	"currency", "price", "amount", "quantity", "ssn", "passport",
-	"license", "username", "password", "token", "apikey", "secret",
-	"creditcard", "iban", "isbn", "sku", "serial",
-}
-
 // splitFixWords splits on camelCase and _/- boundaries, lowercased.
 func splitFixWords(name string) []string {
 	var words []string
@@ -271,19 +350,6 @@ func toFixLower(r rune) rune {
 	return r
 }
 
-// primitiveFixInitialisms maps concepts to their Go initialism form.
-var primitiveFixInitialisms = map[string]string{
-	"id":   "ID",
-	"url":  "URL",
-	"uri":  "URI",
-	"uuid": "UUID",
-	"guid": "GUID",
-	"ssn":  "SSN",
-	"isbn": "ISBN",
-	"iban": "IBAN",
-	"sku":  "SKU",
-}
-
 // primitiveFixTypeName renders the type name, honoring initialisms.
 func primitiveFixTypeName(concept string) string {
 	if init, ok := primitiveFixInitialisms[concept]; ok {
@@ -310,37 +376,6 @@ func primitiveParamSafe(fn *ast.FuncDecl, paramName string, groupFns map[string]
 	c := &paramUseChecker{paramName: paramName, groupFns: groupFns, safe: true}
 	ast.Inspect(fn.Body, c.visit)
 	return c.safe
-}
-
-// paramUseChecker walks a function body and reports whether every use of the
-// named parameter stays valid after its type changes to a named type.
-type paramUseChecker struct {
-	paramName string
-	groupFns  map[string]bool
-	parents   []ast.Node
-	safe      bool
-}
-
-func (c *paramUseChecker) visit(n ast.Node) bool {
-	if n == nil {
-		c.parents = c.parents[:len(c.parents)-1]
-		return true
-	}
-	c.parents = append(c.parents, n)
-	if !c.safe {
-		return false
-	}
-	if id, ok := n.(*ast.Ident); ok && c.isUnsafeUse(id) {
-		c.safe = false
-		return false
-	}
-	return true
-}
-
-// isUnsafeUse reports whether one identifier use would not compile after
-// the param's type changes.
-func (c *paramUseChecker) isUnsafeUse(id *ast.Ident) bool {
-	return id.Name == c.paramName && !paramUseSafe(c.parents, c.groupFns)
 }
 
 // paramUseSafe reports whether one use of the param (the innermost node on
@@ -529,45 +564,10 @@ func paramPosition(fn *ast.FuncDecl, paramName string) (int, bool) {
 	return 0, false
 }
 
-// callWrapper rewrites call-site args via astutil.
-type callWrapper struct {
-	funcName string
-	pos      int
-	typeName string
-	ok       bool
-}
-
-// visit handles one node during the call-site rewrite.
-func (w *callWrapper) visit(c *astutil.Cursor) bool {
-	call, isCall := c.Node().(*ast.CallExpr)
-	if !isCall || !isNamedCall(call, w.funcName) {
-		return true
-	}
-	if w.pos >= len(call.Args) {
-		w.ok = false
-		return false
-	}
-	w.wrapArg(call)
-	return true
-}
-
 // isNamedCall reports whether call is a direct call to funcName.
 func isNamedCall(call *ast.CallExpr, funcName string) bool {
 	ident, ok := call.Fun.(*ast.Ident)
 	return ok && ident.Name == funcName
-}
-
-// wrapArg wraps the arg at the wrapper's pos with TypeName(...), unless
-// it's an untyped constant (assignable without conversion).
-func (w *callWrapper) wrapArg(call *ast.CallExpr) {
-	arg := call.Args[w.pos]
-	if isUntypedConstant(arg) {
-		return
-	}
-	call.Args[w.pos] = &ast.CallExpr{
-		Fun:  &ast.Ident{Name: w.typeName, NamePos: token.NoPos},
-		Args: []ast.Expr{arg},
-	}
 }
 
 // isUntypedConstant reports whether expr is a string/int literal (untyped

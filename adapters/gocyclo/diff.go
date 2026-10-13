@@ -46,12 +46,6 @@ func (d gitDiff) lines(path string) []domain.DiffLine {
 	return parseDiff(output)
 }
 
-func gitText(root string, args ...string) (string, error) {
-	command := exec.Command("git", append([]string{"-C", root}, args...)...)
-	output, err := command.Output()
-	return string(output), err
-}
-
 func (d gitDiff) apply(file domain.File) domain.File {
 	if d.root == "" {
 		return file
@@ -62,6 +56,27 @@ func (d gitDiff) apply(file domain.File) domain.File {
 type diffPosition struct {
 	oldLine int
 	newLine int
+}
+
+func (p *diffPosition) advance(line string) domain.DiffLine {
+	change := domain.DiffLine{OldLine: p.oldLine, NewLine: p.newLine, Text: line[1:]}
+	switch line[0] {
+	case '-':
+		change.Kind = domain.DiffDeleted
+		p.oldLine++
+	case '+':
+		change.Kind = domain.DiffAdded
+		p.newLine++
+	case ' ':
+		*p = diffPosition{oldLine: p.oldLine + 1, newLine: p.newLine + 1}
+	}
+	return change
+}
+
+func gitText(root string, args ...string) (string, error) {
+	command := exec.Command("git", append([]string{"-C", root}, args...)...)
+	output, err := command.Output()
+	return string(output), err
 }
 
 func parseDiff(output string) []domain.DiffLine {
@@ -84,21 +99,6 @@ func parseDiff(output string) []domain.DiffLine {
 		}
 	}
 	return result
-}
-
-func (p *diffPosition) advance(line string) domain.DiffLine {
-	change := domain.DiffLine{OldLine: p.oldLine, NewLine: p.newLine, Text: line[1:]}
-	switch line[0] {
-	case '-':
-		change.Kind = domain.DiffDeleted
-		p.oldLine++
-	case '+':
-		change.Kind = domain.DiffAdded
-		p.newLine++
-	case ' ':
-		*p = diffPosition{oldLine: p.oldLine + 1, newLine: p.newLine + 1}
-	}
-	return change
 }
 
 func hunkLines(matches []string) (int, int) {

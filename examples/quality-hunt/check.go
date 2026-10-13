@@ -23,13 +23,6 @@ type runner struct {
 	root, binary string
 	timeout      time.Duration
 }
-type failure struct{ Name, Base, Rule string }
-type evidence struct {
-	Complete       bool
-	Targets, Calls int
-	Mutations      []string
-	Effects        []quality.Kind
-}
 
 func (r runner) assess(ctx context.Context, source []byte, cases []specimen) (failure, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.timeout)
@@ -109,6 +102,15 @@ func (r runner) extract(ctx context.Context) ([]quality.Function, error) {
 		return nil, err
 	}
 	return facts.Functions, nil
+}
+
+type failure struct{ Name, Base, Rule string }
+
+type evidence struct {
+	Complete       bool
+	Targets, Calls int
+	Mutations      []string
+	Effects        []quality.Kind
 }
 
 func compare(cases []specimen, observed map[string]bool, facts []quality.Function, report quality.Report) (failure, error) {

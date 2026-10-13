@@ -13,6 +13,79 @@ import (
 	"github.com/rstyled/gstyle/domain/patterns"
 )
 
+// entityFixParams extracts and validates entity_identity FixSpec params.
+type entityFixParams struct {
+	line    int
+	idField string
+	left    string
+	right   string
+}
+
+// factoryContext carries everything the factory fix needs: the struct
+// fields, the literal rewrites, and where to insert the factory.
+type factoryContext struct {
+	fset        *token.FileSet
+	src         []byte
+	typeName    string
+	factoryName string
+	fields      []factoryField
+	rewrites    []textEdit
+	typeEnd     int
+}
+
+// newFactoryContext builds the fix context, or false when the fix should
+// be skipped.
+func newFactoryContext(fset *token.FileSet, f *ast.File, src []byte, typeName string) (factoryContext, bool) {
+	fields, typeEnd, ok := factoryStructFields(fset, f, src, typeName)
+	if !ok {
+		return factoryContext{}, false
+	}
+	factoryName := "New" + typeName
+	if hasFuncDecl(f, factoryName) {
+		return factoryContext{}, false
+	}
+	rewrites := factoryLitRewrites(fset, f, src, typeName, factoryName, fields)
+	if len(rewrites) == 0 {
+		return factoryContext{}, false
+	}
+	return factoryContext{
+		fset: fset, src: src, typeName: typeName,
+		factoryName: factoryName, fields: fields,
+		rewrites: rewrites, typeEnd: typeEnd,
+	}, true
+}
+
+// litRewriteCtx carries the parameters for literal rewrite helpers.
+type litRewriteCtx struct {
+	fset        *token.FileSet
+	src         []byte
+	typeName    string
+	factoryName string
+	fields      []factoryField
+}
+
+// factoryField is one struct field in declaration order.
+type factoryField struct {
+	name     string
+	typeText string
+}
+
+// specMatch is one if statement matching a business rule.
+type specMatch struct {
+	stmt    *ast.IfStmt
+	varName string
+}
+
+// specEditCtx bundles the shared context for building specification edits.
+type specEditCtx struct {
+	fset     *token.FileSet
+	f        *ast.File
+	src      []byte
+	predName string
+	typeName string
+	isLocal  bool
+}
+
 // applyGuardFix applies a guard_clause FixSpec: invert the if statement at
 // the spec's line into a guard clause.
 func applyGuardFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
@@ -430,14 +503,6 @@ func applyEntityAddIDFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
 	return formatted, nil
 }
 
-// entityFixParams extracts and validates entity_identity FixSpec params.
-type entityFixParams struct {
-	line    int
-	idField string
-	left    string
-	right   string
-}
-
 func parseEntityFixParams(spec *patterns.FixSpec) (entityFixParams, error) {
 	line, err := strconv.Atoi(spec.Params["line"])
 	if err != nil {
@@ -536,49 +601,6 @@ func applyFactoryFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
 	return formatted, nil
 }
 
-// factoryContext carries everything the factory fix needs: the struct
-// fields, the literal rewrites, and where to insert the factory.
-type factoryContext struct {
-	fset        *token.FileSet
-	src         []byte
-	typeName    string
-	factoryName string
-	fields      []factoryField
-	rewrites    []textEdit
-	typeEnd     int
-}
-
-// newFactoryContext builds the fix context, or false when the fix should
-// be skipped.
-func newFactoryContext(fset *token.FileSet, f *ast.File, src []byte, typeName string) (factoryContext, bool) {
-	fields, typeEnd, ok := factoryStructFields(fset, f, src, typeName)
-	if !ok {
-		return factoryContext{}, false
-	}
-	factoryName := "New" + typeName
-	if hasFuncDecl(f, factoryName) {
-		return factoryContext{}, false
-	}
-	rewrites := factoryLitRewrites(fset, f, src, typeName, factoryName, fields)
-	if len(rewrites) == 0 {
-		return factoryContext{}, false
-	}
-	return factoryContext{
-		fset: fset, src: src, typeName: typeName,
-		factoryName: factoryName, fields: fields,
-		rewrites: rewrites, typeEnd: typeEnd,
-	}, true
-}
-
-// litRewriteCtx carries the parameters for literal rewrite helpers.
-type litRewriteCtx struct {
-	fset        *token.FileSet
-	src         []byte
-	typeName    string
-	factoryName string
-	fields      []factoryField
-}
-
 // factoryEdits combines the literal rewrites with the factory insertion.
 func factoryEdits(ctx factoryContext) []textEdit {
 	edits := make([]textEdit, 0, len(ctx.rewrites)+1)
@@ -589,12 +611,6 @@ func factoryEdits(ctx factoryContext) []textEdit {
 		replacement: []byte("\n" + factoryFuncText(ctx.factoryName, ctx.typeName, ctx.fields)),
 	})
 	return edits
-}
-
-// factoryField is one struct field in declaration order.
-type factoryField struct {
-	name     string
-	typeText string
 }
 
 // factoryStructFields returns the struct's fields in declaration order and
@@ -1269,12 +1285,6 @@ func specMatchKey(cond ast.Expr) (key, varName string) {
 	return key, varName
 }
 
-// specMatch is one if statement matching a business rule.
-type specMatch struct {
-	stmt    *ast.IfStmt
-	varName string
-}
-
 // hasTypeDecl reports whether the file declares a type with the given name.
 func hasTypeDecl(f *ast.File, name string) bool {
 	found := false
@@ -1327,16 +1337,6 @@ func specKeysMatch(a, b string) bool {
 		return strings.Join(fields, ",")
 	}
 	return normalize(aKey) == normalize(bKey)
-}
-
-// specEditCtx bundles the shared context for building specification edits.
-type specEditCtx struct {
-	fset     *token.FileSet
-	f        *ast.File
-	src      []byte
-	predName string
-	typeName string
-	isLocal  bool
 }
 
 // specEdits builds the text edits: insert the Specification type, rewrite

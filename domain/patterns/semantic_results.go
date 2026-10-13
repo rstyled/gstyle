@@ -9,6 +9,16 @@ type semanticResults struct {
 	coverage []AnalysisCoverage
 }
 
+func (r *semanticResults) candidates(kind CandidateKind) []Candidate {
+	var out []Candidate
+	for _, candidate := range r.findings {
+		if candidate.Kind == kind {
+			out = append(out, candidate)
+		}
+	}
+	return out
+}
+
 func nativeSemanticResults(facts []*MiningFacts) *semanticResults {
 	var findings []Candidate
 	for _, original := range facts {
@@ -29,16 +39,6 @@ func semanticFunctionCandidates(f *MiningFacts) []Candidate {
 		ThinSliceCandidates(thinSlicesForFunc(f), facts),
 		ChopCandidates(chopsForFunc(f), facts),
 	)
-}
-
-func (r *semanticResults) candidates(kind CandidateKind) []Candidate {
-	var out []Candidate
-	for _, candidate := range r.findings {
-		if candidate.Kind == kind {
-			out = append(out, candidate)
-		}
-	}
-	return out
 }
 
 func reportSemanticCoverage(facts []*MiningFacts, options Options) []AnalysisCoverage {

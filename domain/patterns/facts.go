@@ -92,6 +92,20 @@ type FunctionFacts[G any] struct {
 	Params []ParamInfo
 }
 
+// EffectClass returns the observable-effect class set for the mismatch check:
+// effect kind names plus "mutation" when Mutates, mirroring rstyle's
+// candidates::effect_class. Empty set means pure.
+func (f *FunctionFacts[G]) EffectClass() map[string]bool {
+	classes := map[string]bool{}
+	for _, kind := range f.EffectKinds {
+		classes[kind] = true
+	}
+	if f.Mutates {
+		classes["mutation"] = true
+	}
+	return classes
+}
+
 // GuardClauseHit is one inverted conditional: the if-statement line and
 // the size of the trapped happy path.
 type GuardClauseHit struct {
@@ -187,20 +201,7 @@ type SpecificationHit struct {
 	TypeName string
 }
 
-// EffectClass returns the observable-effect class set for the mismatch check:
-// effect kind names plus "mutation" when Mutates, mirroring rstyle's
-// candidates::effect_class. Empty set means pure.
-func (f *FunctionFacts[G]) EffectClass() map[string]bool {
-	classes := map[string]bool{}
-	for _, kind := range f.EffectKinds {
-		classes[kind] = true
-	}
-	if f.Mutates {
-		classes["mutation"] = true
-	}
-	return classes
-}
-
 // FuncFacts carries the canonical IR. MiningFacts is a temporary matching view.
 type FuncFacts = FunctionFacts[pdg.Graph]
+
 type MiningFacts = FunctionFacts[MiningGraph]

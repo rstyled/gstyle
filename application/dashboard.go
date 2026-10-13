@@ -25,10 +25,6 @@ func (m Model) analyticsLines(width int) []string {
 	)
 }
 
-func analyticsWidths(width int) []int {
-	return []int{width - 35, 32}
-}
-
 func (m Model) treemapLines(s treemap) []string {
 	lines := []string{blue.Render("COMPLEXITY TREEMAP")}
 	lines = append(lines, s.render(m.fileIndex, m.functionIndex)...)
@@ -76,10 +72,6 @@ func (m Model) treemapLegend(width int) []string {
 	)
 }
 
-func treemapSwatch(score int) string {
-	return lipgloss.NewStyle().Foreground(treemapColor(score)).Render("█")
-}
-
 func (m Model) selectTreemap(message tea.MouseClickMsg) Model {
 	if m.annotating || message.Button != tea.MouseLeft {
 		return m
@@ -96,13 +88,6 @@ func (m Model) selectTreemap(message tea.MouseClickMsg) Model {
 	return m
 }
 
-func (t treemapTile) focusPane() pane {
-	if t.function < 0 {
-		return filesPane
-	}
-	return functionsPane
-}
-
 func (m Model) treemapTileAt(x int, y int) (treemapTile, bool) {
 	if !m.showAnalytics(m.terminalWidth()) {
 		return treemapTile{}, false
@@ -114,4 +99,19 @@ func (m Model) treemapTileAt(x int, y int) (treemapTile, bool) {
 	}
 	chart := m.complexityTreemap(widths[0])
 	return chart.tileAt(image.Pt(x, y*2))
+}
+
+func (t treemapTile) focusPane() pane {
+	if t.function < 0 {
+		return filesPane
+	}
+	return functionsPane
+}
+
+func analyticsWidths(width int) []int {
+	return []int{width - 35, 32}
+}
+
+func treemapSwatch(score int) string {
+	return lipgloss.NewStyle().Foreground(treemapColor(score)).Render("█")
 }

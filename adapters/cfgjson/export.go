@@ -12,49 +12,16 @@ import (
 )
 
 type object = map[string]any
+
 type exporter struct {
 	g            *pdg.Graph
 	source       []byte
 	nodes, edges []object
 }
 
-func Write(w io.Writer, g *pdg.Graph, source []byte) error {
-	if err := pdg.Validate(g); err != nil {
-		return err
-	}
-	if g.NormalFlow == nil {
-		return fmt.Errorf("paired CFG is missing")
-	}
-	if err := validatedSource(g, source); err != nil {
-		return err
-	}
-	x := exporter{g: g, source: source, nodes: []object{}, edges: []object{}}
-	if err := x.operations(); err != nil {
-		return err
-	}
-	return json.NewEncoder(w).Encode(x.document())
-}
-
-func validatedSource(g *pdg.Graph, source []byte) error {
-	profile := g.Tables.Policies[g.Profile-1]
-	if g.Tables.Text(profile.ID) != "gstyle.go.scalar-normal" || g.Tables.Text(profile.Version) != "0.2.0" {
-		return fmt.Errorf("CFG requires the registered ordered scalar extraction profile")
-	}
-	identity := g.Sources[0].ContentIdentity
-	if identity.Status != pdg.Known || g.Tables.Text(identity.Value) != fmt.Sprintf("%x", sha256.Sum256(source)) {
-		return fmt.Errorf("CFG source bytes do not match compiler snapshot")
-	}
-	if g.Producer.LanguageVersion.Status != pdg.Known {
-		return fmt.Errorf("CFG requires known compiler language evidence")
-	}
-	return nil
-}
-
 func (x *exporter) span(span pdg.Span) object {
 	return object{"source_id": x.g.Tables.Text(x.g.Sources[span.Source-1].ID), "start": span.Start, "end": span.End}
 }
-
-func known(value string) object { return object{"status": "known", "value": value} }
 
 func (x *exporter) document() object {
 	profile := x.g.Tables.Policies[x.g.Profile-1]
@@ -116,17 +83,6 @@ func (x *exporter) operationSource(node pdg.Node) (pdg.Span, string, error) {
 	return span, original, nil
 }
 
-func cfgOperationKind(category pdg.Category) string {
-	switch category {
-	case pdg.Control:
-		return "condition"
-	case pdg.Return:
-		return "transfer"
-	default:
-		return "block"
-	}
-}
-
 func (x *exporter) successors(ref pdg.Ref, block pdg.FlowBlock, index int) {
 	from := "cfg-" + x.g.Tables.Text(x.g.Nodes[ref-1].ID)
 	if index+1 < len(block.Operations) {
@@ -181,5 +137,50 @@ func (x *exporter) first(start pdg.Ref) []string {
 func (x *exporter) transfer(from string, targets []string, kind string) {
 	for _, target := range targets {
 		x.edges = append(x.edges, object{"id": "cfge-" + strconv.Itoa(len(x.edges)+1), "source": from, "target": target, "kind": kind})
+	}
+}
+
+func Write(w io.Writer, g *pdg.Graph, source []byte) error {
+	if err := pdg.Validate(g); err != nil {
+		return err
+	}
+	if g.NormalFlow == nil {
+		return fmt.Errorf("paired CFG is missing")
+	}
+	if err := validatedSource(g, source); err != nil {
+		return err
+	}
+	x := exporter{g: g, source: source, nodes: []object{}, edges: []object{}}
+	if err := x.operations(); err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(x.document())
+}
+
+func validatedSource(g *pdg.Graph, source []byte) error {
+	profile := g.Tables.Policies[g.Profile-1]
+	if g.Tables.Text(profile.ID) != "gstyle.go.scalar-normal" || g.Tables.Text(profile.Version) != "0.2.0" {
+		return fmt.Errorf("CFG requires the registered ordered scalar extraction profile")
+	}
+	identity := g.Sources[0].ContentIdentity
+	if identity.Status != pdg.Known || g.Tables.Text(identity.Value) != fmt.Sprintf("%x", sha256.Sum256(source)) {
+		return fmt.Errorf("CFG source bytes do not match compiler snapshot")
+	}
+	if g.Producer.LanguageVersion.Status != pdg.Known {
+		return fmt.Errorf("CFG requires known compiler language evidence")
+	}
+	return nil
+}
+
+func known(value string) object { return object{"status": "known", "value": value} }
+
+func cfgOperationKind(category pdg.Category) string {
+	switch category {
+	case pdg.Control:
+		return "condition"
+	case pdg.Return:
+		return "transfer"
+	default:
+		return "block"
 	}
 }

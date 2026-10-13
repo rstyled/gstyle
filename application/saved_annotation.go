@@ -19,23 +19,6 @@ func (m Model) unmatchedAnnotation() (Annotation, bool) {
 	return Annotation{}, false
 }
 
-func savedAnnotationRows(annotation Annotation, width int) []string {
-	rows := savedAnnotationMessageRows(annotation.Message, width)
-	for index, line := range normalizedSourceLines(annotation.Text) {
-		rows = append(rows, muted.Render(fmt.Sprintf("%4d │ ", annotation.StartLine+index))+text.Render(line))
-	}
-	return rows
-}
-
-func savedAnnotationMessageRows(message string, width int) []string {
-	wrapped := ansi.Wrap("◆ "+message, max(width, 1), "")
-	return strings.Split(amber.Render(wrapped)+"\n", "\n")
-}
-
-func savedAnnotationRowCount(annotation Annotation, width int) int {
-	return len(savedAnnotationMessageRows(annotation.Message, width)) + strings.Count(annotation.Text, "\n") + 1
-}
-
 func (m Model) savedAnnotationLines(annotation Annotation, width int, height int, title string) []string {
 	contentWidth := paneContentWidth(width)
 	lines := []string{m.paneTitle(title, detailsPane) + amber.Render(" · unmatched")}
@@ -68,4 +51,21 @@ func (m Model) scrollSavedAnnotation(annotation Annotation, delta int) Model {
 	maximum := max(rowCount-visible, 0)
 	m.sourceOffset = moveIndex(m.sourceOffset, delta, maximum+1)
 	return m
+}
+
+func savedAnnotationRows(annotation Annotation, width int) []string {
+	rows := savedAnnotationMessageRows(annotation.Message, width)
+	for index, line := range normalizedSourceLines(annotation.Text) {
+		rows = append(rows, muted.Render(fmt.Sprintf("%4d │ ", annotation.StartLine+index))+text.Render(line))
+	}
+	return rows
+}
+
+func savedAnnotationMessageRows(message string, width int) []string {
+	wrapped := ansi.Wrap("◆ "+message, max(width, 1), "")
+	return strings.Split(amber.Render(wrapped)+"\n", "\n")
+}
+
+func savedAnnotationRowCount(annotation Annotation, width int) int {
+	return len(savedAnnotationMessageRows(annotation.Message, width)) + strings.Count(annotation.Text, "\n") + 1
 }

@@ -37,6 +37,20 @@ type Strings struct{ ReturnPara, IntroPara, Name string }
 
 var primitiveTypes = []string{"bool", "i8", "i16", "i32", "i64", "i128", "isize", "u8", "u16", "u32", "u64", "u128", "usize", "unit"}
 
+type runeMatcher struct{ seenA, seenB []bool }
+
+func (m runeMatcher) match(i int, r rune, b []rune, window int) {
+	for j := max(0, i-window); j < min(len(b), i+window+1); j++ {
+		if m.seenB[j] || b[j] != r {
+			continue
+		}
+		m.seenA[i], m.seenB[j] = true, true
+		return
+	}
+}
+
+type StringScore struct{ ReturnPara, IntroPara, Name, Mean *big.Rat }
+
 func Interface(parameters []Parameter) (string, error) {
 	tuples := make([][3]any, 0, len(parameters))
 	for _, p := range parameters {
@@ -98,18 +112,6 @@ func matchedRunes(a, b []rune) ([]rune, []rune) {
 	return selectedRunes(a, matcher.seenA), selectedRunes(b, matcher.seenB)
 }
 
-type runeMatcher struct{ seenA, seenB []bool }
-
-func (m runeMatcher) match(i int, r rune, b []rune, window int) {
-	for j := max(0, i-window); j < min(len(b), i+window+1); j++ {
-		if m.seenB[j] || b[j] != r {
-			continue
-		}
-		m.seenA[i], m.seenB[j] = true, true
-		return
-	}
-}
-
 func selectedRunes(runes []rune, seen []bool) []rune {
 	var out []rune
 	for i, r := range runes {
@@ -142,8 +144,6 @@ func prefix(a, b []rune) int {
 	}
 	return n
 }
-
-type StringScore struct{ ReturnPara, IntroPara, Name, Mean *big.Rat }
 
 func CompareStrings(a, b Strings) (StringScore, error) {
 	values := [][2]string{{a.ReturnPara, b.ReturnPara}, {a.IntroPara, b.IntroPara}, {a.Name, b.Name}}

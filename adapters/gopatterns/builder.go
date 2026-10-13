@@ -9,15 +9,6 @@ import (
 	"github.com/rstyled/gstyle/domain/quality"
 )
 
-// effectBits maps a quality.Kind to PdgNode effect bitflags. Pure (None)
-// maps to EffectNone; unknown callees map to EffectUnknown.
-func effectBits(kind quality.Kind) uint16 {
-	if bit, ok := kindToEffectBit[kind]; ok {
-		return bit
-	}
-	return patterns.EffectNone // quality.None and anything else
-}
-
 var kindToEffectBit = map[quality.Kind]uint16{
 	quality.MutationEffect: patterns.EffectMutates,
 	quality.IO:             patterns.EffectIO,
@@ -107,16 +98,6 @@ func (b *builder) sliceExpr(e *ast.SliceExpr) int {
 	return n
 }
 
-func unparen(e ast.Expr) ast.Expr {
-	if e == nil {
-		return nil
-	}
-	if p, ok := e.(*ast.ParenExpr); ok {
-		return unparen(p.X)
-	}
-	return e
-}
-
 func (b *builder) ident(e *ast.Ident) int {
 	if e.Name == "_" {
 		return none
@@ -133,23 +114,6 @@ func (b *builder) ident(e *ast.Ident) int {
 		return n
 	}
 	return none
-}
-
-func litKind(k token.Token) string {
-	switch k {
-	case token.INT:
-		return "int"
-	case token.FLOAT:
-		return "float"
-	case token.IMAG:
-		return "imag"
-	case token.CHAR:
-		return "char"
-	case token.STRING:
-		return "string"
-	default:
-		return "other"
-	}
 }
 
 // field lowers a selector expression that is not a call (calls handle their
@@ -192,43 +156,11 @@ func (b *builder) loopElement(e *ast.IndexExpr) (int, bool) {
 	return 0, false
 }
 
-// element checks one loop context for the canonicalization.
-func (lc loopCtx) element(x ast.Expr, obj types.Object, b *builder) (int, bool) {
-	if lc.counter == nil || obj != lc.counter {
-		return 0, false
-	}
-	base, ok := unparen(x).(*ast.Ident)
-	if !ok {
-		return 0, false
-	}
-	if n, ok := b.lookup(b.info.ObjectOf(base)); ok && n == lc.coll {
-		return lc.iterate, true
-	}
-	return 0, false
-}
-
 func (b *builder) binary(e *ast.BinaryExpr) int {
 	n := b.node(patterns.PdgNode{Kind: patterns.Op, Detail: opClass(e.Op) + ":" + e.Op.String(), Line: b.line(e.Pos())})
 	b.data(b.expr(e.X), n, 0)
 	b.data(b.expr(e.Y), n, 1)
 	return n
-}
-
-// opClass is the coarse operator class for labels: the operator after the
-// colon is a hole, not part of the class (like rstyle's "cmp:<").
-func opClass(op token.Token) string {
-	switch op {
-	case token.EQL, token.NEQ, token.LSS, token.GTR, token.LEQ, token.GEQ:
-		return "cmp"
-	case token.ADD, token.SUB, token.MUL, token.QUO, token.REM:
-		return "arith"
-	case token.AND, token.OR, token.XOR, token.SHL, token.SHR, token.AND_NOT:
-		return "bit"
-	case token.LAND, token.LOR:
-		return "logic"
-	default:
-		return "op"
-	}
 }
 
 func (b *builder) unary(e *ast.UnaryExpr) int {
@@ -327,16 +259,84 @@ func (b *builder) signatureClass(e ast.Expr) string {
 	return "_"
 }
 
-func sigClassOf(fn *types.Func) string {
-	if sig, ok := fn.Type().(*types.Signature); ok {
-		return patterns.SigClass(sig)
-	}
-	return "_"
-}
-
 func (b *builder) callArgs(e *ast.CallExpr, n, argPos int) {
 	for _, arg := range e.Args {
 		b.data(b.expr(arg), n, argPos)
 		argPos++
 	}
+}
+
+// element checks one loop context for the canonicalization.
+func (lc loopCtx) element(x ast.Expr, obj types.Object, b *builder) (int, bool) {
+	if lc.counter == nil || obj != lc.counter {
+		return 0, false
+	}
+	base, ok := unparen(x).(*ast.Ident)
+	if !ok {
+		return 0, false
+	}
+	if n, ok := b.lookup(b.info.ObjectOf(base)); ok && n == lc.coll {
+		return lc.iterate, true
+	}
+	return 0, false
+}
+
+// effectBits maps a quality.Kind to PdgNode effect bitflags. Pure (None)
+// maps to EffectNone; unknown callees map to EffectUnknown.
+func effectBits(kind quality.Kind) uint16 {
+	if bit, ok := kindToEffectBit[kind]; ok {
+		return bit
+	}
+	return patterns.EffectNone // quality.None and anything else
+}
+
+func unparen(e ast.Expr) ast.Expr {
+	if e == nil {
+		return nil
+	}
+	if p, ok := e.(*ast.ParenExpr); ok {
+		return unparen(p.X)
+	}
+	return e
+}
+
+func litKind(k token.Token) string {
+	switch k {
+	case token.INT:
+		return "int"
+	case token.FLOAT:
+		return "float"
+	case token.IMAG:
+		return "imag"
+	case token.CHAR:
+		return "char"
+	case token.STRING:
+		return "string"
+	default:
+		return "other"
+	}
+}
+
+// opClass is the coarse operator class for labels: the operator after the
+// colon is a hole, not part of the class (like rstyle's "cmp:<").
+func opClass(op token.Token) string {
+	switch op {
+	case token.EQL, token.NEQ, token.LSS, token.GTR, token.LEQ, token.GEQ:
+		return "cmp"
+	case token.ADD, token.SUB, token.MUL, token.QUO, token.REM:
+		return "arith"
+	case token.AND, token.OR, token.XOR, token.SHL, token.SHR, token.AND_NOT:
+		return "bit"
+	case token.LAND, token.LOR:
+		return "logic"
+	default:
+		return "op"
+	}
+}
+
+func sigClassOf(fn *types.Func) string {
+	if sig, ok := fn.Type().(*types.Signature); ok {
+		return patterns.SigClass(sig)
+	}
+	return "_"
 }
