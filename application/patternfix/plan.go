@@ -21,6 +21,7 @@ type filePlan struct {
 }
 
 type fixPlan struct {
+	skipped []string
 	sources *pdg.SourceContext
 	files   []filePlan
 }

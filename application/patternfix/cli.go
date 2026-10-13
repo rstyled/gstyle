@@ -226,6 +226,9 @@ func applyAndTrack(ctx context.Context, specs []*patterns.FixSpec, opts options,
 	if err != nil {
 		return 0, nil, err
 	}
+	if err := reportSkippedPlans(plan, output); err != nil {
+		return 0, nil, err
+	}
 	if opts.preview != nil {
 		return opts.preview.advance(ctx, plan)
 	}
@@ -253,7 +256,7 @@ func mineCandidates(ctx context.Context, opts options) ([]patterns.Candidate, er
 		return nil, fmt.Errorf("extract: %w", err)
 	}
 	facts, anemicHits, missingHits, serviceHits := toFacts(ext)
-	report := patterns.Run(facts, patterns.Options{DeclarationOrders: ext.DeclarationOrders, OffsetFallbacks: ext.OffsetFallbacks, AnemicModels: anemicHits, MissingIdentities: missingHits, DomainServices: serviceHits})
+	report := patterns.PatternsReport{Candidates: patterns.RunFixCandidates(facts, patterns.Options{DeclarationOrders: ext.DeclarationOrders, OffsetFallbacks: ext.OffsetFallbacks, AnemicModels: anemicHits, MissingIdentities: missingHits, DomainServices: serviceHits}, patterns.CandidateKind(opts.kind))}
 	if err := gopatterns.VerifyParameterizations(&report, ext); err != nil {
 		return nil, fmt.Errorf("verify parameterization: %w", err)
 	}

@@ -229,6 +229,12 @@ type sourceLoadOptions struct {
 	tests     bool
 }
 
+// SourceOverlay holds a simulated source revision and its original disk evidence.
+type SourceOverlay struct {
+	Files map[string][]byte
+	Disk  *pdg.SourceContext
+}
+
 // Extract loads the packages enclosing paths and returns PDGs per
 // function plus anemic-model hits. Paths are directories (".", "./...")
 // or .go files, resolved under root.
@@ -239,12 +245,6 @@ func Extract(ctx context.Context, root string, paths []string) (*Extraction, err
 // ExtractForFix includes test callers in the shared typed source inventory.
 func ExtractForFix(ctx context.Context, root string, paths []string) (*Extraction, error) {
 	return extractWithSources(ctx, root, paths, sourceLoadOptions{tests: true})
-}
-
-// SourceOverlay holds a simulated source revision and its original disk evidence.
-type SourceOverlay struct {
-	Files map[string][]byte
-	Disk  *pdg.SourceContext
 }
 
 // ExtractFixOverlay builds fresh PDG facts for a preview revision without writes.
@@ -338,8 +338,8 @@ func loadPatternSourcesForFix(ctx context.Context, dir string, query []string, o
 		return nil, nil, err
 	}
 	sources := make(map[string]string)
-	config := &packages.Config{Context: ctx, Dir: dir, Mode: packages.LoadSyntax, Tests: options.tests, Overlay: options.overlay, ParseFile: patternSourceParser(sources, options.snapshots)}
-	pkgs, err := packages.Load(config, query...)
+	config := &packages.Config{Context: ctx, Dir: dir, Mode: packages.LoadSyntax, Tests: options.tests, ParseFile: patternSourceParser(sources, options.snapshots)}
+	pkgs, err := loadSourcePackages(config, query, options.overlay)
 	if err != nil {
 		return nil, nil, fmt.Errorf("load Go packages: %w", err)
 	}

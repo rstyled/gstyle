@@ -1,7 +1,6 @@
 package gopatterns
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,7 +37,7 @@ func checkSourceDirectory(context *pdg.SourceContext, dir string) error {
 	for _, entry := range entries {
 		path := filepath.Join(dir, entry.Name())
 		if unsupportedSourceFile(context, path) {
-			return fmt.Errorf("signature reference coverage is incomplete: %s", path)
+			return unsupportedFix("signature reference coverage is incomplete: %s", path)
 		}
 	}
 	return nil
@@ -72,7 +71,7 @@ func checkSignatureDirectives(context *pdg.SourceContext, target pdg.SourceFunct
 		}
 		text := snapshot.Content[comment.Range.Start:comment.Range.End]
 		if strings.HasPrefix(text, "//go:") {
-			return fmt.Errorf("signature rewrite requires unsupported compiler directive evidence: %s", target.Name)
+			return unsupportedFix("signature rewrite requires unsupported compiler directive evidence: %s", target.Name)
 		}
 	}
 	return nil

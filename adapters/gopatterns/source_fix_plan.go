@@ -3,7 +3,6 @@ package gopatterns
 import (
 	"fmt"
 	"go/format"
-	"path/filepath"
 	"sort"
 	"strings"
 	"unicode"
@@ -30,17 +29,30 @@ func newSourceFix(spec *patterns.FixSpec) (*sourceFix, error) {
 		return nil, err
 	}
 	if len(plan.targets) == 0 {
-		return nil, fmt.Errorf("no supported signature targets")
+		return nil, unsupportedFix("no supported signature targets")
+	}
+	if err := plan.checkTargetPackages(); err != nil {
+		return nil, err
 	}
 	return plan, nil
 }
 
+func (p *sourceFix) checkTargetPackages() error {
+	var name string
+	for _, target := range p.targets {
+		if name != "" && name != target.Package {
+			return unsupportedFix("signature targets span multiple packages")
+		}
+		name = target.Package
+	}
+	return nil
+}
+
 func (p *sourceFix) selectTargets(spec *patterns.FixSpec) error {
-	path, err := filepath.Abs(spec.File)
+	ref, err := signatureSourceRef(p.context, spec)
 	if err != nil {
 		return err
 	}
-	ref := p.context.Reference(path)
 	for _, fn := range p.context.Functions {
 		if !signatureTarget(fn, spec, ref) {
 			continue
@@ -71,10 +83,10 @@ func (p *sourceFix) valueNames(group string) error {
 	p.parameterName = lowerFirst(p.typeName)
 	for _, fn := range p.targets {
 		if hasBinding(fn.Bindings, p.parameterName) {
-			return fmt.Errorf("generated parameter collides with a binding")
+			return unsupportedFix("generated parameter collides with a binding")
 		}
 		if !contiguousPositions(p.positions[fn.ID]) {
-			return fmt.Errorf("parameter grouping would change argument evaluation order")
+			return unsupportedFix("parameter grouping would change argument evaluation order")
 		}
 	}
 	return nil
@@ -119,7 +131,7 @@ func (p *sourceFix) parameterUses(fn pdg.SourceFunction, positions []int) error 
 	for _, position := range positions {
 		param := fn.ParametersList[position]
 		if param.Addressed {
-			return fmt.Errorf("parameter address-taking is outside the value-object profile: %s", param.Name)
+			return unsupportedFix("parameter address-taking is outside the value-object profile: %s", param.Name)
 		}
 		for _, span := range param.Uses {
 			if err := p.add(fn.Source, span, p.parameterName+"."+capitalize(param.Name), false); err != nil {
@@ -147,7 +159,7 @@ func (p *sourceFix) add(ref pdg.Ref, span pdg.ByteRange, replacement string, pro
 		return fmt.Errorf("source snapshot is missing")
 	}
 	if protectComments && p.context.HasComment(ref, span) {
-		return fmt.Errorf("rewrite requires unsupported comment relocation in %s", path)
+		return unsupportedFix("rewrite requires unsupported comment relocation in %s", path)
 	}
 	p.edits[ref] = append(p.edits[ref], pdg.SourceEdit{Range: span, Replacement: replacement})
 	return nil
@@ -164,7 +176,7 @@ func (p *sourceFix) calls() error {
 			continue
 		}
 		if !ref.Direct || ref.Variadic {
-			return fmt.Errorf("unsupported function-value or variadic reference to %s", fn.Name)
+			return unsupportedFix("unsupported function-value or variadic reference to %s", fn.Name)
 		}
 		if err := p.call(fn, ref); err != nil {
 			return err
@@ -175,12 +187,12 @@ func (p *sourceFix) calls() error {
 
 func (p *sourceFix) call(fn pdg.SourceFunction, ref pdg.SourceReference) error {
 	if len(ref.Arguments) != len(fn.ParametersList) {
-		return fmt.Errorf("unsupported expanded arguments to %s", fn.Name)
+		return unsupportedFix("unsupported expanded arguments to %s", fn.Name)
 	}
 	path, content, _ := p.context.Source(ref.Source)
 	snapshot := pdg.SourceSnapshot{Path: path, Content: content}
 	if p.context.HasComment(ref.Source, ref.Range) {
-		return fmt.Errorf("call rewrite requires unsupported comment relocation in %s", snapshot.Path)
+		return unsupportedFix("call rewrite requires unsupported comment relocation in %s", snapshot.Path)
 	}
 	arguments, remaining, err := p.callArguments(snapshot, ref)
 	if err != nil {
