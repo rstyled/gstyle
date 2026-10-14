@@ -17,6 +17,9 @@ type errorCheckWalker struct {
 }
 
 func (w *errorCheckWalker) Visit(n ast.Node) ast.Visitor {
+	if _, closure := n.(*ast.FuncLit); closure {
+		return nil
+	}
 	if n == nil {
 		// Pop the stack on exit.
 		w.stack = w.stack[:len(w.stack)-1]
@@ -42,9 +45,10 @@ func (w *errorCheckWalker) visitCall(call *ast.CallExpr) {
 	checked := w.isChecked(call)
 	line := w.fset.Position(call.Pos()).Line
 	*w.sites = append(*w.sites, patterns.ErrorCheckSite{
-		Line:    line,
-		Callee:  callee,
-		Checked: checked,
+		Line:            line,
+		Callee:          callee,
+		Checked:         checked,
+		DiscardedOutput: w.discardsOutput(call),
 		// FuncID is set by the caller (needs the full ID).
 	})
 }
@@ -161,7 +165,7 @@ func findErrorCheckSites(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info
 
 // calleeName extracts the called function name from a call expression.
 func calleeName(call *ast.CallExpr, info *types.Info) string {
-	switch fun := call.Fun.(type) {
+	switch fun := specUnwrapParens(call.Fun).(type) {
 	case *ast.Ident:
 		return fun.Name
 	case *ast.SelectorExpr:

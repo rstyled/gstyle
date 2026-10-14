@@ -150,6 +150,8 @@ const (
 	// own beliefs about error handling (Engler et al., SOSP 2001). If 95%
 	// of callers check an error, the 5% that don't are bugs. Detection-only.
 	DeviantBehavior CandidateKind = "deviant_behavior"
+	// UncheckedOutput flags discarded fmt.Fprint* errors to fallible writers.
+	UncheckedOutput CandidateKind = "unchecked_output"
 	// CCGraphClone finds function-level clones via CCGraph (Zou et al.,
 	// ASE 2020): two-stage filtering (characteristic vectors + Jaro-Winkler
 	// name similarity), WL kernel similarity.
@@ -244,6 +246,7 @@ var FixKindOrder = []CandidateKind{
 	MutableIdentity,
 	Aggregate,
 	Repository,
+	UncheckedOutput,
 	NilErr,
 	ForceTypeAssert,
 	TypedNil,

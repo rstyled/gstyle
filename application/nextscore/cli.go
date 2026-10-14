@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/rstyled/gstyle/application/patterncheck"
 	"github.com/rstyled/gstyle/domain/patterns"
@@ -16,10 +17,17 @@ func Run(ctx context.Context, args []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
+	_, err = io.WriteString(output, nextText(report))
+	return err
+}
+
+func nextText(report *patterns.PatternsReport) string {
+	var text strings.Builder
+	output := &text
 	if len(report.Candidates) == 0 {
 		fmt.Fprintln(output, "No pattern candidates.")
 		writeAnalysisCoverage(output, report.AnalysisCoverage)
-		return nil
+		return text.String()
 	}
 	writeAnalysisCoverage(output, report.AnalysisCoverage)
 	top := report.Candidates[0]
@@ -30,7 +38,7 @@ func Run(ctx context.Context, args []string, output io.Writer) error {
 		fmt.Fprintf(output, "  %s:%d %s\n", s.Path, s.Line, s.Name)
 	}
 	writeFixInstructions(output, top)
-	return nil
+	return text.String()
 }
 
 // Score implements `gstyle score`: a single 0-100 north-star number.
@@ -40,6 +48,13 @@ func Score(ctx context.Context, args []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
+	_, err = io.WriteString(output, scoreText(report))
+	return err
+}
+
+func scoreText(report *patterns.PatternsReport) string {
+	var text strings.Builder
+	output := &text
 	score := computeScore(report)
 	fmt.Fprintf(output, "Score: %d/100\n", score)
 	fmt.Fprintf(output, "  %d active candidates", len(report.Candidates))
@@ -48,7 +63,7 @@ func Score(ctx context.Context, args []string, output io.Writer) error {
 	}
 	fmt.Fprintln(output)
 	writeAnalysisCoverage(output, report.AnalysisCoverage)
-	return nil
+	return text.String()
 }
 
 // computeScore maps candidates to 0-100. Each candidate deducts points
@@ -66,14 +81,14 @@ func computeScore(report *patterns.PatternsReport) int {
 	return score
 }
 
-func writeAnalysisCoverage(output io.Writer, coverage []patterns.AnalysisCoverage) {
+func writeAnalysisCoverage(output *strings.Builder, coverage []patterns.AnalysisCoverage) {
 	if !patterns.HasIncompleteAnalysis(coverage) {
 		return
 	}
 	fmt.Fprintln(output, "Dependency analysis coverage is incomplete; see gstyle patterns for details.")
 }
 
-func writeFixInstructions(output io.Writer, candidate patterns.Candidate) {
+func writeFixInstructions(output *strings.Builder, candidate patterns.Candidate) {
 	if candidate.FixSpec == nil {
 		fmt.Fprintln(output, "\nAdvisory finding: no automatic fix is available.")
 		return
