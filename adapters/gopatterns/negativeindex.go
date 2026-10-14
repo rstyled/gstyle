@@ -273,6 +273,6 @@ func orderedUpperChecks(checks map[*ast.Ident]token.Pos) []*ast.Ident {
 	for id := range checks {
 		ids = append(ids, id)
 	}
-	sort.Slice(ids, func(i, j int) bool { return checks[ids[i]] < checks[ids[j]] })
+	sort.Slice(ids, func(i, j int) bool { return ids[i].Pos() < ids[j].Pos() })
 	return ids
 }

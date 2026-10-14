@@ -96,3 +96,20 @@ func TestNegativeIndexOneFindingPerBinding(t *testing.T) {
 		}
 	}
 }
+
+func TestNegativeIndexStableOrderWithinGuard(t *testing.T) {
+	src := `package example; func At(s []int, i, j int) int { if i >= len(s) && j >= len(s) { return -1 }; return s[i] + s[j] }`
+	var first string
+	for range 30 {
+		got := negativeIndexTestCandidates(t, src)
+		if len(got) != 2 {
+			t.Fatalf("got %d findings, want two", len(got))
+		}
+		if first == "" {
+			first = got[0].Observation
+		}
+		if got[0].Observation != first {
+			t.Fatalf("unstable order: %s then %s", first, got[0].Observation)
+		}
+	}
+}
