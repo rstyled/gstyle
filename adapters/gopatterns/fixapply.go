@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/format"
+	"go/scanner"
 	"go/token"
 	"strconv"
 	"strings"
@@ -342,7 +343,7 @@ func importEndOffset(fset *token.FileSet, f *ast.File, src []byte) int {
 	if pos := lastImportEnd(f, f.Imports); pos != 0 {
 		return fset.Position(pos).Offset
 	}
-	return packageEndOffset(fset, f, src)
+	return packageEndOffset(src)
 }
 
 // lastImportEnd finds the end position of the GenDecl containing the last import.
@@ -373,13 +374,29 @@ func genContainsImport(gen *ast.GenDecl, target *ast.ImportSpec) bool {
 	return false
 }
 
-// packageEndOffset returns the offset after the package clause newline.
-func packageEndOffset(fset *token.FileSet, f *ast.File, src []byte) int {
-	offset := fset.Position(f.Name.End()).Offset
-	for offset < len(src) && src[offset] != '\n' {
-		offset++
+// packageEndOffset returns the end of the package clause's explicit or
+// implicit semicolon. Scanning respects comments and EOF without a newline.
+func packageEndOffset(src []byte) int {
+	file := token.NewFileSet().AddFile("", -1, len(src))
+	var lexer scanner.Scanner
+	lexer.Init(file, src, nil, scanner.ScanComments)
+	commentEnd := 0
+	for {
+		pos, kind, literal := lexer.Scan()
+		offset := file.Offset(pos)
+		switch kind {
+		case token.EOF:
+			return len(src)
+		case token.COMMENT:
+			if strings.HasPrefix(literal, "/*") {
+				// An implicit semicolon can point inside a multiline comment. Keep
+				// the complete raw comment, including any CR bytes omitted by Scan.
+				commentEnd = offset + 4 + bytes.Index(src[offset+2:], []byte("*/"))
+			}
+		case token.SEMICOLON:
+			return max(commentEnd, min(offset+1, len(src)))
+		}
 	}
-	return offset + 1
 }
 
 // applyPrimitiveObsessionFix applies a primitive_obsession FixSpec.
