@@ -127,6 +127,10 @@ const (
 	// different pointer is dereferenced without a guard of its own.
 	// Detection-only: which variable was meant to be guarded is intent.
 	NilGuard CandidateKind = "nil_guard"
+	// NegativeIndex flags an upper-bound index check with no lower-bound
+	// check while the index is used. Detection-only: whether negative
+	// indices can arrive is a contract question.
+	NegativeIndex CandidateKind = "negative_index"
 	// DependenceCluster flags functions whose PDG contains a large
 	// strongly-connected region — "everything affects everything"
 	// spaghetti that resists testing. Following Binkley & Harman.
@@ -239,6 +243,7 @@ var FixKindOrder = []CandidateKind{
 	ForceTypeAssert,
 	TypedNil,
 	NilGuard,
+	NegativeIndex,
 	DependenceCluster,
 	MinedRule,
 	DeviantBehavior,

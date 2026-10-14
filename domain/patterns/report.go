@@ -34,6 +34,8 @@ type Options struct {
 	OffsetFallbacks []Candidate
 	// NilGuards are nil-guard-on-wrong-variable findings from typed source analysis.
 	NilGuards []Candidate
+	// NegativeIndices are missing-lower-bound index findings from typed source analysis.
+	NegativeIndices []Candidate
 	// MinScoreMilli drops groups and candidates scoring below this.
 	MinScoreMilli uint32
 	// Top keeps only the first N groups and candidates (all when nil).
@@ -101,6 +103,7 @@ var singleFunctionBuilders = []singleFunctionBuilder{
 	{ForceTypeAssert, func(prepared []*MiningFacts, options Options) []Candidate { return forceTypeAssertCandidates(prepared) }},
 	{TypedNil, func(prepared []*MiningFacts, options Options) []Candidate { return typedNilCandidates(prepared) }},
 	{NilGuard, func(_ []*MiningFacts, options Options) []Candidate { return options.NilGuards }},
+	{NegativeIndex, func(_ []*MiningFacts, options Options) []Candidate { return options.NegativeIndices }},
 	{DependenceCluster, func(prepared []*MiningFacts, options Options) []Candidate {
 		clusters := FindDepClusters(prepared)
 		return DepClusterCandidates(clusters, prepared)
