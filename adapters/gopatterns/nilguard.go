@@ -13,6 +13,12 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
+type nilDeref struct {
+	obj  types.Object
+	name string
+	pos  token.Pos
+}
+
 // findNilGuards flags functions where a nil guard checks one pointer while a
 // different pointer is dereferenced without a guard of its own. Detection-only:
 // which variable the author meant to guard is intent, not syntax.
@@ -77,12 +83,6 @@ func collectNilGuarded(fn *ast.FuncDecl, info *types.Info) map[types.Object]bool
 		return true
 	})
 	return guarded
-}
-
-type nilDeref struct {
-	obj  types.Object
-	name string
-	pos  token.Pos
 }
 
 // collectUnguardedDerefs returns the first dereference site per pointer object
