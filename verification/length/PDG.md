@@ -57,3 +57,8 @@ Next: define traversal contracts for actual canonical operations, types, result
 slots and bindings; prove those queries; then prove a complete finding such as
 an explicitly discarded error using those facts. Anti-unification continues to
 propose candidates and does not become a trusted proof step.
+
+Dependencies are checked once before mutation tests. A mutation counts as
+rejected only for a recognized proof failure in its expected proof module.
+Missing modules, syntax errors, unrelated diagnostics and mixed setup/proof
+failures abort verification. No unchanged build is added per mutation.

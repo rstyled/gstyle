@@ -30,13 +30,30 @@ MUTATIONS = {
 }
 
 
-def run(command, cwd, log, *, expect_failure=False, report=None):
+def proof_rejected(output, proof_file):
+    diagnostic = re.compile(r"error: " + re.escape(proof_file) + r":\d+:\d+: (.*)")
+    found = False
+    for line in output.splitlines():
+        if not line.startswith("error:") or line == "error: build failed":
+            continue
+        match = diagnostic.fullmatch(line)
+        if match is None:
+            return False
+        message = match.group(1)
+        if not (message == "unsolved goals" or message.startswith("iapply: cannot apply ") or
+                message == "wp_if_destruct: no `decide` or Boolean variable in the expression"):
+            return False
+        found = True
+    return found
+
+
+def run(command, cwd, log, *, expect_failure=False, report=None, proof_file=None):
     report = report or REPORT
     result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, timeout=1800)
     output = result.stdout + result.stderr
     (report / log).write_text(output)
     if expect_failure:
-        if result.returncode == 0 or "error: Gstyle/Proof/" not in output:
+        if result.returncode == 0 or proof_file is None or not proof_rejected(output, proof_file):
             raise RuntimeError(f"mutation does not fail its proof: {log}")
     elif result.returncode != 0:
         raise RuntimeError(f"command failed; see {report / log}")
@@ -66,13 +83,14 @@ class Profile:
     theorems: set
     mutations: dict
     audit: str
+    proof_file: str
     verified: str
     unverified: tuple
 
 
 def length_profile():
     return Profile(REPORT, PACKAGE, GO_PACKAGE, SOURCE, (SOURCE,), THEOREMS,
-                   MUTATIONS, "Audit.lean", "ordered token-span accumulator and strict threshold",
+                   MUTATIONS, "Audit.lean", "Gstyle/Proof/Length.lean", "ordered token-span accumulator and strict threshold",
                    ("Go scanner", "token-to-span extraction", "configuration and diagnostics"))
 
 
@@ -94,7 +112,7 @@ def pdg_profile():
             "forge-missing-status": ("return Unknown", "return Supported"),
             "admit-inapplicable-edge": ("return status == Supported || status == Known\n", "return status == Supported || status == Known || status == NotApplicable\n"),
         },
-        "AuditQueries.lean", "PDG reference/evidence/Boolean queries and composed admission gates",
+        "AuditQueries.lean", "Gstyle/Proof/Queries.lean", "PDG reference/evidence/Boolean queries and composed admission gates",
         ("Go-to-PDG extraction", "graph snapshot provenance", "name-to-capability lookup",
          "whole-graph traversal", "pattern findings and rewrite semantics"),
     )
@@ -132,7 +150,7 @@ def check_mutations(profile, goose, proofgen):
             (lean / ".lake").mkdir()
             (lean / ".lake/packages").symlink_to(PROJECT / ".lake/packages", target_is_directory=True)
             generate(profile, goose, proofgen, work / "go", lean / "Gstyle", name)
-            run(["lake", "build"], lean, f"{name}-proof.log", expect_failure=True, report=profile.report)
+            run(["lake", "build"], lean, f"{name}-proof.log", expect_failure=True, report=profile.report, proof_file=profile.proof_file)
             results.append(name)
             print(f"REJECTED {name}", flush=True)
     return results
