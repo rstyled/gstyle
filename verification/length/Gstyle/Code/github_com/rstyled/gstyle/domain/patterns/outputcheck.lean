@@ -37,6 +37,12 @@ noncomputable def Discards [FfiSyntax] [GoGlobalContext] : GoString :=
 noncomputable def Select [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/patterns/outputcheck.Select"
 
+noncomputable def Formatted [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/patterns/outputcheck.Formatted"
+
+noncomputable def Memory [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/patterns/outputcheck.Memory"
+
 /-- go: output.go:12:6 -/
 noncomputable def Discards.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "input"
@@ -100,6 +106,26 @@ noncomputable def Select.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val (GoInstruction (GoLoad (go.GoType.SliceType Site.ty)))) (Var "out")))
   (App (Val doExecute)
   (Val #()))))))))))
+
+/-- go: output.go:44:6 -/
+noncomputable def Formatted.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "pkg"
+  (Lam "name"
+  (App (Val exceptionDo)
+  (Let "name" (App (Val (GoInstruction (GoAlloc go.string))) (Var "name"))
+  (Let "pkg" (App (Val (GoInstruction (GoAlloc go.string))) (Var "pkg"))
+  (App (Val doReturn)
+  (If (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "pkg")) (Val #(go!"fmt")))) (If (If (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "name")) (Val #(go!"Fprint")))) (Val #true) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "name")) (Val #(go!"Fprintf"))))) (Val #true) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "name")) (Val #(go!"Fprintln"))))) (Val #false))))))))
+
+/-- go: output.go:48:6 -/
+noncomputable def Memory.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "pkg"
+  (Lam "name"
+  (App (Val exceptionDo)
+  (Let "name" (App (Val (GoInstruction (GoAlloc go.string))) (Var "name"))
+  (Let "pkg" (App (Val (GoInstruction (GoAlloc go.string))) (Var "pkg"))
+  (App (Val doReturn)
+  (If (If (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "pkg")) (Val #(go!"bytes")))) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "name")) (Val #(go!"Buffer")))) (Val #false)) (Val #true) (If (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "pkg")) (Val #(go!"strings")))) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "name")) (Val #(go!"Builder")))) (Val #false)))))))))
 
 instance info' : PkgInfo pkg_id.github_com.rstyled.gstyle.domain.patterns.outputcheck where
   pkgImportedPkgs := []
@@ -236,11 +262,15 @@ class Assumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFun
   Site_instance : Site.TypeAssumptions
   Discards_unfold : FuncUnfold Discards [] Discards.impl
   Select_unfold : FuncUnfold Select [] Select.impl
+  Formatted_unfold : FuncUnfold Formatted [] Formatted.impl
+  Memory_unfold : FuncUnfold Memory [] Memory.impl
 
 attribute [instance] Assumptions.Decision_instance
   Assumptions.Site_instance
   Assumptions.Discards_unfold
   Assumptions.Select_unfold
+  Assumptions.Formatted_unfold
+  Assumptions.Memory_unfold
 
 end github_com.rstyled.gstyle.domain.patterns.outputcheck
 

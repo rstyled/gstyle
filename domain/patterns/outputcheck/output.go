@@ -40,3 +40,11 @@ func Select(sites []Site, suppressed bool) []Site {
 	}
 	return out
 }
+
+func Formatted(pkg, name string) bool {
+	return pkg == "fmt" && (name == "Fprint" || name == "Fprintf" || name == "Fprintln")
+}
+
+func Memory(pkg, name string) bool {
+	return (pkg == "bytes" && name == "Buffer") || (pkg == "strings" && name == "Builder")
+}

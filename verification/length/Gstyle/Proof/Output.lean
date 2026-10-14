@@ -15,6 +15,35 @@ local notation "pkg" => pkg_id.github_com.rstyled.gstyle.domain.patterns.outputc
 instance isPkgInit_inst : IsPkgInit (IProp GF) pkg := define_is_pkg_init iprop(True)
 instance get_isPkgInit_wf_inst : GetIsPkgInitWf (IProp GF) pkg := build_get_is_pkg_init_wf
 
+theorem wp_Formatted (pkgName name : GoString) :
+    {{ isPkgInit (PROP := IProp GF) pkg }}
+      (App (App (Val (@! Formatted)) (Val #pkgName)) (Val #name))
+    {{ RET #(decide (pkgName = go!"fmt" ∧
+      (name = go!"Fprint" ∨ name = go!"Fprintf" ∨ name = go!"Fprintln"))); True }} := by
+  wp_start
+  wp_auto
+  by_cases hp : pkgName = go!"fmt" <;>
+    by_cases h0 : name = go!"Fprint" <;>
+    by_cases h1 : name = go!"Fprintf" <;>
+    by_cases h2 : name = go!"Fprintln"
+  all_goals iterate 5 (try simp [hp, h0, h1, h2]; try wp_auto)
+  all_goals wp_end
+
+theorem wp_Memory (pkgName name : GoString) :
+    {{ isPkgInit (PROP := IProp GF) pkg }}
+      (App (App (Val (@! Memory)) (Val #pkgName)) (Val #name))
+    {{ RET #(decide ((pkgName = go!"bytes" ∧ name = go!"Buffer") ∨
+      (pkgName = go!"strings" ∧ name = go!"Builder"))); True }} := by
+  wp_start
+  wp_auto
+  by_cases hp : pkgName = go!"bytes" <;>
+    by_cases hq : pkgName = go!"strings" <;>
+    by_cases h0 : name = go!"Buffer" <;>
+    by_cases h1 : name = go!"Builder"
+  all_goals iterate 5 (try simp [hp, hq, h0, h1]; try wp_auto)
+  all_goals wp_end
+
+
 def discarded (input : Decision) : Bool :=
   input.Formatted' && !input.Memory' &&
     (input.Standalone' || (decide (input.Values' = (1#64)) &&

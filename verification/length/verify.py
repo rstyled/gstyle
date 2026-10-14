@@ -128,8 +128,12 @@ def output_profile():
     return Profile(
         ROOT / "dist/verification/unchecked-output", "github_com/rstyled/gstyle/domain/patterns/outputcheck.lean",
         "./domain/patterns/outputcheck", source, (source,),
-        {prefix + name for name in ("wp_Discards", "wp_Select")},
+        {prefix + name for name in ("wp_Discards", "wp_Select", "wp_Formatted", "wp_Memory")},
         {
+            "wrong-function-package": ('pkg == "fmt"', 'pkg != "fmt"'),
+            "miss-fprintln": (' || name == "Fprintln"', ''),
+            "wrong-writer-package": ('pkg == "bytes"', 'pkg != "bytes"'),
+            "cross-writer-identity": ('name == "Buffer"', 'name == "Builder"'),
             "unrecognized-function": ("!input.Formatted || input.Memory", "input.Memory"),
             "memory-writer": ("!input.Formatted || input.Memory", "!input.Formatted"),
             "wrong-result-count": ("input.Results == 2", "input.Results == 1"),

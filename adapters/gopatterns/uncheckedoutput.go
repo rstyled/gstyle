@@ -3,7 +3,6 @@ package gopatterns
 import (
 	"go/ast"
 	"go/types"
-	"slices"
 
 	"github.com/rstyled/gstyle/domain/patterns/outputcheck"
 )
@@ -45,7 +44,7 @@ func formattedOutputCall(call *ast.CallExpr, info *types.Info) bool {
 	if !ok || function.Pkg() == nil {
 		return false
 	}
-	return function.Pkg().Path() == "fmt" && slices.Contains([]string{"Fprint", "Fprintf", "Fprintln"}, function.Name())
+	return outputcheck.Formatted(function.Pkg().Path(), function.Name())
 }
 
 func memoryOutput(typ types.Type) bool {
@@ -57,8 +56,7 @@ func memoryOutput(typ types.Type) bool {
 	if !ok || named.Obj().Pkg() == nil {
 		return false
 	}
-	key := named.Obj().Pkg().Path() + "." + named.Obj().Name()
-	return slices.Contains([]string{"bytes.Buffer", "strings.Builder"}, key)
+	return outputcheck.Memory(named.Obj().Pkg().Path(), named.Obj().Name())
 }
 
 func blankOutputTarget(targets []ast.Expr) bool {

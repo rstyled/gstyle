@@ -8,14 +8,22 @@ The former Gobra pilot and Docker job are removed.
 
 `domain/patterns/outputcheck` contains the translated production code.
 
-`Discards` returns true exactly when all of these hold:
+`Formatted` accepts exactly package `fmt` and one of `Fprint`, `Fprintf`, or
+`Fprintln`. `Memory` accepts exactly the pairs `(bytes, Buffer)` and
+`(strings, Builder)`. These policies operate on separate package and type/name
+strings; they do not accept a matching short name from another package. Their
+Lean contracts cover all strings. The adapter calls these functions after it
+resolves the callee to a function and the writer to a pointer to a named type.
+
+Given those classified facts, `Discards` returns true exactly when all of these hold:
 
 - the call is a typed stdlib `fmt.Fprint`, `fmt.Fprintf`, or `fmt.Fprintln`;
 - the writer's static type is not `*bytes.Buffer` or `*strings.Builder`;
 - the call is a standalone expression, or its sole result tuple is bound to two
   targets with `_` in the error slot.
 
-The first two facts and the syntax classification come from the Go adapter.
+The Go adapter supplies type identities and syntax classification. The identity
+policies and Boolean decision execute in the proved package.
 The Lean decision theorem covers every Boolean input and every 64-bit count,
 including negative and extreme counts, without assuming inputs are valid counts.
 Two results means the selected fmt functions' `(int, error)` tuple; it is not
@@ -36,15 +44,16 @@ package path changes to `domain/patterns/outputcheck`.
 ## Pipeline and checks
 
 Verification builds pinned dependencies once per run, regenerates the actual
-Go translation, compares it with the committed translation, checks both Lean
+Go translation, compares it with the committed translation, checks all four Lean
 theorems and audits their axioms. The allowed axioms are `propext`,
 `Classical.choice` and `Quot.sound`. No `sorry`, native decision axioms, or
 replacement implementations are admitted by this profile.
 
-Ten Go mutants must fail the unchanged proofs: unrecognized function, memory
+Fourteen Go mutants must fail the unchanged proofs: unrecognized function, memory
 writer, wrong result count, wrong value count, handled error, missed standalone
 call, ignored suppression, inverted selection, skipped last site and duplicated
-site. Tool or dependency errors abort verification instead of passing a mutant.
+site, wrong function package, omitted Fprintln, wrong writer package, and a
+crossed writer identity. Tool or dependency errors abort verification instead of passing a mutant.
 
 Go tests cross the syntax, writer and call forms at the extraction boundary;
 exercise negative and extreme decision counts; and enumerate all selection

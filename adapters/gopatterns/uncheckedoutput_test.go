@@ -28,6 +28,8 @@ func TestUncheckedOutputEdges(t *testing.T) {
 		{"builder alias", "io;fmt;strings", `type Memory = strings.Builder`, `var b Memory;fmt.Fprintln(&b,"text")`, 0},
 		{"interface hides buffer", "io;fmt;bytes", "", `var b bytes.Buffer;var out io.Writer=&b;fmt.Fprintln(out,"text")`, 1},
 		{"custom buffer can fail", "io;fmt;bytes", `type Buffer struct{bytes.Buffer};func(*Buffer)Write([]byte)(int,error){return 0,io.ErrClosedPipe}`, `var b Buffer;fmt.Fprintln(&b,"text")`, 1},
+		{"custom builder can fail", "io;fmt;strings", `type Builder struct{strings.Builder};func(*Builder)Write([]byte)(int,error){return 0,io.ErrClosedPipe}`, `var b Builder;fmt.Fprintln(&b,"text")`, 1},
+
 		{"local function shadow", "io;fmt", `type Printer struct{Fprintln func(io.Writer,...any)(int,error)}`, `fmt:=Printer{Fprintln:fmt.Fprintln};fmt.Fprintln(w,"text")`, 0},
 		{"indirect call excluded", "io;fmt", "", `print:=fmt.Fprintln;print(w,"text")`, 0},
 		{"deferred call excluded", "io;fmt", "", `defer fmt.Fprintln(w,"text")`, 0},
