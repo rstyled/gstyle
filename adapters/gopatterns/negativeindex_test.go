@@ -121,3 +121,20 @@ func TestNegativeStringIndexReview(t *testing.T) {
 		t.Fatalf("safe string access: got %d findings", len(got))
 	}
 }
+
+func TestNegativePointerArrayIndex(t *testing.T) {
+	cases := []struct {
+		body string
+		want int
+	}{
+		{`if i>=len(s){return 0};return s[i]`, 1},
+		{`if i<0 || i>=len(s){return 0};return s[i]`, 0},
+		{`for i=range s{if i<len(s){return s[i]}};return 0`, 0},
+	}
+	for _, tc := range cases {
+		src := `package p;func f(s *[3]int,i int)int{` + tc.body + `}`
+		if got := negativeIndexTestCandidates(t, src); len(got) != tc.want {
+			t.Fatalf("%s: got %d findings,want %d", tc.body, len(got), tc.want)
+		}
+	}
+}
