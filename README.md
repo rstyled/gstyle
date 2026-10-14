@@ -241,3 +241,11 @@ semantic-pattern dependency and interface admission rules. The command audits
 twelve theorems, checks generated source, and rejects six deliberate Go bugs. See the
 [PDG proof scope](verification/length/PDG.md); complete graph traversals and
 pattern findings are not yet formally proved.
+
+### Lean verification of the negative-index core
+
+Run `make verify-negative-index` using the same pinned Lean project. The current
+stage proves that the production interval join preserves both input sets and
+that the risk decision reports represented negative values when its pattern
+triggers apply. PDG transfer/traversal and candidate construction remain outside
+this proof. See [the negative-index verification scope](verification/length/NEGATIVE_INDEX.md).

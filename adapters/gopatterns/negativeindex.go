@@ -4,6 +4,7 @@ import (
 	"github.com/rstyled/gstyle/domain/patterns"
 	"github.com/rstyled/gstyle/domain/pdg"
 	"github.com/rstyled/gstyle/domain/runtimeguard"
+	"github.com/rstyled/gstyle/domain/runtimeguard/interval"
 )
 
 func negativeIndexCandidates(function FuncPdg, report runtimeguard.Report) []patterns.Candidate {
@@ -28,8 +29,5 @@ func negativeIndexCandidates(function FuncPdg, report runtimeguard.Report) []pat
 }
 
 func negativeIndexRisk(site runtimeguard.Access) bool {
-	if !site.Index || !site.Value.UpperChecked {
-		return false
-	}
-	return !site.Value.HasLower || site.Value.Lower < 0
+	return interval.NegativeIndex(site.Index, site.Value.UpperChecked, site.Value.Bounds())
 }

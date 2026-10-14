@@ -5,7 +5,8 @@ external dependencies. Lean dependencies are development-only and pinned in
 `lakefile.toml`, `lake-manifest.json` and `lean-toolchain`.
 
 This directory also hosts the [PDG query proofs](PDG.md) and the
-[unchecked-output proofs](OUTPUT.md). Each has its own verification profile,
+[unchecked-output proofs](OUTPUT.md), and [negative-index core](NEGATIVE_INDEX.md).
+Each has its own verification profile,
 axiom audit and mutation controls.
 
 The production metric counts physical lines containing Go tokens. Blank lines,

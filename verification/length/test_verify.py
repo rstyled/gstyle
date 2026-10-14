@@ -80,7 +80,8 @@ class VerificationGuardTests(unittest.TestCase):
     def test_each_mutation_builds_only_its_profile_proof(self):
         for factory, module in ((verify.length_profile, "Gstyle.Proof.Length"),
                                 (verify.pdg_profile, "Gstyle.Proof.Queries"),
-                                (verify.output_profile, "Gstyle.Proof.Output")):
+                                (verify.output_profile, "Gstyle.Proof.Output"),
+                                (verify.interval_profile, "Gstyle.Proof.Interval")):
             profile = factory()
             mutation = next(iter(profile.mutations.items()))
             with self.subTest(package=profile.package), tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:

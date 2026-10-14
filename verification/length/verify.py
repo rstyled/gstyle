@@ -171,6 +171,30 @@ def output_profile():
     )
 
 
+def interval_profile():
+    source = ROOT / "domain/runtimeguard/interval/interval.go"
+    prefix = "Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval."
+    return Profile(
+        ROOT / "dist/verification/negative-index", "github_com/rstyled/gstyle/domain/runtimeguard/interval.lean",
+        "./domain/runtimeguard/interval", source, (source,),
+        {prefix + name for name in ("join_sound", "negative_detected", "wp_Join", "wp_NegativeIndex", "wp_JoinSound", "wp_NegativeDetected")},
+        {
+            "narrow-lower-bound": ("min(a.Lower, b.Lower)", "max(a.Lower, b.Lower)"),
+            "narrow-upper-bound": ("max(a.Upper, b.Upper)", "min(a.Upper, b.Upper)"),
+            "forge-known-lower": ("a.HasLower && b.HasLower", "a.HasLower || b.HasLower"),
+            "forge-known-upper": ("a.HasUpper && b.HasUpper", "a.HasUpper || b.HasUpper"),
+            "stale-unknown-lower": ("r.Lower = 0", "r.Lower = r.Lower"),
+            "stale-unknown-upper": ("r.Upper = 0", "r.Upper = r.Upper"),
+            "warn-without-index": ("!index || !upperChecked", "!upperChecked"),
+            "warn-without-upper-check": ("!index || !upperChecked", "!index"),
+            "treat-zero-as-negative": ("r.Lower < 0", "r.Lower <= 0"),
+            "trust-unknown-lower": ("!r.HasLower || r.Lower < 0", "r.Lower < 0"),
+        },
+        "AuditInterval.lean", "Gstyle/Proof/Interval.lean", "sound interval join and negative-index decision",
+        ("PDG extraction", "state transfer and fixpoint traversal", "Value-to-Range projection", "candidate deduplication and rendering"),
+    )
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         run([str(tool), "-out", str(output / directory),
@@ -248,10 +272,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile}
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile}
         arguments = tuple(sys.argv[1:])
         if arguments not in profiles:
-            raise SystemExit("usage: verify.py [--pdg | --output]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval]")
         main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

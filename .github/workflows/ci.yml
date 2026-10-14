@@ -100,8 +100,8 @@ jobs:
           ./elan-init -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
-      - name: Verify production length, PDG queries, and unchecked output in Lean
-        run: make verify-length verify-pdg verify-output
+      - name: Verify production cores in Lean
+        run: make verify-length verify-pdg verify-output verify-negative-index
 
       - name: Preserve proof evidence
         if: always()
@@ -129,3 +129,12 @@ jobs:
           path: |
             dist/verification/unchecked-output/*.log
             dist/verification/unchecked-output/result.json
+
+      - name: Preserve negative-index proof evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: negative-index-proof
+          path: |
+            dist/verification/negative-index/*.log
+            dist/verification/negative-index/result.json
