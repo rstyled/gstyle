@@ -196,28 +196,40 @@ func extractFile(pkg *packages.Package, file *ast.File, path, filename string) (
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", path, err)
 	}
-	return extractDeclarations(pkg, file, path, source), nil
+	return extractDeclarations(pkg, file, path, source)
 }
 
-func extractDeclarations(pkg *packages.Package, file *ast.File, path string, source []byte) []quality.Function {
+func extractDeclarations(pkg *packages.Package, file *ast.File, path string, source []byte) ([]quality.Function, error) {
 	facts := []quality.Function{}
 	for _, declaration := range file.Decls {
 		function, ok := declaration.(*ast.FuncDecl)
 		if !ok {
-			facts = append(facts, extractInitializers(pkg, declaration, path, source)...)
+			initializers, err := extractInitializers(pkg, declaration, path, source)
+			if err != nil {
+				return nil, err
+			}
+			facts = append(facts, initializers...)
 			continue
 		}
 		if function.Body == nil {
 			continue
 		}
-		facts = append(facts, extractFunction(pkg, function, path, source))
+		fact, err := extractFunction(pkg, function, path, source)
+		if err != nil {
+			return nil, err
+		}
+		facts = append(facts, fact)
 	}
-	return facts
+	return facts, nil
 }
 
-func extractInitializers(pkg *packages.Package, declaration ast.Decl, path string, source []byte) []quality.Function {
+func extractInitializers(pkg *packages.Package, declaration ast.Decl, path string, source []byte) ([]quality.Function, error) {
 	facts := []quality.Function{}
+	var extractErr error
 	ast.Inspect(declaration, func(node ast.Node) bool {
+		if extractErr != nil {
+			return false
+		}
 		literal, ok := node.(*ast.FuncLit)
 		if !ok {
 			return true
@@ -226,10 +238,15 @@ func extractInitializers(pkg *packages.Package, declaration ast.Decl, path strin
 		name := fmt.Sprintf("%s.<literal@%d:%d>", pkg.PkgPath, pos.Line, pos.Column)
 		// No Doc: a declaration's suppression cannot target an embedded literal.
 		function := &ast.FuncDecl{Name: ast.NewIdent(name), Type: literal.Type, Body: literal.Body}
-		facts = append(facts, extractFunction(pkg, function, path, source))
+		fact, err := extractFunction(pkg, function, path, source)
+		if err != nil {
+			extractErr = err
+			return false
+		}
+		facts = append(facts, fact)
 		return false
 	})
-	return facts
+	return facts, extractErr
 }
 
 func compareFacts(a, b quality.Function) int {

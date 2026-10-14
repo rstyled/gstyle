@@ -98,3 +98,32 @@ jobs:
         with:
           name: unchecked-output-proof
           path: dist/verification/unchecked-output/
+
+  verify-length:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Install pinned Lean toolchain manager
+        run: |
+          curl -sSfL https://github.com/leanprover/elan/releases/download/v4.2.4/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          ./elan-init -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Verify production line counter in Lean and reject mutations
+        run: make verify-length
+
+      - name: Preserve proof evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: function-length-proof
+          path: |
+            dist/verification/function-length/*.log
+            dist/verification/function-length/result.json

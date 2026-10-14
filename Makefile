@@ -56,3 +56,10 @@ test-race:
 verify-output:
 	python3 -B -m unittest discover -s verification -p 'test_*.py'
 	python3 -B verification/unchecked_output.py
+
+.PHONY: verify-length
+
+# Actual Go -> Goose -> Lean/Iris, including source binding and negative controls.
+verify-length:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py

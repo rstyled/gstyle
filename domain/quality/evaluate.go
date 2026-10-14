@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/rstyled/gstyle/domain/quality/linecount"
 )
 
 // ruleCheck keeps a measurement, its policy, and supporting evidence together.
@@ -213,7 +215,7 @@ func parameterBudget(f Function, c Config) int64 {
 }
 
 func appendRule(ds []Diagnostic, loc Location, check ruleCheck, allowed []string) []Diagnostic {
-	if !check.rule.Enabled || check.actual <= check.rule.Max || slices.Contains(allowed, check.id) {
+	if !check.rule.Enabled || !linecount.Exceeds(check.actual, check.rule.Max) || slices.Contains(allowed, check.id) {
 		return ds
 	}
 	return append(ds, Diagnostic{
