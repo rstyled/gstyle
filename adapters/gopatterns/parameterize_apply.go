@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"go/ast"
+	"go/token"
 
 	"github.com/rstyled/gstyle/domain/patterns"
 )
@@ -19,8 +21,9 @@ func applyParameterizeFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	normalizeParameterizationFile(spec, fset, file, a, b)
 	candidates := []patterns.Candidate{{Kind: patterns.Parameterize, Sites: []patterns.Site{{Name: a}, {Name: b}}}}
-	out, _, err := fixParameterizeWithTypes(fset, file, src, parameterizeConfig{candidates: candidates, signatures: signatures, helperName: spec.Params["helper_name"]})
+	out, _, err := fixParameterizeWithTypes(fset, file, src, parameterizeConfig{typedInterfaces: true, candidates: candidates, signatures: signatures, helperName: spec.Params["helper_name"]})
 	return out, err
 }
 
@@ -44,3 +47,14 @@ func parameterizationProof(spec *patterns.FixSpec, src []byte) (string, string, 
 }
 
 func validParameterizationPair(a, b string) bool { return a != "" && b != "" && a != b }
+
+func normalizeParameterizationFile(spec *patterns.FixSpec, fset *token.FileSet, file *ast.File, a, b string) {
+	first, second := namedFreeFunction(file, a), namedFreeFunction(file, b)
+	if first == nil || second == nil {
+		return
+	}
+	path := fixSourcePath(spec.Context.Root, spec.File)
+	snapshot, _ := spec.Context.Snapshot(spec.Context.Reference(path))
+	source := &parameterizationSource{snapshot: snapshot, fset: fset, file: file}
+	normalizeParameterizationImports(&parameterizationPair{first: source, second: source, a: first, b: second})
+}

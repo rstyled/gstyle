@@ -51,6 +51,9 @@ func (source *parameterizationSource) rewriteRisk(pair *parameterizationPair) st
 	if frameSensitiveCalls(pair.left) || frameSensitiveCalls(pair.right) {
 		return "helper extraction changes the frame of recover or stack inspection"
 	}
+	if reason := parameterizationImportRisk(pair); reason != "" {
+		return reason
+	}
 	if !matchingParameterizationBindings(pair.left, pair.right) {
 		return "PDG binding identities differ under the source substitutions"
 	}
@@ -119,6 +122,12 @@ func helperHoleNames(fn *ast.FuncDecl, count int) []string {
 
 func freshHelperName(source *parameterizationSource, pair *parameterizationPair) string {
 	used := identifierNames(source.file)
+	for _, item := range pair.second.snapshot.Imports {
+		used[item.Name] = true
+	}
+	for name := range identifierNames(pair.second.file) {
+		used[name] = true
+	}
 	for _, name := range source.packageNames {
 		used[name] = true
 	}
@@ -153,4 +162,25 @@ func frameSensitiveCallee(graph *pdg.Graph, node pdg.Node) bool {
 	default:
 		return false
 	}
+}
+
+func holesAreCallTargets(a, b *ast.FuncDecl, holes []hole) bool {
+	left, right := directCallTargets(a.Body), directCallTargets(b.Body)
+	for _, hole := range holes {
+		if !left[hole.aExpr] || !right[hole.bExpr] {
+			return false
+		}
+	}
+	return true
+}
+
+func directCallTargets(body *ast.BlockStmt) map[ast.Expr]bool {
+	targets := map[ast.Expr]bool{}
+	ast.Inspect(body, func(node ast.Node) bool {
+		if call, ok := node.(*ast.CallExpr); ok {
+			targets[call.Fun] = true
+		}
+		return true
+	})
+	return targets
 }

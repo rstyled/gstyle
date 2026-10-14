@@ -18,8 +18,9 @@ type SourceCommentOwner struct {
 // SourceSnapshot owns one immutable copy of a file, shared by all its graphs.
 // Comments contain actual parser comment ranges, never comment-like literals.
 type SourceSnapshot struct {
-	SyntaxProfile string `json:"-"`
-	Syntax        string `json:"-"`
+	Imports       []SourceImport `json:"-"`
+	SyntaxProfile string         `json:"-"`
+	Syntax        string         `json:"-"`
 	Owners        []SourceCommentOwner
 	Path          string
 	Content       string
@@ -148,5 +149,14 @@ func (c *SourceContext) SetSyntax(ref Ref, profile, data string) error {
 		return fmt.Errorf("source syntax is already published")
 	}
 	c.files[ref-1].SyntaxProfile, c.files[ref-1].Syntax = profile, data
+	return nil
+}
+
+// SetImports publishes resolved import bindings as source ranges during extraction.
+func (c *SourceContext) SetImports(ref Ref, imports []SourceImport) error {
+	if ref == 0 || uint64(ref) > uint64(len(c.files)) {
+		return fmt.Errorf("source reference is invalid: %d", ref)
+	}
+	c.files[ref-1].Imports = imports
 	return nil
 }
