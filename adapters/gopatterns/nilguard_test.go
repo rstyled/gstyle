@@ -50,6 +50,7 @@ func TestNilGuard(t *testing.T) {
 		{"shadowed new is not allocation", `func Get(q *int) int { if q == nil { return -1 }; new := func(int) *int { return nil }; p := new(1); return *p }`, true},
 		{"nil receiver method may be safe", `type Item struct{}; func (p *Item) Value() int { return 0 }; func Get(p, q *Item) int { if q == nil { return -1 }; return p.Value() }`, false},
 		{"partial return is not a guard", `func Get(p, q *int) int { if q == nil { if p == nil { return -1 } }; return *p }`, false},
+		{"range assignment invalidates allocation", `func Get(q *int) int { if q == nil { return -1 }; p := new(int); for _, p = range []*int{nil} {}; return *p }`, true},
 		{"wrong variable guarded", `func Get(p, q *int) int { if q == nil { return -1 }; return *p }`, true},
 		{"same variable guarded", `func Get(p *int) int { if p == nil { return -1 }; return *p }`, false},
 		{"no guard at all", `func Get(p *int) int { return *p }`, false},

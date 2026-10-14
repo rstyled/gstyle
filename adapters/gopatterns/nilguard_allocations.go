@@ -21,8 +21,10 @@ func (u *allocationUses) visit(node ast.Node) bool {
 		u.writeNames(node.Names)
 	case *ast.UnaryExpr:
 		u.address(node)
+	case *ast.IncDecStmt, *ast.RangeStmt:
+		u.implicitWrite(node)
 	case *ast.BranchStmt:
-		u.jumps = u.jumps || node.Tok == token.GOTO
+		u.branch(node)
 	}
 	return true
 }
@@ -57,6 +59,20 @@ func (u *allocationUses) address(expr *ast.UnaryExpr) {
 	if expr.Op == token.AND {
 		u.escape(expr.X)
 	}
+}
+
+func (u *allocationUses) implicitWrite(node ast.Node) {
+	switch node := node.(type) {
+	case *ast.IncDecStmt:
+		u.write(node.X)
+	case *ast.RangeStmt:
+		u.write(node.Key)
+		u.write(node.Value)
+	}
+}
+
+func (u *allocationUses) branch(stmt *ast.BranchStmt) {
+	u.jumps = u.jumps || stmt.Tok == token.GOTO
 }
 
 // Only a single top-level local definition proves non-nil. Writes, address
