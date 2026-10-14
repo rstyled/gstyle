@@ -1,36 +1,24 @@
 package gopatterns
 
 import (
-	"go/ast"
-	"go/parser"
-	"go/token"
-	"go/types"
 	"strings"
 	"testing"
 
 	"github.com/rstyled/gstyle/domain/patterns"
-	"golang.org/x/tools/go/packages"
+	"github.com/rstyled/gstyle/domain/runtimeguard"
 )
 
 func literalIndexTestCandidates(t *testing.T, src string) []patterns.Candidate {
 	t.Helper()
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
-	if err != nil {
-		t.Fatal(err)
-	}
-	info := &types.Info{Types: map[ast.Expr]types.TypeAndValue{}, Defs: map[*ast.Ident]types.Object{}, Uses: map[*ast.Ident]types.Object{}, Scopes: map[ast.Node]*types.Scope{}}
-	pkg, err := (&types.Config{GoVersion: "go1.26"}).Check("example", fset, []*ast.File{file}, info)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ppkg := &packages.Package{Fset: fset, TypesInfo: info, Types: pkg}
 	var out []patterns.Candidate
-	for _, decl := range file.Decls {
-		if fn, ok := decl.(*ast.FuncDecl); ok {
-			out = append(out, literalIndexCandidates(ppkg, fn, "test.go")...)
+	for _, function := range runtimeTestGraphs(t, src) {
+		report, err := runtimeguard.Analyze(&function.Pdg)
+		if err != nil {
+			t.Fatal(err)
 		}
+		out = append(out, literalIndexCandidates(function, report)...)
 	}
+
 	return out
 }
 
@@ -66,6 +54,10 @@ func TestLiteralIndex(t *testing.T) {
 		{"global mutation after guard stays unknown", `var s int; func alter() { s = 3 }; func String() string { if s < 0 || s >= 2 { return "?" }; alter(); return [...]string{"a", "b"}[s] }`, true},
 		{"earlier address escape stays unknown", `func String(s int) string { ptr := &s; if s < 0 || s >= 2 { return "?" }; *ptr = 3; return [...]string{"a", "b"}[s] }`, true},
 		{"range write invalidates bounds", `func String(s int) string { if s < 0 || s >= 2 { return "?" }; for s = range [3]int{} {}; return [...]string{"a", "b"}[s] }`, true},
+		{"known variable definition is safe", `func String() string { s := 1; return [...]string{"a", "b"}[s] }`, false},
+		{"safe definitions survive branch join", `func String(choose bool) string { var s int; if choose { s = 0 } else { s = 1 }; return [...]string{"a", "b"}[s] }`, false},
+		{"unsafe definition survives branch join", `func String(choose bool) string { var s int; if choose { s = 0 } else { s = 3 }; return [...]string{"a", "b"}[s] }`, true},
+		{"narrow conversion cannot bound original", `func String(s int) string { if int8(s) < 0 || int8(s) >= 2 { return "?" }; return [...]string{"a", "b"}[s] }`, true},
 		{"table indexed by variable", `func String(s int) string { return [...]string{"a", "b"}[s] }`, true},
 		{"slice literal with unrelated bound stays silent", `func At(s []int, i int) string { names := []string{"x", "y"}; if i < len(s) { return names[i] }; return "" }`, false},
 		{"constant index is safe", `func First() string { return [...]string{"a", "b"}[0] }`, false},

@@ -14,6 +14,7 @@ import (
 func populateRuntimeGuards(result *Extraction, root string, paths []string) error {
 	result.NilGuards = nil
 	result.NegativeIndices = nil
+	result.LiteralIndices = nil
 	for _, function := range result.Funcs {
 		if !declarationPathSelected(root, filepath.Join(root, function.Path), paths) {
 			continue
@@ -24,6 +25,7 @@ func populateRuntimeGuards(result *Extraction, root string, paths []string) erro
 		}
 		result.NilGuards = append(result.NilGuards, nilGuardCandidates(function, report)...)
 		result.NegativeIndices = append(result.NegativeIndices, negativeIndexCandidates(function, report)...)
+		result.LiteralIndices = append(result.LiteralIndices, literalIndexCandidates(function, report)...)
 	}
 	return nil
 }
