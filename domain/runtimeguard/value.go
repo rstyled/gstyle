@@ -16,7 +16,7 @@ type Value struct {
 func (v Value) merge(other Value) Value {
 	out := v.mergeBounds(other)
 	out.NonNil, out.Nil = v.NonNil && other.NonNil, v.Nil && other.Nil
-	out.Guarded, out.UpperChecked = v.Guarded && other.Guarded, v.UpperChecked && other.UpperChecked
+	out.Guarded, out.UpperChecked = v.Guarded && other.Guarded, v.UpperChecked || other.UpperChecked
 	out.Length = v.Length && other.Length
 	return out
 }

@@ -20,6 +20,7 @@ func (b *irBuilder) runtimeValueFacts(fn *ast.FuncDecl) {
 			return false
 		}
 		b.runtimeExpression(node)
+		b.runtimeRangeFacts(node)
 		return true
 	})
 	b.runtimeAddressCancellation(fn.Body)
@@ -232,4 +233,29 @@ func runtimeSliceExtent(lit *ast.CompositeLit, info *types.Info) (int64, bool) {
 
 func runtimeMissingNode(ref pdg.Ref, expr ast.Expr, info *types.Info) bool {
 	return ref == 0 && runtimeFactExpression(expr, info)
+}
+
+func (b *irBuilder) runtimeRangeFacts(node ast.Node) {
+	stmt, ok := node.(*ast.RangeStmt)
+	if !ok || !nonnegativeRangeKey(b.info.TypeOf(stmt.X)) {
+		return
+	}
+	key, ok := stmt.Key.(*ast.Ident)
+	if !ok {
+		return
+	}
+	ref := b.symbols[b.info.ObjectOf(key)]
+	if ref == 0 {
+		return
+	}
+	attrs := &b.attributes[b.graph.Nodes[b.nodes[stmt]-1].Attributes-1]
+	b.runtimeExtension(attrs, "range-index", strconv.Itoa(int(ref)))
+}
+
+func nonnegativeRangeKey(typ types.Type) bool {
+	if collectionType(typ) {
+		return true
+	}
+	basic, ok := typ.Underlying().(*types.Basic)
+	return ok && basic.Info()&(types.IsInteger|types.IsString) != 0
 }

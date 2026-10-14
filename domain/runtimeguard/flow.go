@@ -3,6 +3,7 @@ package runtimeguard
 import (
 	"github.com/rstyled/gstyle/domain/pdg"
 	"slices"
+	"strconv"
 )
 
 type analysis struct {
@@ -64,6 +65,7 @@ func (a *analysis) transfer(ref pdg.Ref, state State) {
 			continue
 		}
 		state[write.Symbol] = a.view.assignmentValue(write.Symbol, value)
+		a.rangeWrite(ref, write.Symbol, state)
 	}
 }
 
@@ -171,4 +173,11 @@ func pointerGuardContext(site Access, state State) []pdg.Ref {
 		return nil
 	}
 	return activePointerGuards(state, site.Symbol)
+}
+
+func (a *analysis) rangeWrite(ref, symbol pdg.Ref, state State) {
+	index, err := strconv.ParseUint(a.view.fact(ref, "range-index"), 10, 32)
+	if err == nil && pdg.Ref(index) == symbol {
+		state[symbol] = Value{HasLower: true, Lower: 0}
+	}
 }
