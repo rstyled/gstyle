@@ -108,6 +108,7 @@ func GetReport(ctx context.Context, args []string) (*patterns.PatternsReport, er
 		DeclarationOrders: pdgs.DeclarationOrders,
 		OffsetFallbacks:   pdgs.OffsetFallbacks,
 		NilGuards:         pdgs.NilGuards,
+		NegativeIndices:   pdgs.NegativeIndices,
 		Params:            params,
 		AnemicModels:      pdgs.AnemicModels,
 		MissingIdentities: pdgs.MissingIdentities,

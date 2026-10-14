@@ -13,6 +13,7 @@ import (
 // extraction uses this same entry point and never retains compiler objects.
 func populateRuntimeGuards(result *Extraction, root string, paths []string) error {
 	result.NilGuards = nil
+	result.NegativeIndices = nil
 	for _, function := range result.Funcs {
 		if !declarationPathSelected(root, filepath.Join(root, function.Path), paths) {
 			continue
@@ -22,6 +23,7 @@ func populateRuntimeGuards(result *Extraction, root string, paths []string) erro
 			return fmt.Errorf("runtime guards for %s: %w", function.Name, err)
 		}
 		result.NilGuards = append(result.NilGuards, nilGuardCandidates(function, report)...)
+		result.NegativeIndices = append(result.NegativeIndices, negativeIndexCandidates(function, report)...)
 	}
 	return nil
 }

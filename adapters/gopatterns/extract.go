@@ -88,8 +88,9 @@ type Extraction struct {
 	DeclarationOrders []patterns.Candidate
 	OffsetFallbacks   []patterns.Candidate
 	// NilGuards are nil-guard-on-wrong-variable findings (detection-only).
-	NilGuards []patterns.Candidate
-	Funcs     []FuncPdg
+	NilGuards       []patterns.Candidate
+	NegativeIndices []patterns.Candidate
+	Funcs           []FuncPdg
 	// AnemicModels are exported methodless structs with 3+ functions
 	// operating on their fields (DDD anemic domain model detection).
 	AnemicModels []patterns.AnemicModelHit
