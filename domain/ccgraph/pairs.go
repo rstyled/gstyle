@@ -20,6 +20,50 @@ type StageFunction struct {
 	PointerWidth    int
 }
 
+func (f StageFunction) prepareFunction() (preparedFunction, error) {
+	if _, err := f.Graph.validate(); err != nil {
+		return preparedFunction{}, err
+	}
+	if f.References == nil {
+		return preparedFunction{}, fmt.Errorf("unknown reference count")
+	}
+	if f.Inputs == nil || f.Outputs == nil {
+		return preparedFunction{}, fmt.Errorf("unknown interface")
+	}
+	if !validText(f.Name) {
+		return preparedFunction{}, fmt.Errorf("unknown or invalid name")
+	}
+	return f.prepareInterface()
+}
+
+func (f StageFunction) prepareInterface() (preparedFunction, error) {
+	in, err := Interface(*f.Inputs)
+	if err != nil {
+		return preparedFunction{}, err
+	}
+	out, err := Interface(*f.Outputs)
+	if err != nil {
+		return preparedFunction{}, err
+	}
+	if f.nativeInterface() && f.PointerWidth <= 0 {
+		return preparedFunction{}, fmt.Errorf("unknown native target width")
+	}
+	return preparedFunction{StageFunction: f, features: graphFeatures(f.Graph, *f.References), strings: Strings{out, in, f.Name}}, nil
+}
+
+func (f StageFunction) nativeInterface() bool {
+	if f.UsesNativeWidth {
+		return true
+	}
+	params := append(slices.Clone(*f.Inputs), (*f.Outputs)...)
+	for _, p := range params {
+		if p.Type == "isize" || p.Type == "usize" {
+			return true
+		}
+	}
+	return false
+}
+
 type preparedFunction struct {
 	StageFunction
 	features [9]uint64
@@ -94,51 +138,7 @@ func (comparison pairComparison) remainingGates(ctx context.Context, p Pair) (Pa
 	return p, nil
 }
 
-func prepareFunction(f StageFunction) (preparedFunction, error) {
-	if _, err := f.Graph.validate(); err != nil {
-		return preparedFunction{}, err
-	}
-	if f.References == nil {
-		return preparedFunction{}, fmt.Errorf("unknown reference count")
-	}
-	if f.Inputs == nil || f.Outputs == nil {
-		return preparedFunction{}, fmt.Errorf("unknown interface")
-	}
-	if !validText(f.Name) {
-		return preparedFunction{}, fmt.Errorf("unknown or invalid name")
-	}
-	return prepareInterface(f)
-}
-
 func validText(text string) bool { return text != "" && utf8.ValidString(text) }
-
-func prepareInterface(f StageFunction) (preparedFunction, error) {
-	in, err := Interface(*f.Inputs)
-	if err != nil {
-		return preparedFunction{}, err
-	}
-	out, err := Interface(*f.Outputs)
-	if err != nil {
-		return preparedFunction{}, err
-	}
-	if nativeInterface(f) && f.PointerWidth <= 0 {
-		return preparedFunction{}, fmt.Errorf("unknown native target width")
-	}
-	return preparedFunction{StageFunction: f, features: graphFeatures(f.Graph, *f.References), strings: Strings{out, in, f.Name}}, nil
-}
-
-func nativeInterface(f StageFunction) bool {
-	if f.UsesNativeWidth {
-		return true
-	}
-	params := append(slices.Clone(*f.Inputs), (*f.Outputs)...)
-	for _, p := range params {
-		if p.Type == "isize" || p.Type == "usize" {
-			return true
-		}
-	}
-	return false
-}
 
 func graphFeatures(g Graph, references uint64) [9]uint64 {
 	var counts [9]uint64
@@ -163,7 +163,7 @@ func prepareFunctions(inputs []StageFunction) ([]preparedFunction, []Diagnostic,
 			return nil, nil, fmt.Errorf("invalid or duplicate function key %q", f.Key)
 		}
 		previous = f.Key
-		p, err := prepareFunction(f)
+		p, err := f.prepareFunction()
 		if err != nil {
 			diagnostics = append(diagnostics, Diagnostic{f.Key, "ineligible-stage-input", err.Error()})
 			continue
@@ -245,7 +245,7 @@ func comparePair(ctx context.Context, a, b preparedFunction, c Config) (Pair, er
 }
 
 func incompatibleWidths(a, b preparedFunction) bool {
-	return (nativeInterface(a.StageFunction) || nativeInterface(b.StageFunction)) && a.PointerWidth != b.PointerWidth
+	return (a.StageFunction.nativeInterface() || b.StageFunction.nativeInterface()) && a.PointerWidth != b.PointerWidth
 }
 
 func sizeGates(p *Pair, a, b int, threshold Decimal) bool {

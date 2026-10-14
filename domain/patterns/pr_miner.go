@@ -33,6 +33,27 @@ type CallSet struct {
 	Calls  map[string]bool
 }
 
+// hasAntecedent reports whether the call set contains all antecedent items.
+func (s CallSet) hasAntecedent(antecedent []string) bool {
+	for _, a := range antecedent {
+		if !s.Calls[a] {
+			return false
+		}
+	}
+	return true
+}
+
+func (set CallSet) indexedCalls(indices map[string]int) []int {
+	var calls []int
+	for name := range set.Calls {
+		if i, ok := indices[name]; ok {
+			calls = append(calls, i)
+		}
+	}
+	sort.Ints(calls)
+	return calls
+}
+
 // MinedRule is an implicit programming rule: if antecedent, then consequent.
 type MinedRuleDef struct {
 	// Antecedent is the set of calls that imply the consequent.
@@ -259,16 +280,6 @@ func antecedentPostings(p *callPostings, antecedent []string) []int {
 	return out
 }
 
-// hasAntecedent reports whether the call set contains all antecedent items.
-func hasAntecedent(s CallSet, antecedent []string) bool {
-	for _, a := range antecedent {
-		if !s.Calls[a] {
-			return false
-		}
-	}
-	return true
-}
-
 func countSingles(sets []CallSet) map[string]int {
 	counts := map[string]int{}
 	for _, s := range sets {
@@ -316,20 +327,9 @@ func frequentCallIndices(p *callPostings) ([]string, map[string]int) {
 func countTriples(sets []CallSet, indices map[string]int) map[[3]int]int {
 	counts := map[[3]int]int{}
 	for _, set := range sets {
-		addTriples(indexedCalls(set, indices), counts)
+		addTriples(set.indexedCalls(indices), counts)
 	}
 	return counts
-}
-
-func indexedCalls(set CallSet, indices map[string]int) []int {
-	var calls []int
-	for name := range set.Calls {
-		if i, ok := indices[name]; ok {
-			calls = append(calls, i)
-		}
-	}
-	sort.Ints(calls)
-	return calls
 }
 
 func addTriples(calls []int, counts map[[3]int]int) {

@@ -113,6 +113,7 @@ func GetReport(ctx context.Context, args []string) (*patterns.PatternsReport, er
 		DomainServices:    pdgs.DomainServices,
 		WlCache:           cache,
 	})
+	gopatterns.VerifyValueGroups(&report, pdgs)
 	if err := gopatterns.VerifyParameterizations(&report, pdgs); err != nil {
 		return nil, fmt.Errorf("verify parameterization: %w", err)
 	}

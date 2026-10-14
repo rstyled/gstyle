@@ -276,7 +276,7 @@ func extractNormalPackages(ctx context.Context, abs string, paths []string, opti
 	if err != nil {
 		return nil, err
 	}
-	collectFixReferences(sources, pkgs, options.tests)
+	collectSourceReferences(sources, productionPatternPackages(pkgs))
 	var funcsOut []FuncPdg
 	var orders []patterns.Candidate
 	var ranges []patterns.Candidate
@@ -293,6 +293,7 @@ func extractNormalPackages(ctx context.Context, abs string, paths []string, opti
 		}
 		orders = append(orders, findDeclarationOrders(pkg, abs, paths, sources)...)
 		ranges = append(ranges, findOffsetFallbacks(pkg, abs, paths, sources)...)
+		projectSourceParameterFlow(sources, funcs)
 		funcsOut = append(funcsOut, funcs...)
 		anemic = append(anemic, findAnemicModels(pkg, abs)...)
 		missing = append(missing, findMissingIdentities(pkg, abs)...)
@@ -607,12 +608,6 @@ func publishSourceSnapshot(snapshots *pdg.SourceContext, filename string, conten
 		return err
 	}
 	return snapshots.SetSyntax(ref, sourceSyntaxProfile, syntax)
-}
-
-func collectFixReferences(sources *pdg.SourceContext, pkgs []*packages.Package, fixes bool) {
-	if fixes {
-		collectSourceReferences(sources, pkgs)
-	}
 }
 
 func testPackageVariant(id string) bool {

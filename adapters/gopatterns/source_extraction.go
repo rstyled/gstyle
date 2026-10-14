@@ -46,6 +46,7 @@ func (e *sourceExtraction) collectPackage(pkg *packages.Package) error {
 	if err != nil {
 		return err
 	}
+	projectSourceParameterFlow(e.result.Sources, funcs)
 	e.result.Funcs = append(e.result.Funcs, funcs...)
 	e.result.DeclarationOrders = append(e.result.DeclarationOrders, findDeclarationOrders(pkg, e.root, e.paths, e.result.Sources)...)
 	e.result.OffsetFallbacks = append(e.result.OffsetFallbacks, findOffsetFallbacks(pkg, e.root, e.paths, e.result.Sources)...)

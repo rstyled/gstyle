@@ -23,7 +23,7 @@ func internSourceText(pool *pdg.Builder, value string) string {
 }
 
 func internSourceFunction(pool *pdg.Builder, function pdg.SourceFunction) pdg.SourceFunction {
-	result := pdg.SourceFunction{ID: internSourceText(pool, function.ID), Name: internSourceText(pool, function.Name), Package: internSourceText(pool, function.Package), Source: function.Source, Declaration: function.Declaration, NameRange: function.NameRange, Parameters: function.Parameters, ParametersList: function.ParametersList, Bindings: function.Bindings, Method: function.Method, Generic: function.Generic, Variadic: function.Variadic}
+	result := pdg.SourceFunction{ID: internSourceText(pool, function.ID), Name: internSourceText(pool, function.Name), Package: internSourceText(pool, function.Package), Source: function.Source, Declaration: function.Declaration, Body: function.Body, NameRange: function.NameRange, Parameters: function.Parameters, ParametersList: function.ParametersList, Bindings: function.Bindings, Method: function.Method, Generic: function.Generic, Variadic: function.Variadic}
 	for i := range result.Bindings {
 		result.Bindings[i] = internSourceText(pool, result.Bindings[i])
 	}
@@ -34,5 +34,5 @@ func internSourceFunction(pool *pdg.Builder, function pdg.SourceFunction) pdg.So
 }
 
 func internSourceParameter(pool *pdg.Builder, param pdg.SourceParameter) pdg.SourceParameter {
-	return pdg.SourceParameter{Name: internSourceText(pool, param.Name), Type: internSourceText(pool, param.Type), TypeSyntax: internSourceText(pool, param.TypeSyntax), Uses: param.Uses, Addressed: param.Addressed}
+	return pdg.SourceParameter{Name: internSourceText(pool, param.Name), Type: internSourceText(pool, param.Type), TypeSyntax: internSourceText(pool, param.TypeSyntax), Uses: param.Uses, Addressed: param.Addressed, Captured: param.Captured, FlowKnown: param.FlowKnown, Stable: param.Stable}
 }

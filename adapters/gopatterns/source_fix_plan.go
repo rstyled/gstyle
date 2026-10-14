@@ -18,13 +18,14 @@ type sourceFix struct {
 	positions               map[string][]int
 	typeName, parameterName string
 	method                  bool
+	sharedCalls             map[string]string
 }
 
 func newSourceFix(spec *patterns.FixSpec) (*sourceFix, error) {
 	if spec.Context == nil {
 		return nil, fmt.Errorf("typed source context is missing")
 	}
-	plan := &sourceFix{context: spec.Context, edits: make(map[pdg.Ref][]pdg.SourceEdit), targets: make(map[string]pdg.SourceFunction), positions: make(map[string][]int), method: spec.Kind == patterns.AnemicModel}
+	plan := &sourceFix{context: spec.Context, edits: make(map[pdg.Ref][]pdg.SourceEdit), targets: make(map[string]pdg.SourceFunction), sharedCalls: make(map[string]string), positions: make(map[string][]int), method: spec.Kind == patterns.AnemicModel}
 	if err := plan.selectTargets(spec); err != nil {
 		return nil, err
 	}
@@ -199,8 +200,11 @@ func (p *sourceFix) call(fn pdg.SourceFunction, ref pdg.SourceReference) error {
 		return err
 	}
 	replacement := p.valueCall(fn, arguments)
+	if binding := p.sharedCalls[valueCallKey(ref)]; binding != "" {
+		replacement = p.sharedValueCall(fn, arguments, binding)
+	}
 	if p.method {
-		replacement = "(" + fn.ParametersList[0].TypeSyntax + ")(" + arguments[0] + ")." + fn.Name + "(" + strings.Join(arguments[1:], ", ") + ")"
+		replacement = p.methodReceiver(fn, ref, arguments[0], snapshot) + "." + fn.Name + "(" + strings.Join(arguments[1:], ", ") + ")"
 	}
 	p.edits[ref.Source] = append(remaining, pdg.SourceEdit{Range: ref.Range, Replacement: replacement})
 	return nil
@@ -253,6 +257,53 @@ func (p *sourceFix) render() (map[string][]byte, error) {
 	return overlay, nil
 }
 
+func (p *sourceFix) methodReceiver(fn pdg.SourceFunction, ref pdg.SourceReference, argument string, snapshot pdg.SourceSnapshot) string {
+	if !ref.Receiver.ExactType {
+		return "(" + fn.ParametersList[0].TypeSyntax + ")(" + argument + ")"
+	}
+	if p.copyIsReceiver(ref) {
+		return snapshot.Content[ref.Receiver.Copy.Start:ref.Receiver.Copy.End]
+	}
+	if ref.Receiver.Parenthesize {
+		return "(" + argument + ")"
+	}
+	return argument
+}
+
+// Reuse only a binding that becomes a receiver in this same plan. Complete
+// field identity and type identity were proved by the extraction producer.
+func (p *sourceFix) copyIsReceiver(ref pdg.SourceReference) bool {
+	if ref.Receiver.Copy.End == 0 {
+		return false
+	}
+	for _, fn := range p.targets {
+		if bindingBecomesReceiver(fn, ref) {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *sourceFix) sharedValueCall(fn pdg.SourceFunction, arguments []string, binding string) string {
+	positions := p.positions[fn.ID]
+	first, last := positions[0], positions[len(positions)-1]
+	args := append([]string(nil), arguments[:first]...)
+	args = append(args, binding)
+	args = append(args, arguments[last+1:]...)
+	return fn.Name + "(" + strings.Join(args, ", ") + ")"
+}
+
+func (p *sourceFix) prepareValueGroups() error {
+	if p.method {
+		return nil
+	}
+	groups, err := p.sharedValueGroups()
+	if err != nil {
+		return err
+	}
+	return p.propagateValueGroups(groups)
+}
+
 // PlanSignatureFix uses the typed source inventory from PDG extraction.
 // It never finds callers by spelling or reparses old code to resolve bindings.
 func PlanSignatureFix(spec *patterns.FixSpec) (map[string][]byte, error) {
@@ -261,6 +312,9 @@ func PlanSignatureFix(spec *patterns.FixSpec) (map[string][]byte, error) {
 		return nil, err
 	}
 	if err := checkSignatureCoverage(plan.context, plan.targets); err != nil {
+		return nil, err
+	}
+	if err := plan.prepareValueGroups(); err != nil {
 		return nil, err
 	}
 	if err := plan.declarations(); err != nil {
@@ -387,4 +441,20 @@ func receiverPosition(fn pdg.SourceFunction, typeName string) []int {
 
 func completeParameterGroup(positions []int, group []string) bool {
 	return len(positions) >= 2 && len(positions) == len(group)
+}
+
+func bindingBecomesReceiver(fn pdg.SourceFunction, ref pdg.SourceReference) bool {
+	if fn.Source != ref.Source || !sourceRangeContains(fn.Declaration, ref.Range) {
+		return false
+	}
+	for _, use := range fn.ParametersList[0].Uses {
+		if use == ref.Receiver.Copy {
+			return true
+		}
+	}
+	return false
+}
+
+func sourceRangeContains(outer, inner pdg.ByteRange) bool {
+	return outer.Start <= inner.Start && inner.End <= outer.End
 }

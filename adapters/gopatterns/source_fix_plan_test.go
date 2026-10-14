@@ -34,7 +34,7 @@ func combine(left, right string) string {
  return left + right
 }
 func reverse(left, right string) string { return right + left }
-func decorate(left, right string) string { return combine(left, right) }
+func decorate(left, right string) string { return combine(left, right) + reverse(left, right) }
 func ignored(_ string) string { return "ok" }
 `
 
@@ -96,7 +96,7 @@ func TestSourceSignaturePlanPreservesArgumentOrder(t *testing.T) {
 	root, ext := sourceFixModule(t, map[string]string{"values.go": `package sample
 func combine(right, left string) string { return right+left }
 func reverse(right, left string) string { return left+right }
-func decorate(right, left string) string { return combine(right,left) }
+func decorate(right, left string) string { return combine(right,left)+reverse(right,left) }
 `, "other.go": "package sample\nfunc use() string { return combine(first(),second()) }\nfunc first() string { return \"a\" };func second() string{return \"b\"}\n"})
 	overlay, err := PlanSignatureFix(valueSpec(root, ext))
 	if err != nil {
@@ -205,5 +205,65 @@ func TestFixValidationRejectsNewWorkspaceConfiguration(t *testing.T) {
 	}
 	if err := CheckFixSources(ext.Sources); err == nil {
 		t.Fatal("new workspace configuration accepted")
+	}
+}
+
+func TestSourceMethodPlanReusesExactReceiverProjection(t *testing.T) {
+	root, ext := sourceFixModule(t, map[string]string{"model.go": `package sample
+ type Text struct { Value string; Width int }
+ func clipped(text Text) string { return text.Value }
+ func padded(text Text) string { return clipped(Text{Width:text.Width,Value:text.Value}) }
+ func modified(text Text) string { return clipped(Text{Value:text.Value,Width:text.Width+1}) }
+ func partial(text Text) string { return clipped(Text{Value:text.Value}) }
+ func distinct(text Text, other Text) string { return clipped(Text{Value:other.Value,Width:other.Width}) }
+ func fresh() string { return clipped(Text{Value:"fresh",Width:4}) }
+ func mixed(text Text, other Text) string { return clipped(Text{Value:text.Value,Width:other.Width}) }
+ func shadow(text Text) string { { text:=Text{Value:"inner",Width:2};return clipped(Text{Value:text.Value,Width:text.Width}) } }
+ `})
+	spec := &patterns.FixSpec{Kind: patterns.AnemicModel, File: filepath.Join(root, "model.go"), Context: ext.Sources, Params: map[string]string{"type_name": "Text"}}
+	overlay, err := PlanSignatureFix(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := string(overlay[filepath.Join(root, "model.go")])
+	if !strings.Contains(result, "return text.clipped()") {
+		t.Fatalf("receiver not reused:\n%s", result)
+	}
+	for _, expected := range []string{"(Text{Value: text.Value, Width: text.Width + 1}).clipped()", "(Text{Value: text.Value}).clipped()", "(Text{Value: other.Value, Width: other.Width}).clipped()", "(Text{Value: \"fresh\", Width: 4}).clipped()"} {
+		if !strings.Contains(result, expected) {
+			t.Fatalf("changed unrelated or non-identical values: want %s\n%s", expected, result)
+		}
+	}
+	for _, expected := range []string{"(Text{Value: text.Value, Width: other.Width}).clipped()", "(Text{Value: text.Value, Width: text.Width}).clipped()"} {
+		if !strings.Contains(result, expected) {
+			t.Fatalf("binding identity lost: want %s\n%s", expected, result)
+		}
+	}
+	if strings.Contains(result, "(Text)(") {
+		t.Fatalf("redundant conversion emitted:\n%s", result)
+	}
+	if err := ValidateFixOverlay(context.Background(), ext.Sources, overlay); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSourceMethodPlanKeepsAssignableReceiverConversion(t *testing.T) {
+	root, ext := sourceFixModule(t, map[string]string{"model.go": `package sample
+ type Text struct { Value string }
+ func read(text Text) string { return text.Value }
+ func empty(text Text) bool { return text.Value=="" }
+ func use() string { return read(struct{Value string}{Value:"x"}) }
+ `})
+	spec := &patterns.FixSpec{Kind: patterns.AnemicModel, File: filepath.Join(root, "model.go"), Context: ext.Sources, Params: map[string]string{"type_name": "Text"}}
+	overlay, err := PlanSignatureFix(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := string(overlay[filepath.Join(root, "model.go")])
+	if !strings.Contains(result, "(Text)(struct{ Value string }{Value: \"x\"}).read()") {
+		t.Fatalf("required conversion lost:\n%s", result)
+	}
+	if err := ValidateFixOverlay(context.Background(), ext.Sources, overlay); err != nil {
+		t.Fatal(err)
 	}
 }
