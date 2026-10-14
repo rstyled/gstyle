@@ -148,6 +148,7 @@ type loopCtx struct {
 // (first binding wins, like rstyle): a variable use resolves to its
 // declaration/parameter/loop-variable node.
 type builder struct {
+	calls     map[*ast.CallExpr]int
 	info      *types.Info
 	fset      *token.FileSet
 	ir        *irBuilder
@@ -501,12 +502,11 @@ func extractFunc(pkg *packages.Package, fn *ast.FuncDecl, path string, ctx extra
 		AstTypes:        patterns.AstNodeMultiset(fn),
 		SelfTy:          selfTy,
 		GuardClauses:    findGuardClauses(fn, pkg.Fset),
-		EnumDispatches:  findEnumDispatches(fn, pkg.Fset),
+		EnumDispatches:  findEnumDispatches(fn, pkg.Fset, pkg.TypesInfo),
 		TypeSwitches:    findTypeSwitches(fn, pkg.Fset),
 		Params:          primitiveParams(fn, pkg.TypesInfo),
-		// EntityIdentities are attribute-based equalities that should use ID.
-		// Includes no-ID cases (paired with missing_identity): the fixer
-		// adds the ID, then a later phase rewrites the comparison.
+		// EntityIdentities suggest reviewing attribute-based equality.
+		// Existing and missing IDs both require a domain invariant before edits.
 		EntityIdentities: append(
 			findEntityIdentities(fn, pkg.Fset, pkg.TypesInfo),
 			findEntityIdentitiesNoID(fn, noIDScanCtx{

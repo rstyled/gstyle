@@ -515,16 +515,28 @@ func insertTypeDecl(f *ast.File, typ, typeName string) {
 // Positions reset to NoPos so the printer doesn't emit stale commas.
 func updateSignatures(group []primitiveConceptInfo, typeName string) {
 	for _, info := range group {
+		var fields []*ast.Field
 		for _, field := range info.fn.Type.Params.List {
-			for _, name := range field.Names {
-				if name.Name == info.param.Name {
-					newType := &ast.Ident{Name: typeName}
-					newType.NamePos = token.NoPos
-					field.Type = newType
-				}
-			}
+			fields = append(fields, splitPrimitiveField(field, info.param.Name, typeName)...)
 		}
+		info.fn.Type.Params.List = fields
 	}
+}
+
+// Split grouped declarations so only the selected binding changes type.
+func splitPrimitiveField(field *ast.Field, paramName, typeName string) []*ast.Field {
+	var fields []*ast.Field
+	for _, name := range field.Names {
+		typ := field.Type
+		if name.Name == paramName {
+			typ = ast.NewIdent(typeName)
+		}
+		fields = append(fields, &ast.Field{Doc: field.Doc, Names: []*ast.Ident{name}, Type: typ, Comment: field.Comment})
+	}
+	if len(fields) == 0 {
+		return []*ast.Field{field}
+	}
+	return fields
 }
 
 // wrapGroupCallSites wraps call-site args for every function in the group.

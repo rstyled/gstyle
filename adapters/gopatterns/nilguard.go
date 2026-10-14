@@ -23,9 +23,7 @@ func populateRuntimeGuards(result *Extraction, root string, paths []string) erro
 		if err != nil {
 			return fmt.Errorf("runtime guards for %s: %w", function.Name, err)
 		}
-		result.NilGuards = append(result.NilGuards, nilGuardCandidates(function, report)...)
-		result.NegativeIndices = append(result.NegativeIndices, negativeIndexCandidates(function, report)...)
-		result.LiteralIndices = append(result.LiteralIndices, literalIndexCandidates(function, report)...)
+		appendRuntimeCandidates(result, function, report)
 	}
 	return nil
 }
@@ -64,4 +62,25 @@ func runtimeSymbolName(graph *pdg.Graph, symbol pdg.Ref) string {
 		return "pointer expression"
 	}
 	return graph.Tables.Text(graph.Symbols[symbol-1].Name.Value)
+}
+
+func runtimeKindSuppressed(function FuncPdg, kind string) bool {
+	for _, suppressed := range function.SuppressedKinds {
+		if suppressed == kind {
+			return true
+		}
+	}
+	return false
+}
+
+func appendRuntimeCandidates(result *Extraction, function FuncPdg, report runtimeguard.Report) {
+	if !runtimeKindSuppressed(function, "nil_guard") {
+		result.NilGuards = append(result.NilGuards, nilGuardCandidates(function, report)...)
+	}
+	if !runtimeKindSuppressed(function, "negative_index") {
+		result.NegativeIndices = append(result.NegativeIndices, negativeIndexCandidates(function, report)...)
+	}
+	if !runtimeKindSuppressed(function, "literal_index") {
+		result.LiteralIndices = append(result.LiteralIndices, literalIndexCandidates(function, report)...)
+	}
 }

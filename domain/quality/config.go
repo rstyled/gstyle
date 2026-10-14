@@ -49,7 +49,7 @@ func (c Config) Validate() error {
 }
 
 func (c Config) validateLimits() error {
-	for _, rule := range []Rule{c.FnLength, c.FnParams, c.MutationPerTarget, c.MutatedTargets, c.SideEffectDensity} {
+	for _, rule := range []Rule{c.FnLength, c.FnParams, c.MutationPerTarget, c.MutatedTargets, c.SideEffectDensity, c.Aggregate, c.Repository, c.MutableIdentity} {
 		if !within(rule.Max, 1_000_000_000) {
 			return fmt.Errorf("rule limits must be between 0 and 1000000000")
 		}

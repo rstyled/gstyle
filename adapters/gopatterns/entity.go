@@ -97,8 +97,7 @@ func boolExpr(n ast.Node) ast.Expr {
 
 // findEntityIdentitiesNoID finds attribute-based equality on struct types
 // WITHOUT an ID field. These pair with missing_identity (the first gate):
-// the entity_identity fixer adds the ID, then a later phase rewrites the
-// comparison. Only fires for mutated structs (entities with lifecycle);
+// adding identity and selecting its equality semantics require domain review. Only fires for mutated structs (entities with lifecycle);
 // value objects (never mutated) correctly compare by attributes.
 func findEntityIdentitiesNoID(fn *ast.FuncDecl, ctx noIDScanCtx) []patterns.EntityIdentityHit {
 	var out []patterns.EntityIdentityHit
@@ -582,7 +581,7 @@ func isConstructorName(name string) bool {
 func idAssignments(assign *ast.AssignStmt, fset *token.FileSet, funcName string) []patterns.MutableIdentityHit {
 	var out []patterns.MutableIdentityHit
 	for _, lhs := range assign.Lhs {
-		sel, ok := lhs.(*ast.SelectorExpr)
+		sel, ok := specUnwrapParens(lhs).(*ast.SelectorExpr)
 		if !ok || !isIDField(sel.Sel.Name) {
 			continue
 		}
@@ -707,7 +706,7 @@ func countParamUses(fn *ast.FuncDecl, uses map[string]int) {
 	}
 	for _, field := range fn.Type.Params.List {
 		if ident := typeIdent(field.Type); ident != "" {
-			uses[ident]++
+			uses[ident] += max(1, len(field.Names))
 		}
 	}
 }

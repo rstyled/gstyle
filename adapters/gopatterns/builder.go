@@ -190,6 +190,18 @@ func (b *builder) composite(e *ast.CompositeLit) int {
 // stable callee id and normalized signature class (never the raw name).
 // Receiver (method calls) links at position 0; free-function args start at 0.
 func (b *builder) callExpr(e *ast.CallExpr) int {
+	if n, ok := b.calls[e]; ok {
+		return n
+	}
+	if b.calls == nil {
+		b.calls = make(map[*ast.CallExpr]int)
+	}
+	n := b.lowerCall(e)
+	b.calls[e] = n
+	return n
+}
+
+func (b *builder) lowerCall(e *ast.CallExpr) int {
 	fun := unparen(e.Fun)
 	// Type conversion: T(x).
 	if b.info.Types[fun].IsType() {

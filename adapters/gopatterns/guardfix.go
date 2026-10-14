@@ -188,6 +188,9 @@ func negate(expr ast.Expr) ast.Expr {
 	if neg, ok := negateBinary(expr); ok {
 		return neg
 	}
+	if _, ok := expr.(*ast.BinaryExpr); ok {
+		expr = &ast.ParenExpr{X: expr}
+	}
 	return &ast.UnaryExpr{Op: token.NOT, X: expr}
 }
 
@@ -225,8 +228,7 @@ func invertBinary(op token.Token) (token.Token, bool) {
 	switch op {
 	case token.EQL, token.NEQ:
 		return invertEquality(op), true
-	case token.LSS, token.GEQ, token.LEQ, token.GTR:
-		return invertOrdering(op), true
+
 	}
 	return 0, false
 }
@@ -236,19 +238,6 @@ func invertEquality(op token.Token) token.Token {
 		return token.NEQ
 	}
 	return token.EQL
-}
-
-func invertOrdering(op token.Token) token.Token {
-	switch op {
-	case token.LSS:
-		return token.GEQ
-	case token.GEQ:
-		return token.LSS
-	case token.LEQ:
-		return token.GTR
-	default: // token.GTR
-		return token.LEQ
-	}
 }
 
 // A rewritten else-if must stay within its original conditional branch.

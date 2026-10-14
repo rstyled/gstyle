@@ -42,7 +42,7 @@ func f(lastArg string) string {
 }
 `
 	out := fixSource(t, src)
-	if !strings.Contains(out, "if len(lastArg) <= 0 {") {
+	if !strings.Contains(out, "if !(len(lastArg) > 0) {") {
 		t.Errorf("expected inverted condition, got:\n%s", out)
 	}
 	if !strings.Contains(out, `return ""`) {
@@ -154,7 +154,7 @@ func f(x int) int {
 	if !strings.Contains(out, "y = x + 1\n") {
 		t.Errorf("expected init hoisted, got:\n%s", out)
 	}
-	if !strings.Contains(out, "if y <= 0 {") {
+	if !strings.Contains(out, "if !(y > 0) {") {
 		t.Errorf("expected inverted condition, got:\n%s", out)
 	}
 }

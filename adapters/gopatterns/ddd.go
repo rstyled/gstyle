@@ -6,7 +6,6 @@ import (
 	"go/token"
 	"go/types"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/rstyled/gstyle/domain/patterns"
@@ -24,12 +23,6 @@ var dbMethods = map[string]bool{
 	"Exec": true, "ExecContext": true,
 	"Prepare": true, "PrepareContext": true,
 	"Begin": true, "BeginTx": true, "Commit": true, "Rollback": true,
-}
-
-// dbPackages are package names that indicate a database call.
-var dbPackages = map[string]bool{
-	"sql": true, "gorm": true, "pgx": true, "sqlx": true,
-	"ent": true, "bun": true, "pop": true,
 }
 
 // constructionLogicWindow is how close (in lines) an if statement must be
@@ -114,13 +107,13 @@ func assignTargets(n ast.Node) []ast.Expr {
 	case *ast.AssignStmt:
 		var out []ast.Expr
 		for _, lhs := range stmt.Lhs {
-			if _, ok := lhs.(*ast.SelectorExpr); ok {
+			if _, ok := specUnwrapParens(lhs).(*ast.SelectorExpr); ok {
 				out = append(out, lhs)
 			}
 		}
 		return out
 	case *ast.IncDecStmt:
-		if _, ok := stmt.X.(*ast.SelectorExpr); ok {
+		if _, ok := specUnwrapParens(stmt.X).(*ast.SelectorExpr); ok {
 			return []ast.Expr{stmt.X}
 		}
 	}
@@ -264,9 +257,10 @@ func isDbCall(sel *ast.SelectorExpr, info *types.Info) bool {
 // isDbIdentCall reports whether id.Method is a db call: a known db
 // package, a sql handle type, or a db-named receiver with a db method.
 func isDbIdentCall(id *ast.Ident, method string, info *types.Info) bool {
-	return isDbPackageRef(id, info) ||
-		isSqlHandleType(info.TypeOf(id)) ||
-		(dbReceiverNames[id.Name] && dbMethods[method])
+	if info != nil && info.ObjectOf(id) != nil {
+		return resolvedDbIdentCall(id, method, info)
+	}
+	return dbReceiverNames[id.Name] && dbMethods[method]
 }
 
 // isDbPackageRef reports whether id refers to a known db package.
@@ -276,7 +270,7 @@ func isDbPackageRef(id *ast.Ident, info *types.Info) bool {
 		return false
 	}
 	pn, ok := obj.(*types.PkgName)
-	return ok && dbPackages[pn.Name()]
+	return ok && (knownDatabasePackage(pn.Imported().Path()))
 }
 
 // isSqlHandleType reports whether t is from database/sql.
@@ -481,8 +475,8 @@ func specRuleKey(cond ast.Expr, info *types.Info) (key, varName, typeName string
 	if !ok {
 		return "", "", ""
 	}
-	sort.Strings(parts)
-	return seenType + "|" + strings.Join(parts, ","), seenVar, seenType
+	_ = parts
+	return seenType + "|" + specBooleanKey(cond), seenVar, seenType
 }
 
 // specKeyParts extracts the normalized parts, base variable, and type from
@@ -699,4 +693,31 @@ func specQualifiedName(named *types.Named) string {
 		return pkg.Name() + "." + obj.Name()
 	}
 	return obj.Name()
+}
+
+// specBooleanKey keeps operators, grouping and operand order while normalizing
+// the subject name. Reordering operands can change short-circuit behavior.
+func specBooleanKey(cond ast.Expr) string {
+	cond = specUnwrapParens(cond)
+	if bin, ok := cond.(*ast.BinaryExpr); ok && (bin.Op == token.LAND || bin.Op == token.LOR) {
+		return "(" + specBooleanKey(bin.X) + bin.Op.String() + specBooleanKey(bin.Y) + ")"
+	}
+	field, op, _, value := specOperandParts(cond, nil)
+	return field + ":" + op + ":" + value
+}
+
+func resolvedDbIdentCall(id *ast.Ident, method string, info *types.Info) bool {
+	if _, ok := info.ObjectOf(id).(*types.PkgName); ok {
+		return isDbPackageRef(id, info)
+	}
+	return isSqlHandleType(info.TypeOf(id)) || (dbReceiverNames[id.Name] && dbMethods[method])
+}
+
+func knownDatabasePackage(path string) bool {
+	for _, prefix := range []string{"database/sql", "gorm.io/gorm", "github.com/jackc/pgx", "github.com/jmoiron/sqlx", "entgo.io/ent", "github.com/uptrace/bun", "github.com/gobuffalo/pop"} {
+		if path == prefix || strings.HasPrefix(path, prefix+"/") {
+			return true
+		}
+	}
+	return false
 }

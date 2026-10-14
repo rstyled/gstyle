@@ -36,7 +36,7 @@ func guard(x int) int {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if count != 1 || !strings.Contains(output.String(), "skipped value_object") || !strings.Contains(output.String(), "if x <= 0") {
+	if count != 1 || !strings.Contains(output.String(), "skipped value_object") || !strings.Contains(output.String(), "if !(x > 0)") {
 		t.Fatalf("unsupported candidate blocks valid fix: %d %s", count, &output)
 	}
 }

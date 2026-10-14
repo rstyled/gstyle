@@ -44,11 +44,11 @@ func speakAll(x interface{}) {
 		t.Fatalf("fix failed: %v", err)
 	}
 	got := string(out)
-	if !strings.Contains(got, `if v, ok := x.(interface{ Speak() }); ok {`) {
+	if !strings.Contains(got, `v.(interface{ Speak() }).Speak()`) {
 		t.Errorf("missing interface assertion:\n%s", got)
 	}
-	if strings.Contains(got, "switch v :=") {
-		t.Errorf("switch not removed:\n%s", got)
+	if !strings.Contains(got, "case Dog, Cat:") {
+		t.Errorf("case set not preserved:\n%s", got)
 	}
 }
 

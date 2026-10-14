@@ -88,7 +88,7 @@ func accessedStructTypes(fn *ast.FuncDecl, info *types.Info, names map[string]bo
 		if !ok {
 			return true
 		}
-		tname, ok := paramTypes[ident.Name]
+		tname, ok := paramTypes[info.ObjectOf(ident)]
 		if !ok || seen[tname] {
 			return true
 		}
@@ -101,8 +101,8 @@ func accessedStructTypes(fn *ast.FuncDecl, info *types.Info, names map[string]bo
 
 // paramStructTypes maps parameter names to their struct type names,
 // for params whose type is a known struct (by value or pointer).
-func paramStructTypes(fn *ast.FuncDecl, info *types.Info, names map[string]bool) map[string]string {
-	out := map[string]string{}
+func paramStructTypes(fn *ast.FuncDecl, info *types.Info, names map[string]bool) map[types.Object]string {
+	out := map[types.Object]string{}
 	if fn.Type.Params == nil {
 		return out
 	}
@@ -112,7 +112,7 @@ func paramStructTypes(fn *ast.FuncDecl, info *types.Info, names map[string]bool)
 			continue
 		}
 		for _, name := range field.Names {
-			out[name.Name] = tname
+			out[info.ObjectOf(name)] = tname
 		}
 	}
 	return out

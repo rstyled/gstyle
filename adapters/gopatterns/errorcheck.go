@@ -13,6 +13,7 @@ type errorCheckWalker struct {
 	info  *types.Info
 	sites *[]patterns.ErrorCheckSite
 	stack []ast.Node // Parent stack
+	body  ast.Node
 }
 
 func (w *errorCheckWalker) Visit(n ast.Node) ast.Visitor {
@@ -52,16 +53,84 @@ func (w *errorCheckWalker) visitCall(call *ast.CallExpr) {
 // Returns false if assigned to `_` or result ignored, true otherwise.
 func (w *errorCheckWalker) isChecked(call *ast.CallExpr) bool {
 	if len(w.stack) < 2 {
-		return true
-	}
-	parent := w.stack[len(w.stack)-2]
-	if isBlankAssignment(parent) {
 		return false
 	}
-	if _, ok := parent.(*ast.ExprStmt); ok {
-		return false // Result ignored: `f()` without assignment.
+	parent := w.stack[len(w.stack)-2]
+	if _, ok := parent.(*ast.ReturnStmt); ok {
+		return true
 	}
-	return true
+	assign, ok := parent.(*ast.AssignStmt)
+	if !ok {
+		return false
+	}
+	return w.assignedErrorChecked(call, assign)
+}
+
+func (w *errorCheckWalker) assignedErrorChecked(call *ast.CallExpr, assign *ast.AssignStmt) bool {
+	positions := errorCallPositions(w.info.TypeOf(call))
+	offset := errorAssignmentOffset(assign, call)
+	for _, pos := range positions {
+		pos += offset
+		if pos >= len(assign.Lhs) {
+			return false
+		}
+		if !w.errorBindingUsed(assign.Lhs[pos], call.End()) {
+			return false
+		}
+	}
+	return len(positions) > 0
+}
+
+func (w *errorCheckWalker) errorBindingUsed(expr ast.Expr, after token.Pos) bool {
+	id, ok := expr.(*ast.Ident)
+	return ok && id.Name != "_" && meaningfulErrorUse(w.body, w.info.ObjectOf(id), w.info, after)
+}
+
+func errorCallPositions(t types.Type) []int {
+	if tuple, ok := t.(*types.Tuple); ok {
+		var positions []int
+		for i := 0; i < tuple.Len(); i++ {
+			if isErrorTypeCheck(tuple.At(i).Type()) {
+				positions = append(positions, i)
+			}
+		}
+		return positions
+	}
+	if isErrorTypeCheck(t) {
+		return []int{0}
+	}
+	return nil
+}
+
+func meaningfulErrorUse(body ast.Node, object types.Object, info *types.Info, after token.Pos) bool {
+	if object == nil {
+		return false
+	}
+	found := false
+	ast.Inspect(body, func(n ast.Node) bool {
+		if _, ok := n.(*ast.FuncLit); ok {
+			return false
+		}
+		for _, expr := range errorUseOperands(n) {
+			if errorUseMatches(expr, object, info, after) {
+				found = true
+			}
+		}
+		return true
+	})
+	return found
+}
+
+func errorUseOperands(n ast.Node) []ast.Expr {
+	switch n := n.(type) {
+	case *ast.BinaryExpr:
+		return []ast.Expr{n.X, n.Y}
+	case *ast.CallExpr:
+		return n.Args
+	case *ast.ReturnStmt:
+		return n.Results
+	}
+	return nil
 }
 
 // findErrorCheckSites finds call sites and tracks whether the error was checked.
@@ -76,23 +145,10 @@ func findErrorCheckSites(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info
 		fset:  fset,
 		info:  info,
 		sites: &sites,
+		body:  fn.Body,
 	}
 	ast.Walk(w, fn.Body)
 	return sites
-}
-
-// isBlankAssignment checks if a node is an assignment with `_` on the LHS.
-func isBlankAssignment(n ast.Node) bool {
-	assign, ok := n.(*ast.AssignStmt)
-	if !ok {
-		return false
-	}
-	for _, lhs := range assign.Lhs {
-		if ident, ok := lhs.(*ast.Ident); ok && ident.Name == "_" {
-			return true
-		}
-	}
-	return false
 }
 
 // calleeName extracts the called function name from a call expression.
@@ -135,4 +191,21 @@ func isErrorTypeCheck(t types.Type) bool {
 		return obj.Name() == "error" && obj.Pkg() == nil
 	}
 	return false
+}
+
+func errorAssignmentOffset(assign *ast.AssignStmt, call *ast.CallExpr) int {
+	if len(assign.Rhs) == 1 {
+		return 0
+	}
+	for i, expr := range assign.Rhs {
+		if expr == call {
+			return i
+		}
+	}
+	return len(assign.Lhs)
+}
+
+func errorUseMatches(expr ast.Expr, object types.Object, info *types.Info, after token.Pos) bool {
+	id, ok := specUnwrapParens(expr).(*ast.Ident)
+	return ok && id.Pos() > after && info.ObjectOf(id) == object
 }

@@ -50,7 +50,7 @@ func TestMutationBudgetsAndProvenance(t *testing.T) {
 func TestPurePrefixesClassifyAsNone(t *testing.T) {
 	pure := []string{
 		"strings.Repeat", "strconv.Itoa", "unicode.IsSpace", "unicode/utf8.RuneLen",
-		"cmp.Compare", "slices.Concat", "maps.Keys", "math.Max", "sort.Strings",
+		"cmp.Compare", "slices.Concat", "maps.Keys", "math.Max", "sort.StringsAreSorted",
 		"errors.Is", "path.Join", "path/filepath.Base", "path/filepath.Join",
 		"charm.land/lipgloss/v2.Style.Render", "github.com/charmbracelet/lipgloss.NewStyle",
 		"github.com/charmbracelet/x/ansi.StringWidth", "error.Error",
@@ -94,7 +94,7 @@ func TestPureStdlibCallsScoreZero(t *testing.T) {
 	f.Statements = 10
 	for index, callee := range []string{
 		"strings.Repeat", "bytes.Compare", "slices.Contains", "maps.Keys",
-		"strconv.Itoa", "sort.Strings", "errors.Is", "math/big.NewInt",
+		"strconv.Itoa", "sort.StringsAreSorted", "errors.Is", "math/big.NewInt",
 		"context.Background", "sync.Mutex.Lock",
 		"path/filepath.Join", "net/url.Parse",
 		"net/http.ResponseWriter.Header", "flag.FlagSet.Args", "flag.FlagSet.Lookup",

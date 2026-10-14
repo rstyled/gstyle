@@ -1,5 +1,7 @@
 package patterns
 
+import "sort"
+
 // Chopping (Jackson & Rollins, CMU-CS-94-169, 1994):
 // A chop between a source criterion and a sink criterion is the set of
 // statements that transmit effects from source to sink — the intersection
@@ -23,6 +25,7 @@ func Chop(pdg *MiningGraph, source, sink int) []int {
 			chop = append(chop, n)
 		}
 	}
+	sort.Ints(chop)
 	return chop
 }
 

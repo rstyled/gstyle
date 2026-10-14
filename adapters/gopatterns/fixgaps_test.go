@@ -20,11 +20,11 @@ const (
 
 func handle(c Color) {
 	switch c {
-	case Color.Red:
+	case Red:
 		doRed()
-	case Color.Green:
+	case Green:
 		doGreen()
-	case Color.Blue:
+	case Blue:
 		doBlue()
 	}
 }
@@ -38,7 +38,7 @@ func doBlue() {}
 		File: "test.go",
 		Line: 12, // line of switch
 	}
-	out, err := applyProjectedFix(t, spec, []byte(src))
+	out, err := applyTypedFix(t, spec, []byte(src))
 	if err != nil {
 		t.Fatalf("applyEnumDispatchFix failed: %v", err)
 	}

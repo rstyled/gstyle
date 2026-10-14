@@ -33,6 +33,7 @@ import (
 	"fmt"
 	"github.com/rstyled/gstyle/domain/pdg"
 	"math"
+	"slices"
 	"sort"
 	"strings"
 	"unicode"
@@ -1364,7 +1365,10 @@ func sortMined(mined *Mined) {
 		if a.ScoreMilli != b.ScoreMilli {
 			return a.ScoreMilli > b.ScoreMilli
 		}
-		return compareSites(a.Sites, b.Sites) < 0
+		if c := compareSites(a.Sites, b.Sites); c != 0 {
+			return c < 0
+		}
+		return slices.Compare([]string{string(a.Kind), a.Observation, a.Inference}, []string{string(b.Kind), b.Observation, b.Inference}) < 0
 	})
 	sort.SliceStable(mined.Suppressed, func(i, j int) bool {
 		a, b := mined.Suppressed[i], mined.Suppressed[j]

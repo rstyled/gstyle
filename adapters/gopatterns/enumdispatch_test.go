@@ -195,8 +195,10 @@ func process(c int) {
 // TestEnumDispatchEndToEnd verifies the detector and fixer agree: every
 // detected switch is fixable by the real fixer.
 func TestEnumDispatchEndToEnd(t *testing.T) {
-	fn, fset := parseNamedFunc(t, enumDispatchSrc, "process")
-	hits := findEnumDispatches(fn, fset)
+	pkg := loadTestPackage(t, strings.ReplaceAll(enumDispatchSrc, "Color.", ""))
+	fn := findFunc(pkg.Syntax[0], "process")
+	fset := pkg.Fset
+	hits := findEnumDispatches(fn, fset, pkg.TypesInfo)
 	if len(hits) != 1 {
 		t.Fatalf("expected 1 hit, got %d", len(hits))
 	}
@@ -207,7 +209,7 @@ func TestEnumDispatchEndToEnd(t *testing.T) {
 		File: "test.go",
 		Line: hits[0].Line,
 	}
-	out, err := applyProjectedFix(t, spec, []byte(enumDispatchSrc))
+	out, err := applyTypedFix(t, spec, []byte(strings.ReplaceAll(enumDispatchSrc, "Color.", "")))
 	if err != nil {
 		t.Fatalf("fixer declined the detector's hit: %v", err)
 	}

@@ -35,20 +35,6 @@ var taintSourceSuffixes = []string{
 	"ioutil.ReadAll",
 }
 
-// taintSanitizerSuffixes are CalleeID suffixes whose result is clean even
-// with tainted input.
-var taintSanitizerSuffixes = []string{
-	"template.HTMLEscapeString",
-	"html.EscapeString",
-	"url.QueryEscape",
-	"url.PathEscape",
-	// Numeric conversions: numbers can't inject.
-	"strconv.Atoi",
-	"strconv.ParseInt",
-	"strconv.ParseFloat",
-	"strconv.ParseUint",
-}
-
 // taintSink describes a dangerous operation and which argument positions
 // must not receive tainted data. A nil dangerousArgs means any argument.
 type taintSink struct {
@@ -85,6 +71,27 @@ var taintSinks = []taintSink{
 	{callee: "ioutil.WriteFile", dangerousArgs: []int{0}, desc: "path traversal"},
 }
 
+type taintPropagation struct {
+	graph   *MiningGraph
+	tainted map[int]bool
+	risk    string
+}
+
+func (p taintPropagation) spread(from int, tos []int) bool {
+	if !p.tainted[from] {
+		return false
+	}
+	spread := false
+	for _, to := range tos {
+		if p.tainted[to] || p.graph.Nodes[to].sanitizesRisk(p.risk) {
+			continue
+		}
+		p.tainted[to] = true
+		spread = true
+	}
+	return spread
+}
+
 // TaintFlow is one tainted-data-to-sink flow.
 type TaintFlow struct {
 	SourceNode, SinkNode string
@@ -114,19 +121,6 @@ func (n PdgNode) isTaintSource() bool {
 	return false
 }
 
-// isTaintSanitizer reports whether n is a sanitizer call.
-func (n PdgNode) isTaintSanitizer() bool {
-	if n.Kind != Call {
-		return false
-	}
-	for _, s := range taintSanitizerSuffixes {
-		if taintCalleeMatches(n.CalleeID, s) {
-			return true
-		}
-	}
-	return false
-}
-
 // matchTaintSink returns the sink rule for n, or nil.
 func (n PdgNode) matchTaintSink() *taintSink {
 	if n.Kind != Call {
@@ -140,14 +134,25 @@ func (n PdgNode) matchTaintSink() *taintSink {
 	return nil
 }
 
-// propagateTaint marks tainted nodes via forward dataflow to a fixpoint.
-// Source calls start tainted; taint flows along data edges; sanitizer calls
-// stay clean and break the chain.
-func propagateTaint(pdg *MiningGraph) map[int]bool {
+func (n PdgNode) sanitizesRisk(risk string) bool {
+	if n.Kind != Call {
+		return false
+	}
+	if risk == "XSS" {
+		return taintCalleeMatches(n.CalleeID, "html.EscapeString") || taintCalleeMatches(n.CalleeID, "template.HTMLEscapeString")
+	}
+	// URL escaping is not SQL, shell or filesystem validation. Numeric parse
+	// results are typed numbers; error/string outputs require result-position proof.
+	return false
+}
+
+// Propagate separately for each sink risk: escaping in one context must not
+// clear taint for an unrelated context.
+func propagateTaintForRisk(pdg *MiningGraph, risk string) map[int]bool {
 	tainted := seedTaintSources(pdg)
 	succ := dataSuccessors(pdg)
 	for changed := true; changed; {
-		changed = propagateTaintStep(pdg, succ, tainted)
+		changed = propagateTaintRiskStep(pdg, succ, tainted, risk)
 	}
 	return tainted
 }
@@ -174,33 +179,15 @@ func dataSuccessors(pdg *MiningGraph) [][]int {
 	return succ
 }
 
-// propagateTaintStep performs one forward propagation pass.
-// Returns true if any new node was marked tainted.
-func propagateTaintStep(pdg *MiningGraph, succ [][]int, tainted map[int]bool) bool {
+func propagateTaintRiskStep(pdg *MiningGraph, succ [][]int, tainted map[int]bool, risk string) bool {
 	changed := false
+	propagation := taintPropagation{graph: pdg, tainted: tainted, risk: risk}
 	for from, tos := range succ {
-		if taintSpreads(pdg, tainted, from, tos) {
+		if propagation.spread(from, tos) {
 			changed = true
 		}
 	}
 	return changed
-}
-
-// taintSpreads marks untainted non-sanitizer successors of a tainted node.
-// Returns true if any new node was marked.
-func taintSpreads(pdg *MiningGraph, tainted map[int]bool, from int, tos []int) bool {
-	if !tainted[from] {
-		return false
-	}
-	spread := false
-	for _, to := range tos {
-		if tainted[to] || pdg.Nodes[to].isTaintSanitizer() {
-			continue
-		}
-		tainted[to] = true
-		spread = true
-	}
-	return spread
 }
 
 // sinkArgTainted reports whether a dangerous argument of sink node idx
@@ -288,11 +275,16 @@ func FindTaintFlows(facts []*MiningFacts) []TaintFlow {
 
 func taintFlowsForFunction(f *MiningFacts) []TaintFlow {
 	var out []TaintFlow
-	tainted := propagateTaint(f.Pdg)
+	taintByRisk := map[string]map[int]bool{}
 	for i, n := range f.Pdg.Nodes {
 		sink := n.matchTaintSink()
 		if sink == nil {
 			continue
+		}
+		tainted := taintByRisk[sink.desc]
+		if tainted == nil {
+			tainted = propagateTaintForRisk(f.Pdg, sink.desc)
+			taintByRisk[sink.desc] = tainted
 		}
 		if !sinkArgTainted(f.Pdg, i, sink, tainted) {
 			continue

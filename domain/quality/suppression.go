@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-var ruleIDs = []string{"fn_length", "fn_params", "mutation_per_target", "mutated_targets", "side_effect_density", "invalid_suppression", "aggregate", "repository", "mutable_identity", "nilerr", "forcetypeassert", "typednil"}
+var ruleIDs = []string{"fn_length", "fn_params", "mutation_per_target", "mutated_targets", "side_effect_density", "invalid_suppression", "aggregate", "repository", "mutable_identity", "nilerr", "forcetypeassert", "typednil", "nil_guard", "negative_index", "literal_index"}
 
 func suppression(comment string) ([]string, string) {
 	comment = strings.TrimSpace(comment)
@@ -43,33 +43,16 @@ func parseLintIgnore(comment string) ([]string, string) {
 
 // splitRulesReason splits fields into rule IDs (leading) and reason (rest).
 func splitRulesReason(parts []string) ([]string, []string) {
-	var rules []string
-	for i, p := range parts {
-		clean := strings.TrimSuffix(p, ",")
-		if !isRuleID(clean) {
-			return rules, parts[i:]
-		}
-		rules = append(rules, clean)
+	if len(parts) == 0 {
+		return nil, nil
 	}
-	return rules, nil
-}
-
-// isRuleID reports whether s looks like a rule ID (lowercase, digits, underscore).
-func isRuleID(s string) bool {
-	if s == "" {
-		return false
+	rules := strings.Split(strings.TrimSuffix(parts[0], ","), ",")
+	i := 1
+	for strings.HasSuffix(parts[i-1], ",") && i < len(parts) {
+		rules = append(rules, strings.Split(strings.TrimSuffix(parts[i], ","), ",")...)
+		i++
 	}
-	for _, r := range s {
-		if !isRuleChar(r) {
-			return false
-		}
-	}
-	return true
-}
-
-// isRuleChar reports whether r is valid in a rule ID.
-func isRuleChar(r rune) bool {
-	return r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '_'
+	return rules, parts[i:]
 }
 
 func validateSuppressedRules(rules string) ([]string, string) {

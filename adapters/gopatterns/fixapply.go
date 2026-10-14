@@ -6,20 +6,11 @@ import (
 	"go/ast"
 	"go/format"
 	"go/token"
-	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/rstyled/gstyle/domain/patterns"
 )
-
-// entityFixParams extracts and validates entity_identity FixSpec params.
-type entityFixParams struct {
-	line    int
-	idField string
-	left    string
-	right   string
-}
 
 // factoryContext carries everything the factory fix needs: the struct
 // fields, the literal rewrites, and where to insert the factory.
@@ -402,126 +393,6 @@ func applyPrimitiveObsessionFix(spec *patterns.FixSpec, src []byte) ([]byte, err
 		return nil, err
 	}
 	return out, nil
-}
-
-// applyEntityIdentityFix applies an entity_identity FixSpec.
-// Two modes:
-//   - Standard: replaces attribute-based equality (a.Name == b.Name &&
-//     a.Email == b.Email) with identity comparison (a.ID == b.ID).
-//   - Add-ID (paired with missing_identity): adds an ID field to a struct
-//     that is compared by attributes but has no identity. After re-mining,
-//     the standard rewrite fires.
-func applyEntityIdentityFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
-	if spec.Params["add_id"] == "true" {
-		return applyEntityAddIDFix(spec, src)
-	}
-	fset, f, err := parseSpec(spec, src)
-	if err != nil {
-		return nil, err
-	}
-	params, err := parseEntityFixParams(spec)
-	if err != nil {
-		return nil, err
-	}
-	target := findComparisonAtLine(fset, f, params.line)
-	if target == nil {
-		return nil, fmt.Errorf("entity_identity: no comparison at line %d", params.line)
-	}
-	replacement := []byte(fmt.Sprintf("%s.%s == %s.%s", params.left, params.idField, params.right, params.idField))
-	start := fset.Position(target.Pos()).Offset
-	end := fset.Position(target.End()).Offset
-	edit := textEdit{start: start, end: end, replacement: replacement}
-	out := applyEdits(src, []textEdit{edit})
-	formatted, err := format.Source(out)
-	if err != nil {
-		return nil, fmt.Errorf("gofmt after entity_identity fix: %w", err)
-	}
-	return formatted, nil
-}
-
-// applyEntityAddIDFix adds an ID field to the struct. This is the first
-// step of the paired fix: missing_identity (detection) flags the problem,
-// entity_identity adds the ID, then a later phase rewrites the comparison.
-func applyEntityAddIDFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
-	fset, f, err := parseSpec(spec, src)
-	if err != nil {
-		return nil, err
-	}
-	typeName := spec.Params["type"]
-	if typeName == "" {
-		return nil, fmt.Errorf("entity_identity FixSpec missing type for add_id")
-	}
-	insertPos, err := structInsertPos(fset, f, typeName)
-	if err != nil {
-		return nil, err
-	}
-	edit := textEdit{
-		start:       insertPos,
-		end:         insertPos,
-		replacement: []byte("\n\tID string `json:\"id\"`"),
-	}
-	out := applyEdits(src, []textEdit{edit})
-	formatted, err := format.Source(out)
-	if err != nil {
-		return nil, fmt.Errorf("gofmt after entity_identity add_id fix: %w", err)
-	}
-	return formatted, nil
-}
-
-func parseEntityFixParams(spec *patterns.FixSpec) (entityFixParams, error) {
-	line, err := strconv.Atoi(spec.Params["line"])
-	if err != nil {
-		return entityFixParams{}, fmt.Errorf("entity_identity FixSpec missing line: %w", err)
-	}
-	idField := spec.Params["id_field"]
-	left := spec.Params["left"]
-	right := spec.Params["right"]
-	if idField == "" || left == "" || right == "" {
-		return entityFixParams{}, fmt.Errorf("entity_identity FixSpec missing params")
-	}
-	return entityFixParams{line: line, idField: idField, left: left, right: right}, nil
-}
-
-// findComparisonAtLine locates a boolean comparison expression at the given line.
-func findComparisonAtLine(fset *token.FileSet, f *ast.File, line int) ast.Expr {
-	var target ast.Expr
-	ast.Inspect(f, func(n ast.Node) bool {
-		var expr ast.Expr
-		switch node := n.(type) {
-		case *ast.IfStmt:
-			expr = node.Cond
-		case *ast.ReturnStmt:
-			if len(node.Results) == 1 {
-				expr = node.Results[0]
-			}
-		}
-		if expr == nil {
-			return true
-		}
-		if fset.Position(expr.Pos()).Line == line {
-			target = expr
-			return false
-		}
-		return true
-	})
-	return target
-}
-
-// structInsertPos finds the byte offset after the last field of a struct.
-func structInsertPos(fset *token.FileSet, f *ast.File, typeName string) (int, error) {
-	target := findStructDecl(f, typeName)
-	if target == nil {
-		return 0, fmt.Errorf("missing_identity: no struct %q found", typeName)
-	}
-	st, ok := target.Type.(*ast.StructType)
-	if !ok {
-		return 0, fmt.Errorf("missing_identity: %q is not a struct", typeName)
-	}
-	if st.Fields == nil || len(st.Fields.List) == 0 {
-		return 0, fmt.Errorf("missing_identity: struct %q has no fields", typeName)
-	}
-	lastField := st.Fields.List[len(st.Fields.List)-1]
-	return fset.Position(lastField.End()).Offset, nil
 }
 
 // findStructDecl locates the type declaration for the named struct.
@@ -1266,42 +1137,14 @@ func hasTypeDecl(f *ast.File, name string) bool {
 
 // specStructKey builds a type-agnostic structural key for matching.
 // Used when types.Info is unavailable in the fixer.
-func specStructKey(cond ast.Expr) string {
-	operands := flattenBoolOps(cond)
-	var parts []string
-	for _, op := range operands {
-		field, opStr, base, value := specOperandParts(op, nil)
-		if field == "" {
-			return ""
-		}
-		// Normalize the base variable to "v" for cross-site matching.
-		// Include the value: different literals are different rules.
-		parts = append(parts, "v."+field+":"+opStr+":"+value)
-		_ = base
-	}
-	sort.Strings(parts)
-	return strings.Join(parts, ",")
-}
+func specStructKey(cond ast.Expr) string { return specBooleanKey(cond) }
 
 // specKeysMatch reports whether two rule keys describe the same rule,
 // ignoring the type prefix and variable names.
 func specKeysMatch(a, b string) bool {
-	aParts := strings.Split(a, "|")
-	bParts := strings.Split(b, "|")
-	aKey := aParts[len(aParts)-1]
-	bKey := bParts[len(bParts)-1]
-	// Normalize variable prefixes: "user.Age" -> "v.Age".
-	normalize := func(s string) string {
-		fields := strings.Split(s, ",")
-		for i, f := range fields {
-			if idx := strings.Index(f, "."); idx > 0 {
-				fields[i] = "v" + f[idx:]
-			}
-		}
-		sort.Strings(fields)
-		return strings.Join(fields, ",")
-	}
-	return normalize(aKey) == normalize(bKey)
+	_, a, _ = strings.Cut(a, "|")
+	_, b, _ = strings.Cut(b, "|")
+	return a != "" && a == b
 }
 
 // specEdits builds the text edits: insert the Specification type, rewrite
