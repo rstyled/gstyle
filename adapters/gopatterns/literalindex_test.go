@@ -65,6 +65,7 @@ func TestLiteralIndex(t *testing.T) {
 		{"closure mutation after guard stays unknown", `func String(s int) string { alter := func() { s = 3 }; if s < 0 || s >= 2 { return "?" }; alter(); return [...]string{"a", "b"}[s] }`, true},
 		{"global mutation after guard stays unknown", `var s int; func alter() { s = 3 }; func String() string { if s < 0 || s >= 2 { return "?" }; alter(); return [...]string{"a", "b"}[s] }`, true},
 		{"earlier address escape stays unknown", `func String(s int) string { ptr := &s; if s < 0 || s >= 2 { return "?" }; *ptr = 3; return [...]string{"a", "b"}[s] }`, true},
+		{"range write invalidates bounds", `func String(s int) string { if s < 0 || s >= 2 { return "?" }; for s = range [3]int{} {}; return [...]string{"a", "b"}[s] }`, true},
 		{"table indexed by variable", `func String(s int) string { return [...]string{"a", "b"}[s] }`, true},
 		{"slice literal with unrelated bound stays silent", `func At(s []int, i int) string { names := []string{"x", "y"}; if i < len(s) { return names[i] }; return "" }`, false},
 		{"constant index is safe", `func First() string { return [...]string{"a", "b"}[0] }`, false},
