@@ -1,0 +1,2 @@
+translate = ["Value", "Value.Bounds", "integerConstraint"]
+imports = ["github.com/rstyled/gstyle/domain/runtimeguard/interval"]

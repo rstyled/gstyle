@@ -1,6 +1,6 @@
 # Negative-index verification
 
-Run `make verify-negative-index` with the shared pinned Lean/Goose project.
+Run `make verify-negative-index verify-runtime-value` with the shared pinned Lean/Goose project.
 This stage covers intervals, the risk decision and stable per-binding selection.
 Advisory payload construction and generic node lookup are also proved. PDG
 transfer analysis and the outer projections remain outside Lean.
@@ -85,7 +85,7 @@ payloads, contradictory ranges and signed extremes are included. Eight added
 mutants test direction, missing knowledge, unknown payloads and boundary loss.
 Go set-membership tests cover both intersections, while adapter tests check that
 all unrelated Value metadata survives delegation. The Value projection and
-copy-back are still outside Lean, as is full state transfer.
+copy-back have separate execution proofs below; full state transfer remains outside Lean.
 
 The production strict lower/upper transfers use `StrictLower`/`StrictUpper`.
 Their actual execution contracts retain the original overflow guards. At signed
@@ -111,13 +111,38 @@ establish infeasibility or precision for inequality. Six added mutation controls
 change each dispatch branch or narrow the default. Tests check set membership,
 unsupported strings, equality intersections, signed extremes and all unrelated
 Value fields. Four superseded private wrappers are removed. Value projection
-and copying the returned bounds into Value remain tested integration boundaries.
+and copying the returned bounds into Value have the execution contracts below.
+
+`make verify-runtime-value` checks the actual `Value.Bounds` method and
+`integerConstraint` caller. Three audited theorems prove exact projection, the
+exact returned Value after copying all four bounds, and semantic preservation
+through the dispatcher. The exact result retains every non-interval field,
+including pointer identity and guard/length/extent metadata. Eleven mutation
+controls swap or forge projected fields, damage copied bounds, clobber other
+metadata or alter the dispatcher inputs.
+
+Goose translates the original runtimeguard package with only Value and those
+two bodies enabled. Its emitted code also declares unrelated opaque types and
+globals; these do not enter the proof contracts. The generic proof generator
+would supply unproved instances for those unrelated types, so this profile does
+not import that output. `ValueLayout.lean` proves the actual generated Value's
+layout/field access instances explicitly, using only Value.TypeAssumptions.
+The function proofs additionally require the actual integerConstraint unfolding
+and the interval package assumptions. Their axiom audit excludes opaque types,
+opaque global initializers, sorry and custom axioms. This does not prove package
+initialization or the unrelated declarations.
+
+The command regenerates and byte-compares both the runtimeguard code and its
+imported interval code. Mutation workspaces include the original Go sources
+needed to type-check these packages. A mutation may target condition.go or
+value.go only when that file is source-bound. CI runs this profile separately
+and retains its source hashes and proof logs.
 
 ## Remaining work and trust
 
 This does not establish that PDG extraction or transfer functions produce sound
 intervals for Go executions. State transfer, widening, convergence, graph traversal,
-Value/Access projection, query integration, corpus traversal and the common
+Access projection, query integration, corpus traversal and the common
 Candidate projection/presentation remain outside Lean. Generic table lookup and
 payload construction themselves are proved; the complete matcher wiring and
 PDG semantics are not. The negative-index pattern is not yet fully verified.

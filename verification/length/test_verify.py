@@ -81,7 +81,8 @@ class VerificationGuardTests(unittest.TestCase):
         for factory, module in ((verify.length_profile, "Gstyle.Proof.Length"),
                                 (verify.pdg_profile, "Gstyle.Proof.Queries"),
                                 (verify.output_profile, "Gstyle.Proof.Output"),
-                                (verify.interval_profile, "Gstyle.Proof.Interval")):
+                                (verify.interval_profile, "Gstyle.Proof.Interval"),
+                                (verify.runtime_value_profile, "Gstyle.Proof.RuntimeValue")):
             profile = factory()
             mutation = next(iter(profile.mutations.items()))
             with self.subTest(package=profile.package), tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
@@ -92,6 +93,37 @@ class VerificationGuardTests(unittest.TestCase):
                 self.assertEqual(run.call_args.args[0], ["lake", "build", module])
                 self.assertTrue(run.call_args.kwargs["expect_failure"])
                 self.assertEqual(run.call_args.kwargs["proof_file"], profile.proof_file)
+
+    def test_runtime_value_generates_only_actual_code(self):
+        profile = verify.runtime_value_profile()
+        with patch.object(verify, "run") as run:
+            verify.generate(profile, Path("goose"), Path("proofgen"), verify.ROOT, Path("out"), "source")
+        run.assert_called_once()
+        self.assertEqual(run.call_args.args[0][0], "goose")
+        self.assertEqual(profile.generated, ("Code",))
+        self.assertEqual(run.call_args.args[0][-2:], ["./domain/runtimeguard", "./domain/runtimeguard/interval"])
+
+    def test_runtime_value_rejects_stale_imported_code(self):
+        profile = verify.runtime_value_profile()
+        with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
+            root = Path(directory)
+            generated = root / "regenerated"
+            for package in (profile.package, *[package for package, _ in profile.bindings]):
+                for base in (root / "Gstyle", generated):
+                    target = base / "Code" / package
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text("same")
+            with patch.object(verify, "PROJECT", root):
+                verify.check_generated(profile, generated)
+                (generated / "Code" / profile.bindings[0][0]).write_text("stale")
+                with self.assertRaisesRegex(RuntimeError, "stale generated source"):
+                    verify.check_generated(profile, generated)
+
+    def test_mutation_requires_a_bound_source(self):
+        profile = replace(verify.runtime_value_profile(), mutations={"unbound": ("before", "after", "outside.go")})
+        with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
+            with self.assertRaisesRegex(RuntimeError, "source is not bound"):
+                verify.check_mutations(replace(profile, report=Path(directory)), Path("goose"), Path("proofgen"))
 
     def test_failed_run_clears_success(self):
         with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:

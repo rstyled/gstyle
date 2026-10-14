@@ -101,7 +101,7 @@ jobs:
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
       - name: Verify production cores in Lean
-        run: make verify-length verify-pdg verify-output verify-negative-index
+        run: make verify-length verify-pdg verify-output verify-negative-index verify-runtime-value
 
       - name: Preserve proof evidence
         if: always()
@@ -138,3 +138,12 @@ jobs:
           path: |
             dist/verification/negative-index/*.log
             dist/verification/negative-index/result.json
+
+      - name: Preserve runtime Value proof evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-value-proof
+          path: |
+            dist/verification/runtime-value/*.log
+            dist/verification/runtime-value/result.json

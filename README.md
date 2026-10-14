@@ -249,4 +249,5 @@ stage proves that the production interval join preserves both input sets and
 that the risk decision reports represented negative values when its pattern
 triggers apply. The map-based selector keeps the first risky occurrence per
 binding in input order. Generic node lookup and advisory payload construction are
-also proved. PDG transfer/traversal and outer projections remain outside the proof. See [the negative-index verification scope](verification/length/NEGATIVE_INDEX.md).
+also proved. `make verify-runtime-value` proves the actual Value projection and
+comparison copy-back, including preservation of other fields. PDG transfer/traversal and outer projections remain outside the proof. See [the negative-index verification scope](verification/length/NEGATIVE_INDEX.md).

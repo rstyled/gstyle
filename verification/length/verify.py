@@ -92,6 +92,8 @@ class Profile:
     proof_file: str
     verified: str
     unverified: tuple
+    generated: tuple = ("Code", "GeneratedProof")
+    bindings: tuple = ()
 
 
 def length_profile():
@@ -233,11 +235,43 @@ def interval_profile():
     )
 
 
+
+def runtime_value_profile():
+    source = ROOT / "domain/runtimeguard/condition.go"
+    value = "domain/runtimeguard/value.go"
+    sources = tuple(sorted(path for directory in ("domain/runtimeguard", "domain/runtimeguard/interval", "domain/pdg", "domain/pdg/query")
+                           for path in (ROOT / directory).glob("*.go") if not path.name.endswith("_test.go")))
+    prefix = "Perennial.github_com.rstyled.gstyle.domain.runtimeguard."
+    return Profile(
+        ROOT / "dist/verification/runtime-value", "github_com/rstyled/gstyle/domain/runtimeguard.lean",
+        "./domain/runtimeguard", source, sources,
+        {prefix + name for name in ("wp_Bounds", "wp_integerConstraint", "wp_integerConstraintSound")},
+        {
+            "project-wrong-lower": ("Lower: v.Lower", "Lower: v.Upper", value),
+            "project-wrong-upper": ("Upper: v.Upper", "Upper: v.Lower", value),
+            "project-forged-lower": ("HasLower: v.HasLower", "HasLower: true", value),
+            "project-forged-upper": ("HasUpper: v.HasUpper", "HasUpper: true", value),
+            "copy-swapped-bounds": ("value.Lower, value.Upper = r.Lower, r.Upper", "value.Lower, value.Upper = r.Upper, r.Lower"),
+            "copy-lost-lower": ("value.HasLower, value.HasUpper = r.HasLower, r.HasUpper", "value.HasLower, value.HasUpper = false, r.HasUpper"),
+            "copy-lost-upper": ("value.HasLower, value.HasUpper = r.HasLower, r.HasUpper", "value.HasLower, value.HasUpper = r.HasLower, false"),
+            "copy-clobbers-pointer": ("value.Lower, value.Upper = r.Lower, r.Upper", "value.Lower, value.Upper = r.Lower, r.Upper; value.NonNil = false"),
+            "copy-clobbers-identity": ("value.Lower, value.Upper = r.Lower, r.Upper", "value.Lower, value.Upper = r.Lower, r.Upper; value.Identity = 0"),
+            "wrong-operator-input": ("interval.Constrain(value.Bounds(), operator, bound)", 'interval.Constrain(value.Bounds(), ">=", bound)'),
+            "wrong-bound-input": ("interval.Constrain(value.Bounds(), operator, bound)", "interval.Constrain(value.Bounds(), operator, bound+1)"),
+        },
+        "AuditRuntimeValue.lean", "Gstyle/Proof/RuntimeValue.lean", "actual Value interval projection, comparison adapter and preservation of other fields",
+        ("PDG extraction", "other state transfers, joins and fixpoint traversal", "Access and Candidate projection"), ("Code",),
+        (("github_com/rstyled/gstyle/domain/runtimeguard/interval.lean", "./domain/runtimeguard/interval"),),
+    )
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
+        if directory not in profile.generated:
+            continue
         run([str(tool), "-out", str(output / directory),
              "-configdir", str(PROJECT / "Gstyle/Code"),
-             "-lean-root", "github.com/rstyled/gstyle=Gstyle", "-dir", str(source_root), profile.go_package],
+             "-lean-root", "github.com/rstyled/gstyle=Gstyle", "-dir", str(source_root), profile.go_package, *[package for _, package in profile.bindings]],
             ROOT, f"{log_prefix}-{directory}.log", report=profile.report)
 
 
@@ -245,17 +279,21 @@ def check_mutations(profile, goose, proofgen):
     results = []
     scratch = profile.report / ".scratch"
     scratch.mkdir(exist_ok=True)
-    for name, (before, after) in profile.mutations.items():
+    for name, mutation in profile.mutations.items():
+        before, after = mutation[:2]
+        source = ROOT / mutation[2] if len(mutation) == 3 else profile.source
+        if source not in profile.sources:
+            raise RuntimeError(f"mutation source is not bound: {name}")
         with tempfile.TemporaryDirectory(prefix=name + "-", dir=scratch) as directory:
             work = Path(directory)
             for original_source in profile.sources:
                 target = work / "go" / original_source.relative_to(ROOT)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(original_source, target)
-            original = profile.source.read_text()
+            original = source.read_text()
             if original.count(before) != 1:
                 raise RuntimeError(f"mutation target is not unique: {name}")
-            (work / "go" / profile.source.relative_to(ROOT)).write_text(original.replace(before, after))
+            (work / "go" / source.relative_to(ROOT)).write_text(original.replace(before, after))
             (work / "go/go.mod").write_text("module github.com/rstyled/gstyle\n\ngo 1.26.0\n")
             lean = work / "lean"
             lean.mkdir()
@@ -270,6 +308,14 @@ def check_mutations(profile, goose, proofgen):
             results.append(name)
             print(f"REJECTED {name}", flush=True)
     return results
+
+
+def check_generated(profile, generated):
+    for package in (profile.package, *[package for package, _ in profile.bindings]):
+        for directory in profile.generated:
+            actual = PROJECT / "Gstyle" / directory / package
+            if actual.read_bytes() != (generated / directory / package).read_bytes():
+                raise RuntimeError(f"stale generated source: {actual}")
 
 
 def main(profile=None):
@@ -293,10 +339,7 @@ def main(profile=None):
             perennial, f"build-{tool.name}.log", report=report)
     generated = report / "regenerated/Gstyle"
     generate(profile, goose, proofgen, ROOT, generated, "source")
-    for directory in ("Code", "GeneratedProof"):
-        actual = PROJECT / "Gstyle" / directory / profile.package
-        if actual.read_bytes() != (generated / directory / profile.package).read_bytes():
-            raise RuntimeError(f"stale generated source: {actual}")
+    check_generated(profile, generated)
     check_axioms(run(["lake", "env", "lean", profile.audit], PROJECT, "axioms.log", report=report), profile.theorems)
     mutants = check_mutations(profile, goose, proofgen)
     success.write_text(json.dumps({
@@ -310,10 +353,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile}
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile}
         arguments = tuple(sys.argv[1:])
         if arguments not in profiles:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value]")
         main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error
