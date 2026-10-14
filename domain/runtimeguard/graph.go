@@ -14,6 +14,7 @@ type graphView struct {
 	tracked      []bool
 	fields       []pdg.Ref
 	paths        map[string]pdg.Ref
+	fieldRoots   map[pdg.Ref]pdg.Ref
 	dereferences map[pdg.Ref][]pdg.Ref
 }
 

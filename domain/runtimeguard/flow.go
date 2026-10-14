@@ -104,6 +104,7 @@ func (a *analysis) access(ref pdg.Ref, state State, report *Report) {
 	}
 	site = a.view.publicAccess(site, state)
 	report.Accesses = append(report.Accesses, site)
+	a.pointerIndex(ref, state, report)
 }
 
 func (a *analysis) rangeWrite(ref, symbol pdg.Ref, state State) {
@@ -111,6 +112,15 @@ func (a *analysis) rangeWrite(ref, symbol pdg.Ref, state State) {
 	if err == nil && pdg.Ref(index) == symbol {
 		state[symbol] = Value{HasLower: true, Lower: 0}
 	}
+}
+
+func (a *analysis) pointerIndex(ref pdg.Ref, state State, report *Report) {
+	if a.view.fact(ref, "pointer-index") != "true" {
+		return
+	}
+	operand := a.view.operand(ref, 0)
+	site := Access{Node: ref, Symbol: a.view.symbol(operand), Value: a.view.value(operand, state)}
+	report.Accesses = append(report.Accesses, a.view.publicAccess(site, state))
 }
 
 func (v *graphView) join(previous, next State) State {

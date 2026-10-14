@@ -90,6 +90,9 @@ func (b *irBuilder) runtimeIndexFacts(expr *ast.IndexExpr, attrs *pdg.Attributes
 		return
 	}
 	b.runtimeExtension(attrs, "index", "true")
+	if pointerType(b.info.TypeOf(expr.X)) {
+		b.runtimeExtension(attrs, "pointer-index", "true")
+	}
 	if _, literal := unparen(expr.X).(*ast.CompositeLit); literal {
 		b.runtimeExtension(attrs, "literal-index", "true")
 	}

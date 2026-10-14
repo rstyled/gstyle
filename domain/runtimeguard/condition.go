@@ -3,6 +3,7 @@ package runtimeguard
 import "github.com/rstyled/gstyle/domain/pdg"
 
 var inverse = map[string]string{"<": ">=", "<=": ">", ">": "<=", ">=": "<", "==": "!=", "!=": "=="}
+
 var reverse = map[string]string{"<": ">", "<=": ">=", ">": "<", ">=": "<=", "==": "==", "!=": "!="}
 
 func (v *graphView) assume(ref pdg.Ref, truth bool, state State) State {
@@ -65,7 +66,7 @@ func (v *graphView) constrain(symbol pdg.Ref, operator string, bound Value, stat
 	if exactInteger(bound) {
 		value = integerConstraint(value, operator, bound.Lower)
 	}
-	if emptyRange(value) {
+	if v.infeasibleConstraint(symbol, operator, bound, value) {
 		return nil
 	}
 	state[symbol] = value
@@ -92,6 +93,24 @@ func (v *graphView) nilConstraint(symbol pdg.Ref, operator string, value Value, 
 	}
 	v.propagatePointer(symbol, value, state)
 	return state
+}
+
+func (v *graphView) infeasibleConstraint(symbol pdg.Ref, operator string, bound, value Value) bool {
+	return emptyRange(value) || v.impossibleSignedComparison(symbol, operator, bound)
+}
+
+func (v *graphView) impossibleSignedComparison(symbol pdg.Ref, operator string, bound Value) bool {
+	if v.kinds[symbol-1] != `"signed"` || !exactInteger(bound) {
+		return false
+	}
+	switch operator {
+	case "<":
+		return bound.Lower == -int64(^uint64(0)>>1)-1
+	case ">":
+		return bound.Lower == int64(^uint64(0)>>1)
+	default:
+		return false
+	}
 }
 
 func integerConstraint(value Value, operator string, bound int64) Value {

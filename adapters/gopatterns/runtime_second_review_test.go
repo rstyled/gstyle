@@ -53,10 +53,16 @@ func reviewReport(t *testing.T, src string) runtimeguard.Report {
 func reviewAccess(t *testing.T, src string) runtimeguard.Access {
 	t.Helper()
 	report := reviewReport(t, src)
-	if len(report.Accesses) != 1 {
-		t.Fatalf("got %d accesses,want 1", len(report.Accesses))
+	var indices []runtimeguard.Access
+	for _, site := range report.Accesses {
+		if site.Index {
+			indices = append(indices, site)
+		}
 	}
-	return report.Accesses[0]
+	if len(indices) != 1 {
+		t.Fatalf("got %d index accesses,want 1", len(indices))
+	}
+	return indices[0]
 }
 
 func TestRuntimePointerProofInvalidation(t *testing.T) {
@@ -105,5 +111,40 @@ func TestRuntimeConcurrentFieldProofStaysUnknown(t *testing.T) {
 	src := `package p;type Inner struct{Value int};type Outer struct{*Inner};func mutate(p *Outer){p.Inner=nil};func f(p *Outer,q *int)int{if p==nil || q==nil{return 0};go mutate(p);if p.Inner==nil{return 0};return p.Value}`
 	if got := nilGuardTestCandidates(t, src); len(got) != 1 {
 		t.Fatalf("concurrent field: got %d findings,want 1", len(got))
+	}
+}
+
+func TestRuntimeFieldGuardIndependentOperations(t *testing.T) {
+	for _, body := range []string{`x:=1;return p.Value+x`, `x:=len(s);return p.Value+x`, `x:=cap(s);return p.Value+x`} {
+		src := `package p;type Inner struct{Value int};type Outer struct{*Inner};func f(p Outer,q *int,s []int)int{if q==nil || p.Inner==nil{return 0};` + body + `}`
+		if got := nilGuardTestCandidates(t, src); len(got) != 0 {
+			t.Fatalf("%s: %d false findings", body, len(got))
+		}
+	}
+}
+
+func TestRuntimePointerArrayNilGuard(t *testing.T) {
+	for _, body := range []string{`if q==nil{return 0};return s[0]`, `if q==nil{return 0};s[0]=1;return 0`} {
+		src := `package p;func f(s *[3]int,q *int)int{` + body + `}`
+		if got := nilGuardTestCandidates(t, src); len(got) != 1 {
+			t.Fatalf("%s: got %d findings,want 1", body, len(got))
+		}
+	}
+	src := `package p;func f(s *[3]int,q *int)int{if s==nil || q==nil{return 0};return s[0]}`
+	if got := nilGuardTestCandidates(t, src); len(got) != 0 {
+		t.Fatalf("safe pointer array: %d findings", len(got))
+	}
+}
+
+func TestRuntimeIntegerLimitReachability(t *testing.T) {
+	for _, condition := range []string{`i < -9223372036854775808`, `i > 9223372036854775807`} {
+		src := `package p;func f(i int64)int{if ` + condition + `{return []int{1}[int(i)]};return 0}`
+		if report := reviewReport(t, src); len(report.Accesses) != 0 {
+			t.Fatalf("%s: got %d unreachable accesses", condition, len(report.Accesses))
+		}
+	}
+	src := `package p;func f(i uint64)int{if i > 9223372036854775807{return []int{1}[int(i)]};return 0}`
+	if report := reviewReport(t, src); len(report.Accesses) != 1 {
+		t.Fatalf("unsigned branch is reachable: %+v", report)
 	}
 }

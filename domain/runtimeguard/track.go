@@ -7,9 +7,10 @@ import "github.com/rstyled/gstyle/domain/pdg"
 func (v *graphView) trackBindings() {
 	definitions := make([][]pdg.Ref, len(v.kinds))
 	var queue []pdg.Ref
+	visited := make([]bool, len(v.graph.Nodes))
 	for i, node := range v.graph.Nodes {
 		ref := pdg.Ref(i + 1)
-		v.trackRoots(ref, &queue)
+		v.trackRoots(ref, visited, &queue)
 		v.predicateDefinitions(ref, definitions)
 		for _, write := range v.graph.NodeAttributes(node).Writes {
 			if write.Symbol != 0 {
@@ -17,7 +18,6 @@ func (v *graphView) trackBindings() {
 			}
 		}
 	}
-	visited := make([]bool, len(v.graph.Nodes))
 	for cursor := 0; cursor < len(queue); cursor++ {
 		for _, ref := range definitions[queue[cursor]-1] {
 			v.trackDefinitionValues(ref, visited, &queue)
@@ -25,10 +25,10 @@ func (v *graphView) trackBindings() {
 	}
 }
 
-func (v *graphView) trackRoots(ref pdg.Ref, queue *[]pdg.Ref) {
+func (v *graphView) trackRoots(ref pdg.Ref, visited []bool, queue *[]pdg.Ref) {
 	if v.fact(ref, "index") == "true" || v.fact(ref, "dereference") == "true" {
-		v.track(v.symbol(v.operand(ref, 0)), queue)
-		v.track(v.symbol(v.operand(ref, 1)), queue)
+		v.trackValue(v.operand(ref, 0), visited, queue)
+		v.trackValue(v.operand(ref, 1), visited, queue)
 	}
 	if v.fact(v.operand(ref, 0), "nil") == "true" {
 		v.track(v.symbol(v.operand(ref, 1)), queue)
