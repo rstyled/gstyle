@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check source binding, Lean proofs, axioms, and deliberate Go mutations."""
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 import hashlib
 import json
@@ -285,39 +286,50 @@ def generate(profile, goose, proofgen, source_root, output, log_prefix):
             ROOT, f"{log_prefix}-{directory}.log", report=profile.report)
 
 
-def check_mutations(profile, goose, proofgen):
-    results = []
+def seed_build(lean):
+    # Private copies preserve the baseline and let Lake invalidate changed inputs.
+    shutil.copytree(PROJECT / ".lake/build", lean / ".lake/build")
+
+
+def check_mutation(profile, goose, proofgen, item):
+    name, mutation = item
     scratch = profile.report / ".scratch"
-    scratch.mkdir(exist_ok=True)
-    for name, mutation in profile.mutations.items():
-        before, after = mutation[:2]
-        source = ROOT / mutation[2] if len(mutation) == 3 else profile.source
-        if source not in profile.sources:
-            raise RuntimeError(f"mutation source is not bound: {name}")
-        with tempfile.TemporaryDirectory(prefix=name + "-", dir=scratch) as directory:
-            work = Path(directory)
-            for original_source in profile.sources:
-                target = work / "go" / original_source.relative_to(ROOT)
-                target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(original_source, target)
-            original = source.read_text()
-            if original.count(before) != 1:
-                raise RuntimeError(f"mutation target is not unique: {name}")
-            (work / "go" / source.relative_to(ROOT)).write_text(original.replace(before, after))
-            (work / "go/go.mod").write_text("module github.com/rstyled/gstyle\n\ngo 1.26.0\n")
-            lean = work / "lean"
-            lean.mkdir()
-            for filename in ("lakefile.toml", "lake-manifest.json", "lean-toolchain", "Gstyle.lean"):
-                shutil.copy2(PROJECT / filename, lean / filename)
-            shutil.copytree(PROJECT / "Gstyle", lean / "Gstyle")
-            (lean / ".lake").mkdir()
-            (lean / ".lake/packages").symlink_to(PROJECT / ".lake/packages", target_is_directory=True)
-            generate(profile, goose, proofgen, work / "go", lean / "Gstyle", name)
-            module = profile.proof_file.removesuffix(".lean").replace("/", ".")
-            run(["lake", "build", module], lean, f"{name}-proof.log", expect_failure=True, report=profile.report, proof_file=profile.proof_file)
-            results.append(name)
-            print(f"REJECTED {name}", flush=True)
-    return results
+    before, after = mutation[:2]
+    source = ROOT / mutation[2] if len(mutation) == 3 else profile.source
+    if source not in profile.sources:
+        raise RuntimeError(f"mutation source is not bound: {name}")
+    with tempfile.TemporaryDirectory(prefix=name + "-", dir=scratch) as directory:
+        work = Path(directory)
+        for original_source in profile.sources:
+            target = work / "go" / original_source.relative_to(ROOT)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(original_source, target)
+        original = source.read_text()
+        if original.count(before) != 1:
+            raise RuntimeError(f"mutation target is not unique: {name}")
+        (work / "go" / source.relative_to(ROOT)).write_text(original.replace(before, after))
+        (work / "go/go.mod").write_text("module github.com/rstyled/gstyle\n\ngo 1.26.0\n")
+        lean = work / "lean"
+        lean.mkdir()
+        for filename in ("lakefile.toml", "lake-manifest.json", "lean-toolchain", "Gstyle.lean"):
+            shutil.copy2(PROJECT / filename, lean / filename)
+        shutil.copytree(PROJECT / "Gstyle", lean / "Gstyle")
+        (lean / ".lake").mkdir()
+        (lean / ".lake/packages").symlink_to(PROJECT / ".lake/packages", target_is_directory=True)
+        seed_build(lean)
+        generate(profile, goose, proofgen, work / "go", lean / "Gstyle", name)
+        module = profile.proof_file.removesuffix(".lean").replace("/", ".")
+        run(["lake", "build", module], lean, f"{name}-proof.log", expect_failure=True, report=profile.report, proof_file=profile.proof_file)
+    print(f"REJECTED {name}", flush=True)
+    return name
+
+
+def check_mutations(profile, goose, proofgen):
+    (profile.report / ".scratch").mkdir(exist_ok=True)
+    # Each worker owns its Go sources and Lean build. Dependencies are prebuilt.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        return list(pool.map(lambda item: check_mutation(profile, goose, proofgen, item),
+                             profile.mutations.items()))
 
 
 def check_generated(profile, generated):

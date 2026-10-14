@@ -60,3 +60,9 @@ failures abort verification. No unchanged build is added per mutation.
 Each mutant builds only its affected proof module. The full unchanged project is
 checked before mutation tests, so unrelated pattern proofs are not rebuilt for
 every mutant.
+
+Mutation checks run with two workers. Every worker uses a private Go/Lean
+workspace and a private copy of the successful preflight build artifacts.
+Lake checks input hashes and rebuilds changed modules and their dependents.
+Pinned dependency builds are shared. A worker failure aborts verification;
+result lists retain profile order even when progress messages finish out of order.

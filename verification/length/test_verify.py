@@ -94,6 +94,41 @@ class VerificationGuardTests(unittest.TestCase):
                 self.assertTrue(run.call_args.kwargs["expect_failure"])
                 self.assertEqual(run.call_args.kwargs["proof_file"], profile.proof_file)
 
+    def test_parallel_mutation_failure_aborts_verification(self):
+        profile = verify.length_profile()
+        with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
+            profile = replace(profile, report=Path(directory))
+            with patch.object(verify, "check_mutation", side_effect=RuntimeError("proof accepted mutant")):
+                with self.assertRaisesRegex(RuntimeError, "proof accepted mutant"):
+                    verify.check_mutations(profile, Path("goose"), Path("proofgen"))
+
+    def test_parallel_mutation_results_keep_profile_order(self):
+        profile = verify.length_profile()
+        with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
+            profile = replace(profile, report=Path(directory))
+            with patch.object(verify, "check_mutation", side_effect=lambda profile, goose, proofgen, item: item[0]):
+                result = verify.check_mutations(profile, Path("goose"), Path("proofgen"))
+            self.assertEqual(result, list(profile.mutations))
+
+    def test_seeded_build_is_private_and_preserves_trace(self):
+        with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
+            root = Path(directory)
+            baseline = root / "baseline"
+            artifact = baseline / ".lake/build/lib/lean/Example.olean"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_bytes(b"baseline")
+            trace = artifact.with_suffix(".trace")
+            trace.write_bytes(b"input hashes")
+            lean = root / "mutant"
+            with patch.object(verify, "PROJECT", baseline):
+                verify.seed_build(lean)
+            copied = lean / artifact.relative_to(baseline)
+            self.assertEqual(copied.read_bytes(), b"baseline")
+            self.assertEqual(copied.with_suffix(".trace").read_bytes(), b"input hashes")
+            self.assertEqual(copied.stat().st_mtime_ns, artifact.stat().st_mtime_ns)
+            copied.write_bytes(b"mutant")
+            self.assertEqual(artifact.read_bytes(), b"baseline")
+
     def test_runtime_value_generates_only_actual_code(self):
         profile = verify.runtime_value_profile()
         with patch.object(verify, "run") as run:
