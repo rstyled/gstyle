@@ -65,3 +65,26 @@ func TestConstraintsIntersectSets(t *testing.T) {
 		}
 	}
 }
+
+func TestStrictConstraints(t *testing.T) {
+	points := []int64{math.MinInt64, math.MinInt64 + 1, -2, -1, 0, 1, 2, math.MaxInt64 - 1, math.MaxInt64}
+	for _, r := range samples() {
+		for _, bound := range points {
+			lower, upper := StrictLower(r, bound), StrictUpper(r, bound)
+			if bound == math.MaxInt64 && lower != r {
+				t.Fatalf("strict lower overflows: r=%+v result=%+v", r, lower)
+			}
+			if bound == math.MinInt64 && upper != r {
+				t.Fatalf("strict upper overflows: r=%+v result=%+v", r, upper)
+			}
+			for _, x := range points {
+				if members(lower, x) != (members(r, x) && (bound == math.MaxInt64 || x > bound)) {
+					t.Fatalf("strict lower: r=%+v bound=%d x=%d result=%+v", r, bound, x, lower)
+				}
+				if members(upper, x) != (members(r, x) && (bound == math.MinInt64 || x < bound)) {
+					t.Fatalf("strict upper: r=%+v bound=%d x=%d result=%+v", r, bound, x, upper)
+				}
+			}
+		}
+	}
+}

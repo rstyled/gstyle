@@ -44,8 +44,8 @@ record can be an earlier risky occurrence; this does not claim every access is
 reported separately. Zero and the largest uint32 ID remain ordinary raw keys, as in the former matcher; this does
 not validate those IDs against the PDG tables.
 
-Twenty-three interval/pattern theorems are audited: the interval model and execution properties,
-selection order/key properties, and the actual Go selector contracts. Thirty-two
+Twenty-nine interval/pattern theorems are audited: the interval model and execution properties,
+selection order/key properties, and the actual Go selector contracts. Thirty-eight
 Go mutations test bound narrowing, forged knowledge, normalization, trigger and
 zero handling, missing deduplication, key confusion, forgotten map writes, safe
 accesses hiding later risks, skipped/duplicated access records and forged source
@@ -85,7 +85,20 @@ payloads, contradictory ranges and signed extremes are included. Eight added
 mutants test direction, missing knowledge, unknown payloads and boundary loss.
 Go set-membership tests cover both intersections, while adapter tests check that
 all unrelated Value metadata survives delegation. The Value projection and
-copy-back are still outside Lean, as are strict comparisons and full transfer.
+copy-back are still outside Lean, as is full state transfer.
+
+The production strict lower/upper transfers use `StrictLower`/`StrictUpper`.
+Their actual execution contracts retain the original overflow guards. At signed
+maximum for a strict lower constraint, or signed minimum for a strict upper
+constraint, they return the original range; this is a conservative result, not
+an exact intersection with an impossible signed comparison. Otherwise they use
+the proved non-strict transfer with bound+1 or bound-1. Semantic execution
+contracts prove preservation of every old member satisfying the strict
+comparison. Machine-word proofs justify adjusted-bound arithmetic without
+wraparound. Six added mutation controls remove the overflow guards, include the
+strict boundary or use the wrong transfer. Go tests cover exact intersections
+away from those guards, unchanged extreme results and unrelated Value metadata.
+The graph-level removal of infeasible signed branches remains outside Lean.
 
 ## Remaining work and trust
 

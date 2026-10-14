@@ -153,6 +153,33 @@ theorem upper_intersection (r : Range) (bound : w64) (x : Int) :
   all_goals simp [contains, uppered, hu, hl, hc] <;> omega
 
 
+def strictLowered (r : Range) (bound : w64) : Range :=
+  if bound = 9223372036854775807#64 then r else lowered r (bound + 1#64)
+
+def strictUppered (r : Range) (bound : w64) : Range :=
+  if bound = 9223372036854775808#64 then r else uppered r (bound - 1#64)
+
+theorem strict_lower_sound (r : Range) (bound : w64) (x : Int)
+    (hr : contains r x) (hx : sint.Z bound < x) :
+    contains (strictLowered r bound) x := by
+  by_cases hb : bound = 9223372036854775807#64
+  · simpa [strictLowered, hb] using hr
+  · simp only [strictLowered, if_neg hb]
+    apply (lower_intersection r (bound + 1#64) x).mpr
+    have hstep : sint.Z (bound + 1#64) = sint.Z bound + 1 := by word
+    exact ⟨hr, by omega⟩
+
+theorem strict_upper_sound (r : Range) (bound : w64) (x : Int)
+    (hr : contains r x) (hx : x < sint.Z bound) :
+    contains (strictUppered r bound) x := by
+  by_cases hb : bound = 9223372036854775808#64
+  · simpa [strictUppered, hb] using hr
+  · simp only [strictUppered, if_neg hb]
+    apply (upper_intersection r (bound - 1#64) x).mpr
+    have hstep : sint.Z (bound - 1#64) = sint.Z bound - 1 := by word
+    exact ⟨hr, by omega⟩
+
+
 def advisory (path functionName name : GoString) (line : w32) : Advisory :=
   { Path' := path, Line' := W64 (uint.Z line), EndLine' := W64 (uint.Z line),
     ID' := functionName, Name' := functionName, Kind' := go!"negative_index", ScoreMilli' := W32 800,
@@ -452,6 +479,65 @@ theorem wp_UpperIntersection (r : Range) (bound : w64) (x : Int) :
   wp_end
   ipureintro
   exact upper_intersection r bound x
+
+
+theorem wp_StrictLower (r : Range) (bound : w64) :
+    {{ isPkgInit (PROP := IProp GF) pkg }}
+      (App (App (Val (@! StrictLower)) (Val #r)) (Val #bound))
+    {{ RET #(strictLowered r bound); True }} := by
+  wp_start
+  wp_auto
+  wp_if_destruct
+  · have hlimit : (~~~(W64 0) >>> W64 1 : w64) = 9223372036854775807#64 := by word
+    simp only [strictLowered, hlimit, ↓reduceIte]
+    wp_end
+  · have hb : bound ≠ 9223372036854775807#64 := by word
+    simp only [strictLowered, if_neg hb]
+    try wp_auto
+    have h1 : (W64 1 : w64) = 1#64 := by word
+    rw [← h1]
+    wp_apply wp_Lower r (bound + W64 1)
+    wp_end
+
+theorem wp_StrictUpper (r : Range) (bound : w64) :
+    {{ isPkgInit (PROP := IProp GF) pkg }}
+      (App (App (Val (@! StrictUpper)) (Val #r)) (Val #bound))
+    {{ RET #(strictUppered r bound); True }} := by
+  wp_start
+  wp_auto
+  wp_if_destruct
+  · have hlimit : (- (~~~(W64 0) >>> W64 1) - W64 1 : w64) = 9223372036854775808#64 := by word
+    simp only [strictUppered, hlimit, ↓reduceIte]
+    wp_end
+  · have hb : bound ≠ 9223372036854775808#64 := by word
+    simp only [strictUppered, if_neg hb]
+    try wp_auto
+    have h1 : (W64 1 : w64) = 1#64 := by word
+    rw [← h1]
+    wp_apply wp_Upper r (bound - W64 1)
+    wp_end
+
+theorem wp_StrictLowerSound (r : Range) (bound : w64) (x : Int)
+    (hr : contains r x) (hx : sint.Z bound < x) :
+    {{ isPkgInit (PROP := IProp GF) pkg }}
+      (App (App (Val (@! StrictLower)) (Val #r)) (Val #bound))
+    {{ (out : Range), RET #out; ⌜contains out x⌝ }} := by
+  wp_start_folded
+  wp_apply wp_StrictLower r bound
+  wp_end
+  ipureintro
+  exact strict_lower_sound r bound x hr hx
+
+theorem wp_StrictUpperSound (r : Range) (bound : w64) (x : Int)
+    (hr : contains r x) (hx : x < sint.Z bound) :
+    {{ isPkgInit (PROP := IProp GF) pkg }}
+      (App (App (Val (@! StrictUpper)) (Val #r)) (Val #bound))
+    {{ (out : Range), RET #out; ⌜contains out x⌝ }} := by
+  wp_start_folded
+  wp_apply wp_StrictUpper r bound
+  wp_end
+  ipureintro
+  exact strict_upper_sound r bound x hr hx
 
 
 theorem wp_Describe (path functionName name : GoString) (line : w32) :

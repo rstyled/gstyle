@@ -54,6 +54,12 @@ noncomputable def Lower [FfiSyntax] [GoGlobalContext] : GoString :=
 noncomputable def Upper [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard/interval.Upper"
 
+noncomputable def StrictLower [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard/interval.StrictLower"
+
+noncomputable def StrictUpper [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard/interval.StrictUpper"
+
 /-- go: interval.go:8:6 -/
 noncomputable def Join.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "a"
@@ -226,6 +232,42 @@ noncomputable def Upper.impl [FfiSyntax] [GoGlobalContext] : val :=
   (Let "$r0" (App (Val (GoInstruction (GoLoad go.int64))) (Var "bound"))
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore go.int64))) (Pair (App (Val (GoInstruction (StructFieldRef Range.ty go!"Upper"))) (Var "r")) (Var "$r0")))))
+  (App (Val doExecute)
+  (Val #())))))))))
+
+/-- go: interval.go:85:6 -/
+noncomputable def StrictLower.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "r"
+  (Lam "bound"
+  (App (Val exceptionDo)
+  (Let "bound" (App (Val (GoInstruction (GoAlloc go.int64))) (Var "bound"))
+  (Let "r" (App (Val (GoInstruction (GoAlloc Range.ty))) (Var "r"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad Range.ty))) (Var "r"))
+  (Let "$a1" (App (Val (GoInstruction (GoOp GoPlus go.int64))) (Pair (App (Val (GoInstruction (GoLoad go.int64))) (Var "bound")) (Val #(W64 1))))
+  (App (App (App (Val (GoInstruction (FuncResolve Lower []))) (Val #())) (Var "$a0")) (Var "$a1")))))))
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (App (Val (GoInstruction (GoOp GoEquals go.int64))) (Pair (App (Val (GoInstruction (GoLoad go.int64))) (Var "bound")) (App (Val (GoInstruction (Convert go.uint64 go.int64))) (App (Val (GoInstruction (GoShift GoShiftr go.uint64 go.untypedInt))) (Pair (App (Val (GoInstruction (GoUnOp GoComplement go.uint64))) (Val #(W64 0))) (Val #(1 : Int))))))))
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoLoad Range.ty))) (Var "r")))
+  (App (Val doExecute)
+  (Val #())))))))))
+
+/-- go: interval.go:92:6 -/
+noncomputable def StrictUpper.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "r"
+  (Lam "bound"
+  (App (Val exceptionDo)
+  (Let "bound" (App (Val (GoInstruction (GoAlloc go.int64))) (Var "bound"))
+  (Let "r" (App (Val (GoInstruction (GoAlloc Range.ty))) (Var "r"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad Range.ty))) (Var "r"))
+  (Let "$a1" (App (Val (GoInstruction (GoOp GoSub go.int64))) (Pair (App (Val (GoInstruction (GoLoad go.int64))) (Var "bound")) (Val #(W64 1))))
+  (App (App (App (Val (GoInstruction (FuncResolve Upper []))) (Val #())) (Var "$a0")) (Var "$a1")))))))
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (App (Val (GoInstruction (GoOp GoEquals go.int64))) (Pair (App (Val (GoInstruction (GoLoad go.int64))) (Var "bound")) (App (Val (GoInstruction (GoOp GoSub go.int64))) (Pair (App (Val (GoInstruction (GoUnOp GoNeg go.int64))) (App (Val (GoInstruction (Convert go.uint64 go.int64))) (App (Val (GoInstruction (GoShift GoShiftr go.uint64 go.untypedInt))) (Pair (App (Val (GoInstruction (GoUnOp GoComplement go.uint64))) (Val #(W64 0))) (Val #(1 : Int)))))) (Val #(W64 1)))))))
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoLoad Range.ty))) (Var "r")))
   (App (Val doExecute)
   (Val #())))))))))
 
@@ -444,6 +486,8 @@ class Assumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFun
   Describe_unfold : FuncUnfold Describe [] Describe.impl
   Lower_unfold : FuncUnfold Lower [] Lower.impl
   Upper_unfold : FuncUnfold Upper [] Upper.impl
+  StrictLower_unfold : FuncUnfold StrictLower [] StrictLower.impl
+  StrictUpper_unfold : FuncUnfold StrictUpper [] StrictUpper.impl
 
 attribute [instance] Assumptions.Range_instance
   Assumptions.Access_instance
@@ -454,6 +498,8 @@ attribute [instance] Assumptions.Range_instance
   Assumptions.Describe_unfold
   Assumptions.Lower_unfold
   Assumptions.Upper_unfold
+  Assumptions.StrictLower_unfold
+  Assumptions.StrictUpper_unfold
 
 end github_com.rstyled.gstyle.domain.runtimeguard.interval
 

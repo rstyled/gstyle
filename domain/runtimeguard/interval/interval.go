@@ -81,3 +81,17 @@ func Upper(r Range, bound int64) Range {
 	r.HasUpper = true
 	return r
 }
+
+func StrictLower(r Range, bound int64) Range {
+	if bound == int64(^uint64(0)>>1) {
+		return r
+	}
+	return Lower(r, bound+1)
+}
+
+func StrictUpper(r Range, bound int64) Range {
+	if bound == -int64(^uint64(0)>>1)-1 {
+		return r
+	}
+	return Upper(r, bound-1)
+}

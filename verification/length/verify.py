@@ -181,8 +181,14 @@ def interval_profile():
     return Profile(
         ROOT / "dist/verification/negative-index", "github_com/rstyled/gstyle/domain/runtimeguard/interval.lean",
         "./domain/runtimeguard/interval", source, (source,),
-        {prefix + name for name in ("join_sound", "negative_detected", "wp_Join", "wp_NegativeIndex", "wp_JoinSound", "wp_NegativeDetected", "selected_avoids", "selected_risky", "selected_unique", "selected_sublist", "selected_keys", "wp_Select", "wp_SelectProperties", "advisory_line", "wp_Describe", "selected_negative", "wp_SelectNegative", "lower_intersection", "upper_intersection", "wp_Lower", "wp_Upper", "wp_LowerIntersection", "wp_UpperIntersection")},
+        {prefix + name for name in ("join_sound", "negative_detected", "wp_Join", "wp_NegativeIndex", "wp_JoinSound", "wp_NegativeDetected", "selected_avoids", "selected_risky", "selected_unique", "selected_sublist", "selected_keys", "wp_Select", "wp_SelectProperties", "advisory_line", "wp_Describe", "selected_negative", "wp_SelectNegative", "lower_intersection", "upper_intersection", "wp_Lower", "wp_Upper", "wp_LowerIntersection", "wp_UpperIntersection", "strict_lower_sound", "strict_upper_sound", "wp_StrictLower", "wp_StrictUpper", "wp_StrictLowerSound", "wp_StrictUpperSound")},
         {
+            "strict-lower-overflow": ("if bound == int64(^uint64(0)>>1)", "if false"),
+            "strict-upper-overflow": ("if bound == -int64(^uint64(0)>>1)-1", "if false"),
+            "strict-lower-includes-boundary": ("return Lower(r, bound+1)", "return Lower(r, bound)"),
+            "strict-upper-includes-boundary": ("return Upper(r, bound-1)", "return Upper(r, bound)"),
+            "strict-lower-wrong-transfer": ("return Lower(r, bound+1)", "return Upper(r, bound+1)"),
+            "strict-upper-wrong-transfer": ("return Upper(r, bound-1)", "return Lower(r, bound-1)"),
             "lower-forgets-knowledge": ("r.HasLower = true", "r.HasLower = false"),
             "lower-trusts-unknown": ("!r.HasLower || r.Lower < bound", "r.Lower < bound"),
             "lower-wrong-direction": ("r.Lower < bound", "r.Lower > bound"),

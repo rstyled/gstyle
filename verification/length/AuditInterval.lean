@@ -25,3 +25,10 @@ import Gstyle.Proof.Interval
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.wp_Upper
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.wp_LowerIntersection
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.wp_UpperIntersection
+
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.strict_lower_sound
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.strict_upper_sound
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.wp_StrictLower
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.wp_StrictUpper
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.wp_StrictLowerSound
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.wp_StrictUpperSound

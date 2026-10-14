@@ -164,15 +164,13 @@ func emptyRange(value Value) bool {
 }
 
 func strictLowerConstraint(value Value, bound int64) Value {
-	if bound == int64(^uint64(0)>>1) {
-		return value
-	}
-	return lowerConstraint(value, bound+1)
+	r := interval.StrictLower(value.Bounds(), bound)
+	value.Lower, value.HasLower = r.Lower, r.HasLower
+	return value
 }
 
 func strictUpperConstraint(value Value, bound int64) Value {
-	if bound == -int64(^uint64(0)>>1)-1 {
-		return value
-	}
-	return upperConstraint(value, bound-1)
+	r := interval.StrictUpper(value.Bounds(), bound)
+	value.Upper, value.HasUpper = r.Upper, r.HasUpper
+	return value
 }
