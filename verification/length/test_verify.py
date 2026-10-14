@@ -25,13 +25,13 @@ class VerificationGuardTests(unittest.TestCase):
 
     def test_setup_error_does_not_reject_mutation(self):
         result = SimpleNamespace(returncode=1, stdout="error: unknown package", stderr="")
-        with tempfile.TemporaryDirectory(dir=verify.ROOT / "dist") as directory:
+        with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
             with patch.object(verify, "REPORT", Path(directory)), patch.object(verify.subprocess, "run", return_value=result):
                 with self.assertRaises(RuntimeError):
                     verify.run(["lake", "build"], verify.PROJECT, "setup.log", expect_failure=True)
 
     def test_failed_run_clears_success(self):
-        with tempfile.TemporaryDirectory(dir=verify.ROOT / "dist") as directory:
+        with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
             report = Path(directory)
             (report / "result.json").write_text("stale success")
             with patch.object(verify, "REPORT", report), patch.object(verify, "run", side_effect=RuntimeError("build failed")):
