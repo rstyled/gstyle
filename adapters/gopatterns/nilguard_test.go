@@ -1,36 +1,24 @@
 package gopatterns
 
 import (
-	"go/ast"
-	"go/parser"
-	"go/token"
-	"go/types"
 	"strings"
 	"testing"
 
 	"github.com/rstyled/gstyle/domain/patterns"
-	"golang.org/x/tools/go/packages"
+	"github.com/rstyled/gstyle/domain/runtimeguard"
 )
 
 func nilGuardTestCandidates(t *testing.T, src string) []patterns.Candidate {
 	t.Helper()
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
-	if err != nil {
-		t.Fatal(err)
-	}
-	info := &types.Info{Types: map[ast.Expr]types.TypeAndValue{}, Defs: map[*ast.Ident]types.Object{}, Uses: map[*ast.Ident]types.Object{}, Scopes: map[ast.Node]*types.Scope{}, Selections: map[*ast.SelectorExpr]*types.Selection{}}
-	pkg, err := (&types.Config{GoVersion: "go1.26"}).Check("example", fset, []*ast.File{file}, info)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ppkg := &packages.Package{Fset: fset, TypesInfo: info, Types: pkg}
 	var out []patterns.Candidate
-	for _, decl := range file.Decls {
-		if fn, ok := decl.(*ast.FuncDecl); ok {
-			out = append(out, nilGuardCandidates(ppkg, fn, "test.go")...)
+	for _, function := range runtimeTestGraphs(t, src) {
+		report, err := runtimeguard.Analyze(&function.Pdg)
+		if err != nil {
+			t.Fatal(err)
 		}
+		out = append(out, nilGuardCandidates(function, report)...)
 	}
+
 	return out
 }
 
@@ -51,6 +39,14 @@ func TestNilGuard(t *testing.T) {
 		{"nil receiver method may be safe", `type Item struct{}; func (p *Item) Value() int { return 0 }; func Get(p, q *Item) int { if q == nil { return -1 }; return p.Value() }`, false},
 		{"partial return is not a guard", `func Get(p, q *int) int { if q == nil { if p == nil { return -1 } }; return *p }`, false},
 		{"range assignment invalidates allocation", `func Get(q *int) int { if q == nil { return -1 }; p := new(int); for _, p = range []*int{nil} {}; return *p }`, true},
+		{"later guard cannot protect earlier read", `func Get(p,q *int) int { if q == nil { return -1 }; n := *p; if p == nil { return -1 }; return n }`, true},
+		{"conditional guard does not dominate", `func Get(p,q *int,check bool) int { if q == nil { return -1 }; if check { if p == nil { return -1 } }; return *p }`, true},
+		{"copied allocation stays nonnil", `func Get(q *int) int { if q == nil { return -1 }; p := new(int); r := p; return *r }`, false},
+		{"allocations join as nonnil", `func Get(q *int,choose bool) int { if q == nil { return -1 }; var p *int; if choose { p = new(int) } else { p = new(int) }; return *p }`, false},
+		{"pointer conversion preserves allocation", `type P *int; func Get(q *int) int { if q == nil { return -1 }; p := P(new(int)); return *p }`, false},
+		{"short circuit protects dereference", `func Get(p,q *int) int { if q == nil { return -1 }; if p != nil && *p > 0 { return 1 }; return 0 }`, false},
+		{"write also dereferences pointer", `func Set(p,q *int) { if q == nil { return }; *p = 1 }`, true},
+		{"address dereference cancellation is safe", `func Get(p,q *int) *int { if q == nil { return nil }; return &*p }`, false},
 		{"wrong variable guarded", `func Get(p, q *int) int { if q == nil { return -1 }; return *p }`, true},
 		{"same variable guarded", `func Get(p *int) int { if p == nil { return -1 }; return *p }`, false},
 		{"no guard at all", `func Get(p *int) int { return *p }`, false},

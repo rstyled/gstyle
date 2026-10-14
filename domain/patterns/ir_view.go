@@ -71,8 +71,10 @@ func MiningView(g *pdg.Graph) *MiningGraph {
 		indexes[i] = len(view.Nodes)
 		view.Nodes = append(view.Nodes, miningNode(g, n))
 	}
+	// Typed operand edges belong to the value-flow projection. The abstraction
+	// matcher compares its existing dependence policy, not duplicate operands.
 	for _, e := range g.Edges {
-		appendMiningEdge(view, indexes, e)
+		appendMiningEdge(g, view, indexes, e)
 	}
 	return view
 }
@@ -81,7 +83,10 @@ func miningNode(g *pdg.Graph, n pdg.Node) PdgNode {
 	return miningLabel(g.Tables, g.Tables.MatchLabels[n.MatchLabel-1], int(n.Line))
 }
 
-func appendMiningEdge(view *MiningGraph, indexes []int, e pdg.Edge) {
+func appendMiningEdge(g *pdg.Graph, view *MiningGraph, indexes []int, e pdg.Edge) {
+	if g.Tables.Text(e.Subkind) == "source-value" {
+		return
+	}
 	from, to := indexes[e.Source-1], indexes[e.Target-1]
 	if from < 0 || to < 0 {
 		return

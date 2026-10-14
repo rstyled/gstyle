@@ -1,225 +1,63 @@
 package gopatterns
 
 import (
-	"go/ast"
-	"go/token"
-	"go/types"
-	"path/filepath"
-	"sort"
-	"strings"
-
+	"fmt"
 	"github.com/rstyled/gstyle/domain/patterns"
 	"github.com/rstyled/gstyle/domain/pdg"
-	"golang.org/x/tools/go/packages"
+	"github.com/rstyled/gstyle/domain/runtimeguard"
+	"path/filepath"
+	"strings"
 )
 
-type nilDeref struct {
-	obj  types.Object
-	name string
-	pos  token.Pos
-}
-
-// findNilGuards flags functions where a nil guard checks one pointer while a
-// different pointer is dereferenced without a guard of its own. Detection-only:
-// which variable the author meant to guard is intent, not syntax.
-func findNilGuards(pkg *packages.Package, root string, paths []string, sources *pdg.SourceContext) []patterns.Candidate {
-	var out []patterns.Candidate
-	for _, file := range pkg.Syntax {
-		out = append(out, nilGuardsForFile(pkg, file, root, paths)...)
-	}
-	return out
-}
-
-func nilGuardsForFile(pkg *packages.Package, file *ast.File, root string, paths []string) []patterns.Candidate {
-	path := pkg.Fset.PositionFor(file.Pos(), false).Filename
-	if !declarationPathSelected(root, path, paths) {
-		return nil
-	}
-	rel, err := filepath.Rel(root, path)
-	if err != nil {
-		return nil
-	}
-	rel = filepath.ToSlash(rel)
-	var out []patterns.Candidate
-	for _, decl := range file.Decls {
-		fn, ok := decl.(*ast.FuncDecl)
-		if !ok || fn.Body == nil {
+// Derive findings only after the canonical graphs are built. Cached package
+// extraction uses this same entry point and never retains compiler objects.
+func populateRuntimeGuards(result *Extraction, root string, paths []string) error {
+	result.NilGuards = nil
+	for _, function := range result.Funcs {
+		if !declarationPathSelected(root, filepath.Join(root, function.Path), paths) {
 			continue
 		}
-		out = append(out, nilGuardCandidates(pkg, fn, rel)...)
+		report, err := runtimeguard.Analyze(&function.Pdg)
+		if err != nil {
+			return fmt.Errorf("runtime guards for %s: %w", function.Name, err)
+		}
+		result.NilGuards = append(result.NilGuards, nilGuardCandidates(function, report)...)
 	}
-	return out
+	return nil
 }
 
-func nilGuardCandidates(pkg *packages.Package, fn *ast.FuncDecl, path string) []patterns.Candidate {
-	guarded := collectNilGuarded(fn, pkg.TypesInfo)
-	if len(guarded) == 0 {
-		return nil
-	}
+func nilGuardCandidates(function FuncPdg, report runtimeguard.Report) []patterns.Candidate {
 	var out []patterns.Candidate
-	for _, deref := range collectUnguardedDerefs(fn, pkg.TypesInfo, guarded) {
-		out = append(out, buildNilGuardCandidate(pkg, fn, path, guardedNames(guarded), deref))
+	seen := make(map[pdg.Ref]bool)
+	for _, site := range report.Accesses {
+		if site.Index || site.Value.NonNil || len(site.Guards) == 0 || seen[site.Symbol] {
+			continue
+		}
+		seen[site.Symbol] = true
+		out = append(out, buildNilGuardCandidate(function, site))
 	}
 	return out
 }
 
-// collectNilGuarded returns the pointer-typed objects guarded by a returning
-// `x == nil` check in the function body.
-func collectNilGuarded(fn *ast.FuncDecl, info *types.Info) map[types.Object]bool {
-	guarded := map[types.Object]bool{}
-	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		if _, closure := node.(*ast.FuncLit); closure {
-			return false
-		}
-		stmt, ok := node.(*ast.IfStmt)
-		if !ok {
-			return true
-		}
-		if id := nilGuardTarget(stmt.Cond); id != nil {
-			if obj := info.ObjectOf(id); isPointerVar(obj) && branchReturns(stmt.Body) {
-				guarded[obj] = true
-			}
-		}
-		return true
-	})
-	return guarded
-}
-
-// collectUnguardedDerefs returns the first dereference site per pointer object
-// that has no guard in the function.
-func collectUnguardedDerefs(fn *ast.FuncDecl, info *types.Info, guarded map[types.Object]bool) []nilDeref {
-	seen := map[types.Object]bool{}
-	allocated := nonNilLocalDefinitions(fn, info)
-	var out []nilDeref
-	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		if _, closure := node.(*ast.FuncLit); closure {
-			return false
-		}
-		if deref, ok := unguardedDeref(node, info, guarded, seen); ok && !allocationPrecedes(allocated, deref) {
-			seen[deref.obj] = true
-			out = append(out, deref)
-		}
-		return true
-	})
-	return out
-}
-
-// unguardedDeref reports node as an unguarded pointer dereference when it is
-// a first-seen `*x` over a pointer object with no guard.
-func unguardedDeref(node ast.Node, info *types.Info, guarded, seen map[types.Object]bool) (nilDeref, bool) {
-	id := dereferencedPointer(node, info)
-	if id == nil {
-		return nilDeref{}, false
+func buildNilGuardCandidate(function FuncPdg, site runtimeguard.Access) patterns.Candidate {
+	var names []string
+	for _, symbol := range site.Guards {
+		names = append(names, runtimeSymbolName(&function.Pdg, symbol))
 	}
-	obj := info.ObjectOf(id)
-	if !isPointerVar(obj) || guarded[obj] || seen[obj] {
-		return nilDeref{}, false
-	}
-	return nilDeref{obj: obj, name: id.Name, pos: node.Pos()}, true
-}
-
-func buildNilGuardCandidate(pkg *packages.Package, fn *ast.FuncDecl, path, guards string, deref nilDeref) patterns.Candidate {
-	name := fn.Name.Name
-	if fnObj, ok := pkg.TypesInfo.Defs[fn.Name].(*types.Func); ok {
-		name = patterns.FuncID(fnObj)
-	}
-	line := pkg.Fset.PositionFor(deref.pos, false).Line
+	name := runtimeSymbolName(&function.Pdg, site.Symbol)
+	line := int(function.Pdg.Nodes[site.Node-1].Line)
 	return patterns.Candidate{
-		Kind:       patterns.NilGuard,
-		ScoreMilli: 800,
-		Observation: "nil guard checks " + guards + " while " + deref.name +
-			" is dereferenced without a guard",
-		Inference: "verify the guard targets the dereferenced pointer; the checked variable may be the wrong one",
-		CounterEvidence: []string{
-			"intent unknown; no automatic fix — verify against the contract",
-		},
-		Sites: []patterns.Site{{
-			Path: path, Line: line, EndLine: line,
-			ID: name, Name: name,
-		}},
+		Kind: patterns.NilGuard, ScoreMilli: 800,
+		Observation:     "nil guard checks " + strings.Join(names, ", ") + " while " + name + " is dereferenced without a guard",
+		Inference:       "verify the guard targets the dereferenced pointer; the checked variable may be the wrong one",
+		CounterEvidence: []string{"intent unknown; no automatic fix — verify against the contract"},
+		Sites:           []patterns.Site{{Path: function.Path, Line: line, EndLine: line, ID: function.Name, Name: function.Name}},
 	}
 }
 
-// nilGuardTarget returns the identifier compared against nil in `x == nil`
-// or `nil == x`, or nil.
-func nilGuardTarget(cond ast.Expr) *ast.Ident {
-	bin, ok := cond.(*ast.BinaryExpr)
-	if !ok || bin.Op != token.EQL {
-		return nil
+func runtimeSymbolName(graph *pdg.Graph, symbol pdg.Ref) string {
+	if symbol == 0 {
+		return "pointer expression"
 	}
-	if other := nilCounterpart(bin.X, bin.Y); other != nil {
-		return other
-	}
-	return nilCounterpart(bin.Y, bin.X)
-}
-
-// nilCounterpart returns side as an identifier when other is the nil
-// identifier, or nil.
-func nilCounterpart(side, other ast.Expr) *ast.Ident {
-	id, ok := other.(*ast.Ident)
-	if !ok || !isNilIdent(id) {
-		return nil
-	}
-	otherID, ok := side.(*ast.Ident)
-	if !ok {
-		return nil
-	}
-	return otherID
-}
-
-func isPointerVar(obj types.Object) bool {
-	v, ok := obj.(*types.Var)
-	if !ok {
-		return false
-	}
-	_, ok = v.Type().Underlying().(*types.Pointer)
-	return ok
-}
-
-func branchReturns(body *ast.BlockStmt) bool {
-	if len(body.List) == 0 {
-		return false
-	}
-	return statementReturns(body.List[len(body.List)-1])
-}
-
-func guardedNames(guarded map[types.Object]bool) string {
-	names := make([]string, 0, len(guarded))
-	for obj := range guarded {
-		names = append(names, obj.Name())
-	}
-	sort.Strings(names)
-	return strings.Join(names, ", ")
-}
-
-// Only compiler-resolved field selections imply a dereference. Pointer-receiver
-// method calls may accept nil and are deliberately excluded.
-func dereferencedPointer(node ast.Node, info *types.Info) *ast.Ident {
-	switch expr := node.(type) {
-	case *ast.StarExpr:
-		id, _ := unparen(expr.X).(*ast.Ident)
-		return id
-	case *ast.SelectorExpr:
-		selection := info.Selections[expr]
-		if selection == nil || selection.Kind() != types.FieldVal {
-			return nil
-		}
-		id, _ := unparen(expr.X).(*ast.Ident)
-		return id
-	default:
-		return nil
-	}
-}
-
-func statementReturns(stmt ast.Stmt) bool {
-	switch stmt := stmt.(type) {
-	case *ast.ReturnStmt:
-		return true
-	case *ast.BlockStmt:
-		return branchReturns(stmt)
-	case *ast.IfStmt:
-		return stmt.Else != nil && branchReturns(stmt.Body) && statementReturns(stmt.Else)
-	default:
-		return false
-	}
+	return graph.Tables.Text(graph.Symbols[symbol-1].Name.Value)
 }

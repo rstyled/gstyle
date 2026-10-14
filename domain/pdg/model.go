@@ -257,6 +257,7 @@ type NamedCapability struct {
 type Graph struct {
 	Tables          *Tables
 	NormalFlow      *NormalFlow
+	ValueFlow       *NormalFlow // Shared typed operation flow; no AST or source copies.
 	Profile         Ref
 	Producer        Producer
 	Sources         []Source

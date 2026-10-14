@@ -50,7 +50,6 @@ func (e *sourceExtraction) collectPackage(pkg *packages.Package) error {
 	e.result.Funcs = append(e.result.Funcs, funcs...)
 	e.result.DeclarationOrders = append(e.result.DeclarationOrders, findDeclarationOrders(pkg, e.root, e.paths, e.result.Sources)...)
 	e.result.OffsetFallbacks = append(e.result.OffsetFallbacks, findOffsetFallbacks(pkg, e.root, e.paths, e.result.Sources)...)
-	e.result.NilGuards = append(e.result.NilGuards, findNilGuards(pkg, e.root, e.paths, e.result.Sources)...)
 	e.result.AnemicModels = append(e.result.AnemicModels, findAnemicModels(pkg, e.root)...)
 	e.result.MissingIdentities = append(e.result.MissingIdentities, findMissingIdentities(pkg, e.root)...)
 	e.result.DomainServices = append(e.result.DomainServices, findDomainServices(pkg, e.root)...)
@@ -69,6 +68,9 @@ func extractBoundedFix(ctx context.Context, root string, paths []string, options
 		return nil, err
 	}
 	populateInterfaceNilHits(extraction.result.Funcs)
+	if err := populateRuntimeGuards(&extraction.result, root, paths); err != nil {
+		return nil, err
+	}
 	return &extraction.result, nil
 }
 

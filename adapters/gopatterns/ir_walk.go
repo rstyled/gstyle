@@ -108,7 +108,7 @@ func (b *irBuilder) expressionOperation(n ast.Node) {
 }
 
 func (b *irBuilder) parenthesizedValue(n *ast.ParenExpr) {
-	if (!b.scalarOperations && !b.bindingOperations) || b.writeTargets[n] {
+	if (!b.scalarOperations && !b.bindingOperations && !b.runtimeOperations) || b.writeTargets[n] {
 		return
 	}
 	b.addNode(n, pdg.Computation, pdg.Attributes{Operator: b.pool.Known("parentheses")})

@@ -282,7 +282,6 @@ func extractNormalPackages(ctx context.Context, abs string, paths []string, opti
 	var funcsOut []FuncPdg
 	var orders []patterns.Candidate
 	var ranges []patterns.Candidate
-	var guards []patterns.Candidate
 	var anemic []patterns.AnemicModelHit
 	var missing []patterns.MissingIdentityHit
 	var services []patterns.DomainServiceHit
@@ -298,13 +297,16 @@ func extractNormalPackages(ctx context.Context, abs string, paths []string, opti
 		ranges = append(ranges, findOffsetFallbacks(pkg, abs, paths, sources)...)
 		projectSourceParameterFlow(sources, funcs)
 		funcsOut = append(funcsOut, funcs...)
-		guards = append(guards, findNilGuards(pkg, abs, paths, sources)...)
 		anemic = append(anemic, findAnemicModels(pkg, abs)...)
 		missing = append(missing, findMissingIdentities(pkg, abs)...)
 		services = append(services, findDomainServices(pkg, abs)...)
 	}
 	populateInterfaceNilHits(funcsOut)
-	return &Extraction{Sources: sources, PackageNames: packageBindingNames(pkgs), Funcs: funcsOut, DeclarationOrders: orders, OffsetFallbacks: ranges, NilGuards: guards, AnemicModels: anemic, MissingIdentities: missing, DomainServices: services}, nil
+	result := &Extraction{Sources: sources, PackageNames: packageBindingNames(pkgs), Funcs: funcsOut, DeclarationOrders: orders, OffsetFallbacks: ranges, AnemicModels: anemic, MissingIdentities: missing, DomainServices: services}
+	if err := populateRuntimeGuards(result, abs, paths); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func packageBindingNames(pkgs []*packages.Package) map[string][]string {

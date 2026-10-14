@@ -31,6 +31,9 @@ func (a *scalarCFGBuilder) source(source ast.Node) {
 func (a *scalarCFGBuilder) walk(source ast.Node) {
 	var stack []ast.Node
 	ast.Inspect(source, func(node ast.Node) bool {
+		if _, closure := node.(*ast.FuncLit); closure && a.builder.runtimeOperations {
+			return false
+		}
 		if node == nil {
 			a.finish(stack[len(stack)-1])
 			stack = stack[:len(stack)-1]
