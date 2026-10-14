@@ -1,36 +1,24 @@
 package gopatterns
 
 import (
-	"go/ast"
-	"go/parser"
-	"go/token"
-	"go/types"
 	"strings"
 	"testing"
 
 	"github.com/rstyled/gstyle/domain/patterns"
-	"golang.org/x/tools/go/packages"
+	"github.com/rstyled/gstyle/domain/runtimeguard"
 )
 
 func negativeIndexTestCandidates(t *testing.T, src string) []patterns.Candidate {
 	t.Helper()
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
-	if err != nil {
-		t.Fatal(err)
-	}
-	info := &types.Info{Types: map[ast.Expr]types.TypeAndValue{}, Defs: map[*ast.Ident]types.Object{}, Uses: map[*ast.Ident]types.Object{}, Scopes: map[ast.Node]*types.Scope{}}
-	pkg, err := (&types.Config{GoVersion: "go1.26"}).Check("example", fset, []*ast.File{file}, info)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ppkg := &packages.Package{Fset: fset, TypesInfo: info, Types: pkg}
 	var out []patterns.Candidate
-	for _, decl := range file.Decls {
-		if fn, ok := decl.(*ast.FuncDecl); ok {
-			out = append(out, negativeIndexCandidates(ppkg, fn, "test.go")...)
+	for _, function := range runtimeTestGraphs(t, src) {
+		report, err := runtimeguard.Analyze(&function.Pdg)
+		if err != nil {
+			t.Fatal(err)
 		}
+		out = append(out, negativeIndexCandidates(function, report)...)
 	}
+
 	return out
 }
 
@@ -46,6 +34,13 @@ func TestNegativeIndex(t *testing.T) {
 		{"unsigned array index cannot be negative", `func At(s [2]int, i uint) int { if i < uint(len(s)) { return s[i] }; return -1 }`, false},
 		{"named unsigned index cannot be negative", `type Index uint; func At(s [2]int, i Index) int { if i < Index(len(s)) { return s[i] }; return -1 }`, false},
 		{"shadowed length is not builtin", `func At(s []int, i int) int { len := func([]int) int { return 1 }; if i < len(s) { return s[i] }; return -1 }`, false},
+		{"lower check only logs", `func At(s []int,i int) int { if i < 0 { println("negative") }; if i < len(s) { return s[i] }; return -1 }`, true},
+		{"later lower check cannot protect access", `func At(s []int,i int) int { if i < len(s) { n := s[i]; if i < 0 { return -1 }; return n }; return -1 }`, true},
+		{"lower guard invalidated by assignment", `func At(s []int,i int) int { if i < 0 { return -1 }; i = -2; if i < len(s) { return s[i] }; return -1 }`, true},
+		{"range counter has nonnegative PDG definition", `func At(s []int) int { for i:=range s { if i < len(s) { return s[i] } }; return -1 }`, false},
+		{"copied index retains lower guard", `func At(s []int,i int) int { if i < 0 { return -1 }; j := i; if j < len(s) { return s[j] }; return -1 }`, false},
+		{"named length check", `func At(s []int,i int) int { n := len(s); if i < n { return s[i] }; return -1 }`, true},
+		{"map negative keys do not panic", `func At(s map[int]int,i int) int { if i < len(s) { return s[i] }; return -1 }`, false},
 		{"missing lower bound", `func At(s []int, i int) int { if i < len(s) { return s[i] }; return -1 }`, true},
 		{"reversed comparison", `func At(s []int, i int) int { if len(s) > i { return s[i] }; return -1 }`, true},
 		{"combined guard present", `func At(s []int, i int) int { if i >= 0 && i < len(s) { return s[i] }; return -1 }`, false},
@@ -53,7 +48,7 @@ func TestNegativeIndex(t *testing.T) {
 		{"no bound check at all", `func At(s []int, i int) int { return s[i] }`, false},
 		{"no index use", `func Len(s []int, i int) int { if i < len(s) { return len(s) }; return -1 }`, false},
 		{"non-integer index", `func First(s []string, f float64) float64 { if f < float64(len(s)) { return f }; return -1 }`, false},
-		{"guard without return", `func At(s []int, i int) int { x := 0; if i < len(s) { x = s[i] }; return x }`, false},
+		{"checked branch without return", `func At(s []int, i int) int { x := 0; if i < len(s) { x = s[i] }; return x }`, true},
 		{"different index guarded", `func At(s []int, i, j int) int { if j < len(s) { return s[j] }; if i < len(s) { return s[i] }; return -1 }`, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
