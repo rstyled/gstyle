@@ -116,8 +116,8 @@ jobs:
           ./elan-init -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
-      - name: Verify production line counter in Lean and reject mutations
-        run: make verify-length
+      - name: Verify production length and PDG queries in Lean
+        run: make verify-length verify-pdg
 
       - name: Preserve proof evidence
         if: always()
@@ -127,3 +127,12 @@ jobs:
           path: |
             dist/verification/function-length/*.log
             dist/verification/function-length/result.json
+
+      - name: Preserve PDG query proof evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdg-query-proof
+          path: |
+            dist/verification/pdg-queries/*.log
+            dist/verification/pdg-queries/result.json

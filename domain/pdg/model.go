@@ -2,20 +2,22 @@
 // draft 0.1.0. IDs are table indexes, never matching labels. Zero is absent.
 package pdg
 
+import "github.com/rstyled/gstyle/domain/pdg/query"
+
 const SchemaVersion = "0.1.0"
 
-type Text uint32
-type Ref uint32
-
-type Status uint8
+// Aliases keep the public PDG record API and interchange representation intact.
+type Text = query.Text
+type Ref = query.Ref
+type Status = query.Status
 
 const (
-	Unknown Status = iota
-	Known
-	Unsupported
-	NotApplicable
-	Supported
-	Approximated
+	Unknown       = query.Unknown
+	Known         = query.Known
+	Unsupported   = query.Unsupported
+	NotApplicable = query.NotApplicable
+	Supported     = query.Supported
+	Approximated  = query.Approximated
 )
 
 // Fact represents the schema's string fact; unknown values always have reasons.
@@ -26,17 +28,10 @@ type Fact struct {
 
 // BooleanFact occupies the same space as Fact and distinguishes known false
 // from unavailable evidence without interning a boolean spelling.
-type BooleanFact struct {
-	Reason Text
-	Status Status
-	Value  bool
-}
+type BooleanFact = query.BooleanFact
 
 type Profile struct{ ID, Version Text }
-type Capability struct {
-	Description Text
-	Status      Status
-}
+type Capability = query.Capability
 
 type Span struct{ Source, Start, End uint32 }
 

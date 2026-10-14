@@ -46,3 +46,8 @@ all nine theorem axiom lists, and retranslates four deliberately broken Go
 variants. Each variant must fail in our proof module. Tool/setup failures do not
 count as successful mutation rejection. Logs and the success report go to
 `dist/verification/function-length/`; stale success is removed before a run.
+
+Dependencies are checked once before mutation tests. A mutation counts as
+rejected only for a recognized proof failure in its expected proof module.
+Missing modules, syntax errors, unrelated diagnostics and mixed setup/proof
+failures abort verification. No unchanged build is added per mutation.
