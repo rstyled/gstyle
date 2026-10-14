@@ -77,6 +77,21 @@ type taintPropagation struct {
 	risk    string
 }
 
+func (p taintPropagation) spread(from int, tos []int) bool {
+	if !p.tainted[from] {
+		return false
+	}
+	spread := false
+	for _, to := range tos {
+		if p.tainted[to] || p.graph.Nodes[to].sanitizesRisk(p.risk) {
+			continue
+		}
+		p.tainted[to] = true
+		spread = true
+	}
+	return spread
+}
+
 // TaintFlow is one tainted-data-to-sink flow.
 type TaintFlow struct {
 	SourceNode, SinkNode string
@@ -173,21 +188,6 @@ func propagateTaintRiskStep(pdg *MiningGraph, succ [][]int, tainted map[int]bool
 		}
 	}
 	return changed
-}
-
-func (p taintPropagation) spread(from int, tos []int) bool {
-	if !p.tainted[from] {
-		return false
-	}
-	spread := false
-	for _, to := range tos {
-		if p.tainted[to] || p.graph.Nodes[to].sanitizesRisk(p.risk) {
-			continue
-		}
-		p.tainted[to] = true
-		spread = true
-	}
-	return spread
 }
 
 // sinkArgTainted reports whether a dangerous argument of sink node idx
