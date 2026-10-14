@@ -36,6 +36,8 @@ type Options struct {
 	NilGuards []Candidate
 	// NegativeIndices are missing-lower-bound index findings from typed source analysis.
 	NegativeIndices []Candidate
+	// LiteralIndices are unchecked composite-literal index findings.
+	LiteralIndices []Candidate
 	// MinScoreMilli drops groups and candidates scoring below this.
 	MinScoreMilli uint32
 	// Top keeps only the first N groups and candidates (all when nil).
@@ -104,6 +106,7 @@ var singleFunctionBuilders = []singleFunctionBuilder{
 	{TypedNil, func(prepared []*MiningFacts, options Options) []Candidate { return typedNilCandidates(prepared) }},
 	{NilGuard, func(_ []*MiningFacts, options Options) []Candidate { return options.NilGuards }},
 	{NegativeIndex, func(_ []*MiningFacts, options Options) []Candidate { return options.NegativeIndices }},
+	{LiteralIndex, func(_ []*MiningFacts, options Options) []Candidate { return options.LiteralIndices }},
 	{DependenceCluster, func(prepared []*MiningFacts, options Options) []Candidate {
 		clusters := FindDepClusters(prepared)
 		return DepClusterCandidates(clusters, prepared)

@@ -131,6 +131,10 @@ const (
 	// check while the index is used. Detection-only: whether negative
 	// indices can arrive is a contract question.
 	NegativeIndex CandidateKind = "negative_index"
+	// LiteralIndex flags indexing an array/slice composite literal with an
+	// unchecked variable. Detection-only: whether out-of-range values can
+	// arrive is a contract question.
+	LiteralIndex CandidateKind = "literal_index"
 	// DependenceCluster flags functions whose PDG contains a large
 	// strongly-connected region — "everything affects everything"
 	// spaghetti that resists testing. Following Binkley & Harman.
@@ -244,6 +248,7 @@ var FixKindOrder = []CandidateKind{
 	TypedNil,
 	NilGuard,
 	NegativeIndex,
+	LiteralIndex,
 	DependenceCluster,
 	MinedRule,
 	DeviantBehavior,
