@@ -87,8 +87,9 @@ class VerificationGuardTests(unittest.TestCase):
             mutation = next(iter(profile.mutations.items()))
             with self.subTest(package=profile.package), tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
                 profile = replace(profile, report=Path(directory), mutations=dict([mutation]))
-                with patch.object(verify, "generate"), patch.object(verify, "run") as run, patch.object(verify, "print", create=True):
+                with patch.object(verify, "seed_build") as seed, patch.object(verify, "generate"), patch.object(verify, "run") as run, patch.object(verify, "print", create=True):
                     verify.check_mutations(profile, Path("goose"), Path("proofgen"))
+                seed.assert_called_once()
                 run.assert_called_once()
                 self.assertEqual(run.call_args.args[0], ["lake", "build", module])
                 self.assertTrue(run.call_args.kwargs["expect_failure"])
