@@ -5,6 +5,7 @@ package runtimeguard
 import "github.com/rstyled/gstyle/domain/pdg"
 
 type Value struct {
+	Identity                           uint64
 	Lower, Upper                       int64
 	HasLower, HasUpper                 bool
 	NonNil, Nil, Guarded, UpperChecked bool
@@ -15,10 +16,9 @@ type Value struct {
 
 func (v Value) merge(other Value) Value {
 	out := v.mergeBounds(other)
-	out.NonNil, out.Nil = v.NonNil && other.NonNil, v.Nil && other.Nil
-	out.Guarded, out.UpperChecked = v.Guarded && other.Guarded, v.UpperChecked || other.UpperChecked
+	out.UpperChecked = v.UpperChecked || other.UpperChecked
 	out.Length = v.Length && other.Length
-	return out
+	return v.mergePointers(other, out)
 }
 
 func (v Value) mergeBounds(other Value) Value {
@@ -34,6 +34,15 @@ func (v Value) normalized() Value {
 		v.Upper = 0
 	}
 	return v
+}
+
+func (v Value) mergePointers(other, out Value) Value {
+	out.NonNil, out.Nil = v.NonNil && other.NonNil, v.Nil && other.Nil
+	out.Guarded = v.Guarded && other.Guarded
+	if v.Identity == other.Identity {
+		out.Identity = v.Identity
+	}
+	return out
 }
 
 type State map[pdg.Ref]Value

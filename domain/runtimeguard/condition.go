@@ -38,16 +38,23 @@ func (v *graphView) comparison(ref pdg.Ref, operator string, truth bool, state S
 		operator = inverse[operator]
 	}
 	left, right := v.operand(ref, 0), v.operand(ref, 1)
+	leftValue, rightValue := v.value(left, state), v.value(right, state)
 	if symbol := v.symbol(left); symbol != 0 {
-		return v.constrain(symbol, operator, v.value(right, state), state)
+		state = v.constrain(symbol, operator, rightValue, state)
+	}
+	if state == nil {
+		return nil
 	}
 	if symbol := v.symbol(right); symbol != 0 {
-		return v.constrain(symbol, reverse[operator], v.value(left, state), state)
+		state = v.constrain(symbol, reverse[operator], leftValue, state)
 	}
 	return state
 }
 
 func (v *graphView) constrain(symbol pdg.Ref, operator string, bound Value, state State) State {
+	if !v.trackedBinding(symbol) {
+		return state
+	}
 	value := v.binding(symbol, state)
 	if bound.Nil {
 		return v.nilConstraint(symbol, operator, value, state)
@@ -83,7 +90,7 @@ func (v *graphView) nilConstraint(symbol pdg.Ref, operator string, value Value, 
 	default:
 		return state
 	}
-	state[symbol] = value
+	v.propagatePointer(symbol, value, state)
 	return state
 }
 

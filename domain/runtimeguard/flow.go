@@ -51,6 +51,7 @@ func (a *analysis) block(block pdg.FlowBlock, state State, report *Report) {
 
 func (a *analysis) transfer(ref pdg.Ref, state State) {
 	attrs := a.view.attrs(ref)
+	a.view.invalidateFields(ref, state)
 	if len(attrs.Writes) == 0 {
 		return
 	}
@@ -64,7 +65,7 @@ func (a *analysis) transfer(ref pdg.Ref, state State) {
 		if !a.view.trackedBinding(write.Symbol) {
 			continue
 		}
-		state[write.Symbol] = a.view.assignmentValue(write.Symbol, value)
+		a.view.assign(ref, write.Symbol, value, state)
 		a.rangeWrite(ref, write.Symbol, state)
 	}
 }
@@ -99,10 +100,17 @@ func (a *analysis) access(ref pdg.Ref, state State, report *Report) {
 		site.Constant = a.view.fact(operand, "integer") != ""
 	}
 	if a.view.fact(ref, "embedded-dereference") == "true" {
-		site.Symbol, site.Value = 0, Value{}
+		site.Symbol, site.Value = 0, a.view.embeddedValue(ref, state, site.Value)
 	}
-	site.Guards = pointerGuardContext(site, state)
+	site = a.view.publicAccess(site, state)
 	report.Accesses = append(report.Accesses, site)
+}
+
+func (a *analysis) rangeWrite(ref, symbol pdg.Ref, state State) {
+	index, err := strconv.ParseUint(a.view.fact(ref, "range-index"), 10, 32)
+	if err == nil && pdg.Ref(index) == symbol {
+		state[symbol] = Value{HasLower: true, Lower: 0}
+	}
 }
 
 func (v *graphView) join(previous, next State) State {
@@ -130,6 +138,15 @@ func (v *graphView) assignmentValue(symbol pdg.Ref, value Value) Value {
 		value.Lower, value.HasLower = base.Lower, true
 	}
 	return value
+}
+
+func (v *graphView) publicAccess(site Access, state State) Access {
+	if int(site.Symbol) > len(v.graph.Symbols) {
+		site.Symbol = 0
+	}
+	site.Guards = pointerGuardContext(site, state)
+	site.Guards = slices.DeleteFunc(site.Guards, func(ref pdg.Ref) bool { return int(ref) > len(v.graph.Symbols) })
+	return site
 }
 
 func Analyze(g *pdg.Graph) (Report, error) {
@@ -176,11 +193,4 @@ func pointerGuardContext(site Access, state State) []pdg.Ref {
 		return nil
 	}
 	return activePointerGuards(state, site.Symbol)
-}
-
-func (a *analysis) rangeWrite(ref, symbol pdg.Ref, state State) {
-	index, err := strconv.ParseUint(a.view.fact(ref, "range-index"), 10, 32)
-	if err == nil && pdg.Ref(index) == symbol {
-		state[symbol] = Value{HasLower: true, Lower: 0}
-	}
 }

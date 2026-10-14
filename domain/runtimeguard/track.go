@@ -5,7 +5,7 @@ import "github.com/rstyled/gstyle/domain/pdg"
 // Only bindings that feed an access or nil predicate need flow state. Follow
 // their definitions with a worklist; unrelated locals never enter block maps.
 func (v *graphView) trackBindings() {
-	definitions := make([][]pdg.Ref, len(v.graph.Symbols))
+	definitions := make([][]pdg.Ref, len(v.kinds))
 	var queue []pdg.Ref
 	for i, node := range v.graph.Nodes {
 		ref := pdg.Ref(i + 1)

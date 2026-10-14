@@ -7,11 +7,14 @@ import (
 )
 
 type graphView struct {
-	graph    *pdg.Graph
-	operands [][2]pdg.Ref
-	unstable []bool
-	kinds    []string
-	tracked  []bool
+	graph        *pdg.Graph
+	operands     [][2]pdg.Ref
+	unstable     []bool
+	kinds        []string
+	tracked      []bool
+	fields       []pdg.Ref
+	paths        map[string]pdg.Ref
+	dereferences map[pdg.Ref][]pdg.Ref
 }
 
 func newGraphView(g *pdg.Graph) (*graphView, error) {
@@ -26,6 +29,7 @@ func newGraphView(g *pdg.Graph) (*graphView, error) {
 	for _, edge := range g.Edges {
 		view.operandEdge(edge)
 	}
+	view.fieldBindings()
 	view.trackBindings()
 	return view, nil
 }
@@ -58,6 +62,9 @@ func (v *graphView) fact(ref pdg.Ref, name string) string {
 func (v *graphView) symbol(ref pdg.Ref) pdg.Ref {
 	if ref == 0 {
 		return 0
+	}
+	if v.fields[ref-1] != 0 {
+		return v.fields[ref-1]
 	}
 	attrs := v.attrs(ref)
 	if directBindingRead(v.graph.Nodes[ref-1], attrs) {
@@ -94,7 +101,11 @@ func (v *graphView) binding(symbol pdg.Ref, state State) Value {
 	if value, ok := state[symbol]; ok {
 		return value
 	}
-	return v.base(symbol)
+	value := v.base(symbol)
+	if v.kinds[symbol-1] == `"pointer"` {
+		value.Identity = uint64(symbol) * 2
+	}
+	return value
 }
 
 func (v *graphView) value(ref pdg.Ref, state State) Value {

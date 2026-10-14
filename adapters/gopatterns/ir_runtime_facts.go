@@ -21,6 +21,9 @@ func (b *irBuilder) runtimeValueFacts(fn *ast.FuncDecl) {
 		}
 		b.runtimeExpression(node)
 		b.runtimeRangeFacts(node)
+		if _, spawn := node.(*ast.GoStmt); spawn {
+			b.graph.Extensions = append(b.graph.Extensions, b.pool.SingletonExtension("gstyle.runtime:concurrent-memory", "true")...)
+		}
 		return true
 	})
 	b.runtimeAddressCancellation(fn.Body)
@@ -153,6 +156,7 @@ func (b *irBuilder) runtimeRangeFacts(node ast.Node) {
 }
 
 func (b *irBuilder) runtimeFieldFacts(expr *ast.SelectorExpr, attrs *pdg.Attributes) {
+	b.runtimeFieldPaths(expr, attrs)
 	if !runtimeAccess(expr, b.info) {
 		return
 	}
@@ -206,6 +210,9 @@ func collectionType(typ types.Type) bool {
 		return typ.Info()&types.IsString != 0
 	case *types.Array, *types.Slice:
 		return true
+	case *types.Pointer:
+		_, array := typ.Elem().Underlying().(*types.Array)
+		return array
 	default:
 		return false
 	}
