@@ -90,3 +90,16 @@ func TestLiteralIndex(t *testing.T) {
 		})
 	}
 }
+
+func TestLiteralIndexConstantBranchReview(t *testing.T) {
+	for _, condition := range []string{"false", "!true", "1 == 2"} {
+		src := `package p; func f(i int) int { if ` + condition + ` { return []int{1,2}[i] }; return 0 }`
+		if got := literalIndexTestCandidates(t, src); len(got) != 0 {
+			t.Fatalf("%s: got %d unreachable findings", condition, len(got))
+		}
+	}
+	src := `package p; func f(i int) int { if true { return []int{1,2}[i] }; return 0 }`
+	if got := literalIndexTestCandidates(t, src); len(got) != 1 {
+		t.Fatalf("reachable access: got %d findings, want 1", len(got))
+	}
+}
