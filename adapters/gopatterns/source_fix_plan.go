@@ -18,13 +18,14 @@ type sourceFix struct {
 	positions               map[string][]int
 	typeName, parameterName string
 	method                  bool
+	sharedCalls             map[string]string
 }
 
 func newSourceFix(spec *patterns.FixSpec) (*sourceFix, error) {
 	if spec.Context == nil {
 		return nil, fmt.Errorf("typed source context is missing")
 	}
-	plan := &sourceFix{context: spec.Context, edits: make(map[pdg.Ref][]pdg.SourceEdit), targets: make(map[string]pdg.SourceFunction), positions: make(map[string][]int), method: spec.Kind == patterns.AnemicModel}
+	plan := &sourceFix{context: spec.Context, edits: make(map[pdg.Ref][]pdg.SourceEdit), targets: make(map[string]pdg.SourceFunction), sharedCalls: make(map[string]string), positions: make(map[string][]int), method: spec.Kind == patterns.AnemicModel}
 	if err := plan.selectTargets(spec); err != nil {
 		return nil, err
 	}
@@ -199,6 +200,9 @@ func (p *sourceFix) call(fn pdg.SourceFunction, ref pdg.SourceReference) error {
 		return err
 	}
 	replacement := p.valueCall(fn, arguments)
+	if binding := p.sharedCalls[valueCallKey(ref)]; binding != "" {
+		replacement = p.sharedValueCall(fn, arguments, binding)
+	}
 	if p.method {
 		replacement = p.methodReceiver(fn, ref, arguments[0], snapshot) + "." + fn.Name + "(" + strings.Join(arguments[1:], ", ") + ")"
 	}
@@ -280,6 +284,26 @@ func (p *sourceFix) copyIsReceiver(ref pdg.SourceReference) bool {
 	return false
 }
 
+func (p *sourceFix) sharedValueCall(fn pdg.SourceFunction, arguments []string, binding string) string {
+	positions := p.positions[fn.ID]
+	first, last := positions[0], positions[len(positions)-1]
+	args := append([]string(nil), arguments[:first]...)
+	args = append(args, binding)
+	args = append(args, arguments[last+1:]...)
+	return fn.Name + "(" + strings.Join(args, ", ") + ")"
+}
+
+func (p *sourceFix) prepareValueGroups() error {
+	if p.method {
+		return nil
+	}
+	groups, err := p.sharedValueGroups()
+	if err != nil {
+		return err
+	}
+	return p.propagateValueGroups(groups)
+}
+
 // PlanSignatureFix uses the typed source inventory from PDG extraction.
 // It never finds callers by spelling or reparses old code to resolve bindings.
 func PlanSignatureFix(spec *patterns.FixSpec) (map[string][]byte, error) {
@@ -288,6 +312,9 @@ func PlanSignatureFix(spec *patterns.FixSpec) (map[string][]byte, error) {
 		return nil, err
 	}
 	if err := checkSignatureCoverage(plan.context, plan.targets); err != nil {
+		return nil, err
+	}
+	if err := plan.prepareValueGroups(); err != nil {
 		return nil, err
 	}
 	if err := plan.declarations(); err != nil {

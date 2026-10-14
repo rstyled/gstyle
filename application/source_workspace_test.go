@@ -116,7 +116,7 @@ func TestAnnotationRowsWrapWithoutLosingText(t *testing.T) {
 	annotation, _ := model.newAnnotation(11, 16, message)
 	model.annotations = []Annotation{annotation}
 
-	rows := sourceAnnotationRows(model.visibleAnnotations(), LineWidth{Line: 16, Width: 32})
+	rows := sourceAnnotationRows(model.visibleAnnotations(), 16, 32)
 	if len(rows) < 2 {
 		t.Fatalf("annotation stayed on one row: %q", ansi.Strip(strings.Join(rows, "\n")))
 	}

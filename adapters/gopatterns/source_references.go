@@ -83,15 +83,17 @@ func sourceReference(pkg *packages.Package, ref pdg.Ref, ident *ast.Ident, call 
 func sourceFunction(pkg *packages.Package, fn *ast.FuncDecl, ref pdg.Ref) pdg.SourceFunction {
 	object := pkg.TypesInfo.Defs[fn.Name].(*types.Func)
 	signature := object.Type().(*types.Signature)
-	result := pdg.SourceFunction{ID: strings.Clone(patterns.FuncID(object)), Name: strings.Clone(fn.Name.Name), Package: strings.Clone(pkg.PkgPath), Source: ref, Declaration: nodeByteRange(pkg.Fset, fn), NameRange: nodeByteRange(pkg.Fset, fn.Name), Parameters: nodeByteRange(pkg.Fset, fn.Type.Params), Method: fn.Recv != nil, Generic: signature.TypeParams().Len() > 0, Variadic: signature.Variadic()}
+	result := pdg.SourceFunction{ID: strings.Clone(patterns.FuncID(object)), Name: strings.Clone(fn.Name.Name), Package: strings.Clone(pkg.PkgPath), Source: ref, Declaration: nodeByteRange(pkg.Fset, fn), Body: nodeByteRange(pkg.Fset, fn.Body), NameRange: nodeByteRange(pkg.Fset, fn.Name), Parameters: nodeByteRange(pkg.Fset, fn.Type.Params), Method: fn.Recv != nil, Generic: signature.TypeParams().Len() > 0, Variadic: signature.Variadic()}
 	for _, field := range fn.Type.Params.List {
 		for _, name := range field.Names {
 			result.ParametersList = append(result.ParametersList, sourceParameter(pkg, fn, field, name))
 		}
 	}
+	bindings := map[string]bool{}
 	ast.Inspect(fn, func(node ast.Node) bool {
 		ident, ok := node.(*ast.Ident)
-		if ok && pkg.TypesInfo.Defs[ident] != nil {
+		if ok && pkg.TypesInfo.ObjectOf(ident) != nil && !bindings[ident.Name] {
+			bindings[ident.Name] = true
 			result.Bindings = append(result.Bindings, strings.Clone(ident.Name))
 		}
 		return true
@@ -101,7 +103,7 @@ func sourceFunction(pkg *packages.Package, fn *ast.FuncDecl, ref pdg.Ref) pdg.So
 
 func sourceParameter(pkg *packages.Package, fn *ast.FuncDecl, field *ast.Field, name *ast.Ident) pdg.SourceParameter {
 	object := pkg.TypesInfo.Defs[name]
-	result := pdg.SourceParameter{Name: strings.Clone(name.Name), Type: strings.Clone(types.TypeString(object.Type(), nil)), TypeSyntax: types.ExprString(field.Type)}
+	result := pdg.SourceParameter{Captured: parameterCaptured(pkg, fn.Body, object), Name: strings.Clone(name.Name), Type: strings.Clone(types.TypeString(object.Type(), nil)), TypeSyntax: types.ExprString(field.Type)}
 	ast.Inspect(fn.Body, func(node ast.Node) bool {
 		if parameterAddressed(pkg, node, object) {
 			result.Addressed = true
@@ -134,4 +136,23 @@ func sourceArgumentRanges(fset *token.FileSet, arguments []ast.Expr) []pdg.ByteR
 		result[i] = nodeByteRange(fset, arg)
 	}
 	return result
+}
+
+func parameterCaptured(pkg *packages.Package, body *ast.BlockStmt, object types.Object) bool {
+	captured := false
+	ast.Inspect(body, func(node ast.Node) bool {
+		closure, ok := node.(*ast.FuncLit)
+		if !ok {
+			return true
+		}
+		ast.Inspect(closure.Body, func(child ast.Node) bool {
+			ident, ok := child.(*ast.Ident)
+			if ok && pkg.TypesInfo.Uses[ident] == object {
+				captured = true
+			}
+			return true
+		})
+		return false
+	})
+	return captured
 }

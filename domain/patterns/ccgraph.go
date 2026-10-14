@@ -155,25 +155,6 @@ type S1S2 struct {
 	S2 string
 }
 
-// jaroWinkler returns the Jaro-Winkler string similarity in [0, 1].
-// Identical strings score 1.0; completely different strings score 0.0.
-func (s1S2 S1S2) jaroWinkler() float64 {
-	j := s1S2.jaro()
-	prefix := s1S2.commonPrefixLen(4)
-	return j + float64(prefix)*0.1*(1.0-j)
-}
-
-// jaro returns the Jaro similarity in [0, 1].
-func (s1S2 S1S2) jaro() float64 {
-	r1, r2 := []rune(s1S2.S1), []rune(s1S2.S2)
-	return jaroRunes(r1, r2, make([]bool, len(r1)), make([]bool, len(r2)))
-}
-
-// commonPrefixLen returns the length of the common prefix, capped at max.
-func (s1S2 S1S2) commonPrefixLen(max int) int {
-	return commonRunePrefix([]rune(s1S2.S1), []rune(s1S2.S2), max)
-}
-
 // CCGraphClones finds clone groups with characteristic/name admission and
 // WL verification of every admitted pair. Missing names skip the name filter.
 // No AST data: the AST admission bypass is disabled.
@@ -312,7 +293,7 @@ func ccNamesSimilar(a, b string) bool {
 	if a == "" || b == "" {
 		return true
 	}
-	return (S1S2{S1: shortName(a), S2: shortName(b)}).jaroWinkler() >= ccStage2NameThreshold
+	return jaroWinkler(S1S2{S1: shortName(a), S2: shortName(b)}) >= ccStage2NameThreshold
 }
 
 // ccBuildWls builds WL instances for every function appearing in any
@@ -351,6 +332,20 @@ func ccMakeParent(ids []string) map[string]string {
 		parent[id] = id
 	}
 	return parent
+}
+
+// jaroWinkler returns the Jaro-Winkler string similarity in [0, 1].
+// Identical strings score 1.0; completely different strings score 0.0.
+func jaroWinkler(s1S2 S1S2) float64 {
+	j := jaro(s1S2)
+	prefix := commonPrefixLen(s1S2, 4)
+	return j + float64(prefix)*0.1*(1.0-j)
+}
+
+// jaro returns the Jaro similarity in [0, 1].
+func jaro(s1S2 S1S2) float64 {
+	r1, r2 := []rune(s1S2.S1), []rune(s1S2.S2)
+	return jaroRunes(r1, r2, make([]bool, len(r1)), make([]bool, len(r2)))
 }
 
 func jaroRunes(r1, r2 []rune, seen1, seen2 []bool) float64 {
@@ -430,6 +425,11 @@ func jaroBounds(i, window, l2 int) (int, int) {
 		hi = l2
 	}
 	return lo, hi
+}
+
+// commonPrefixLen returns the length of the common prefix, capped at max.
+func commonPrefixLen(s1S2 S1S2, max int) int {
+	return commonRunePrefix([]rune(s1S2.S1), []rune(s1S2.S2), max)
 }
 
 func commonRunePrefix(r1, r2 []rune, max int) int {

@@ -34,7 +34,7 @@ func combine(left, right string) string {
  return left + right
 }
 func reverse(left, right string) string { return right + left }
-func decorate(left, right string) string { return combine(left, right) }
+func decorate(left, right string) string { return combine(left, right) + reverse(left, right) }
 func ignored(_ string) string { return "ok" }
 `
 
@@ -96,7 +96,7 @@ func TestSourceSignaturePlanPreservesArgumentOrder(t *testing.T) {
 	root, ext := sourceFixModule(t, map[string]string{"values.go": `package sample
 func combine(right, left string) string { return right+left }
 func reverse(right, left string) string { return left+right }
-func decorate(right, left string) string { return combine(right,left) }
+func decorate(right, left string) string { return combine(right,left)+reverse(right,left) }
 `, "other.go": "package sample\nfunc use() string { return combine(first(),second()) }\nfunc first() string { return \"a\" };func second() string{return \"b\"}\n"})
 	overlay, err := PlanSignatureFix(valueSpec(root, ext))
 	if err != nil {

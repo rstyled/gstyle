@@ -272,7 +272,7 @@ func buildValueObjectCandidate(c *clump) Candidate {
 			CoverageMilli: 1000,
 		},
 		Observation:      fmt.Sprintf("%d functions share the parameter group (%s)", len(sites), group),
-		Inference:        "these primitives travel together — they describe a single domain concept",
+		Inference:        "matching parameter shapes suggest a possible shared value; caller flow must establish whether they travel together",
 		PossibleRefactor: fmt.Sprintf("extract an immutable value object: type <Name> %s", structDef),
 		Sites:            sites,
 		FixSpec: &FixSpec{

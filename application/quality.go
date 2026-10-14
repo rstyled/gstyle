@@ -31,7 +31,7 @@ func (m Model) qualityLines(width, height int) []string {
 	start := min(m.qualityOffset, max(len(body)-available, 0))
 	contentWidth := paneContentWidth(width)
 	for _, line := range body[start:min(start+available, len(body))] {
-		lines = append(lines, (ValueWidth{Value: line, Width: contentWidth}).truncate())
+		lines = append(lines, truncate(line, contentWidth))
 	}
 	return fitPaneLines(lines, width, height)
 }
