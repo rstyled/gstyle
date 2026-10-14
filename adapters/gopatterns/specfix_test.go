@@ -40,7 +40,7 @@ func check2(user User) bool {
 			"type":    "User",
 			"varname": "user",
 			"cond":    "user.Age > 18 && user.Active",
-			"rulekey": "User|Age:>:18,Active:truthy:",
+			"rulekey": "User|(Age:>:18&&Active:truthy:)",
 		},
 	}
 	out, err := applyProjectedFix(t, spec, []byte(src))
@@ -93,7 +93,7 @@ func check2(args apidomain.AgentArgs) bool {
 			"type":    "apidomain.AgentArgs",
 			"varname": "args",
 			"cond":    `args.Action == "pause" || args.Action == "cancel"`,
-			"rulekey": `apidomain.AgentArgs|Action:==:"pause",Action:==:"cancel"`,
+			"rulekey": `apidomain.AgentArgs|(Action:==:"pause"||Action:==:"cancel")`,
 		},
 	}
 	out, err := applyProjectedFix(t, spec, []byte(src))
@@ -137,7 +137,7 @@ func check1(user User) bool {
 		Params: map[string]string{
 			"type":    "User",
 			"varname": "user",
-			"rulekey": "User|Age:>:18,Active:truthy:",
+			"rulekey": "User|(Age:>:18&&Active:truthy:)",
 		},
 	}
 	out, err := applyProjectedFix(t, spec, []byte(src))
@@ -209,7 +209,7 @@ func check2(r Response) bool {
 		Params: map[string]string{
 			"type":    "Response",
 			"varname": "r",
-			"rulekey": "Response|StatusCode:<:200,StatusCode:>=:300",
+			"rulekey": "Response|(StatusCode:<:200||StatusCode:>=:300)",
 		},
 	}
 	out, err := applyProjectedFix(t, spec, []byte(src))
@@ -250,7 +250,7 @@ func check2(response *http.Response) bool {
 		Params: map[string]string{
 			"type":    "*http.Response",
 			"varname": "response",
-			"rulekey": "*http.Response|StatusCode:<:200,StatusCode:>=:300",
+			"rulekey": "*http.Response|(StatusCode:<:200||StatusCode:>=:300)",
 		},
 	}
 	out, err := applyProjectedFix(t, spec, []byte(src))

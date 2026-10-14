@@ -110,11 +110,7 @@ func checkNilErrIf(ifStmt *ast.IfStmt, fset *token.FileSet, info *types.Info, er
 	if branch == nil {
 		return nil
 	}
-	ret := findReturnInBranch(branch)
-	if ret == nil {
-		return nil
-	}
-	if !returnsNilErrors(ret, errPositions) || usesErrorValue(branch, check.errVal, info) {
+	if !branchReturnsNilErrors(branch, errPositions, info) || usesErrorValue(branch, check.errVal, info) {
 		return nil
 	}
 	return &patterns.NilErrHit{
@@ -127,6 +123,18 @@ func checkNilErrIf(ifStmt *ast.IfStmt, fset *token.FileSet, info *types.Info, er
 // parseNilErrCond parses `err != nil` or `err == nil`, returning the error
 // value and whether it's the != form.
 func parseNilErrCond(cond ast.Expr, info *types.Info) *nilErrCheck {
+	cond = specUnwrapParens(cond)
+	if unary, ok := cond.(*ast.UnaryExpr); ok && unary.Op == token.NOT {
+		check := parseNilErrCond(unary.X, info)
+		if check != nil {
+			check.isNotNil = !check.isNotNil
+		}
+		return check
+	}
+	return binaryNilErrCheck(cond, info)
+}
+
+func binaryNilErrCheck(cond ast.Expr, info *types.Info) *nilErrCheck {
 	bin, ok := cond.(*ast.BinaryExpr)
 	if !ok {
 		return nil
@@ -145,10 +153,10 @@ func parseNilErrCond(cond ast.Expr, info *types.Info) *nilErrCheck {
 
 // nilErrOperand returns the error-valued side of `err != nil` / `err == nil`.
 func nilErrOperand(bin *ast.BinaryExpr, info *types.Info) ast.Expr {
-	if isNilIdent(bin.Y) && isErrorExpr(info, bin.X) {
+	if typedNilExpr(bin.Y, info) && isErrorExpr(info, bin.X) {
 		return bin.X
 	}
-	if isNilIdent(bin.X) && isErrorExpr(info, bin.Y) {
+	if typedNilExpr(bin.X, info) && isErrorExpr(info, bin.Y) {
 		return bin.Y
 	}
 	return nil
@@ -180,61 +188,26 @@ func isErrorExpr(info *types.Info, e ast.Expr) bool {
 	return types.Implements(t, errorType)
 }
 
-// findReturnInBranch finds the first return statement in a branch.
-func findReturnInBranch(branch ast.Stmt) *ast.ReturnStmt {
-	var ret *ast.ReturnStmt
+// usesErrorValue reports whether the error value is used in the branch
+// (e.g. log(err)). If used, it's not a nilerr bug.
+func usesErrorValue(branch ast.Stmt, errVal ast.Expr, info *types.Info) bool {
+	errID, _ := specUnwrapParens(errVal).(*ast.Ident)
+	if errID == nil {
+		return false
+	}
+	errObject := info.ObjectOf(errID)
+	used := false
 	ast.Inspect(branch, func(n ast.Node) bool {
 		if _, ok := n.(*ast.FuncLit); ok {
 			return false
 		}
-		if r, ok := n.(*ast.ReturnStmt); ok {
-			ret = r
-			return false
+		if call, ok := n.(*ast.CallExpr); ok && callUsesObject(call, errObject, info) {
+			used = true
 		}
-		return true
-	})
-	return ret
-}
 
-// returnsNilErrors requires nil in every error result. A second error result
-// may propagate the checked error even when an earlier error result is nil.
-func returnsNilErrors(ret *ast.ReturnStmt, positions []int) bool {
-	if len(positions) == 0 {
-		return false
-	}
-	for _, pos := range positions {
-		if pos >= len(ret.Results) || !isNilIdent(ret.Results[pos]) {
-			return false
-		}
-	}
-	return true
-}
-
-// usesErrorValue reports whether the error value is used in the branch
-// (e.g. log(err)). If used, it's not a nilerr bug.
-func usesErrorValue(branch ast.Stmt, errVal ast.Expr, info *types.Info) bool {
-	errName := exprName(errVal)
-	used := false
-	ast.Inspect(branch, func(n ast.Node) bool {
-		if call, ok := n.(*ast.CallExpr); ok {
-			for _, arg := range call.Args {
-				if exprName(arg) == errName {
-					used = true
-					return false
-				}
-			}
-		}
 		return true
 	})
 	return used
-}
-
-// exprName returns the identifier name for a simple expression.
-func exprName(e ast.Expr) string {
-	if id, ok := e.(*ast.Ident); ok {
-		return id.Name
-	}
-	return ""
 }
 
 // condText returns the source text of a condition.
@@ -276,7 +249,7 @@ func collectCommaOk(body ast.Node) map[token.Pos]bool {
 // collectAssignCommaOk marks assertions in `v, ok := x.(T)`.
 func collectAssignCommaOk(n ast.Node, commaOk map[token.Pos]bool) {
 	assign, ok := n.(*ast.AssignStmt)
-	if !ok || len(assign.Lhs) != 2 {
+	if !ok || len(assign.Lhs) != 2 || len(assign.Rhs) != 1 {
 		return
 	}
 	for _, rhs := range assign.Rhs {
@@ -287,7 +260,7 @@ func collectAssignCommaOk(n ast.Node, commaOk map[token.Pos]bool) {
 // collectValueSpecCommaOk marks assertions in `var v, ok = x.(T)`.
 func collectValueSpecCommaOk(n ast.Node, commaOk map[token.Pos]bool) {
 	vs, ok := n.(*ast.ValueSpec)
-	if !ok || len(vs.Names) != 2 {
+	if !ok || len(vs.Names) != 2 || len(vs.Values) != 1 {
 		return
 	}
 	for _, v := range vs.Values {
@@ -360,14 +333,20 @@ func parseSuppressComment(text string) []string {
 
 // parseLintIgnoreKinds extracts kinds from `//lint:ignore k1, k2 reason`.
 func parseLintIgnoreKinds(text string) []string {
-	rest := strings.TrimSpace(strings.TrimPrefix(text, "//lint:ignore"))
+	parts := strings.Fields(strings.TrimSpace(strings.TrimPrefix(text, "//lint:ignore")))
+	if len(parts) == 0 {
+		return nil
+	}
 	var kinds []string
-	for _, p := range strings.Fields(rest) {
-		clean := strings.TrimSuffix(p, ",")
-		if !isPatternKind(clean) {
-			break // Reason starts.
+	for i, p := range parts {
+		for _, kind := range strings.Split(strings.TrimSuffix(p, ","), ",") {
+			if isPatternKind(kind) {
+				kinds = append(kinds, kind)
+			}
 		}
-		kinds = append(kinds, clean)
+		if !strings.HasSuffix(parts[i], ",") {
+			break
+		}
 	}
 	return kinds
 }
@@ -394,6 +373,51 @@ func isPatternKind(s string) bool {
 	switch s {
 	case "nilerr", "forcetypeassert", "typednil", "nil_guard", "negative_index", "literal_index":
 		return true
+	}
+	return false
+}
+
+func typedNilExpr(expr ast.Expr, info *types.Info) bool {
+	expr = specUnwrapParens(expr)
+	if info == nil {
+		return isNilIdent(expr)
+	}
+	return info.Types[expr].IsNil()
+}
+
+func branchReturnsNilErrors(branch ast.Stmt, positions []int, info *types.Info) bool {
+	found := false
+	ast.Inspect(branch, func(n ast.Node) bool {
+		if _, ok := n.(*ast.FuncLit); ok {
+			return false
+		}
+		ret, ok := n.(*ast.ReturnStmt)
+		if ok && nilErrorResults(ret, positions, info) {
+			found = true
+		}
+		return true
+	})
+	return found
+}
+
+func nilErrorResults(ret *ast.ReturnStmt, positions []int, info *types.Info) bool {
+	if len(positions) == 0 {
+		return false
+	}
+	for _, pos := range positions {
+		if pos >= len(ret.Results) || !typedNilExpr(ret.Results[pos], info) {
+			return false
+		}
+	}
+	return true
+}
+
+func callUsesObject(call *ast.CallExpr, object types.Object, info *types.Info) bool {
+	for _, arg := range call.Args {
+		id, _ := specUnwrapParens(arg).(*ast.Ident)
+		if id != nil && object != nil && info.ObjectOf(id) == object {
+			return true
+		}
 	}
 	return false
 }

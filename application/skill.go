@@ -98,9 +98,9 @@ Use ` + "`setDetailsView`" + ` with ` + "`{\"view\":\"quality\"}`" + ` or ` + "`
 
 ## Fix patterns automatically
 
-Run ` + "`gstyle patterns [paths...]`" + ` to find mechanical code patterns across 18 kinds: guard clauses, value objects, parameterize candidates, anemic models, primitive obsession, type switches, enum dispatch, trait methods, capability sets, generic functions, entity identity, missing identity, factories, specifications, and domain services (detection-only). These are structural — the fix is a deterministic AST transform.
+Run ` + "`gstyle patterns [paths...]`" + ` to find refactoring proposals and bug patterns: guard clauses, value objects, parameterize candidates, anemic models, primitive obsession, type switches, enum dispatch, trait methods, capability sets, generic functions, entity identity, missing identity, factories, specifications, and domain services (detection-only). Supported fixes use deterministic source edits backed by extraction evidence. Identity and domain-design findings need review.
 
-Run ` + "`gstyle fix --kind all [paths...]`" + ` to auto-fix them. Dry-run by default (shows a diff); add ` + "`--apply`" + ` to write. No LLM, no tokens — pure static analysis. Use ` + "`--kind guard_clause|value_object|parameterize|anemic_model|primitive_obsession|type_switch|enum_dispatch|trait_method|capability_set|generic_fn|entity_identity|missing_identity|factory|specification|domain_service`" + ` to fix one kind.
+Run ` + "`gstyle fix --kind all [paths...]`" + ` to auto-fix them. Dry-run by default (shows a diff); add ` + "`--apply`" + ` to write. No LLM, no tokens — pure static analysis. Use ` + "`--kind guard_clause|value_object|parameterize|anemic_model|primitive_obsession|type_switch|enum_dispatch|trait_method|capability_set|generic_fn|factory|specification`" + ` to fix one kind.
 
 Every fix run uses ordered phases. PDG facts are reused until edits change the source, then refreshed for the complete input scope (max 3 cycles). Preview simulates the same edits without writing. Phases run guard/value-object work first, structural patterns next, parameterize next, and declaration ordering last.
 

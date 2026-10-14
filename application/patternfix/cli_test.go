@@ -41,7 +41,7 @@ func f(x int) int {
 		t.Fatalf("Run: %v", err)
 	}
 	s := out.String()
-	if !strings.Contains(s, "if x <= 0 {") {
+	if !strings.Contains(s, "if !(x > 0) {") {
 		t.Errorf("expected diff with inverted guard, got:\n%s", s)
 	}
 	if !strings.Contains(s, "1 fixable") {
@@ -74,7 +74,7 @@ func f(x int) int {
 	}
 	content, _ := os.ReadFile(path)
 	s := string(content)
-	if !strings.Contains(s, "if x <= 0 {") {
+	if !strings.Contains(s, "if !(x > 0) {") {
 		t.Errorf("expected file rewritten, got:\n%s", s)
 	}
 	if strings.Contains(s, "} else {") {
@@ -280,8 +280,8 @@ func TestFixChangedApply(t *testing.T) {
 	content, _ := os.ReadFile(filepath.Join(dir, "main.go"))
 	s := string(content)
 	// The touched function's guard is inverted; the untouched one is not.
-	touchedFixed := strings.Contains(s, "// touched\n\tif x <= 0 {")
-	untouchedFixed := strings.Count(s, "if x <= 0 {") > 1
+	touchedFixed := strings.Contains(s, "// touched\n\tif !(x > 0) {")
+	untouchedFixed := strings.Count(s, "if !(x > 0) {") > 1
 	if !touchedFixed {
 		t.Errorf("touched function not fixed:\n%s", s)
 	}
@@ -457,7 +457,7 @@ func f(x int) int {
 		t.Errorf("expected phase 1 output, got:\n%s", s)
 	}
 	content, _ := os.ReadFile(path)
-	if !strings.Contains(string(content), "if x <= 0 {") {
+	if !strings.Contains(string(content), "if !(x > 0) {") {
 		t.Errorf("expected guard fix applied, got:\n%s", string(content))
 	}
 }

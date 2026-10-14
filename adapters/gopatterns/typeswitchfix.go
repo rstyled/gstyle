@@ -12,35 +12,17 @@ import (
 
 // typeSwitchSpecParams are the FixSpec params for a type_switch candidate.
 type typeSwitchSpecParams struct {
-	bound  string
-	expr   string
-	method string
-	types  []string
-	args   string
+	bound     string
+	expr      string
+	method    string
+	types     []string
+	args      string
+	signature string
 }
 
-// applyTypeSwitchFix replaces a type switch whose arms all call the same
-// method on the case-bound value with a direct interface method call.
-//
-// Example:
-//
-//	switch v := x.(type) {
-//	case Dog:
-//		v.Speak()
-//	case Cat:
-//		v.Speak()
-//	}
-//
-// becomes:
-//
-//	if v, ok := x.(interface{ Speak() }); ok {
-//		v.Speak()
-//	}
-//
-// The comma-ok form preserves the no-match behavior of a switch without a
-// default clause. The interface signature is taken from the method
-// declarations in the same file; all must exist and be identical, or the
-// fix is skipped.
+// applyTypeSwitchFix combines matching case bodies, retaining the original
+// concrete case set and single evaluation of the switch initializer and tag.
+// The combined arm invokes the shared method through its interface signature.
 func applyTypeSwitchFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
 	fset, f, err := parseSpec(spec, src)
 	if err != nil {
@@ -59,7 +41,8 @@ func applyTypeSwitchFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("type_switch: cannot determine %s signature", params.method)
 	}
-	return formatTypeSwitchFix(fset, sw, src, params, sig)
+	params.signature = sig
+	return formatTypeSwitchFix(fset, sw, src, params)
 }
 
 // validatedTypeSwitch finds the type switch at the spec line and verifies
@@ -69,15 +52,16 @@ func validatedTypeSwitch(fset *token.FileSet, f *ast.File, spec *patterns.FixSpe
 	if sw == nil {
 		return nil, fmt.Errorf("type_switch: no type switch at line %d", spec.Line)
 	}
-	if !bindingMatches(sw, params) {
+	if !bindingMatches(sw, params) || !typeSwitchBodyMatches(fset, sw, params) {
 		return nil, fmt.Errorf("type_switch: switch at line %d does not match spec", spec.Line)
 	}
 	return sw, nil
 }
 
 // formatTypeSwitchFix builds the replacement, applies it, and gofmts.
-func formatTypeSwitchFix(fset *token.FileSet, sw *ast.TypeSwitchStmt, src []byte, params typeSwitchSpecParams, sig string) ([]byte, error) {
-	repl := buildTypeSwitchRepl(params, sig)
+func formatTypeSwitchFix(fset *token.FileSet, sw *ast.TypeSwitchStmt, src []byte, params typeSwitchSpecParams) ([]byte, error) {
+	header := string(src[fset.Position(sw.Pos()).Offset:fset.Position(sw.Body.Lbrace).Offset])
+	repl := header + buildTypeSwitchRepl(params, params.signature)
 	swStart := fset.Position(sw.Pos()).Offset
 	swEnd := fset.Position(sw.End()).Offset
 	out := applyEdits(src, []textEdit{{start: swStart, end: swEnd, replacement: []byte(repl)}})
@@ -128,10 +112,14 @@ func interfaceMethodSig(f *ast.File, fset *token.FileSet, types []string, method
 	return sig, sig != ""
 }
 
-// buildTypeSwitchRepl generates the if-with-type-assertion replacement.
+// buildTypeSwitchRepl generates one shared arm for the existing case set.
 // No trailing newline: the source after the switch already has one.
 func buildTypeSwitchRepl(params typeSwitchSpecParams, sig string) string {
-	call := params.bound + "." + params.method + "(" + params.args + ")"
-	return fmt.Sprintf("if %s, ok := %s.(interface{ %s }); ok {\n\t%s\n}",
-		params.bound, params.expr, sig, call)
+	call := fmt.Sprintf("%s.(interface{ %s }).%s(%s)", params.bound, sig, params.method, params.args)
+	return fmt.Sprintf("{\ncase %s:\n\t%s\n}", strings.Join(params.types, ", "), call)
+}
+
+func typeSwitchBodyMatches(fset *token.FileSet, sw *ast.TypeSwitchStmt, params typeSwitchSpecParams) bool {
+	hit, ok := asFixableTypeSwitch(sw, fset)
+	return ok && hit.Method == params.method && hit.Args == params.args && strings.Join(hit.Types, ",") == strings.Join(params.types, ",")
 }

@@ -6,22 +6,19 @@ import "fmt"
 // attributes (Evans). These find code that violates that principle.
 
 // entityIdentityScoreMilli is the fixed score for attribute-based equality.
-// It's a real, actionable simplification with a mechanical fix.
+// It is advisory: identity equivalence requires a domain invariant.
 const entityIdentityScoreMilli = 450
 
 // missingIdentityScoreMilli is the fixed score for structs used as entities
-// without an ID field. The fix (adding an ID field) is mechanical.
+// without an ID field. Adding identity requires a domain decision.
 const missingIdentityScoreMilli = 400
 
 // mutableIdentityScoreMilli is the fixed score for ID assignments outside
 // constructors. Detection-only: there's no safe mechanical fix.
 const mutableIdentityScoreMilli = 350
 
-// entityIdentityCandidates builds candidates from attribute-based equality hits.
-// Two modes:
-//   - ID exists: rewrite the comparison to use identity (standard fix).
-//   - No ID (paired with missing_identity): add the ID field first. After
-//     re-mining, the standard rewrite fires. The phased fixer handles this.
+// entityIdentityCandidates proposes identity design changes for review.
+// Neither an ID field nor attribute equality proves identity equivalence.
 func entityIdentityCandidates(facts []*MiningFacts) []Candidate {
 	var out []Candidate
 	for _, f := range facts {
@@ -39,7 +36,7 @@ func entityIdentityCandidates(facts []*MiningFacts) []Candidate {
 }
 
 // noIDCandidate builds the candidate for attribute equality without an ID.
-// The fixer adds the ID field; the comparison rewrite happens next phase.
+// Adding identity and choosing its semantics require a domain invariant.
 func noIDCandidate(f *MiningFacts, hit EntityIdentityHit) Candidate {
 	return Candidate{
 		Kind:       EntityIdentity,
@@ -58,16 +55,7 @@ func noIDCandidate(f *MiningFacts, hit EntityIdentityHit) Candidate {
 			ID:      f.ID,
 			Name:    f.Name,
 		}},
-		FixSpec: &FixSpec{
-			Kind:    EntityIdentity,
-			File:    hit.StructPath,
-			Line:    hit.StructLine,
-			EndLine: hit.StructLine,
-			Params: map[string]string{
-				"type":   hit.TypeName,
-				"add_id": "true",
-			},
-		},
+		FixSpec: nil,
 	}
 }
 
@@ -81,7 +69,7 @@ func rewriteCandidate(f *MiningFacts, hit EntityIdentityHit) Candidate {
 			CoverageMilli: 1000,
 		},
 		Observation:      fmt.Sprintf("line %d compares %s by %d fields (%s) instead of by identity", hit.Line, hit.TypeName, len(hit.Fields), joinFields(hit.Fields)),
-		Inference:        "entities should be compared by identity, not attributes",
+		Inference:        "if this type is an entity, decide whether identity defines equality",
 		PossibleRefactor: fmt.Sprintf("replace with %s.%s == %s.%s", hit.Left, hit.IDField, hit.Right, hit.IDField),
 		Sites: []Site{{
 			Path:    f.Path,
@@ -90,27 +78,11 @@ func rewriteCandidate(f *MiningFacts, hit EntityIdentityHit) Candidate {
 			ID:      f.ID,
 			Name:    f.Name,
 		}},
-		FixSpec: &FixSpec{
-			Kind:    EntityIdentity,
-			File:    f.Path,
-			Line:    hit.Line,
-			EndLine: hit.Line,
-			Params: map[string]string{
-				"line":     fmt.Sprintf("%d", hit.Line),
-				"type":     hit.TypeName,
-				"id_field": hit.IDField,
-				"left":     hit.Left,
-				"right":    hit.Right,
-			},
-		},
+		FixSpec: nil,
 	}
 }
 
-// missingIdentityCandidates builds detection-only candidates for structs
-// compared by attributes without an ID field. This is the FIRST GATE: it
-// flags the problem. The entity_identity fixer does the work (adds the ID
-// and rewrites the comparison). No FixSpec: adding an ID speculatively,
-// without a paired attribute comparison, is noise.
+// missingIdentityCandidates proposes identity design changes for review.
 func missingIdentityCandidates(hits []MissingIdentityHit) []Candidate {
 	var out []Candidate
 	for _, hit := range hits {
@@ -131,8 +103,7 @@ func missingIdentityCandidates(hits []MissingIdentityHit) []Candidate {
 				EndLine: hit.EndLine,
 				Name:    hit.TypeName,
 			}},
-			// No FixSpec: detection-only first gate. The entity_identity
-			// fixer handles the compound fix (add ID + rewrite comparison).
+			// No FixSpec: identity semantics require a domain invariant.
 			FixSpec: nil,
 		})
 	}

@@ -126,7 +126,7 @@ func TestProjectedGuardMergeAndStaleRejection(t *testing.T) {
 	if err != nil || count != 2 || len(skipped) != 0 {
 		t.Fatalf("merged count=%d skipped=%v err=%v", count, skipped, err)
 	}
-	if strings.Count(string(result), "if x <= 0") != 2 {
+	if strings.Count(string(result), "if !(x > 0)") != 2 {
 		t.Fatalf("missing guard edits: %s", result)
 	}
 	if _, err := ApplyFix(specs[0], result); err == nil {
@@ -215,8 +215,6 @@ func TestRemainingFixerProjectionParity(t *testing.T) {
 		params map[string]string
 	}{
 		{patterns.PrimitiveObsession, "package p\nfunc SendEmail(email string) {}\nfunc ValidateEmail(email string) bool { return email != \"\" }\n", nil},
-		{patterns.EntityIdentity, "package p\ntype User struct { ID, Name, Email string }\nfunc same(a, b User) bool { return a.Name == b.Name && a.Email == b.Email }\n", map[string]string{"line": "3", "id_field": "ID", "left": "a", "right": "b"}},
-		{patterns.EntityIdentity, "package p\ntype User struct { Name, Email string }\n", map[string]string{"add_id": "true", "type": "User"}},
 	}
 	for _, tc := range cases {
 		t.Run(string(tc.kind), func(t *testing.T) {

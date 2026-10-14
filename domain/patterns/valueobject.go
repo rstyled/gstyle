@@ -104,6 +104,7 @@ func findClumps(fps []funcParams) []*clump {
 	}
 	var clumps []*clump
 	for _, c := range byKey {
+		creditClumpSupersets(c, fps)
 		if len(c.facts) >= minClumpFuncs {
 			clumps = append(clumps, c)
 		}
@@ -291,4 +292,12 @@ func capitalize(s string) string {
 		return s
 	}
 	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+func creditClumpSupersets(c *clump, fps []funcParams) {
+	for _, fp := range fps {
+		if len(intersectKeys(c.keys, fp.keys)) == len(c.keys) {
+			c.facts[fp.fact] = true
+		}
+	}
 }

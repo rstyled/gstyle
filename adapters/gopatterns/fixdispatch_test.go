@@ -37,7 +37,7 @@ func process(x int) int {
 	}
 	outStr := string(out)
 	// The guard clause should be inverted.
-	if !strings.Contains(outStr, "if x <= 0") {
+	if !strings.Contains(outStr, "if !(x > 0)") {
 		t.Errorf("expected inverted condition, got:\n%s", outStr)
 	}
 	if !strings.Contains(outStr, "return -1") {

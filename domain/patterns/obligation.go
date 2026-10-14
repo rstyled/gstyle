@@ -222,7 +222,7 @@ func hasDeferredRelease(pdg *MiningGraph, acq acquisition, deferred map[int]bool
 			root = recv
 		}
 	}
-	reached := reachableFrom(fwd, root, 3)
+	reached := reachableFrom(fwd, root, len(pdg.Nodes))
 	for callIdx := range deferred {
 		if !pdg.Nodes[callIdx].isReleaseCall(acq.release) {
 			continue

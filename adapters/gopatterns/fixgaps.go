@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/rstyled/gstyle/domain/patterns"
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 // applyEnumDispatchFix converts an enum-value switch to a dispatch table.
@@ -64,7 +65,11 @@ func applyEnumDispatchFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	cases, keyType, err := collectSwitchCases(fset, sw, src)
+	cases, _, err := collectSwitchCases(fset, sw, src)
+	if err != nil {
+		return nil, err
+	}
+	keyType, err := dispatchSourceType(spec, fset, sw)
 	if err != nil {
 		return nil, err
 	}
@@ -105,9 +110,7 @@ func collectSwitchCases(fset *token.FileSet, sw *ast.SwitchStmt, src []byte) ([]
 	if len(cases) < 2 {
 		return nil, "", fmt.Errorf("enum_dispatch: need at least 2 cases")
 	}
-	if keyType == "" {
-		return nil, "", fmt.Errorf("enum_dispatch: cannot infer key type")
-	}
+
 	return cases, keyType, nil
 }
 
@@ -161,22 +164,18 @@ func inferKeyType(val ast.Expr, keyType string) string {
 
 // buildDispatchFix creates the text edits for the dispatch table.
 func buildDispatchFix(fset *token.FileSet, f *ast.File, src []byte, plan dispatchPlan) ([]byte, error) {
+	names := identifierNames(f)
+	tableName := freshIdentifier(strings.ToLower(plan.keyType)+"Dispatch", names)
+	valueName := freshIdentifier("dispatchValue", names)
+	init := ""
+	if plan.sw.Init != nil {
+		init = srcText(fset, plan.sw.Init, src) + "\n"
+	}
 	tagText := srcText(fset, plan.sw.Tag, src)
-	tableName := strings.ToLower(plan.keyType) + "Dispatch"
 	table := buildTable(tableName, plan.keyType, plan.cases)
-	repl := buildLookup(tableName, tagText)
-	fnDecl := findEnclosingFunc(f, plan.sw)
-	if fnDecl == nil {
-		return nil, fmt.Errorf("enum_dispatch: switch not in function")
-	}
-	fnStart := fset.Position(fnDecl.Pos()).Offset
-	swStart := fset.Position(plan.sw.Pos()).Offset
-	swEnd := fset.Position(plan.sw.End()).Offset
-	edits := []textEdit{
-		{start: fnStart, end: fnStart, replacement: []byte(table + "\n")},
-		{start: swStart, end: swEnd, replacement: []byte(repl)},
-	}
-	return applyEdits(src, edits), nil
+	repl := "{\n" + init + valueName + " := " + tagText + "\n" + table + "\n" + buildLookup(tableName, valueName) + "}"
+	swStart, swEnd := fset.Position(plan.sw.Pos()).Offset, fset.Position(plan.sw.End()).Offset
+	return applyEdits(src, []textEdit{{start: swStart, end: swEnd, replacement: []byte(repl)}}), nil
 }
 
 // buildTable generates the dispatch table source.
@@ -217,7 +216,7 @@ func applyGenericFnFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
 	// Group by normalized body.
 	groups := groupByNormalizedBody(fset, funcs, src)
 	for _, group := range groups {
-		if len(group) < 2 {
+		if len(group) < 2 || !genericGroupContainsLine(fset, group, spec.Line) {
 			continue
 		}
 		// Try to generalize this group.
@@ -266,25 +265,11 @@ func groupByNormalizedBody(fset *token.FileSet, funcs []*ast.FuncDecl, src []byt
 // normalizedBodyKey returns a string key for the function body with type
 // names replaced by placeholders.
 func normalizedBodyKey(fset *token.FileSet, fn *ast.FuncDecl, src []byte) string {
-	typeNames := collectTypeNames(fset, fn, src)
+
 	bodyText := srcText(fset, fn.Body, src)
 	paramNames := collectParamNames(fn)
-	key := normalizeTypes(bodyText, typeNames)
+	key := bodyText
 	return fmt.Sprintf("%d:%s:%s", len(paramNames), strings.Join(paramNames, ","), key)
-}
-
-// collectTypeNames gathers param and result type names.
-func collectTypeNames(fset *token.FileSet, fn *ast.FuncDecl, src []byte) []string {
-	var out []string
-	for _, fl := range []*ast.FieldList{fn.Type.Params, fn.Type.Results} {
-		if fl == nil {
-			continue
-		}
-		for _, p := range fl.List {
-			out = append(out, srcText(fset, p.Type, src))
-		}
-	}
-	return out
 }
 
 // collectParamNames gathers parameter names.
@@ -299,14 +284,6 @@ func collectParamNames(fn *ast.FuncDecl) []string {
 		}
 	}
 	return out
-}
-
-// normalizeTypes replaces type names with placeholder.
-func normalizeTypes(bodyText string, typeNames []string) string {
-	for _, tn := range typeNames {
-		bodyText = strings.ReplaceAll(bodyText, tn, "T")
-	}
-	return bodyText
 }
 
 // generalizeGroup converts a group of identical-modulo-types functions
@@ -460,18 +437,23 @@ func usesComparison(bodyText string) bool {
 
 // buildGenericFunc constructs the generic function source.
 func buildGenericFunc(fset *token.FileSet, template *ast.FuncDecl, src []byte, params *generalizeParams) string {
-	// Get the template source.
-	fnText := srcText(fset, template, src)
-	// Replace type names with T.
-	for concrete, placeholder := range params.typeVars {
-		fnText = strings.ReplaceAll(fnText, concrete, placeholder)
-	}
-	// Replace function name with base name and add type params.
-	// Find "func Name(" and replace with "func baseName[T constraint](".
-	oldDecl := "func " + template.Name.Name + "("
-	newDecl := fmt.Sprintf("func %s[T %s](", params.baseName, params.constraint)
-	fnText = strings.Replace(fnText, oldDecl, newDecl, 1)
-	return fnText
+	start, end := fset.Position(template.Pos()).Offset, fset.Position(template.End()).Offset
+	edits := []textEdit{}
+	ast.Inspect(template.Type, func(n ast.Node) bool {
+		id, ok := n.(*ast.Ident)
+		if !ok {
+			return true
+		}
+		replacement, ok := params.typeVars[id.Name]
+		if !ok {
+			return true
+		}
+		edits = append(edits, textEdit{start: fset.Position(id.Pos()).Offset - start, end: fset.Position(id.End()).Offset - start, replacement: []byte(replacement)})
+		return true
+	})
+	name := fmt.Sprintf("%s[T %s]", params.baseName, params.constraint)
+	edits = append(edits, textEdit{start: fset.Position(template.Name.Pos()).Offset - start, end: fset.Position(template.Name.End()).Offset - start, replacement: []byte(name)})
+	return string(applyEdits(src[start:end], edits))
 }
 
 // ensureImport adds an import if not already present.
@@ -544,4 +526,38 @@ func srcText(fset *token.FileSet, n ast.Node, src []byte) string {
 		return ""
 	}
 	return string(src[start:end])
+}
+
+func dispatchSourceType(spec *patterns.FixSpec, fset *token.FileSet, sw *ast.SwitchStmt) (string, error) {
+	start, end := uint32(fset.Position(sw.Tag.Pos()).Offset), uint32(fset.Position(sw.Tag.End()).Offset)
+	source := spec.Context.Reference(fixSourcePath(spec.Context.Root, spec.File))
+	for _, fn := range spec.Context.Functions {
+		if fn.Source != source {
+			continue
+		}
+		if typ := dispatchParameterType(fn.ParametersList, start, end); typ != "" {
+			return typ, nil
+		}
+	}
+	return "", fmt.Errorf("enum_dispatch: tag requires a typed source binding")
+}
+
+func dispatchParameterType(params []pdg.SourceParameter, start, end uint32) string {
+	for _, param := range params {
+		for _, use := range param.Uses {
+			if use.Start == start && use.End == end {
+				return param.TypeSyntax
+			}
+		}
+	}
+	return ""
+}
+
+func genericGroupContainsLine(fset *token.FileSet, group []*ast.FuncDecl, line int) bool {
+	for _, fn := range group {
+		if fset.Position(fn.Pos()).Line == line {
+			return true
+		}
+	}
+	return false
 }

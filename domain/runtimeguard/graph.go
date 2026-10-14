@@ -126,7 +126,18 @@ func (v *graphView) value(ref pdg.Ref, state State) Value {
 		return v.conversionValue(ref, state, value)
 	}
 	value.Length = attrs.Callee.Status == pdg.Known && v.graph.Tables.Text(attrs.Callee.Value) == "len"
-	return value
+	return v.lengthValue(ref, state, value)
+}
+
+func (v *graphView) lengthValue(ref pdg.Ref, state State, value Value) Value {
+	if !value.Length {
+		return value
+	}
+	source := v.value(v.operand(ref, 0), state)
+	if !source.HasExtent {
+		return value
+	}
+	return Value{Length: true, Integer: true, HasLower: true, HasUpper: true, Lower: source.Extent, Upper: source.Extent}
 }
 
 func (v *graphView) constantValue(ref pdg.Ref) Value {

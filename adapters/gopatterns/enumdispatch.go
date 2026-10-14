@@ -3,6 +3,7 @@ package gopatterns
 import (
 	"go/ast"
 	"go/token"
+	"go/types"
 )
 
 // EnumDispatchHit is one enum-value switch that wants to be a dispatch
@@ -19,14 +20,18 @@ type EnumDispatchHit struct {
 
 // findEnumDispatches scans fn for enum-value switches that the
 // enum_dispatch fixer can convert to dispatch tables.
-func findEnumDispatches(fn *ast.FuncDecl, fset *token.FileSet) []EnumDispatchHit {
+func findEnumDispatches(fn *ast.FuncDecl, fset *token.FileSet, infos ...*types.Info) []EnumDispatchHit {
 	var hits []EnumDispatchHit
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
 		sw, ok := n.(*ast.SwitchStmt)
 		if !ok {
 			return true
 		}
-		if numCases, ok := isEnumDispatchSwitch(sw); ok {
+		numCases, ok := isEnumDispatchSwitch(sw)
+		if len(infos) > 0 {
+			numCases, ok = typedDispatchCases(sw, infos[0])
+		}
+		if ok {
 			hits = append(hits, EnumDispatchHit{
 				Line:     fset.PositionFor(sw.Pos(), false).Line,
 				NumCases: numCases,
@@ -113,4 +118,24 @@ func inferDispatchKeyType(val ast.Expr, keyType string) string {
 		return keyType
 	}
 	return xIdent.Name
+}
+
+func typedDispatchCases(sw *ast.SwitchStmt, info *types.Info) (int, bool) {
+	if sw.Tag == nil || !types.Comparable(info.TypeOf(sw.Tag)) {
+		return 0, false
+	}
+	for _, stmt := range sw.Body.List {
+		if !typedDispatchCase(stmt, info) {
+			return 0, false
+		}
+	}
+	return len(sw.Body.List), len(sw.Body.List) >= 2
+}
+
+func typedDispatchCase(stmt ast.Stmt, info *types.Info) bool {
+	cc, ok := stmt.(*ast.CaseClause)
+	if !ok || len(cc.List) != 1 || !isDispatchCall(cc) {
+		return false
+	}
+	return info.Types[cc.List[0]].Value != nil
 }

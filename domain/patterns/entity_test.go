@@ -25,12 +25,10 @@ func TestEntityIdentityCandidates(t *testing.T) {
 	if c.Kind != EntityIdentity {
 		t.Errorf("kind = %q, want entity_identity", c.Kind)
 	}
-	if c.FixSpec == nil {
-		t.Fatal("FixSpec should not be nil")
+	if c.FixSpec != nil {
+		t.Fatal("identity equality is advisory without an invariant")
 	}
-	if c.FixSpec.Params["id_field"] != "ID" {
-		t.Errorf("id_field = %q, want ID", c.FixSpec.Params["id_field"])
-	}
+
 }
 
 func TestMissingIdentityCandidates(t *testing.T) {
