@@ -206,23 +206,21 @@ make quality-gate
 The command lives in `cmd/gstyle`. Analysis and command implementations live in
 `domain`, `adapters`, and `application`.
 
-### Partial formal verification of unchecked output
+### Lean verification of unchecked output
 
-Run `make verify-output` with Python 3 and Docker. The script pulls an official
-Gobra container pinned by digest, then runs it without network access against
-`adapters/gopatterns/outputdecision.go`, the decision function used in production.
-Its contract specifies the exact result for all input values and requires
-termination. Overflow checking is enabled. Five deliberate logic mutations must
-fail their postcondition; a timeout, parsing error, or missing dependency does
-not count as a successful negative test. CI preserves the logs and source hash.
+Run `make verify-output` with Go, Python 3 and elan on `PATH`. The same pinned
+Goose/Perennial project as the length and PDG proofs translates the production
+`domain/patterns/outputcheck` package into Lean. The proofs cover the exact output
+decision and suppression-aware selection of all flagged call sites, in order,
+without losing their metadata or changing the input. Ten deliberate Go mutations
+check the decision and selection contracts. CI preserves logs and source hashes.
 
-This is a **partial proof**, not a formally verified detector. The Go AST/type
-adapter, source-to-fact correspondence, and candidate construction remain outside
-the proof. In particular, a proof over incorrect input facts can still produce
-an incorrect finding. The pinned container does not supply the `go/ast` and `go/types` verification
-headers needed to verify that adapter directly. The Go toolchain and Gobra/Viper/Z3 are
-also trusted components. Typed integration and edge-case tests still cover the
-unverified boundary. VeGo was investigated, but no runnable release was found.
+This remains a **partial detector proof**: AST/type extraction, suppression-name
+lookup, and candidate rendering are checked by Go tests. Incorrect extracted
+facts can still produce incorrect findings. See
+[the output verification scope](verification/length/OUTPUT.md) for the contract
+and trust boundaries. The former Gobra-only decision pilot is replaced by this
+Lean pipeline; Docker is no longer needed.
 
 ### Lean verification of the function-length core
 

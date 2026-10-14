@@ -31,6 +31,14 @@ class VerificationGuardTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 verify.check_axioms(bad, profile.theorems)
 
+    def test_output_audit_is_separate_and_fail_closed(self):
+        profile = verify.output_profile()
+        output = "\n".join(f"'{name}' depends on axioms: [propext]" for name in profile.theorems)
+        verify.check_axioms(output, profile.theorems)
+        for bad in (output.replace("propext", "sorryAx"), self.audit()):
+            with self.assertRaises(RuntimeError):
+                verify.check_axioms(bad, profile.theorems)
+
     def test_setup_error_does_not_reject_mutation(self):
         result = SimpleNamespace(returncode=1, stdout="error: unknown package", stderr="")
         with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
@@ -41,6 +49,7 @@ class VerificationGuardTests(unittest.TestCase):
     def test_only_expected_proof_diagnostics_reject_mutation(self):
         proof = "Gstyle/Proof/Queries.lean"
         accepted = ["unsolved goals", "iapply: cannot apply Φ #false to Φ #true",
+                    "Tactic `rfl` failed: The left-hand side", "wp_apply: cannot apply a slice contract", "wp_apply: the goal forPostcondition is not a WP",
                     "wp_if_destruct: no `decide` or Boolean variable in the expression"]
         for message in accepted:
             output = f"error: {proof}:2:0: {message}\nerror: build failed\n"

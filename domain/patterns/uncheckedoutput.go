@@ -1,15 +1,11 @@
 package patterns
 
+import "github.com/rstyled/gstyle/domain/patterns/outputcheck"
+
 func uncheckedOutputCandidates(facts []*MiningFacts) []Candidate {
 	var out []Candidate
 	for _, function := range facts {
-		if isSuppressed(function.SuppressedKinds, UncheckedOutput) {
-			continue
-		}
-		for _, site := range function.ErrorCheckSites {
-			if !site.DiscardedOutput {
-				continue
-			}
+		for _, site := range outputcheck.Select(function.ErrorCheckSites, isSuppressed(function.SuppressedKinds, UncheckedOutput)) {
 			out = append(out, Candidate{
 				Kind: UncheckedOutput, ScoreMilli: 800,
 				Observation:     "formatted output error is discarded: " + site.Callee,

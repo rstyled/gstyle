@@ -22,6 +22,10 @@ THEOREMS = {PREFIX + name for name in (
     "freshLines_length_int", "freshLines_extend", "wp_accepts", "wp_Add", "wp_Reject", "wp_Exceeds",
 )}
 ALLOWED_AXIOMS = {"propext", "Classical.choice", "Quot.sound"}
+PROOF_FAILURE_PREFIXES = (
+    "iapply: cannot apply ", "wp_apply: cannot apply ", "wp_apply: the goal ",
+    "Tactic `rfl` failed: The left-hand side",
+)
 MUTATIONS = {
     "omit-last-line": ("last - first + 1", "last - first"),
     "count-overlap-twice": ("first++", "first += 0"),
@@ -40,7 +44,7 @@ def proof_rejected(output, proof_file):
         if match is None:
             return False
         message = match.group(1)
-        if not (message == "unsolved goals" or message.startswith("iapply: cannot apply ") or
+        if not (message == "unsolved goals" or message.startswith(PROOF_FAILURE_PREFIXES) or
                 message == "wp_if_destruct: no `decide` or Boolean variable in the expression"):
             return False
         found = True
@@ -115,6 +119,30 @@ def pdg_profile():
         "AuditQueries.lean", "Gstyle/Proof/Queries.lean", "PDG reference/evidence/Boolean queries and composed admission gates",
         ("Go-to-PDG extraction", "graph snapshot provenance", "name-to-capability lookup",
          "whole-graph traversal", "pattern findings and rewrite semantics"),
+    )
+
+
+def output_profile():
+    source = ROOT / "domain/patterns/outputcheck/output.go"
+    prefix = "Perennial.github_com.rstyled.gstyle.domain.patterns.outputcheck."
+    return Profile(
+        ROOT / "dist/verification/unchecked-output", "github_com/rstyled/gstyle/domain/patterns/outputcheck.lean",
+        "./domain/patterns/outputcheck", source, (source,),
+        {prefix + name for name in ("wp_Discards", "wp_Select")},
+        {
+            "unrecognized-function": ("!input.Formatted || input.Memory", "input.Memory"),
+            "memory-writer": ("!input.Formatted || input.Memory", "!input.Formatted"),
+            "wrong-result-count": ("input.Results == 2", "input.Results == 1"),
+            "handled-error": (" && input.ErrorBlank", ""),
+            "wrong-value-count": ("input.Values == 1", "input.Values == 2"),
+            "missed-standalone": ("if input.Standalone {\n\t\treturn true", "if input.Standalone {\n\t\treturn false"),
+            "ignore-suppression": ("if suppressed {", "if false {"),
+            "invert-selection": ("if site.DiscardedOutput {", "if !site.DiscardedOutput {"),
+            "skip-last-site": ("i < len(sites)", "i < len(sites)-1"),
+            "duplicate-site": ("append(out, site)", "append(out, site, site)"),
+        },
+        "AuditOutput.lean", "Gstyle/Proof/Output.lean", "unchecked-output decision and stable, suppression-aware site selection",
+        ("AST/type fact extraction", "suppression-name lookup", "candidate rendering", "Go compiler and stdlib behavior"),
     )
 
 
@@ -194,8 +222,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        if sys.argv[1:] not in ([], ["--pdg"]):
-            raise SystemExit("usage: verify.py [--pdg]")
-        main(pdg_profile() if sys.argv[1:] == ["--pdg"] else None)
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile}
+        arguments = tuple(sys.argv[1:])
+        if arguments not in profiles:
+            raise SystemExit("usage: verify.py [--pdg | --output]")
+        main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

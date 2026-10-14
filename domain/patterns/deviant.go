@@ -1,6 +1,10 @@
 package patterns
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/rstyled/gstyle/domain/patterns/outputcheck"
+)
 
 // Bugs as Deviant Behavior (Engler, Chen, Hallem, Chou, Chelf, SOSP 2001):
 // Extract programmer beliefs from code, then find contradictions (MUST
@@ -43,14 +47,7 @@ type BeliefViolation struct {
 }
 
 // ErrorCheckSite records whether a call's error was checked.
-type ErrorCheckSite struct {
-	FuncID  string
-	Line    int
-	Callee  string
-	Checked bool // True if the error was checked (if err != nil, etc.)
-	// DiscardedOutput marks typed fmt.Fprint* calls with a discarded error.
-	DiscardedOutput bool `json:",omitempty"`
-}
+type ErrorCheckSite = outputcheck.Site
 
 // MineErrorBeliefs tallies error-checking behavior per callee.
 // Returns beliefs where >=90% of sites check the error.

@@ -83,22 +83,6 @@ jobs:
       - name: Quality gate
         run: make quality-gate
 
-  verify-output:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Verify unchecked-output decision and reject mutations
-        run: make verify-output
-
-      - name: Preserve proof logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: unchecked-output-proof
-          path: dist/verification/unchecked-output/
-
   verify-length:
     runs-on: ubuntu-latest
     steps:
@@ -116,8 +100,8 @@ jobs:
           ./elan-init -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
-      - name: Verify production length and PDG queries in Lean
-        run: make verify-length verify-pdg
+      - name: Verify production length, PDG queries, and unchecked output in Lean
+        run: make verify-length verify-pdg verify-output
 
       - name: Preserve proof evidence
         if: always()
@@ -136,3 +120,12 @@ jobs:
           path: |
             dist/verification/pdg-queries/*.log
             dist/verification/pdg-queries/result.json
+
+      - name: Preserve unchecked-output proof evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unchecked-output-proof
+          path: |
+            dist/verification/unchecked-output/*.log
+            dist/verification/unchecked-output/result.json

@@ -10,6 +10,10 @@ func TestUncheckedOutputEdges(t *testing.T) {
 		name, imports, decl, body string
 		want                      int
 	}{
+		{"parenthesized call", "io;fmt", "", `(fmt.Fprintln(w,"text"))`, 1},
+		{"if initializer", "io;fmt", "", `if n,_:=fmt.Fprintln(w,"text");n>0{}`, 1},
+		{"forwarded as arguments", "io;fmt", `func consume(int,error){}`, `consume(fmt.Fprintln(w,"text"))`, 0},
+		{"named but ignored error", "io;fmt", "", `_,err:=fmt.Fprintln(w,"text");_=err`, 0},
 		{"Fprint", "io;fmt", "", `fmt.Fprint(w,"text")`, 1},
 		{"Fprintf", "io;fmt", "", `fmt.Fprintf(w,"%s","text")`, 1},
 		{"Fprintln", "io;fmt", "", `fmt.Fprintln(w,"text")`, 1},
@@ -107,5 +111,15 @@ func f(w io.Writer)(int,error){` + use.before + call + use.after + `}`
 				})
 			}
 		}
+	}
+}
+
+func TestUncheckedOutputRenamedImport(t *testing.T) {
+	source := `package p; import("io"; print "fmt")
+func f(w io.Writer)error{print.Fprintln(w,"text");return nil}`
+	file, fs, info, _ := typeCheck(t, source)
+	sites := findErrorCheckSites(findFunc(file, "f"), fs, info)
+	if len(sites) != 1 || !sites[0].DiscardedOutput || sites[0].Callee != "print.Fprintln" {
+		t.Fatalf("renamed stdlib import loses identity: %+v", sites)
 	}
 }

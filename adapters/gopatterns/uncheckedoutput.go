@@ -4,35 +4,33 @@ import (
 	"go/ast"
 	"go/types"
 	"slices"
+
+	"github.com/rstyled/gstyle/domain/patterns/outputcheck"
 )
 
 // Restrict this rule to typed stdlib formatted writes with a syntactically
 // discarded error. It does not prove later uses of assigned error bindings.
 func (w *errorCheckWalker) discardsOutput(call *ast.CallExpr) bool {
-	input := outputDecision{Formatted: formattedOutputCall(call, w.info)}
+	input := w.outputDecision()
+	input.Formatted = formattedOutputCall(call, w.info)
 	if !input.Formatted {
-		return discardsOutputDecision(input)
+		return outputcheck.Discards(input)
 	}
 	input.Memory = memoryOutput(w.info.TypeOf(call.Args[0]))
-	return discardsOutputDecision(w.outputDecision(input))
+	return outputcheck.Discards(input)
 }
 
-// This adapter remains outside the formal proof. It supplies syntactic counts
-// and blank-target identity to the verified, import-free decision function.
-func (w *errorCheckWalker) outputDecision(input outputDecision) outputDecision {
+func (w *errorCheckWalker) outputDecision() outputcheck.Decision {
 	switch parent := w.callParent().(type) {
 	case *ast.ExprStmt:
-		input.Standalone = true
+		return outputcheck.Decision{Standalone: true}
 	case *ast.AssignStmt:
-		input.Values, input.Results = len(parent.Rhs), len(parent.Lhs)
-		input.ErrorBlank = blankOutputTarget(parent.Lhs)
+		return outputcheck.Decision{Values: len(parent.Rhs), Results: len(parent.Lhs), ErrorBlank: blankOutputTarget(parent.Lhs)}
 	case *ast.ValueSpec:
-		input.Values, input.Results = len(parent.Values), len(parent.Names)
-		if len(parent.Names) == 2 {
-			input.ErrorBlank = parent.Names[1].Name == "_"
-		}
+		return outputcheck.Decision{Values: len(parent.Values), Results: len(parent.Names), ErrorBlank: len(parent.Names) == 2 && parent.Names[1].Name == "_"}
+	default:
+		return outputcheck.Decision{}
 	}
-	return input
 }
 
 func formattedOutputCall(call *ast.CallExpr, info *types.Info) bool {
