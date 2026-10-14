@@ -123,6 +123,10 @@ const (
 	// an error interface holding (*T)(nil) compared to nil — always false.
 	// Ported from gostaticanalysis/typednil. Detection-only.
 	TypedNil CandidateKind = "typednil"
+	// NilGuard flags functions where a nil guard checks one pointer while a
+	// different pointer is dereferenced without a guard of its own.
+	// Detection-only: which variable was meant to be guarded is intent.
+	NilGuard CandidateKind = "nil_guard"
 	// DependenceCluster flags functions whose PDG contains a large
 	// strongly-connected region — "everything affects everything"
 	// spaghetti that resists testing. Following Binkley & Harman.
@@ -234,6 +238,7 @@ var FixKindOrder = []CandidateKind{
 	NilErr,
 	ForceTypeAssert,
 	TypedNil,
+	NilGuard,
 	DependenceCluster,
 	MinedRule,
 	DeviantBehavior,

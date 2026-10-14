@@ -87,7 +87,9 @@ type Extraction struct {
 	PackageNames      map[string][]string
 	DeclarationOrders []patterns.Candidate
 	OffsetFallbacks   []patterns.Candidate
-	Funcs             []FuncPdg
+	// NilGuards are nil-guard-on-wrong-variable findings (detection-only).
+	NilGuards []patterns.Candidate
+	Funcs     []FuncPdg
 	// AnemicModels are exported methodless structs with 3+ functions
 	// operating on their fields (DDD anemic domain model detection).
 	AnemicModels []patterns.AnemicModelHit
@@ -280,6 +282,7 @@ func extractNormalPackages(ctx context.Context, abs string, paths []string, opti
 	var funcsOut []FuncPdg
 	var orders []patterns.Candidate
 	var ranges []patterns.Candidate
+	var guards []patterns.Candidate
 	var anemic []patterns.AnemicModelHit
 	var missing []patterns.MissingIdentityHit
 	var services []patterns.DomainServiceHit
@@ -295,12 +298,13 @@ func extractNormalPackages(ctx context.Context, abs string, paths []string, opti
 		ranges = append(ranges, findOffsetFallbacks(pkg, abs, paths, sources)...)
 		projectSourceParameterFlow(sources, funcs)
 		funcsOut = append(funcsOut, funcs...)
+		guards = append(guards, findNilGuards(pkg, abs, paths, sources)...)
 		anemic = append(anemic, findAnemicModels(pkg, abs)...)
 		missing = append(missing, findMissingIdentities(pkg, abs)...)
 		services = append(services, findDomainServices(pkg, abs)...)
 	}
 	populateInterfaceNilHits(funcsOut)
-	return &Extraction{Sources: sources, PackageNames: packageBindingNames(pkgs), Funcs: funcsOut, DeclarationOrders: orders, OffsetFallbacks: ranges, AnemicModels: anemic, MissingIdentities: missing, DomainServices: services}, nil
+	return &Extraction{Sources: sources, PackageNames: packageBindingNames(pkgs), Funcs: funcsOut, DeclarationOrders: orders, OffsetFallbacks: ranges, NilGuards: guards, AnemicModels: anemic, MissingIdentities: missing, DomainServices: services}, nil
 }
 
 func packageBindingNames(pkgs []*packages.Package) map[string][]string {

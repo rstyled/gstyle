@@ -107,6 +107,7 @@ func GetReport(ctx context.Context, args []string) (*patterns.PatternsReport, er
 	report := patterns.Run(toFacts(pdgs.Funcs), patterns.Options{
 		DeclarationOrders: pdgs.DeclarationOrders,
 		OffsetFallbacks:   pdgs.OffsetFallbacks,
+		NilGuards:         pdgs.NilGuards,
 		Params:            params,
 		AnemicModels:      pdgs.AnemicModels,
 		MissingIdentities: pdgs.MissingIdentities,
