@@ -9,7 +9,7 @@ type Value struct {
 	Lower, Upper                       int64
 	HasLower, HasUpper                 bool
 	NonNil, Nil, Guarded, UpperChecked bool
-	Integer, Length                    bool
+	Integer, Length, BelowLength       bool
 	Extent                             int64
 	HasExtent                          bool
 }
@@ -18,6 +18,7 @@ func (v Value) merge(other Value) Value {
 	out := v.mergeBounds(other)
 	out.UpperChecked = v.UpperChecked || other.UpperChecked
 	out.Length = v.Length && other.Length
+	out.BelowLength = v.BelowLength && other.BelowLength
 	return v.mergePointers(other, out)
 }
 

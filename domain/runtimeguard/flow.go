@@ -65,7 +65,8 @@ func (a *analysis) transfer(ref pdg.Ref, state State) {
 		if !a.view.trackedBinding(write.Symbol) {
 			continue
 		}
-		a.view.assign(ref, write.Symbol, value, state)
+		assigned := a.view.incrementValue(ref, write.Symbol, value, state)
+		a.view.assign(ref, write.Symbol, assigned, state)
 		a.rangeWrite(ref, write.Symbol, state)
 	}
 }

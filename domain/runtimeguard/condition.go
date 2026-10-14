@@ -60,9 +60,7 @@ func (v *graphView) constrain(symbol pdg.Ref, operator string, bound Value, stat
 	if bound.Nil {
 		return v.nilConstraint(symbol, operator, value, state)
 	}
-	if upperLengthCheck(bound, operator) {
-		value.UpperChecked = true
-	}
+	value = lengthConstraint(value, operator, bound)
 	if exactInteger(bound) {
 		value = integerConstraint(value, operator, bound.Lower)
 	}
@@ -146,8 +144,16 @@ func upperConstraint(value Value, bound int64) Value {
 	return value
 }
 
-func upperLengthCheck(bound Value, operator string) bool {
-	return bound.Length && (operator == "<" || operator == "<=")
+func lengthConstraint(value Value, operator string, bound Value) Value {
+	if !bound.Length {
+		return value
+	}
+	if operator != "<" && operator != "<=" {
+		return value
+	}
+	value.UpperChecked = true
+	value.BelowLength = value.BelowLength || operator == "<"
+	return value
 }
 
 func exactInteger(value Value) bool {

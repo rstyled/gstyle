@@ -21,6 +21,7 @@ func (b *irBuilder) runtimeValueFacts(fn *ast.FuncDecl) {
 		}
 		b.runtimeExpression(node)
 		b.runtimeRangeFacts(node)
+		b.runtimeIncrementFacts(node)
 		if _, spawn := node.(*ast.GoStmt); spawn {
 			b.graph.Extensions = append(b.graph.Extensions, b.pool.SingletonExtension("gstyle.runtime:concurrent-memory", "true")...)
 		}
@@ -312,4 +313,23 @@ func runtimePointerField(expr *ast.SelectorExpr, info *types.Info) bool {
 		return false
 	}
 	return pointerType(info.TypeOf(expr.X)) || embeddedPointerAccess(selection)
+}
+
+// A strict length bound prevents ++ overflow for int and int64, including
+// named types. Narrower signed counters can wrap before reaching len.
+func (b *irBuilder) runtimeIncrementFacts(node ast.Node) {
+	increment, ok := node.(*ast.IncDecStmt)
+	if !ok || increment.Tok != token.INC {
+		return
+	}
+	basic, ok := b.info.TypeOf(increment.X).Underlying().(*types.Basic)
+	if !ok {
+		return
+	}
+	if basic.Kind() != types.Int && basic.Kind() != types.Int64 {
+		return
+	}
+	ref := b.nodes[node]
+	attrs := &b.attributes[b.graph.Nodes[ref-1].Attributes-1]
+	b.runtimeExtension(attrs, "length-increment", "true")
 }

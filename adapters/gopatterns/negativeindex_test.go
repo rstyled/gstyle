@@ -27,6 +27,16 @@ func TestNegativeIndex(t *testing.T) {
 		name, body string
 		find       bool
 	}{
+		{"zero initialized loop", `func Sum(s []int) int { n := 0; for i := 0; i < len(s); i++ { n += s[i] }; return n }`, false},
+		{"named int counter", `type Index int; func Sum(s []int) int { n := 0; for i := Index(0); i < Index(len(s)); i++ { n += s[i] }; return n }`, false},
+		{"int64 counter", `func Sum(s []int) int { n := 0; for i := int64(0); i < int64(len(s)); i++ { n += s[i] }; return n }`, false},
+		{"unknown initial counter", `func Sum(s []int, i int) int { n := 0; for ; i < len(s); i++ { n += s[i] }; return n }`, true},
+		{"second increment needs new bound", `func Sum(s []int) int { n := 0; for i := 0; i < len(s); i++ { i++; if i < len(s) { n += s[i] } }; return n }`, true},
+		{"negative initialized loop", `func Sum(s []int) int { n := 0; for i := -1; i < len(s); i++ { n += s[i] }; return n }`, true},
+		{"loop body invalidates lower bound", `func Sum(s []int) int { n := 0; for i := 0; i < len(s); i++ { i = -1; if i < len(s) { n += s[i] } }; return n }`, true},
+		{"narrow counter can overflow", `func Sum(s []int) int { n := 0; for i := int8(0); int(i) < len(s); i++ { if i < int8(len(s)) { n += s[i] } }; return n }`, true},
+		{"inclusive length can overflow", `func Sum(s []int) int { n := 0; for i := 0; i <= len(s); i++ { if i < len(s) { n += s[i] } }; return n }`, true},
+		{"decrement can become negative", `func Sum(s []int) int { n := 0; for i := 0; i < len(s); i-- { n += s[i] }; return n }`, true},
 		{"rejection guard", `func At(s []int, i int) int { if i >= len(s) { return -1 }; return s[i] }`, true},
 		{"reversed rejection guard", `func At(s []int, i int) int { if len(s) <= i { return -1 }; return s[i] }`, true},
 		{"parenthesized rejection", `func At(s []int, i int) int { if (i >= len(s)) { return -1 }; return s[i] }`, true},
