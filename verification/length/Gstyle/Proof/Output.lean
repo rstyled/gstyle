@@ -310,6 +310,27 @@ theorem wp_Report (function : Function) (sites suppressions : GoSlice)
     rw [hi, List.take_length]
     wp_end
 
+
+def classified (callee writer : Identity) (use : Consumption) : Bool :=
+  decide (callee.Package' = go!"fmt" ∧
+    (callee.Name' = go!"Fprint" ∨ callee.Name' = go!"Fprintf" ∨ callee.Name' = go!"Fprintln")) &&
+  !decide ((writer.Package' = go!"bytes" ∧ writer.Name' = go!"Buffer") ∨
+    (writer.Package' = go!"strings" ∧ writer.Name' = go!"Builder")) &&
+  (use.Standalone' || (decide (use.Values' = (1#64)) && decide (use.Results' = (2#64)) &&
+    decide (use.ErrorName' = go!"_")))
+
+theorem wp_Classify (callee writer : Identity) (use : Consumption) :
+    {{ isPkgInit (PROP := IProp GF) pkg }}
+      (App (App (App (Val (@! Classify)) (Val #callee)) (Val #writer)) (Val #use))
+    {{ RET #(classified callee writer use); True }} := by
+  wp_start
+  wp_auto
+  wp_apply wp_Formatted
+  wp_apply wp_Memory
+  wp_apply wp_Discards
+  unfold classified discarded
+  wp_end
+
 end proof
 end github_com.rstyled.gstyle.domain.patterns.outputcheck
 end Perennial

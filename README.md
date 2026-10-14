@@ -211,9 +211,9 @@ The command lives in `cmd/gstyle`. Analysis and command implementations live in
 Run `make verify-output` with Go, Python 3 and elan on `PATH`. The same pinned
 Goose/Perennial project as the length and PDG proofs translates the production
 `domain/patterns/outputcheck` package into Lean. The proofs cover exact function
-and writer identities, the output decision, suppression-name lookup and composed
+and writer identities, the composed site decision, suppression-name lookup and composed
 selection and advisory payload construction. The reporting loop preserves order,
-metadata and both inputs. Twenty-eight deliberate Go mutations check these contracts. CI preserves
+metadata and both inputs. Thirty-four deliberate Go mutations check these contracts. CI preserves
 logs and source hashes.
 
 This remains a **partial detector proof**: AST/type extraction, corpus traversal and

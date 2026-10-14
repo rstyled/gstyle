@@ -7,32 +7,33 @@ import (
 	"github.com/rstyled/gstyle/domain/patterns/outputcheck"
 )
 
-// Restrict this rule to typed stdlib formatted writes with a syntactically
-// discarded error. It does not prove later uses of assigned error bindings.
 func (w *errorCheckWalker) discardsOutput(call *ast.CallExpr) bool {
-	input := w.outputDecision()
-	input.Formatted = formattedOutputCall(call, w.info)
-	if !input.Formatted {
-		return outputcheck.Discards(input)
+	callee := outputCalleeIdentity(call, w.info)
+	var writer outputcheck.Identity
+	if len(call.Args) > 0 {
+		writer = outputWriterIdentity(w.info.TypeOf(call.Args[0]))
 	}
-	input.Memory = memoryOutput(w.info.TypeOf(call.Args[0]))
-	return outputcheck.Discards(input)
+	return outputcheck.Classify(callee, writer, w.outputConsumption())
 }
 
-func (w *errorCheckWalker) outputDecision() outputcheck.Decision {
+func (w *errorCheckWalker) outputConsumption() outputcheck.Consumption {
 	switch parent := w.callParent().(type) {
 	case *ast.ExprStmt:
-		return outputcheck.Decision{Standalone: true}
+		return outputcheck.Consumption{Standalone: true}
 	case *ast.AssignStmt:
-		return outputcheck.Decision{Values: len(parent.Rhs), Results: len(parent.Lhs), ErrorBlank: blankOutputTarget(parent.Lhs)}
+		return outputcheck.Consumption{Values: len(parent.Rhs), Results: len(parent.Lhs), ErrorName: outputErrorTarget(parent.Lhs)}
 	case *ast.ValueSpec:
-		return outputcheck.Decision{Values: len(parent.Values), Results: len(parent.Names), ErrorBlank: len(parent.Names) == 2 && parent.Names[1].Name == "_"}
+		var name string
+		if len(parent.Names) == 2 {
+			name = parent.Names[1].Name
+		}
+		return outputcheck.Consumption{Values: len(parent.Values), Results: len(parent.Names), ErrorName: name}
 	default:
-		return outputcheck.Decision{}
+		return outputcheck.Consumption{}
 	}
 }
 
-func formattedOutputCall(call *ast.CallExpr, info *types.Info) bool {
+func outputCalleeIdentity(call *ast.CallExpr, info *types.Info) outputcheck.Identity {
 	var object types.Object
 	switch fun := specUnwrapParens(call.Fun).(type) {
 	case *ast.Ident:
@@ -42,27 +43,30 @@ func formattedOutputCall(call *ast.CallExpr, info *types.Info) bool {
 	}
 	function, ok := object.(*types.Func)
 	if !ok || function.Pkg() == nil {
-		return false
+		return outputcheck.Identity{}
 	}
-	return outputcheck.Formatted(function.Pkg().Path(), function.Name())
+	return outputcheck.Identity{Package: function.Pkg().Path(), Name: function.Name()}
 }
 
-func memoryOutput(typ types.Type) bool {
+func outputWriterIdentity(typ types.Type) outputcheck.Identity {
 	pointer, ok := types.Unalias(typ).(*types.Pointer)
 	if !ok {
-		return false
+		return outputcheck.Identity{}
 	}
 	named, ok := types.Unalias(pointer.Elem()).(*types.Named)
 	if !ok || named.Obj().Pkg() == nil {
-		return false
+		return outputcheck.Identity{}
 	}
-	return outputcheck.Memory(named.Obj().Pkg().Path(), named.Obj().Name())
+	return outputcheck.Identity{Package: named.Obj().Pkg().Path(), Name: named.Obj().Name()}
 }
 
-func blankOutputTarget(targets []ast.Expr) bool {
+func outputErrorTarget(targets []ast.Expr) string {
 	if len(targets) != 2 {
-		return false
+		return ""
 	}
 	id, ok := specUnwrapParens(targets[1]).(*ast.Ident)
-	return ok && id.Name == "_"
+	if !ok {
+		return ""
+	}
+	return id.Name
 }

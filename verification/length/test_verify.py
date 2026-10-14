@@ -1,3 +1,4 @@
+from dataclasses import replace
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -75,6 +76,21 @@ class VerificationGuardTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     verify.run(["lake", "build"], verify.PROJECT, "setup.log", expect_failure=True,
                                report=Path(directory), proof_file=proof)
+
+    def test_each_mutation_builds_only_its_profile_proof(self):
+        for factory, module in ((verify.length_profile, "Gstyle.Proof.Length"),
+                                (verify.pdg_profile, "Gstyle.Proof.Queries"),
+                                (verify.output_profile, "Gstyle.Proof.Output")):
+            profile = factory()
+            mutation = next(iter(profile.mutations.items()))
+            with self.subTest(package=profile.package), tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
+                profile = replace(profile, report=Path(directory), mutations=dict([mutation]))
+                with patch.object(verify, "generate"), patch.object(verify, "run") as run, patch.object(verify, "print", create=True):
+                    verify.check_mutations(profile, Path("goose"), Path("proofgen"))
+                run.assert_called_once()
+                self.assertEqual(run.call_args.args[0], ["lake", "build", module])
+                self.assertTrue(run.call_args.kwargs["expect_failure"])
+                self.assertEqual(run.call_args.kwargs["proof_file"], profile.proof_file)
 
     def test_failed_run_clears_success(self):
         with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:

@@ -129,8 +129,14 @@ def output_profile():
     return Profile(
         ROOT / "dist/verification/unchecked-output", "github_com/rstyled/gstyle/domain/patterns/outputcheck.lean",
         "./domain/patterns/outputcheck", source, (source,),
-        {prefix + name for name in ("wp_Discards", "wp_Select", "wp_Formatted", "wp_Memory", "wp_hasSuppression", "wp_Find", "wp_describe", "wp_Report")},
+        {prefix + name for name in ("wp_Discards", "wp_Select", "wp_Formatted", "wp_Memory", "wp_hasSuppression", "wp_Find", "wp_describe", "wp_Report", "wp_Classify")},
         {
+            "cross-classifier-callee": ("Formatted(callee.Package, callee.Name)", "Formatted(writer.Package, writer.Name)"),
+            "cross-classifier-writer": ("Memory(writer.Package, writer.Name)", "Memory(callee.Package, callee.Name)"),
+            "invert-blank-target": ('use.ErrorName == "_"', 'use.ErrorName != "_"'),
+            "ignore-consumption-form": ("Standalone: use.Standalone", "Standalone: false"),
+            "swap-consumption-counts": ("Values: use.Values, Results: use.Results", "Values: use.Results, Results: use.Values"),
+            "forge-blank-target": ('ErrorBlank: use.ErrorName == "_"', "ErrorBlank: true"),
             "wrong-finding-path": ("Path: function.Path", "Path: function.Name"),
             "wrong-finding-owner": ("ID: function.ID", "ID: site.FuncID"),
             "wrong-finding-name": ("Name: function.Name", "Name: function.ID"),
@@ -160,7 +166,7 @@ def output_profile():
             "skip-last-site": ("i < len(sites)", "i < len(sites)-1"),
             "duplicate-site": ("append(out, site)", "append(out, site, site)"),
         },
-        "AuditOutput.lean", "Gstyle/Proof/Output.lean", "unchecked-output identities, decision, suppression, selection and advisory payloads",
+        "AuditOutput.lean", "Gstyle/Proof/Output.lean", "unchecked-output composed classification, suppression, selection and advisory payloads",
         ("AST/type fact extraction", "corpus traversal, input/Candidate projection and presentation", "Go compiler and stdlib behavior"),
     )
 
@@ -197,7 +203,8 @@ def check_mutations(profile, goose, proofgen):
             (lean / ".lake").mkdir()
             (lean / ".lake/packages").symlink_to(PROJECT / ".lake/packages", target_is_directory=True)
             generate(profile, goose, proofgen, work / "go", lean / "Gstyle", name)
-            run(["lake", "build"], lean, f"{name}-proof.log", expect_failure=True, report=profile.report, proof_file=profile.proof_file)
+            module = profile.proof_file.removesuffix(".lean").replace("/", ".")
+            run(["lake", "build", module], lean, f"{name}-proof.log", expect_failure=True, report=profile.report, proof_file=profile.proof_file)
             results.append(name)
             print(f"REJECTED {name}", flush=True)
     return results

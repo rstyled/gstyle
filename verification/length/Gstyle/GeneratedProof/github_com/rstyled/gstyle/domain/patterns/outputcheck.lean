@@ -517,6 +517,154 @@ instance Advisory_access_store_CounterEvidence (l : Loc) (v : github_com.rstyled
 end def_
 end Advisory
 
+namespace Identity
+section def_
+
+variable [ext : FfiSyntax] [ffi : FfiModel] [FfiInterp ffi] [FfiSemantics ext ffi] [go_gctx : GoGlobalContext]
+variable {hlc : HasLC} {GF : BundledGFunctors} [hG : HeapGS hlc GF]
+variable [sem : go.Semantics]
+variable [package_sem' : github_com.rstyled.gstyle.domain.patterns.outputcheck.Assumptions]
+
+instance Identity_typed_pointsto :
+    TypedPointsto (GF := GF) github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity where
+  typedPointstoDef l v dq := iprop(
+    "Package" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity go!"Package" l) v.Package' dq ∗
+    "Name" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity go!"Name" l) v.Name' dq ∗
+    "_" ∷ True)
+  typedPointstoDef_dfractional := by solve_typed_pointsto_dfractional
+  typedPointstoDef_timeless := by solve_typed_pointsto_timeless
+  typedPointsto_agree := by solve_typed_pointsto_agree
+
+instance Identity_into_val_typed :
+    IntoValTypedUnderlying (GF := GF) github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity.underlying := by
+  solve_into_val_typed_struct
+
+instance Identity_access_load_Package (l : Loc) (v : github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity go!"Package" l) v.Package' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity go!"Package" l) v.Package' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Identity_access_store_Package (l : Loc) (v : github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity) (Package' : GoString) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity go!"Package" l) v.Package' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity go!"Package" l) Package' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with Package' := Package' } : github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Identity_access_load_Name (l : Loc) (v : github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity go!"Name" l) v.Name' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity go!"Name" l) v.Name' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Identity_access_store_Name (l : Loc) (v : github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity) (Name' : GoString) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity go!"Name" l) v.Name' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity go!"Name" l) Name' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with Name' := Name' } : github_com.rstyled.gstyle.domain.patterns.outputcheck.Identity) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+end def_
+end Identity
+
+namespace Consumption
+section def_
+
+variable [ext : FfiSyntax] [ffi : FfiModel] [FfiInterp ffi] [FfiSemantics ext ffi] [go_gctx : GoGlobalContext]
+variable {hlc : HasLC} {GF : BundledGFunctors} [hG : HeapGS hlc GF]
+variable [sem : go.Semantics]
+variable [package_sem' : github_com.rstyled.gstyle.domain.patterns.outputcheck.Assumptions]
+
+instance Consumption_typed_pointsto :
+    TypedPointsto (GF := GF) github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption where
+  typedPointstoDef l v dq := iprop(
+    "Standalone" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"Standalone" l) v.Standalone' dq ∗
+    "Values" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"Values" l) v.Values' dq ∗
+    "Results" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"Results" l) v.Results' dq ∗
+    "ErrorName" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"ErrorName" l) v.ErrorName' dq ∗
+    "_" ∷ True)
+  typedPointstoDef_dfractional := by solve_typed_pointsto_dfractional
+  typedPointstoDef_timeless := by solve_typed_pointsto_timeless
+  typedPointsto_agree := by solve_typed_pointsto_agree
+
+instance Consumption_into_val_typed :
+    IntoValTypedUnderlying (GF := GF) github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption.underlying := by
+  solve_into_val_typed_struct
+
+instance Consumption_access_load_Standalone (l : Loc) (v : github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"Standalone" l) v.Standalone' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"Standalone" l) v.Standalone' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Consumption_access_store_Standalone (l : Loc) (v : github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption) (Standalone' : Bool) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"Standalone" l) v.Standalone' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"Standalone" l) Standalone' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with Standalone' := Standalone' } : github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Consumption_access_load_Values (l : Loc) (v : github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"Values" l) v.Values' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"Values" l) v.Values' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Consumption_access_store_Values (l : Loc) (v : github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption) (Values' : w64) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"Values" l) v.Values' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"Values" l) Values' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with Values' := Values' } : github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Consumption_access_load_Results (l : Loc) (v : github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"Results" l) v.Results' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"Results" l) v.Results' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Consumption_access_store_Results (l : Loc) (v : github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption) (Results' : w64) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"Results" l) v.Results' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"Results" l) Results' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with Results' := Results' } : github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Consumption_access_load_ErrorName (l : Loc) (v : github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"ErrorName" l) v.ErrorName' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"ErrorName" l) v.ErrorName' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Consumption_access_store_ErrorName (l : Loc) (v : github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption) (ErrorName' : GoString) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"ErrorName" l) v.ErrorName' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption go!"ErrorName" l) ErrorName' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with ErrorName' := ErrorName' } : github_com.rstyled.gstyle.domain.patterns.outputcheck.Consumption) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+end def_
+end Consumption
+
 end github_com.rstyled.gstyle.domain.patterns.outputcheck
 end
 end Perennial

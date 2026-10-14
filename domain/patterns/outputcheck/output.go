@@ -100,3 +100,24 @@ func Report(function Function, sites []Site, suppressions []string) []Advisory {
 	}
 	return out
 }
+
+type Identity struct {
+	Package string
+	Name    string
+}
+
+type Consumption struct {
+	Standalone bool
+	Values     int
+	Results    int
+	ErrorName  string
+}
+
+func Classify(callee, writer Identity, use Consumption) bool {
+	return Discards(Decision{
+		Formatted:  Formatted(callee.Package, callee.Name),
+		Memory:     Memory(writer.Package, writer.Name),
+		Standalone: use.Standalone, Values: use.Values, Results: use.Results,
+		ErrorBlank: use.ErrorName == "_",
+	})
+}

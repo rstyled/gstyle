@@ -41,6 +41,16 @@ def Advisory.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
 
 attribute [irreducible] Advisory.ty
 
+def Identity.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.Named go!"github.com/rstyled/gstyle/domain/patterns/outputcheck.Identity" [])
+
+attribute [irreducible] Identity.ty
+
+def Consumption.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.Named go!"github.com/rstyled/gstyle/domain/patterns/outputcheck.Consumption" [])
+
+attribute [irreducible] Consumption.ty
+
 noncomputable def Discards [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/patterns/outputcheck.Discards"
 
@@ -64,6 +74,9 @@ noncomputable def describe [FfiSyntax] [GoGlobalContext] : GoString :=
 
 noncomputable def Report [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/patterns/outputcheck.Report"
+
+noncomputable def Classify [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/patterns/outputcheck.Classify"
 
 /-- go: output.go:12:6 -/
 noncomputable def Discards.impl [FfiSyntax] [GoGlobalContext] : val :=
@@ -246,6 +259,29 @@ noncomputable def Report.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val (GoInstruction (GoStore go.int))) (Pair (Var "i") (Var "$r0")))))))))))
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore (go.GoType.SliceType Site.ty)))) (Pair (Var "selected") (Var "$r0"))))))))))))))
+
+/-- go: output.go:116:6 -/
+noncomputable def Classify.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "callee"
+  (Lam "writer"
+  (Lam "use"
+  (App (Val exceptionDo)
+  (Let "use" (App (Val (GoInstruction (GoAlloc Consumption.ty))) (Var "use"))
+  (Let "writer" (App (Val (GoInstruction (GoAlloc Identity.ty))) (Var "writer"))
+  (Let "callee" (App (Val (GoInstruction (GoAlloc Identity.ty))) (Var "callee"))
+  (App (Val doReturn)
+  (Let "$a0" (Let "$v0" (Let "$a0" (App (Val (GoInstruction (GoLoad go.string))) (App (Val (GoInstruction (StructFieldRef Identity.ty go!"Package"))) (Var "callee")))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad go.string))) (App (Val (GoInstruction (StructFieldRef Identity.ty go!"Name"))) (Var "callee")))
+  (App (App (App (Val (GoInstruction (FuncResolve Formatted []))) (Val #())) (Var "$a0")) (Var "$a1"))))
+  (Let "$v1" (Let "$a0" (App (Val (GoInstruction (GoLoad go.string))) (App (Val (GoInstruction (StructFieldRef Identity.ty go!"Package"))) (Var "writer")))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad go.string))) (App (Val (GoInstruction (StructFieldRef Identity.ty go!"Name"))) (Var "writer")))
+  (App (App (App (Val (GoInstruction (FuncResolve Memory []))) (Val #())) (Var "$a0")) (Var "$a1"))))
+  (Let "$v2" (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Consumption.ty go!"Standalone"))) (Var "use")))
+  (Let "$v3" (App (Val (GoInstruction (GoLoad go.int))) (App (Val (GoInstruction (StructFieldRef Consumption.ty go!"Values"))) (Var "use")))
+  (Let "$v4" (App (Val (GoInstruction (GoLoad go.int))) (App (Val (GoInstruction (StructFieldRef Consumption.ty go!"Results"))) (Var "use")))
+  (Let "$v5" (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (App (Val (GoInstruction (StructFieldRef Consumption.ty go!"ErrorName"))) (Var "use"))) (Val #(go!"_"))))
+  (App (Val (GoInstruction (CompositeLiteral Decision.ty))) (LiteralValue [(KeyedElement (some (KeyField go!"Formatted")) (ElementExpression go.bool (Var "$v0"))), (KeyedElement (some (KeyField go!"Memory")) (ElementExpression go.bool (Var "$v1"))), (KeyedElement (some (KeyField go!"Standalone")) (ElementExpression go.bool (Var "$v2"))), (KeyedElement (some (KeyField go!"Values")) (ElementExpression go.int (Var "$v3"))), (KeyedElement (some (KeyField go!"Results")) (ElementExpression go.int (Var "$v4"))), (KeyedElement (some (KeyField go!"ErrorBlank")) (ElementExpression go.bool (Var "$v5")))]))))))))
+  (App (App (Val (GoInstruction (FuncResolve Discards []))) (Val #())) (Var "$a0")))))))))))
 
 instance info' : PkgInfo pkg_id.github_com.rstyled.gstyle.domain.patterns.outputcheck where
   pkgImportedPkgs := []
@@ -509,11 +545,103 @@ attribute [instance] Advisory.TypeAssumptions.type_repr
   Advisory.TypeAssumptions.get_CounterEvidence
   Advisory.TypeAssumptions.set_CounterEvidence
 
+structure Identity [FfiSyntax] where
+  mk ::
+  Package' : GoString
+  Name' : GoString
+
+instance Identity.zero_val [FfiSyntax] : ZeroVal Identity :=
+  ⟨Identity.mk zeroValDef zeroValDef⟩
+
+@[reducible] def Identity.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"Package" go.string),
+(go.field_decl.FieldDecl go!"Name" go.string)]
+
+@[irreducible] def Identity.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Identity.fieldsUnsealed
+
+instance equals_unfold_Identity [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Identity.fields Identity.fieldsUnsealed :=
+  ⟨by unfold Identity.fields; rfl⟩
+
+@[reducible] def Identity.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Identity.fields)
+
+class Identity.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
+  type_repr : go.TypeReprUnderlying Identity.underlying Identity
+  underlying : go.UnderlyingDirectedEq Identity.ty Identity.underlying
+  layout : go.StructLayout Identity [(go!"Package", typeSize GoString, typeAlign GoString), (go!"Name", typeSize GoString, typeAlign GoString)]
+  get_Package : ∀ (x : Identity), go.IsGoStepPureDetTagged under (StructFieldGet Identity.underlying go!"Package") #x (Val #(x.Package'))
+  set_Package : ∀ (x : Identity) (y : GoString), go.IsGoStepPureDetTagged under (StructFieldSet Identity.underlying go!"Package") (PairV #x #y) (Val #(({ x with Package' := y } : Identity)))
+  get_Name : ∀ (x : Identity), go.IsGoStepPureDetTagged under (StructFieldGet Identity.underlying go!"Name") #x (Val #(x.Name'))
+  set_Name : ∀ (x : Identity) (y : GoString), go.IsGoStepPureDetTagged under (StructFieldSet Identity.underlying go!"Name") (PairV #x #y) (Val #(({ x with Name' := y } : Identity)))
+
+attribute [instance] Identity.TypeAssumptions.type_repr
+  Identity.TypeAssumptions.underlying
+  Identity.TypeAssumptions.layout
+  Identity.TypeAssumptions.get_Package
+  Identity.TypeAssumptions.set_Package
+  Identity.TypeAssumptions.get_Name
+  Identity.TypeAssumptions.set_Name
+
+structure Consumption [FfiSyntax] where
+  mk ::
+  Standalone' : Bool
+  Values' : w64
+  Results' : w64
+  ErrorName' : GoString
+
+instance Consumption.zero_val [FfiSyntax] : ZeroVal Consumption :=
+  ⟨Consumption.mk zeroValDef zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def Consumption.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"Standalone" go.bool),
+(go.field_decl.FieldDecl go!"Values" go.int),
+(go.field_decl.FieldDecl go!"Results" go.int),
+(go.field_decl.FieldDecl go!"ErrorName" go.string)]
+
+@[irreducible] def Consumption.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Consumption.fieldsUnsealed
+
+instance equals_unfold_Consumption [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Consumption.fields Consumption.fieldsUnsealed :=
+  ⟨by unfold Consumption.fields; rfl⟩
+
+@[reducible] def Consumption.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Consumption.fields)
+
+class Consumption.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
+  type_repr : go.TypeReprUnderlying Consumption.underlying Consumption
+  underlying : go.UnderlyingDirectedEq Consumption.ty Consumption.underlying
+  layout : go.StructLayout Consumption [(go!"Standalone", typeSize Bool, typeAlign Bool), (go!"Values", typeSize w64, typeAlign w64), (go!"Results", typeSize w64, typeAlign w64), (go!"ErrorName", typeSize GoString, typeAlign GoString)]
+  get_Standalone : ∀ (x : Consumption), go.IsGoStepPureDetTagged under (StructFieldGet Consumption.underlying go!"Standalone") #x (Val #(x.Standalone'))
+  set_Standalone : ∀ (x : Consumption) (y : Bool), go.IsGoStepPureDetTagged under (StructFieldSet Consumption.underlying go!"Standalone") (PairV #x #y) (Val #(({ x with Standalone' := y } : Consumption)))
+  get_Values : ∀ (x : Consumption), go.IsGoStepPureDetTagged under (StructFieldGet Consumption.underlying go!"Values") #x (Val #(x.Values'))
+  set_Values : ∀ (x : Consumption) (y : w64), go.IsGoStepPureDetTagged under (StructFieldSet Consumption.underlying go!"Values") (PairV #x #y) (Val #(({ x with Values' := y } : Consumption)))
+  get_Results : ∀ (x : Consumption), go.IsGoStepPureDetTagged under (StructFieldGet Consumption.underlying go!"Results") #x (Val #(x.Results'))
+  set_Results : ∀ (x : Consumption) (y : w64), go.IsGoStepPureDetTagged under (StructFieldSet Consumption.underlying go!"Results") (PairV #x #y) (Val #(({ x with Results' := y } : Consumption)))
+  get_ErrorName : ∀ (x : Consumption), go.IsGoStepPureDetTagged under (StructFieldGet Consumption.underlying go!"ErrorName") #x (Val #(x.ErrorName'))
+  set_ErrorName : ∀ (x : Consumption) (y : GoString), go.IsGoStepPureDetTagged under (StructFieldSet Consumption.underlying go!"ErrorName") (PairV #x #y) (Val #(({ x with ErrorName' := y } : Consumption)))
+
+attribute [instance] Consumption.TypeAssumptions.type_repr
+  Consumption.TypeAssumptions.underlying
+  Consumption.TypeAssumptions.layout
+  Consumption.TypeAssumptions.get_Standalone
+  Consumption.TypeAssumptions.set_Standalone
+  Consumption.TypeAssumptions.get_Values
+  Consumption.TypeAssumptions.set_Values
+  Consumption.TypeAssumptions.get_Results
+  Consumption.TypeAssumptions.set_Results
+  Consumption.TypeAssumptions.get_ErrorName
+  Consumption.TypeAssumptions.set_ErrorName
+
 class Assumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   Decision_instance : Decision.TypeAssumptions
   Site_instance : Site.TypeAssumptions
   Function_instance : Function.TypeAssumptions
   Advisory_instance : Advisory.TypeAssumptions
+  Identity_instance : Identity.TypeAssumptions
+  Consumption_instance : Consumption.TypeAssumptions
   Discards_unfold : FuncUnfold Discards [] Discards.impl
   Select_unfold : FuncUnfold Select [] Select.impl
   Formatted_unfold : FuncUnfold Formatted [] Formatted.impl
@@ -522,11 +650,14 @@ class Assumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFun
   Find_unfold : FuncUnfold Find [] Find.impl
   describe_unfold : FuncUnfold describe [] describe.impl
   Report_unfold : FuncUnfold Report [] Report.impl
+  Classify_unfold : FuncUnfold Classify [] Classify.impl
 
 attribute [instance] Assumptions.Decision_instance
   Assumptions.Site_instance
   Assumptions.Function_instance
   Assumptions.Advisory_instance
+  Assumptions.Identity_instance
+  Assumptions.Consumption_instance
   Assumptions.Discards_unfold
   Assumptions.Select_unfold
   Assumptions.Formatted_unfold
@@ -535,6 +666,7 @@ attribute [instance] Assumptions.Decision_instance
   Assumptions.Find_unfold
   Assumptions.describe_unfold
   Assumptions.Report_unfold
+  Assumptions.Classify_unfold
 
 end github_com.rstyled.gstyle.domain.patterns.outputcheck
 

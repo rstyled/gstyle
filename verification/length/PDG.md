@@ -62,3 +62,7 @@ Dependencies are checked once before mutation tests. A mutation counts as
 rejected only for a recognized proof failure in its expected proof module.
 Missing modules, syntax errors, unrelated diagnostics and mixed setup/proof
 failures abort verification. No unchanged build is added per mutation.
+
+Each mutant builds only its affected proof module. The full unchanged project is
+checked before mutation tests, so unrelated pattern proofs are not rebuilt for
+every mutant.
