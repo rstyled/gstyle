@@ -2,7 +2,8 @@
 
 Run `make verify-negative-index` with the shared pinned Lean/Goose project.
 This stage covers intervals, the risk decision and stable per-binding selection.
-Payload construction and the PDG transfer analysis are not yet proved.
+Advisory payload construction and generic node lookup are also proved. PDG
+transfer analysis and the outer projections remain outside Lean.
 
 `domain/runtimeguard/interval` owns the actual Go join and risk decision.
 `Value.mergeBounds` uses that join; the negative-index matcher uses that decision.
@@ -40,12 +41,26 @@ binding IDs, risky-only output and coverage of every risky binding. Zero and the
 largest uint32 ID remain ordinary raw keys, as in the former matcher; this does
 not validate those IDs against the PDG tables.
 
-Thirteen theorems are audited: the interval model and execution properties,
-selection order/key properties, and the actual Go selector contracts. Eighteen
+Fifteen interval/pattern theorems are audited: the interval model and execution properties,
+selection order/key properties, and the actual Go selector contracts. Twenty-four
 Go mutations test bound narrowing, forged knowledge, normalization, trigger and
 zero handling, missing deduplication, key confusion, forgotten map writes, safe
 accesses hiding later risks, skipped/duplicated access records and forged source
 nodes. Each mutation builds only this proof module after the full preflight.
+
+The matcher rejects invalid node references before binding deduplication, so an
+invalid first record cannot hide a later valid source node. It resolves selected
+nodes through the generic `pdg/query.At` API. That API is proved for any represented
+Go element type: successful lookup returns the actual table element, while failed
+lookup returns its zero value with false. Both cases preserve the borrowed table;
+a present zero record or nil pointer remains distinct from absence. No PDG node
+type declarations are moved or replaced by a separate model.
+
+`Describe` builds the exact negative-index payload from path, function, symbol
+name and an unsigned source line. Its execution proof covers all fields and text.
+A numeric theorem proves the conversion to the 64-bit Go int preserves the line
+and cannot make it negative, including uint32 maximum. The payload cannot express
+an automatic fix; the common Candidate projection is checked by integration tests.
 
 Go tests compare actual joins against set membership at integer extremes and with
 all combinations of known/unknown flags, including contradictory intervals. The
@@ -53,14 +68,19 @@ existing typed PDG/negative-index regression suite checks the runtimeguard and
 pattern adapters. An independent prefix oracle checks every binding/risk sequence
 through length six using three IDs, including zero and uint32 maximum. Additional
 cases cover absent trigger flags, positive/zero lower bounds and unknown positive
-payloads. Tests check both input preservation and absence of output aliasing.
+payloads. Tests check both input preservation and absence of output aliasing. Node-resolution regressions
+include zero, out-of-range and uint32 maximum references, nil tables, and an
+invalid first occurrence followed by a valid occurrence of the same binding.
+Projection tests compare the final Candidate with the proved payload.
 
 ## Remaining work and trust
 
 This does not establish that PDG extraction or transfer functions produce sound
 intervals for Go executions. State transfer, widening, convergence, graph traversal,
-Value/Access projection, source-node resolution and candidate payload construction
-and rendering remain outside Lean. The negative-index pattern is not yet fully verified.
+Value/Access projection, query integration, corpus traversal and the common
+Candidate projection/presentation remain outside Lean. Generic table lookup and
+payload construction themselves are proved; the complete matcher wiring and
+PDG semantics are not. The negative-index pattern is not yet fully verified.
 
 The pinned translation and Go semantics, the 64-bit model, package unfolding and
 record-layout hypotheses, compiler and Lean kernel are trust boundaries. Global

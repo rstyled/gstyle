@@ -216,6 +216,199 @@ instance Access_access_store_Bounds (l : Loc) (v : github_com.rstyled.gstyle.dom
 end def_
 end Access
 
+namespace Advisory
+section def_
+
+variable [ext : FfiSyntax] [ffi : FfiModel] [FfiInterp ffi] [FfiSemantics ext ffi] [go_gctx : GoGlobalContext]
+variable {hlc : HasLC} {GF : BundledGFunctors} [hG : HeapGS hlc GF]
+variable [sem : go.Semantics]
+variable [package_sem' : github_com.rstyled.gstyle.domain.runtimeguard.interval.Assumptions]
+
+instance Advisory_typed_pointsto :
+    TypedPointsto (GF := GF) github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory where
+  typedPointstoDef l v dq := iprop(
+    "Path" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Path" l) v.Path' dq ∗
+    "Line" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Line" l) v.Line' dq ∗
+    "EndLine" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"EndLine" l) v.EndLine' dq ∗
+    "ID" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"ID" l) v.ID' dq ∗
+    "Name" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Name" l) v.Name' dq ∗
+    "Kind" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Kind" l) v.Kind' dq ∗
+    "ScoreMilli" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"ScoreMilli" l) v.ScoreMilli' dq ∗
+    "Observation" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Observation" l) v.Observation' dq ∗
+    "Inference" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Inference" l) v.Inference' dq ∗
+    "CounterEvidence" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"CounterEvidence" l) v.CounterEvidence' dq ∗
+    "_" ∷ True)
+  typedPointstoDef_dfractional := by solve_typed_pointsto_dfractional
+  typedPointstoDef_timeless := by solve_typed_pointsto_timeless
+  typedPointsto_agree := by solve_typed_pointsto_agree
+
+instance Advisory_into_val_typed :
+    IntoValTypedUnderlying (GF := GF) github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory.underlying := by
+  solve_into_val_typed_struct
+
+instance Advisory_access_load_Path (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Path" l) v.Path' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Path" l) v.Path' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_store_Path (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (Path' : GoString) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Path" l) v.Path' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Path" l) Path' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with Path' := Path' } : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_load_Line (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Line" l) v.Line' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Line" l) v.Line' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_store_Line (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (Line' : w64) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Line" l) v.Line' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Line" l) Line' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with Line' := Line' } : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_load_EndLine (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"EndLine" l) v.EndLine' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"EndLine" l) v.EndLine' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_store_EndLine (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (EndLine' : w64) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"EndLine" l) v.EndLine' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"EndLine" l) EndLine' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with EndLine' := EndLine' } : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_load_ID (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"ID" l) v.ID' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"ID" l) v.ID' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_store_ID (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (ID' : GoString) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"ID" l) v.ID' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"ID" l) ID' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with ID' := ID' } : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_load_Name (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Name" l) v.Name' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Name" l) v.Name' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_store_Name (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (Name' : GoString) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Name" l) v.Name' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Name" l) Name' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with Name' := Name' } : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_load_Kind (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Kind" l) v.Kind' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Kind" l) v.Kind' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_store_Kind (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (Kind' : GoString) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Kind" l) v.Kind' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Kind" l) Kind' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with Kind' := Kind' } : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_load_ScoreMilli (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"ScoreMilli" l) v.ScoreMilli' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"ScoreMilli" l) v.ScoreMilli' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_store_ScoreMilli (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (ScoreMilli' : w32) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"ScoreMilli" l) v.ScoreMilli' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"ScoreMilli" l) ScoreMilli' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with ScoreMilli' := ScoreMilli' } : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_load_Observation (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Observation" l) v.Observation' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Observation" l) v.Observation' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_store_Observation (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (Observation' : GoString) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Observation" l) v.Observation' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Observation" l) Observation' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with Observation' := Observation' } : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_load_Inference (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Inference" l) v.Inference' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Inference" l) v.Inference' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_store_Inference (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (Inference' : GoString) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Inference" l) v.Inference' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"Inference" l) Inference' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with Inference' := Inference' } : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_load_CounterEvidence (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"CounterEvidence" l) v.CounterEvidence' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"CounterEvidence" l) v.CounterEvidence' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Advisory_access_store_CounterEvidence (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (CounterEvidence' : GoString) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"CounterEvidence" l) v.CounterEvidence' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory go!"CounterEvidence" l) CounterEvidence' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with CounterEvidence' := CounterEvidence' } : github_com.rstyled.gstyle.domain.runtimeguard.interval.Advisory) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+end def_
+end Advisory
+
 end github_com.rstyled.gstyle.domain.runtimeguard.interval
 end
 end Perennial

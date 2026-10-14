@@ -46,3 +46,22 @@ func Select(accesses []Access) []Access {
 	}
 	return out
 }
+
+type Advisory struct {
+	Path                                    string
+	Line, EndLine                           int
+	ID, Name                                string
+	Kind                                    string
+	ScoreMilli                              uint32
+	Observation, Inference, CounterEvidence string
+}
+
+func Describe(path, function, name string, line uint32) Advisory {
+	return Advisory{
+		Path: path, Line: int(line), EndLine: int(line), ID: function, Name: function,
+		Kind: "negative_index", ScoreMilli: 800,
+		Observation:     "upper-bound check on " + name + " has no lower-bound check; " + name + " indexes a collection",
+		Inference:       "verify negative indices are rejected or impossible before the index is used",
+		CounterEvidence: "intent unknown; no automatic fix — verify against the contract",
+	}
+}

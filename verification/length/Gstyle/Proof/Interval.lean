@@ -119,6 +119,20 @@ theorem selected_keys (seen : List w32) (records : List Access) (key : w32) :
     all_goals have hkSymm : key = head.Symbol' ↔ head.Symbol' = key := eq_comm
     all_goals simp_all [selectFrom, ih, hkSymm]
 
+
+def advisory (path functionName name : GoString) (line : w32) : Advisory :=
+  { Path' := path, Line' := W64 (uint.Z line), EndLine' := W64 (uint.Z line),
+    ID' := functionName, Name' := functionName, Kind' := go!"negative_index", ScoreMilli' := W32 800,
+    Observation' := (((go!"upper-bound check on " ++ name) ++ go!" has no lower-bound check; ") ++ name) ++ go!" indexes a collection",
+    Inference' := go!"verify negative indices are rejected or impossible before the index is used",
+    CounterEvidence' := go!"intent unknown; no automatic fix — verify against the contract" }
+
+theorem advisory_line (path functionName name : GoString) (line : w32) :
+    sint.Z (advisory path functionName name line).Line' = uint.Z line ∧
+      0 ≤ sint.Z (advisory path functionName name line).Line' := by
+  simp only [advisory]
+  constructor <;> word
+
 end model
 
 section proof
@@ -341,6 +355,16 @@ theorem wp_SelectProperties (accesses : GoSlice) (records : List Access) :
     exact selected_risky [] records site hs
   · intro key
     simpa using selected_keys [] records key
+
+
+theorem wp_Describe (path functionName name : GoString) (line : w32) :
+    {{ isPkgInit (PROP := IProp GF) pkg }}
+      (App (App (App (App (Val (@! Describe)) (Val #path)) (Val #functionName)) (Val #name)) (Val #line))
+    {{ RET #(advisory path functionName name line); True }} := by
+  unfold advisory
+  wp_start
+  wp_auto
+  wp_end
 
 end proof
 end github_com.rstyled.gstyle.domain.runtimeguard.interval

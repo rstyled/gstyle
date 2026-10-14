@@ -13,3 +13,5 @@ import Gstyle.Proof.Interval
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.selected_keys
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.wp_Select
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.wp_SelectProperties
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.advisory_line
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.wp_Describe

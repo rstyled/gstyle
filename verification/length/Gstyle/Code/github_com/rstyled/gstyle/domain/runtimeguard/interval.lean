@@ -31,6 +31,11 @@ def Access.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
 
 attribute [irreducible] Access.ty
 
+def Advisory.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.Named go!"github.com/rstyled/gstyle/domain/runtimeguard/interval.Advisory" [])
+
+attribute [irreducible] Advisory.ty
+
 noncomputable def Join [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard/interval.Join"
 
@@ -39,6 +44,9 @@ noncomputable def NegativeIndex [FfiSyntax] [GoGlobalContext] : GoString :=
 
 noncomputable def Select [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard/interval.Select"
+
+noncomputable def Describe [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard/interval.Describe"
 
 /-- go: interval.go:8:6 -/
 noncomputable def Join.impl [FfiSyntax] [GoGlobalContext] : val :=
@@ -148,6 +156,30 @@ noncomputable def Select.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val (GoInstruction (GoStore go.int))) (Pair (Var "i") (Var "$r0")))))))))))
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore (go.GoType.MapType go.uint32 go.bool)))) (Pair (Var "seen") (Var "$r0"))))))))))
+
+/-- go: interval.go:59:6 -/
+noncomputable def Describe.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "path"
+  (Lam "function"
+  (Lam "name"
+  (Lam "line"
+  (App (Val exceptionDo)
+  (Let "line" (App (Val (GoInstruction (GoAlloc go.uint32))) (Var "line"))
+  (Let "name" (App (Val (GoInstruction (GoAlloc go.string))) (Var "name"))
+  (Let "function" (App (Val (GoInstruction (GoAlloc go.string))) (Var "function"))
+  (Let "path" (App (Val (GoInstruction (GoAlloc go.string))) (Var "path"))
+  (App (Val doReturn)
+  (Let "$v0" (App (Val (GoInstruction (GoLoad go.string))) (Var "path"))
+  (Let "$v1" (App (Val (GoInstruction (Convert go.uint32 go.int))) (App (Val (GoInstruction (GoLoad go.uint32))) (Var "line")))
+  (Let "$v2" (App (Val (GoInstruction (Convert go.uint32 go.int))) (App (Val (GoInstruction (GoLoad go.uint32))) (Var "line")))
+  (Let "$v3" (App (Val (GoInstruction (GoLoad go.string))) (Var "function"))
+  (Let "$v4" (App (Val (GoInstruction (GoLoad go.string))) (Var "function"))
+  (Let "$v5" (Val #(go!"negative_index"))
+  (Let "$v6" (Val #(W32 800))
+  (Let "$v7" (App (Val (GoInstruction (GoOp GoPlus go.string))) (Pair (App (Val (GoInstruction (GoOp GoPlus go.string))) (Pair (App (Val (GoInstruction (GoOp GoPlus go.string))) (Pair (App (Val (GoInstruction (GoOp GoPlus go.string))) (Pair (Val #(go!"upper-bound check on ")) (App (Val (GoInstruction (GoLoad go.string))) (Var "name")))) (Val #(go!" has no lower-bound check; ")))) (App (Val (GoInstruction (GoLoad go.string))) (Var "name")))) (Val #(go!" indexes a collection"))))
+  (Let "$v8" (Val #(go!"verify negative indices are rejected or impossible before the index is used"))
+  (Let "$v9" (Val #(go!"intent unknown; no automatic fix — verify against the contract"))
+  (App (Val (GoInstruction (CompositeLiteral Advisory.ty))) (LiteralValue [(KeyedElement (some (KeyField go!"Path")) (ElementExpression go.string (Var "$v0"))), (KeyedElement (some (KeyField go!"Line")) (ElementExpression go.int (Var "$v1"))), (KeyedElement (some (KeyField go!"EndLine")) (ElementExpression go.int (Var "$v2"))), (KeyedElement (some (KeyField go!"ID")) (ElementExpression go.string (Var "$v3"))), (KeyedElement (some (KeyField go!"Name")) (ElementExpression go.string (Var "$v4"))), (KeyedElement (some (KeyField go!"Kind")) (ElementExpression go.string (Var "$v5"))), (KeyedElement (some (KeyField go!"ScoreMilli")) (ElementExpression go.uint32 (Var "$v6"))), (KeyedElement (some (KeyField go!"Observation")) (ElementExpression go.string (Var "$v7"))), (KeyedElement (some (KeyField go!"Inference")) (ElementExpression go.string (Var "$v8"))), (KeyedElement (some (KeyField go!"CounterEvidence")) (ElementExpression go.string (Var "$v9")))]))))))))))))))))))))))
 
 instance info' : PkgInfo pkg_id.github_com.rstyled.gstyle.domain.runtimeguard.interval where
   pkgImportedPkgs := []
@@ -267,18 +299,109 @@ attribute [instance] Access.TypeAssumptions.type_repr
   Access.TypeAssumptions.get_Bounds
   Access.TypeAssumptions.set_Bounds
 
+structure Advisory [FfiSyntax] where
+  mk ::
+  Path' : GoString
+  Line' : w64
+  EndLine' : w64
+  ID' : GoString
+  Name' : GoString
+  Kind' : GoString
+  ScoreMilli' : w32
+  Observation' : GoString
+  Inference' : GoString
+  CounterEvidence' : GoString
+
+instance Advisory.zero_val [FfiSyntax] : ZeroVal Advisory :=
+  ⟨Advisory.mk zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def Advisory.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"Path" go.string),
+(go.field_decl.FieldDecl go!"Line" go.int),
+(go.field_decl.FieldDecl go!"EndLine" go.int),
+(go.field_decl.FieldDecl go!"ID" go.string),
+(go.field_decl.FieldDecl go!"Name" go.string),
+(go.field_decl.FieldDecl go!"Kind" go.string),
+(go.field_decl.FieldDecl go!"ScoreMilli" go.uint32),
+(go.field_decl.FieldDecl go!"Observation" go.string),
+(go.field_decl.FieldDecl go!"Inference" go.string),
+(go.field_decl.FieldDecl go!"CounterEvidence" go.string)]
+
+@[irreducible] def Advisory.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Advisory.fieldsUnsealed
+
+instance equals_unfold_Advisory [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Advisory.fields Advisory.fieldsUnsealed :=
+  ⟨by unfold Advisory.fields; rfl⟩
+
+@[reducible] def Advisory.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Advisory.fields)
+
+class Advisory.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
+  type_repr : go.TypeReprUnderlying Advisory.underlying Advisory
+  underlying : go.UnderlyingDirectedEq Advisory.ty Advisory.underlying
+  layout : go.StructLayout Advisory [(go!"Path", typeSize GoString, typeAlign GoString), (go!"Line", typeSize w64, typeAlign w64), (go!"EndLine", typeSize w64, typeAlign w64), (go!"ID", typeSize GoString, typeAlign GoString), (go!"Name", typeSize GoString, typeAlign GoString), (go!"Kind", typeSize GoString, typeAlign GoString), (go!"ScoreMilli", typeSize w32, typeAlign w32), (go!"Observation", typeSize GoString, typeAlign GoString), (go!"Inference", typeSize GoString, typeAlign GoString), (go!"CounterEvidence", typeSize GoString, typeAlign GoString)]
+  get_Path : ∀ (x : Advisory), go.IsGoStepPureDetTagged under (StructFieldGet Advisory.underlying go!"Path") #x (Val #(x.Path'))
+  set_Path : ∀ (x : Advisory) (y : GoString), go.IsGoStepPureDetTagged under (StructFieldSet Advisory.underlying go!"Path") (PairV #x #y) (Val #(({ x with Path' := y } : Advisory)))
+  get_Line : ∀ (x : Advisory), go.IsGoStepPureDetTagged under (StructFieldGet Advisory.underlying go!"Line") #x (Val #(x.Line'))
+  set_Line : ∀ (x : Advisory) (y : w64), go.IsGoStepPureDetTagged under (StructFieldSet Advisory.underlying go!"Line") (PairV #x #y) (Val #(({ x with Line' := y } : Advisory)))
+  get_EndLine : ∀ (x : Advisory), go.IsGoStepPureDetTagged under (StructFieldGet Advisory.underlying go!"EndLine") #x (Val #(x.EndLine'))
+  set_EndLine : ∀ (x : Advisory) (y : w64), go.IsGoStepPureDetTagged under (StructFieldSet Advisory.underlying go!"EndLine") (PairV #x #y) (Val #(({ x with EndLine' := y } : Advisory)))
+  get_ID : ∀ (x : Advisory), go.IsGoStepPureDetTagged under (StructFieldGet Advisory.underlying go!"ID") #x (Val #(x.ID'))
+  set_ID : ∀ (x : Advisory) (y : GoString), go.IsGoStepPureDetTagged under (StructFieldSet Advisory.underlying go!"ID") (PairV #x #y) (Val #(({ x with ID' := y } : Advisory)))
+  get_Name : ∀ (x : Advisory), go.IsGoStepPureDetTagged under (StructFieldGet Advisory.underlying go!"Name") #x (Val #(x.Name'))
+  set_Name : ∀ (x : Advisory) (y : GoString), go.IsGoStepPureDetTagged under (StructFieldSet Advisory.underlying go!"Name") (PairV #x #y) (Val #(({ x with Name' := y } : Advisory)))
+  get_Kind : ∀ (x : Advisory), go.IsGoStepPureDetTagged under (StructFieldGet Advisory.underlying go!"Kind") #x (Val #(x.Kind'))
+  set_Kind : ∀ (x : Advisory) (y : GoString), go.IsGoStepPureDetTagged under (StructFieldSet Advisory.underlying go!"Kind") (PairV #x #y) (Val #(({ x with Kind' := y } : Advisory)))
+  get_ScoreMilli : ∀ (x : Advisory), go.IsGoStepPureDetTagged under (StructFieldGet Advisory.underlying go!"ScoreMilli") #x (Val #(x.ScoreMilli'))
+  set_ScoreMilli : ∀ (x : Advisory) (y : w32), go.IsGoStepPureDetTagged under (StructFieldSet Advisory.underlying go!"ScoreMilli") (PairV #x #y) (Val #(({ x with ScoreMilli' := y } : Advisory)))
+  get_Observation : ∀ (x : Advisory), go.IsGoStepPureDetTagged under (StructFieldGet Advisory.underlying go!"Observation") #x (Val #(x.Observation'))
+  set_Observation : ∀ (x : Advisory) (y : GoString), go.IsGoStepPureDetTagged under (StructFieldSet Advisory.underlying go!"Observation") (PairV #x #y) (Val #(({ x with Observation' := y } : Advisory)))
+  get_Inference : ∀ (x : Advisory), go.IsGoStepPureDetTagged under (StructFieldGet Advisory.underlying go!"Inference") #x (Val #(x.Inference'))
+  set_Inference : ∀ (x : Advisory) (y : GoString), go.IsGoStepPureDetTagged under (StructFieldSet Advisory.underlying go!"Inference") (PairV #x #y) (Val #(({ x with Inference' := y } : Advisory)))
+  get_CounterEvidence : ∀ (x : Advisory), go.IsGoStepPureDetTagged under (StructFieldGet Advisory.underlying go!"CounterEvidence") #x (Val #(x.CounterEvidence'))
+  set_CounterEvidence : ∀ (x : Advisory) (y : GoString), go.IsGoStepPureDetTagged under (StructFieldSet Advisory.underlying go!"CounterEvidence") (PairV #x #y) (Val #(({ x with CounterEvidence' := y } : Advisory)))
+
+attribute [instance] Advisory.TypeAssumptions.type_repr
+  Advisory.TypeAssumptions.underlying
+  Advisory.TypeAssumptions.layout
+  Advisory.TypeAssumptions.get_Path
+  Advisory.TypeAssumptions.set_Path
+  Advisory.TypeAssumptions.get_Line
+  Advisory.TypeAssumptions.set_Line
+  Advisory.TypeAssumptions.get_EndLine
+  Advisory.TypeAssumptions.set_EndLine
+  Advisory.TypeAssumptions.get_ID
+  Advisory.TypeAssumptions.set_ID
+  Advisory.TypeAssumptions.get_Name
+  Advisory.TypeAssumptions.set_Name
+  Advisory.TypeAssumptions.get_Kind
+  Advisory.TypeAssumptions.set_Kind
+  Advisory.TypeAssumptions.get_ScoreMilli
+  Advisory.TypeAssumptions.set_ScoreMilli
+  Advisory.TypeAssumptions.get_Observation
+  Advisory.TypeAssumptions.set_Observation
+  Advisory.TypeAssumptions.get_Inference
+  Advisory.TypeAssumptions.set_Inference
+  Advisory.TypeAssumptions.get_CounterEvidence
+  Advisory.TypeAssumptions.set_CounterEvidence
+
 class Assumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   Range_instance : Range.TypeAssumptions
   Access_instance : Access.TypeAssumptions
+  Advisory_instance : Advisory.TypeAssumptions
   Join_unfold : FuncUnfold Join [] Join.impl
   NegativeIndex_unfold : FuncUnfold NegativeIndex [] NegativeIndex.impl
   Select_unfold : FuncUnfold Select [] Select.impl
+  Describe_unfold : FuncUnfold Describe [] Describe.impl
 
 attribute [instance] Assumptions.Range_instance
   Assumptions.Access_instance
+  Assumptions.Advisory_instance
   Assumptions.Join_unfold
   Assumptions.NegativeIndex_unfold
   Assumptions.Select_unfold
+  Assumptions.Describe_unfold
 
 end github_com.rstyled.gstyle.domain.runtimeguard.interval
 

@@ -25,6 +25,7 @@ ALLOWED_AXIOMS = {"propext", "Classical.choice", "Quot.sound"}
 PROOF_FAILURE_PREFIXES = (
     "iapply: cannot apply ", "wp_apply: cannot apply ", "wp_apply: the goal ",
     "iexists: cannot turn ",
+    "Tactic `rewrite` failed: Did not find an occurrence of the pattern",
     "Tactic `rfl` failed: The left-hand side",
 )
 MUTATIONS = {
@@ -104,12 +105,15 @@ def pdg_profile():
     source = ROOT / "domain/pdg/query/query.go"
     names = ("ReferenceIndex", "ReferenceReject", "EvidenceAt", "EvidenceAbsent",
              "EvidenceStatus", "EvidenceUnknown", "CoverageSupported", "DependencySupported",
-             "DependencyAdmitted", "DependencyUnavailable", "BooleanValue", "KnownFalse")
+             "DependencyAdmitted", "DependencyUnavailable", "BooleanValue", "KnownFalse", "At", "AtAbsent")
     return Profile(
         ROOT / "dist/verification/pdg-queries", "github_com/rstyled/gstyle/domain/pdg/query.lean",
         "./domain/pdg/query", source, (source, source.with_name("records.go")),
         {prefix + "wp_" + name for name in names},
         {
+            "wrong-generic-slot": ("return table[index], true", "return table[index+1], true"),
+            "forge-generic-presence": ("return zero, false", "return zero, true"),
+            "drop-generic-presence": ("return table[index], true", "return table[index], false"),
             "forge-unknown-boolean": ("return false, false", "return false, true"),
             "accept-zero-reference": ("ref == 0", "false"),
             "wrong-slot": ("return int(ref) - 1, true", "return int(ref), true"),
@@ -177,8 +181,14 @@ def interval_profile():
     return Profile(
         ROOT / "dist/verification/negative-index", "github_com/rstyled/gstyle/domain/runtimeguard/interval.lean",
         "./domain/runtimeguard/interval", source, (source,),
-        {prefix + name for name in ("join_sound", "negative_detected", "wp_Join", "wp_NegativeIndex", "wp_JoinSound", "wp_NegativeDetected", "selected_avoids", "selected_risky", "selected_unique", "selected_sublist", "selected_keys", "wp_Select", "wp_SelectProperties")},
+        {prefix + name for name in ("join_sound", "negative_detected", "wp_Join", "wp_NegativeIndex", "wp_JoinSound", "wp_NegativeDetected", "selected_avoids", "selected_risky", "selected_unique", "selected_sublist", "selected_keys", "wp_Select", "wp_SelectProperties", "advisory_line", "wp_Describe")},
         {
+            "wrong-advisory-path": ("Path: path", "Path: function"),
+            "wrong-advisory-owner": ("ID: function", "ID: name"),
+            "wrong-advisory-line": ("Path: path, Line: int(line),", "Path: path, Line: int(line)+1,"),
+            "wrong-advisory-kind": ('Kind: "negative_index"', 'Kind: "nilerr"'),
+            "wrong-advisory-score": ("ScoreMilli: 800", "ScoreMilli: 801"),
+            "drop-index-name": ('"upper-bound check on " + name', '"upper-bound check on "'),
             "omit-deduplication": ("if seen[site.Symbol] {", "if false {"),
             "deduplicate-by-node": ("if seen[site.Symbol]", "if seen[site.Node]"),
             "forget-seen-binding": ("seen[site.Symbol] = true", "seen[site.Symbol] = false"),

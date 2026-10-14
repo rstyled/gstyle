@@ -187,6 +187,44 @@ theorem wp_KnownFalse (fact : BooleanFact) :
   all_goals iterate 3 (try simp [h]; try wp_auto)
   all_goals wp_end
 
+
+section generic
+variable {V : Type} [ZeroVal V] [TypedPointsto (GF := GF) V]
+variable {t : go.GoType} [IntoValTyped (GF := GF) V t]
+
+theorem wp_At (table : GoSlice) (records : List V) (ref : w32) (record : V)
+    (hvalid : validReference ref table.len)
+    (hlookup : records[ref.toNat - 1]? = some record) :
+    {{ isPkgInit (PROP := IProp GF) pkg ∗ table ↦* records }}
+      (App (App (Val #(functions At [t])) (Val #table)) (Val #ref))
+    {{ RET (PairV #record #true); table ↦* records }} := by
+  wp_start as Htable
+  wp_auto
+  ihave %Hlen := ownSlice_len _ _ _ $$ Htable
+  wp_apply wp_ReferenceIndex ref table.len hvalid with %index %Hindex
+  rw [ite_eq_left Hindex.2]
+  wp_apply wp_load_slice_index (t := t) table (sint.Z index) records _ record (by omega) $$ [Htable] with Htable
+  · iframe
+    ipureintro
+    have hi : (sint.Z index).toNat = ref.toNat - 1 := by
+      obtain ⟨hp, _⟩ := hvalid
+      word
+    rw [hi]
+    exact hlookup
+  wp_end
+
+theorem wp_AtAbsent (table : GoSlice) (records : List V) (ref : w32)
+    (h : ¬ validReference ref table.len) :
+    {{ isPkgInit (PROP := IProp GF) pkg ∗ table ↦* records }}
+      (App (App (Val #(functions At [t])) (Val #table)) (Val #ref))
+    {{ RET (PairV #(zero_val V) #false); table ↦* records }} := by
+  wp_start as Htable
+  wp_auto
+  wp_apply wp_ReferenceReject ref table.len h
+  wp_end
+
+end generic
+
 end proof
 end github_com.rstyled.gstyle.domain.pdg.query
 end Perennial
