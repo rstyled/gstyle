@@ -53,7 +53,7 @@ func (e *FixExtractor) Extract(ctx context.Context, root string, paths []string,
 		return nil, err
 	}
 	e.sources, e.changed = sources, nil
-	return e.merge(), nil
+	return e.merge(abs, paths)
 }
 
 func (e *FixExtractor) prepare(root string, query []string, revision SourceOverlay) (*pdg.SourceContext, map[string]bool, error) {
@@ -99,7 +99,7 @@ func (e *FixExtractor) refresh(ctx context.Context, paths []string, options sour
 	return nil
 }
 
-func (e *FixExtractor) merge() *Extraction {
+func (e *FixExtractor) merge(root string, paths []string) (*Extraction, error) {
 	e.sources.Functions, e.sources.References = nil, nil
 	result := &Extraction{Sources: e.sources, PackageNames: make(map[string][]string)}
 	for _, name := range e.order {
@@ -109,7 +109,10 @@ func (e *FixExtractor) merge() *Extraction {
 		result.Sources.References = append(result.Sources.References, record.references...)
 	}
 	populateInterfaceNilHits(result.Funcs)
-	return result
+	if err := populateRuntimeGuards(result, root, paths); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 type sourcePackageRecord struct {

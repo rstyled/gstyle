@@ -12,5 +12,15 @@ type NormalFlow struct {
 type FlowBlock struct {
 	Operations []Ref
 	Successors []Ref
+	Condition  Ref // Optional boolean operand; successor zero is true, one is false.
 	Reachable  bool
+}
+
+// RefreshReachability publishes reachability after a producer expands flow.
+// References must already be valid; this does not validate source semantics.
+func (flow *NormalFlow) RefreshReachability() {
+	reachable := flow.flowReachability()
+	for i := range flow.Blocks {
+		flow.Blocks[i].Reachable = reachable[i]
+	}
 }

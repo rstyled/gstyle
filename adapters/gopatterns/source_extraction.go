@@ -68,6 +68,9 @@ func extractBoundedFix(ctx context.Context, root string, paths []string, options
 		return nil, err
 	}
 	populateInterfaceNilHits(extraction.result.Funcs)
+	if err := populateRuntimeGuards(&extraction.result, root, paths); err != nil {
+		return nil, err
+	}
 	return &extraction.result, nil
 }
 

@@ -52,6 +52,9 @@ func (b *irBuilder) capabilities() {
 	if b.bindingOperations {
 		capabilities = append(capabilities, pdg.NamedCapability{Name: b.pool.Text("interface_binding_flow"), Evidence: b.pool.Evidence(pdg.Supported, interfaceFlowDescription)})
 	}
+	if b.runtimeOperations {
+		capabilities = append(capabilities, pdg.NamedCapability{Name: b.pool.Text("local_value_flow"), Evidence: b.pool.Evidence(pdg.Supported, runtimeFlowDescription)})
+	}
 	b.graph.Capabilities = capabilities
 	b.graph.Conformance = pdg.Conformance{
 		Status:  pdg.NonConformant,

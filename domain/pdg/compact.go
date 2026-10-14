@@ -24,6 +24,7 @@ func Compact(g *Graph) {
 	g.AttributeTables.Accesses = compactSlice(g.AttributeTables.Accesses)
 	g.AttributeTables.Extensions = compactSlice(g.AttributeTables.Extensions)
 	g.NormalFlow.compactNormalFlow()
+	g.ValueFlow.compactNormalFlow()
 }
 
 func compactSlice[T any](values []T) []T {

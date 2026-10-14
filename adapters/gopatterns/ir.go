@@ -28,6 +28,7 @@ type irBuilder struct {
 	policy, sourceEvidence, sourceOrigin pdg.Ref
 	executionEvidence, executionOrigin   pdg.Ref
 	bindingOperations                    bool
+	runtimeOperations                    bool
 	scalarDefinitions                    bool
 	scalarOperations                     bool
 	implicitReads                        map[ast.Node][]pdg.Ref
@@ -160,6 +161,7 @@ func (b *irBuilder) sourceLine(node ast.Node) uint32 {
 func (b *irBuilder) selectScalarLowering(fn *ast.FuncDecl) {
 	b.scalarOperations = b.scalarInterface(fn) && b.reachingSubset(fn.Body)
 	b.bindingOperations = !b.scalarOperations && b.interfaceBindingSubset(fn)
+	b.runtimeOperations = runtimeRelevant(fn, b.info)
 	b.scalarOrderKnown = scalarOrderKnown(fn.Body) && len(b.graph.Function.Outputs) <= 1
 }
 
@@ -177,9 +179,11 @@ func buildGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.
 	b.ir.implicitReads = map[ast.Node][]pdg.Ref{}
 	b.ir.enrich(fn.Body)
 	b.ir.interfaceValueFacts()
+	b.ir.runtimeValueFacts(fn)
 	b.ir.returnValues(fn.Body)
 	b.ir.references()
 	flow, dom := b.ir.execution(fn.Body)
+	b.ir.runtimeFlow(fn, flow)
 	flow, dom = b.ir.reachingDefinitions(fn.Body, flow, dom)
 	b.ir.normalDependenciesFor(flow, dom)
 	b.ir.capabilities()

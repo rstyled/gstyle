@@ -87,7 +87,9 @@ type Extraction struct {
 	PackageNames      map[string][]string
 	DeclarationOrders []patterns.Candidate
 	OffsetFallbacks   []patterns.Candidate
-	Funcs             []FuncPdg
+	// NilGuards are nil-guard-on-wrong-variable findings (detection-only).
+	NilGuards []patterns.Candidate
+	Funcs     []FuncPdg
 	// AnemicModels are exported methodless structs with 3+ functions
 	// operating on their fields (DDD anemic domain model detection).
 	AnemicModels []patterns.AnemicModelHit
@@ -300,7 +302,11 @@ func extractNormalPackages(ctx context.Context, abs string, paths []string, opti
 		services = append(services, findDomainServices(pkg, abs)...)
 	}
 	populateInterfaceNilHits(funcsOut)
-	return &Extraction{Sources: sources, PackageNames: packageBindingNames(pkgs), Funcs: funcsOut, DeclarationOrders: orders, OffsetFallbacks: ranges, AnemicModels: anemic, MissingIdentities: missing, DomainServices: services}, nil
+	result := &Extraction{Sources: sources, PackageNames: packageBindingNames(pkgs), Funcs: funcsOut, DeclarationOrders: orders, OffsetFallbacks: ranges, AnemicModels: anemic, MissingIdentities: missing, DomainServices: services}
+	if err := populateRuntimeGuards(result, abs, paths); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func packageBindingNames(pkgs []*packages.Package) map[string][]string {
