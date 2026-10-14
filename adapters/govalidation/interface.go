@@ -8,6 +8,7 @@ import (
 
 	"github.com/rstyled/gstyle/domain/ccgraph"
 	"github.com/rstyled/gstyle/domain/pdg"
+	"github.com/rstyled/gstyle/domain/pdg/query"
 )
 
 var primitiveNames = map[types.BasicKind]string{
@@ -105,7 +106,7 @@ func interfaceElement(g *pdg.Graph, parameter pdg.Parameter, expected interfaceV
 }
 
 func knownScalarParameter(parameter pdg.Parameter) bool {
-	return parameter.Type.Status == pdg.Known && parameter.Variadic.Status == pdg.Known && !parameter.Variadic.Value
+	return parameter.Type.Status == pdg.Known && query.KnownFalse(parameter.Variadic)
 }
 
 func resolvedEvidence(g *pdg.Graph, extensions []pdg.Extension, primitive string) error {

@@ -23,6 +23,14 @@ class VerificationGuardTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             verify.check_axioms(self.audit().split("\n", 1)[1])
 
+    def test_pdg_audit_is_separate_and_fail_closed(self):
+        profile = verify.pdg_profile()
+        output = "\n".join(f"'{name}' depends on axioms: [propext]" for name in profile.theorems)
+        verify.check_axioms(output, profile.theorems)
+        for bad in (output.replace("propext", "sorryAx"), self.audit()):
+            with self.assertRaises(RuntimeError):
+                verify.check_axioms(bad, profile.theorems)
+
     def test_setup_error_does_not_reject_mutation(self):
         result = SimpleNamespace(returncode=1, stdout="error: unknown package", stderr="")
         with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:

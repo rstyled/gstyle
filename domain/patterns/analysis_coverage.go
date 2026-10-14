@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/rstyled/gstyle/domain/pdg"
+	"github.com/rstyled/gstyle/domain/pdg/query"
 )
 
 // Coverage is analysis completeness, not a probability that a finding is a bug.
@@ -82,6 +83,9 @@ func dependencyEvidenceGaps(graph *pdg.Graph, kind CandidateKind) []string {
 }
 
 func graphCapability(graph *pdg.Graph, name string) pdg.Status {
+	if graph == nil || graph.Tables == nil {
+		return pdg.Unknown
+	}
 	for _, capability := range graph.Capabilities {
 		if graph.Tables.Text(capability.Name) == name {
 			return evidenceStatus(graph, capability.Evidence)
@@ -91,23 +95,25 @@ func graphCapability(graph *pdg.Graph, name string) pdg.Status {
 }
 
 func evidenceStatus(graph *pdg.Graph, ref pdg.Ref) pdg.Status {
-	if ref == 0 {
+	if graph == nil || graph.Tables == nil {
 		return pdg.Unknown
 	}
-	return graph.Tables.Evidence[ref-1].Status
+	return query.EvidenceStatus(graph.Tables.Evidence, ref)
 }
 
 func supportedCapability(status pdg.Status) bool {
-	return status == pdg.Supported || status == pdg.Known || status == pdg.NotApplicable
+	return query.CoverageSupported(status)
 }
 
 func supportedEdges(graph *pdg.Graph, kind CandidateKind) bool {
+	if graph == nil || graph.Tables == nil {
+		return false
+	}
 	for _, edge := range graph.Edges {
 		if !semanticDependency(edge.Kind, kind) {
 			continue
 		}
-		status := evidenceStatus(graph, edge.Evidence)
-		if status != pdg.Supported && status != pdg.Known {
+		if !query.DependencyAdmitted(graph.Tables.Evidence, edge.Evidence) {
 			return false
 		}
 	}

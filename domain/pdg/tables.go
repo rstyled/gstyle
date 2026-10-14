@@ -1,6 +1,10 @@
 package pdg
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/rstyled/gstyle/domain/pdg/query"
+)
 
 // Tables retains only unique values. The construction maps belong to Builder
 // and are released when that builder is discarded. No compiler objects remain.
@@ -14,10 +18,11 @@ type Tables struct {
 }
 
 func (t *Tables) Text(id Text) string {
-	if id == 0 || uint64(id) > uint64(len(t.Strings)) {
+	index, ok := query.ReferenceIndex(Ref(id), len(t.Strings))
+	if !ok {
 		return ""
 	}
-	return t.Strings[id-1]
+	return t.Strings[index]
 }
 
 // Builder owns interning maps for one extraction. Do not use it concurrently.

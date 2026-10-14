@@ -234,3 +234,11 @@ code matches current Go source, and rejects four deliberate Go mutations.
 
 The scanner and analyzer integration remain outside the formal proof. See the
 [proof scope and instructions](verification/length/README.md).
+
+### Lean verification of PDG queries
+
+Run `make verify-pdg` to verify actual reference/evidence queries and the composed
+semantic-pattern dependency and interface admission rules. The command audits
+twelve theorems, checks generated source, and rejects six deliberate Go bugs. See the
+[PDG proof scope](verification/length/PDG.md); complete graph traversals and
+pattern findings are not yet formally proved.

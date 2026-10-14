@@ -63,3 +63,10 @@ verify-output:
 verify-length:
 	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
 	python3 -B verification/length/verify.py
+
+.PHONY: verify-pdg
+
+# Reuse the pinned Lean project; verify actual PDG query records and decisions.
+verify-pdg:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --pdg
