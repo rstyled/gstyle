@@ -168,6 +168,35 @@ func (p literalBoundProof) inherentBounds() indexBounds {
 	return 0
 }
 
+// A global or escaped binding can change through a call without a visible
+// assignment at the call site. Such bindings are outside this local proof.
+func (p literalBoundProof) globalBinding() bool {
+	pkg := p.object.Pkg()
+	return pkg != nil && p.object.Parent() == pkg.Scope()
+}
+
+func (p literalBoundProof) bindingEscapes(body *ast.BlockStmt) bool {
+	escaped := false
+	ast.Inspect(body, func(node ast.Node) bool {
+		escaped = escaped || p.escapingNode(node)
+		return !escaped
+	})
+	return escaped
+}
+
+func (p literalBoundProof) escapingNode(node ast.Node) bool {
+	switch node := node.(type) {
+	case *ast.FuncLit:
+		return p.bindingChanges(node.Body)
+	case *ast.UnaryExpr:
+		return node.Op == token.AND && p.isIndex(node.X)
+	case *ast.BranchStmt:
+		return node.Tok == token.GOTO
+	default:
+		return false
+	}
+}
+
 func literalIndexBounded(fn *ast.FuncDecl, idx *ast.IndexExpr, info *types.Info) bool {
 	id, ok := unparen(idx.Index).(*ast.Ident)
 	if !ok {
@@ -178,6 +207,9 @@ func literalIndexBounded(fn *ast.FuncDecl, idx *ast.IndexExpr, info *types.Info)
 		return false
 	}
 	p := literalBoundProof{info: info, object: info.ObjectOf(id), target: idx, size: size}
+	if p.globalBinding() || p.bindingEscapes(fn.Body) {
+		return false
+	}
 	bounds := p.inherentBounds()
 	return p.block(fn.Body, bounds) == indexComplete
 }
