@@ -453,6 +453,19 @@ type outcome struct {
 // body worth generalizing.
 const minGenericCalls = 2
 
+// splitColumns partitions hole columns into type holes and the rest.
+func (cluster *Cluster) splitColumns() (types, others []*Column) {
+	for i := range cluster.Columns {
+		c := &cluster.Columns[i]
+		if c.Kind == HoleType {
+			types = append(types, c)
+		} else {
+			others = append(others, c)
+		}
+	}
+	return types, others
+}
+
 // FixKindRank returns the application-order rank for a pattern kind.
 // Lower runs first. Kinds not in FixKindOrder (including detection-only
 // kinds, which never produce FixSpecs) sort last.
@@ -1073,19 +1086,6 @@ func externalCallee(ix *candidateIndex, c *Column) bool {
 	return true
 }
 
-// splitColumns partitions hole columns into type holes and the rest.
-func splitColumns(cluster *Cluster) (types, others []*Column) {
-	for i := range cluster.Columns {
-		c := &cluster.Columns[i]
-		if c.Kind == HoleType {
-			types = append(types, c)
-		} else {
-			others = append(others, c)
-		}
-	}
-	return types, others
-}
-
 // anyAllWorkspaceADTs reports whether some type hole is all workspace ADTs.
 func anyAllWorkspaceADTs(ix *candidateIndex, types []*Column) bool {
 	for _, c := range types {
@@ -1097,7 +1097,7 @@ func anyAllWorkspaceADTs(ix *candidateIndex, types []*Column) bool {
 }
 
 func genericColumns(ix *candidateIndex, cluster *Cluster) (types, others []*Column, ok bool) {
-	types, others = splitColumns(cluster)
+	types, others = cluster.splitColumns()
 	anyOwn := anyAllWorkspaceADTs(ix, types)
 	for _, c := range others {
 		if !externalCallee(ix, c) {

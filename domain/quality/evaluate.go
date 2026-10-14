@@ -66,6 +66,21 @@ func (r FunctionResult) densityDiagnostic(statements int64, rule Rule, weights W
 	}, true
 }
 
+func (a Location) compareLocation(b Location) int {
+	return cmp.Or(
+		cmp.Compare(a.Path, b.Path),
+		cmp.Compare(a.Line, b.Line),
+		cmp.Compare(a.Column, b.Column),
+	)
+}
+
+func (a Location) compareFunction(b Location) int {
+	if order := a.compareLocation(b); order != 0 {
+		return order
+	}
+	return cmp.Compare(a.Name, b.Name)
+}
+
 // Evaluate never mutates facts or config. It rejects conflicting duplicates
 // instead of allowing package/test variant order to determine the result.
 func Evaluate(facts []Function, config Config) (Report, error) {
@@ -86,7 +101,7 @@ func Evaluate(facts []Function, config Config) (Report, error) {
 		diagnostics = append(diagnostics, findings...)
 	}
 	slices.SortStableFunc(diagnostics, func(a, b Diagnostic) int {
-		if order := compareLocation(a.Location, b.Location); order != 0 {
+		if order := a.Location.compareLocation(b.Location); order != 0 {
 			return order
 		}
 		return cmp.Compare(a.RuleID, b.RuleID)
@@ -102,13 +117,13 @@ func Evaluate(facts []Function, config Config) (Report, error) {
 
 func canonicalFacts(facts []Function) ([]Function, error) {
 	result := slices.Clone(facts)
-	slices.SortStableFunc(result, func(a, b Function) int { return compareFunction(a.Location, b.Location) })
+	slices.SortStableFunc(result, func(a, b Function) int { return a.Location.compareFunction(b.Location) })
 	unique := make([]Function, 0, len(result))
 	for _, fact := range result {
 		if err := validateFact(fact); err != nil {
 			return nil, err
 		}
-		if len(unique) == 0 || compareFunction(unique[len(unique)-1].Location, fact.Location) != 0 {
+		if len(unique) == 0 || unique[len(unique)-1].Location.compareFunction(fact.Location) != 0 {
 			unique = append(unique, fact)
 			continue
 		}
@@ -117,21 +132,6 @@ func canonicalFacts(facts []Function) ([]Function, error) {
 		}
 	}
 	return unique, nil
-}
-
-func compareLocation(a, b Location) int {
-	return cmp.Or(
-		cmp.Compare(a.Path, b.Path),
-		cmp.Compare(a.Line, b.Line),
-		cmp.Compare(a.Column, b.Column),
-	)
-}
-
-func compareFunction(a, b Location) int {
-	if order := compareLocation(a, b); order != 0 {
-		return order
-	}
-	return cmp.Compare(a.Name, b.Name)
 }
 
 func evaluateFunction(f Function, c Config) (FunctionResult, []Diagnostic) {

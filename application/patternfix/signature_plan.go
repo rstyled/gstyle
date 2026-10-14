@@ -69,6 +69,7 @@ func signatureSkipReason(err error) (string, string) {
 
 func appendSignatureFiles(plan *fixPlan, overlay map[string][]byte, primary string) error {
 	var files []filePlan
+	primary = signatureCountPath(overlay, primary)
 	for path, after := range overlay {
 		if planContains(plan.files, path) {
 			return fmt.Errorf("%w: %s", errOverlappingPlans, path)
@@ -103,4 +104,18 @@ func reportSkippedPlans(plan fixPlan, output io.Writer) error {
 		}
 	}
 	return nil
+}
+
+// A type-only declaration file can remain unchanged while its operations move.
+func signatureCountPath(overlay map[string][]byte, primary string) string {
+	if _, ok := overlay[primary]; ok {
+		return primary
+	}
+	var first string
+	for path := range overlay {
+		if first == "" || path < first {
+			first = path
+		}
+	}
+	return first
 }

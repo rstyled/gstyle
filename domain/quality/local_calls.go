@@ -26,7 +26,7 @@ func (r *callResolver) calls(calls []Call) callSummary {
 	for _, call := range calls {
 		summary := r.call(call)
 		if len(result.effects)+len(summary.effects) > localEffectLimit {
-			unknown := classifiedCall(Call{Callee: call.Callee + " (local summary limit)", Line: call.Line}, UnknownEffect)
+			unknown := (Call{Callee: call.Callee + " (local summary limit)", Line: call.Line}).classifiedCall(UnknownEffect)
 			result.effects = append(result.effects[:min(len(result.effects), localEffectLimit-1)], unknown.effects...)
 			result.unclassified += unknown.unclassified
 			return result
@@ -41,19 +41,19 @@ func (r *callResolver) call(call Call) callSummary {
 	name := NormalizeCallee(call.Callee)
 	kind, configured := prefixKind(name, r.prefixes)
 	if configured {
-		return classifiedCall(call, kind)
+		return call.classifiedCall(kind)
 	}
-	if !staticLocal(call) {
-		return classifiedCall(call, UnknownEffect)
+	if !call.staticLocal() {
+		return call.classifiedCall(UnknownEffect)
 	}
 	if r.active[name] || len(r.active) >= localDepthLimit {
-		return classifiedCall(call, UnknownEffect)
+		return call.classifiedCall(UnknownEffect)
 	}
 	helper, ok := r.helpers[name]
 	if !ok {
-		return classifiedCall(call, UnknownEffect)
+		return call.classifiedCall(UnknownEffect)
 	}
-	return atCall(call, r.helper(name, helper))
+	return call.atCall(r.helper(name, helper))
 }
 
 func (r *callResolver) helper(name string, helper Helper) callSummary {
@@ -73,17 +73,7 @@ func (r *callResolver) helper(name string, helper Helper) callSummary {
 	return summary
 }
 
-func localCalls(f Function, prefixes []Prefix) ([]Effect, int) {
-	helpers := map[string]Helper{NormalizeCallee(f.Name): {Name: f.Name, Mutations: f.Mutations, Calls: f.Calls, Effects: f.Effects}}
-	for _, helper := range f.Helpers {
-		helpers[NormalizeCallee(helper.Name)] = helper
-	}
-	resolver := callResolver{prefixes: prefixes, helpers: helpers, active: map[string]bool{}, cache: map[string]callSummary{}}
-	summary := resolver.calls(f.Calls)
-	return summary.effects, summary.unclassified
-}
-
-func classifiedCall(call Call, kind Kind) callSummary {
+func (call Call) classifiedCall(kind Kind) callSummary {
 	if kind == None {
 		return callSummary{}
 	}
@@ -94,7 +84,7 @@ func classifiedCall(call Call, kind Kind) callSummary {
 	return callSummary{effects: []Effect{{Kind: kind, Detail: call.Callee, Line: call.Line}}, unclassified: unknown}
 }
 
-func atCall(call Call, summary callSummary) callSummary {
+func (call Call) atCall(summary callSummary) callSummary {
 	if len(summary.effects) == 0 {
 		return summary
 	}
@@ -104,6 +94,18 @@ func atCall(call Call, summary callSummary) callSummary {
 		effects[index] = Effect{Kind: effect.Kind, Detail: call.Callee + " → " + effect.Detail, Line: call.Line, Via: via}
 	}
 	return callSummary{effects: effects, unclassified: summary.unclassified}
+}
+
+func (call Call) staticLocal() bool { return call.Local && !call.Dynamic }
+
+func localCalls(f Function, prefixes []Prefix) ([]Effect, int) {
+	helpers := map[string]Helper{NormalizeCallee(f.Name): {Name: f.Name, Mutations: f.Mutations, Calls: f.Calls, Effects: f.Effects}}
+	for _, helper := range f.Helpers {
+		helpers[NormalizeCallee(helper.Name)] = helper
+	}
+	resolver := callResolver{prefixes: prefixes, helpers: helpers, active: map[string]bool{}, cache: map[string]callSummary{}}
+	summary := resolver.calls(f.Calls)
+	return summary.effects, summary.unclassified
 }
 
 // shortCallee strips the module path from a callee for display, keeping the
@@ -125,11 +127,9 @@ func prefixKind(normalizedCallee string, prefixes []Prefix) (Kind, bool) {
 	return kind, best >= 0
 }
 
-func staticLocal(call Call) bool { return call.Local && !call.Dynamic }
-
 // Preserve established effects when marking a truncated helper summary unknown.
 func limitedSummary(name string, summary callSummary) callSummary {
-	unknown := classifiedCall(Call{Callee: name + " (local summary limit)", Line: 1}, UnknownEffect)
+	unknown := (Call{Callee: name + " (local summary limit)", Line: 1}).classifiedCall(UnknownEffect)
 	effects := slices.Clone(summary.effects[:localEffectLimit-1])
 	effects = append(effects, unknown.effects...)
 	return callSummary{effects: effects, unclassified: summary.unclassified + 1}

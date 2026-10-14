@@ -129,14 +129,14 @@ func TestSemanticTraversalLeavesMatchingRefinementUnchanged(t *testing.T) {
 func TestGoMethodNamesMatchTaintRules(t *testing.T) {
 	source := PdgNode{Kind: Call, CalleeID: "net/http.Request.FormValue"}
 	sink := PdgNode{Kind: Call, CalleeID: "database/sql.DB.Exec"}
-	if !isTaintSource(source) || matchTaintSink(sink) == nil {
+	if !source.isTaintSource() || sink.matchTaintSink() == nil {
 		t.Fatal("canonical Go method IDs do not match taint catalog")
 	}
 }
 
 func TestControlOperationsAreNotThinSliceProducers(t *testing.T) {
 	for _, kind := range []NodeKind{Branch, Loop, Iterate, Match, Try} {
-		if isProducer(PdgNode{Kind: kind}) {
+		if (PdgNode{Kind: kind}).isProducer() {
 			t.Fatalf("control operation %s treated as a producer", kind)
 		}
 	}

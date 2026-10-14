@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+func (loc Location) validPosition() bool { return loc.Line >= 1 && loc.Column >= 1 && loc.Name != "" }
+
 func validateFact(f Function) error {
 	for _, validate := range []func(Function) error{validateLocation, validateCounts, validateMutations, validateEffects, validateCalls, validateHelpers} {
 		if err := validate(f); err != nil {
@@ -24,13 +26,11 @@ func validateLocation(f Function) error {
 	if !portablePath(f.Path) || f.Path == ".." || strings.HasPrefix(f.Path, "../") {
 		return fmt.Errorf("fact path must be normalized and relative: %q", f.Path)
 	}
-	if !validPosition(f.Location) {
+	if !f.Location.validPosition() {
 		return fmt.Errorf("invalid function location in %s", f.Path)
 	}
 	return nil
 }
-
-func validPosition(loc Location) bool { return loc.Line >= 1 && loc.Column >= 1 && loc.Name != "" }
 
 func validateCounts(f Function) error {
 	for _, value := range []int{f.Params, f.Statements, f.CodeLines, len(f.Mutations), len(f.Calls), len(f.Effects)} {

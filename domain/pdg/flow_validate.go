@@ -2,6 +2,22 @@ package pdg
 
 import "fmt"
 
+func (flow *NormalFlow) flowReachability() []bool {
+	reachable := make([]bool, len(flow.Blocks))
+	queue := []Ref{flow.Entry}
+	reachable[flow.Entry-1] = true
+	for i := 0; i < len(queue); i++ {
+		for _, next := range flow.Blocks[queue[i]-1].Successors {
+			if reachable[next-1] {
+				continue
+			}
+			reachable[next-1] = true
+			queue = append(queue, next)
+		}
+	}
+	return reachable
+}
+
 // ValidateNormalFlow checks retained CFG context, recomputing reachability and
 // read counts. It does not establish source correspondence from producer claims.
 func validateNormalFlow(g *Graph) error {
@@ -18,11 +34,11 @@ func validateNormalFlow(g *Graph) error {
 	if err := validateFlowBlocks(g); err != nil {
 		return err
 	}
-	return validateAcyclicFlow(flow)
+	return flow.validateAcyclicFlow()
 }
 
 func validateFlowBlocks(g *Graph) error {
-	reachable := flowReachability(g.NormalFlow)
+	reachable := g.NormalFlow.flowReachability()
 	seen, reads := map[Ref]bool{}, map[Ref]bool{}
 	for i, block := range g.NormalFlow.Blocks {
 		if block.Reachable != reachable[i] {
@@ -54,22 +70,6 @@ func flowRefs(refs []Ref, length int, kind string) error {
 		}
 	}
 	return nil
-}
-
-func flowReachability(flow *NormalFlow) []bool {
-	reachable := make([]bool, len(flow.Blocks))
-	queue := []Ref{flow.Entry}
-	reachable[flow.Entry-1] = true
-	for i := 0; i < len(queue); i++ {
-		for _, next := range flow.Blocks[queue[i]-1].Successors {
-			if reachable[next-1] {
-				continue
-			}
-			reachable[next-1] = true
-			queue = append(queue, next)
-		}
-	}
-	return reachable
 }
 
 func flowOperations(g *Graph, block FlowBlock, seen, reads map[Ref]bool) error {

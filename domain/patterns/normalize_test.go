@@ -667,7 +667,7 @@ func TestCounterComparisonHasOneClassWhateverTheOperator(t *testing.T) {
 	if !slices.Equal(lt.Edges, eq.Edges) {
 		t.Fatalf("edges differ:\n%v\n%v", lt.Edges, eq.Edges)
 	}
-	if label(lt.Nodes[2]) != label(eq.Nodes[2]) {
+	if lt.Nodes[2].label() != eq.Nodes[2].label() {
 		t.Fatal("labels differ")
 	}
 	// The original operator survives as the hole value; raw Rust spellings

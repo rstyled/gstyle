@@ -11,10 +11,10 @@ type returnTraversal struct {
 func newReturnTraversal(pdg *MiningGraph, thin bool) *returnTraversal {
 	backward := make([][]int, len(pdg.Nodes))
 	for _, e := range pdg.Edges {
-		if !abstractionEdge(e) {
+		if !e.abstractionEdge() {
 			continue
 		}
-		if thin && (e.Kind != Data || !isProducer(pdg.Nodes[e.From])) {
+		if thin && (e.Kind != Data || !pdg.Nodes[e.From].isProducer()) {
 			continue
 		}
 		backward[e.To] = append(backward[e.To], e.From)

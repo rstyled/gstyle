@@ -163,7 +163,7 @@ func dependenceAdjacency(pdg *MiningGraph) ([][]int, [][]int) {
 	forward := make([][]int, len(pdg.Nodes))
 	backward := make([][]int, len(pdg.Nodes))
 	for _, e := range pdg.Edges {
-		if !abstractionEdge(e) {
+		if !e.abstractionEdge() {
 			continue
 		}
 		forward[e.From] = append(forward[e.From], e.To)

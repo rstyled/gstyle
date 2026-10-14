@@ -19,6 +19,11 @@ type DiffResult struct {
 	Reason string
 }
 
+// nodeLabel returns the canonical label for a PDG node (ignoring names/lines).
+func (n PdgNode) nodeLabel() string {
+	return string(n.Kind) + "|" + n.TyClass + "|" + n.SigClass
+}
+
 // SemanticDiff compares two PDGs (old vs. new version of a function).
 // Returns Semantic=false if the dependence structure is identical
 // (cosmetic change: moved code, renamed variables, reformatting).
@@ -49,23 +54,18 @@ func pdgStructureHash(pdg *MiningGraph) string {
 	// Build a canonical representation: sorted node labels + edge descriptors.
 	var nodeLabels []string
 	for _, n := range pdg.Nodes {
-		nodeLabels = append(nodeLabels, nodeLabel(n))
+		nodeLabels = append(nodeLabels, n.nodeLabel())
 	}
 	// Sort for canonical form.
 	sortStrings(nodeLabels)
 	var edgeDescs []string
 	for _, e := range pdg.Edges {
-		from := nodeLabel(pdg.Nodes[e.From])
-		to := nodeLabel(pdg.Nodes[e.To])
+		from := pdg.Nodes[e.From].nodeLabel()
+		to := pdg.Nodes[e.To].nodeLabel()
 		edgeDescs = append(edgeDescs, from+"-"+to+":"+string(e.Kind))
 	}
 	sortStrings(edgeDescs)
 	return joinStrings(nodeLabels, ";") + "#" + joinStrings(edgeDescs, ";")
-}
-
-// nodeLabel returns the canonical label for a PDG node (ignoring names/lines).
-func nodeLabel(n PdgNode) string {
-	return string(n.Kind) + "|" + n.TyClass + "|" + n.SigClass
 }
 
 func sortStrings(s []string) {

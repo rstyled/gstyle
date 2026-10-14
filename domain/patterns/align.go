@@ -228,6 +228,69 @@ type step struct {
 
 var levelNames = [4]string{"level0", "level1", "level2", "level3"}
 
+// calleeKind ports the Method-vs-FreeFn rule: a Call whose callee (or its
+// counterpart's) has a receiver is a Method hole, otherwise FreeFn (which
+// also covers fn items passed as values on Lit nodes).
+func (a *PdgNode) calleeKind(x string, y string) HoleKind {
+	if a.Kind == Call && (hasReceiver(x) || hasReceiver(y)) {
+		return HoleMethod
+	}
+	return HoleFreeFn
+}
+
+// calleeDiff ports Rust's callee_diff: a differing callee id between two
+// aligned nodes.
+func (a *PdgNode) calleeDiff(b *PdgNode) (holeDiff, bool) {
+	x, y := a.CalleeID, b.CalleeID
+	if x == "" || y == "" || x == y {
+		return holeDiff{}, false
+	}
+	return holeDiff{a.calleeKind(x, y), x, y}, true
+}
+
+// textDiff ports Rust's text_diff: differing literal text, field names, and
+// canonical comparison operators.
+func (a *PdgNode) textDiff(b *PdgNode) (holeDiff, bool) {
+	switch a.Kind {
+	case Lit:
+		if a.CalleeID != "" {
+			break
+		}
+		return diffOf(HoleLiteral, a.Detail, b.Detail)
+	case Field:
+		return diffOf(HoleField, a.Detail, b.Detail)
+	case Op:
+		return opDiff(a.Detail, b.Detail)
+	}
+	return holeDiff{}, false
+}
+
+// typeDiffs ports Rust's type_diffs/adt_diffs. Rust walks the raw type
+// shapes and reports differing ADT ids at parallel positions; the Go schema
+// keeps only the flat TyClass label, so the walk collapses to one
+// inequality. Consequence: same-ADT/differing-arg diffs (Vec<Dog> vs
+// Vec<Cat>) are invisible — the extractor erases args by design — while any
+// other class difference, primitives included, becomes one Type hole.
+func (a *PdgNode) typeDiffs(b *PdgNode) []holeDiff {
+	if a.TyClass == "" || b.TyClass == "" || a.TyClass == b.TyClass {
+		return nil
+	}
+	return []holeDiff{{HoleType, a.TyClass, b.TyClass}}
+}
+
+// effectDiff reports when two aligned Call nodes have different side-effect
+// profiles. Effect differences are holes: the abstraction must account for
+// what each side does, not just what it calls.
+func (a *PdgNode) effectDiff(b *PdgNode) (holeDiff, bool) {
+	if a.Kind != Call || b.Kind != Call {
+		return holeDiff{}, false
+	}
+	if a.Effects == b.Effects {
+		return holeDiff{}, false
+	}
+	return holeDiff{HoleEffect, effectName(a.Effects), effectName(b.Effects)}, true
+}
+
 // HoleVar is the variable name of the index-th hole of a kind: T0, M1, ...
 func HoleVar(kind HoleKind, index int) string {
 	return string([]byte{kind.Prefix()}) + strconv.Itoa(index)
@@ -576,26 +639,6 @@ func hasReceiver(calleeID string) bool {
 	return strings.Count(seg, ".") >= 2
 }
 
-// calleeKind ports the Method-vs-FreeFn rule: a Call whose callee (or its
-// counterpart's) has a receiver is a Method hole, otherwise FreeFn (which
-// also covers fn items passed as values on Lit nodes).
-func calleeKind(a *PdgNode, x, y string) HoleKind {
-	if a.Kind == Call && (hasReceiver(x) || hasReceiver(y)) {
-		return HoleMethod
-	}
-	return HoleFreeFn
-}
-
-// calleeDiff ports Rust's callee_diff: a differing callee id between two
-// aligned nodes.
-func calleeDiff(a, b *PdgNode) (holeDiff, bool) {
-	x, y := a.CalleeID, b.CalleeID
-	if x == "" || y == "" || x == y {
-		return holeDiff{}, false
-	}
-	return holeDiff{calleeKind(a, x, y), x, y}, true
-}
-
 // diffOf builds a hole when x and y differ.
 func diffOf(kind HoleKind, x, y string) (holeDiff, bool) {
 	if x == y {
@@ -611,49 +654,6 @@ func opDiff(x, y string) (holeDiff, bool) {
 		return holeDiff{}, false
 	}
 	return holeDiff{HoleOp, x[4:], y[4:]}, true
-}
-
-// textDiff ports Rust's text_diff: differing literal text, field names, and
-// canonical comparison operators.
-func textDiff(a, b *PdgNode) (holeDiff, bool) {
-	switch a.Kind {
-	case Lit:
-		if a.CalleeID != "" {
-			break
-		}
-		return diffOf(HoleLiteral, a.Detail, b.Detail)
-	case Field:
-		return diffOf(HoleField, a.Detail, b.Detail)
-	case Op:
-		return opDiff(a.Detail, b.Detail)
-	}
-	return holeDiff{}, false
-}
-
-// typeDiffs ports Rust's type_diffs/adt_diffs. Rust walks the raw type
-// shapes and reports differing ADT ids at parallel positions; the Go schema
-// keeps only the flat TyClass label, so the walk collapses to one
-// inequality. Consequence: same-ADT/differing-arg diffs (Vec<Dog> vs
-// Vec<Cat>) are invisible — the extractor erases args by design — while any
-// other class difference, primitives included, becomes one Type hole.
-func typeDiffs(a, b *PdgNode) []holeDiff {
-	if a.TyClass == "" || b.TyClass == "" || a.TyClass == b.TyClass {
-		return nil
-	}
-	return []holeDiff{{HoleType, a.TyClass, b.TyClass}}
-}
-
-// effectDiff reports when two aligned Call nodes have different side-effect
-// profiles. Effect differences are holes: the abstraction must account for
-// what each side does, not just what it calls.
-func effectDiff(a, b *PdgNode) (holeDiff, bool) {
-	if a.Kind != Call || b.Kind != Call {
-		return holeDiff{}, false
-	}
-	if a.Effects == b.Effects {
-		return holeDiff{}, false
-	}
-	return holeDiff{HoleEffect, effectName(a.Effects), effectName(b.Effects)}, true
 }
 
 // effectName renders effect bitflags for hole display.
@@ -673,16 +673,16 @@ func effectName(e uint16) string {
 // nodeDiffs collects every hole between two aligned nodes.
 func nodeDiffs(a, b *PdgNode) []holeDiff {
 	var out []holeDiff
-	if d, ok := calleeDiff(a, b); ok {
+	if d, ok := a.calleeDiff(b); ok {
 		out = append(out, d)
 	}
-	if d, ok := textDiff(a, b); ok {
+	if d, ok := a.textDiff(b); ok {
 		out = append(out, d)
 	}
-	if d, ok := effectDiff(a, b); ok {
+	if d, ok := a.effectDiff(b); ok {
 		out = append(out, d)
 	}
-	return append(out, typeDiffs(a, b)...)
+	return append(out, a.typeDiffs(b)...)
 }
 
 // holeTable groups the detected diffs by substitution, sites in pair order.

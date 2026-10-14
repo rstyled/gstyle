@@ -104,7 +104,7 @@ func (e *FixExtractor) merge() *Extraction {
 	result := &Extraction{Sources: e.sources, PackageNames: make(map[string][]string)}
 	for _, name := range e.order {
 		record := e.records[name]
-		appendPackageExtraction(result, record.facts, e.pool.Tables)
+		result.appendPackageExtraction(record.facts, e.pool.Tables)
 		result.Sources.Functions = append(result.Sources.Functions, record.functions...)
 		result.Sources.References = append(result.Sources.References, record.references...)
 	}
@@ -121,7 +121,7 @@ type sourcePackageRecord struct {
 	query      string
 }
 
-func appendPackageExtraction(result *Extraction, facts Extraction, tables *pdg.Tables) {
+func (result *Extraction) appendPackageExtraction(facts Extraction, tables *pdg.Tables) {
 	maps.Copy(result.PackageNames, facts.PackageNames)
 	for _, fn := range facts.Funcs {
 		fn.Pdg.Tables = tables

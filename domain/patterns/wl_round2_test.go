@@ -33,19 +33,19 @@ func TestCallScope(t *testing.T) {
 func TestCallScopeRefinesLabels(t *testing.T) {
 	stdCall := callNode("fmt.Println", "fn(string) -> ()")
 	localCall := callNode("github.com/me/app.println", "fn(string) -> ()")
-	if label(stdCall) == label(localCall) {
-		t.Errorf("labels collide: %q", label(stdCall))
+	if stdCall.label() == localCall.label() {
+		t.Errorf("labels collide: %q", stdCall.label())
 	}
 	twin := callNode("strings.ToUpper", "fn(string) -> string")
 	twin2 := callNode("strings.ToLower", "fn(string) -> string")
-	if label(twin) != label(twin2) {
-		t.Errorf("stdlib twins differ: %q vs %q", label(twin), label(twin2))
+	if twin.label() != twin2.label() {
+		t.Errorf("stdlib twins differ: %q vs %q", twin.label(), twin2.label())
 	}
 	// Name-independence holds: Dog::bark ≡ Cat::meow for same-scope calls.
 	dog := callNode("github.com/me/app.Dog.bark", "fn() -> ()")
 	cat := callNode("github.com/me/app.Cat.meow", "fn() -> ()")
-	if label(dog) != label(cat) {
-		t.Errorf("name-independence broken: %q vs %q", label(dog), label(cat))
+	if dog.label() != cat.label() {
+		t.Errorf("name-independence broken: %q vs %q", dog.label(), cat.label())
 	}
 }
 

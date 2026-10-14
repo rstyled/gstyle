@@ -411,7 +411,7 @@ func renderArgument(snapshot pdg.SourceSnapshot, span pdg.ByteRange, edits []pdg
 }
 
 func selectedSourceFunction(fn pdg.SourceFunction, spec *patterns.FixSpec, ref pdg.Ref) bool {
-	if spec.Kind == patterns.AnemicModel || len(spec.Targets) == 0 {
+	if len(spec.Targets) == 0 {
 		return fn.Source == ref
 	}
 	for _, id := range spec.Targets {
@@ -433,7 +433,7 @@ func receiverPosition(fn pdg.SourceFunction, typeName string) []int {
 	if len(fn.ParametersList) == 0 {
 		return nil
 	}
-	if strings.TrimPrefix(fn.ParametersList[0].TypeSyntax, "*") != typeName {
+	if !localReceiverParameter(fn, typeName) {
 		return nil
 	}
 	return []int{0}
@@ -457,4 +457,9 @@ func bindingBecomesReceiver(fn pdg.SourceFunction, ref pdg.SourceReference) bool
 
 func sourceRangeContains(outer, inner pdg.ByteRange) bool {
 	return outer.Start <= inner.Start && inner.End <= outer.End
+}
+
+func localReceiverParameter(fn pdg.SourceFunction, typeName string) bool {
+	parameter := fn.ParametersList[0]
+	return strings.TrimPrefix(parameter.TypeSyntax, "*") == typeName && strings.TrimPrefix(parameter.Type, "*") == fn.Package+"."+typeName
 }

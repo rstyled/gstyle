@@ -38,6 +38,8 @@ type AnemicModelHit struct {
 	// Funcs are the names of functions that take the struct as a
 	// parameter and access its fields.
 	Funcs []string
+	// FuncIDs preserves compiler-resolved targets across source files.
+	FuncIDs map[string]string
 }
 
 // MissingIdentityHit is a struct used as an entity (stored, compared,
@@ -92,6 +94,7 @@ func anemicModelCandidates(hits []AnemicModelHit, serviceHits []DomainServiceHit
 			}},
 			FixSpec: &FixSpec{
 				Kind:    AnemicModel,
+				Targets: anemicFunctionIDs(funcs, hit.FuncIDs),
 				File:    hit.Path,
 				Line:    hit.Line,
 				EndLine: hit.EndLine,
@@ -102,4 +105,14 @@ func anemicModelCandidates(hits []AnemicModelHit, serviceHits []DomainServiceHit
 		})
 	}
 	return out
+}
+
+func anemicFunctionIDs(names []string, identities map[string]string) []string {
+	var ids []string
+	for _, name := range names {
+		if id := identities[name]; id != "" {
+			ids = append(ids, id)
+		}
+	}
+	return ids
 }

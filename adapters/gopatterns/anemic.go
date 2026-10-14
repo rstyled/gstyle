@@ -5,6 +5,7 @@ import (
 	"go/token"
 	"go/types"
 	"path/filepath"
+	"strings"
 	"unicode"
 
 	"github.com/rstyled/gstyle/domain/patterns"
@@ -41,6 +42,7 @@ func findAnemicModels(pkg *packages.Package, root string) []patterns.AnemicModel
 				Line:     sd.line,
 				EndLine:  sd.endLine,
 				Funcs:    funcs,
+				FuncIDs:  anemicFunctionIdentities(pkg, funcs),
 			})
 		}
 	}
@@ -170,8 +172,8 @@ func operatingFuncName(pkg *packages.Package, decl ast.Decl, typeName string, se
 	if !ok {
 		return "", false
 	}
-	params := structParams(fn, pkg.TypesInfo, typeName)
-	if len(params) == 0 || !accessesFields(fn.Body, params) {
+	params := boundStructParams(pkg, fn, typeName)
+	if len(params) == 0 || !accessesBoundFields(pkg.TypesInfo, fn.Body, params) {
 		return "", false
 	}
 	return unseenName(fn.Name.Name, seen)
@@ -194,34 +196,55 @@ func unseenName(name string, seen map[string]bool) (string, bool) {
 	return name, true
 }
 
-// structParams returns the parameter names whose type is the named
-// struct (by value or pointer).
-func structParams(fn *ast.FuncDecl, info *types.Info, typeName string) []string {
-	if fn.Type.Params == nil {
-		return nil
-	}
-	var out []string
+// boundStructParams compares compiler types rather than names from imports.
+func boundStructParams(pkg *packages.Package, fn *ast.FuncDecl, typeName string) []types.Object {
+	target := pkg.Types.Scope().Lookup(typeName).Type()
+	var parameters []types.Object
 	for _, field := range fn.Type.Params.List {
-		if isNamedType(info.TypeOf(field.Type), typeName) {
-			for _, name := range field.Names {
-				out = append(out, name.Name)
-			}
+		actual := pkg.TypesInfo.TypeOf(field.Type)
+		if pointer, ok := actual.(*types.Pointer); ok {
+			actual = pointer.Elem()
+		}
+		if !types.Identical(actual, target) {
+			continue
+		}
+		for _, name := range field.Names {
+			parameters = append(parameters, pkg.TypesInfo.Defs[name])
 		}
 	}
-	return out
+	return parameters
 }
 
-// isNamedType reports whether t is the named type typeName, unwrapping
-// one pointer level.
-func isNamedType(t types.Type, typeName string) bool {
-	if t == nil {
+func accessesBoundFields(info *types.Info, body *ast.BlockStmt, parameters []types.Object) bool {
+	found := false
+	ast.Inspect(body, func(node ast.Node) bool {
+		selector, ok := node.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		if boundFieldSelection(info, selector, parameters) {
+			found = true
+		}
+		return !found
+	})
+	return found
+}
+
+func boundFieldSelection(info *types.Info, selector *ast.SelectorExpr, parameters []types.Object) bool {
+	selection := info.Selections[selector]
+	if selection == nil || selection.Kind() != types.FieldVal {
 		return false
 	}
-	if ptr, ok := t.(*types.Pointer); ok {
-		t = ptr.Elem()
+	ident, ok := selector.X.(*ast.Ident)
+	if !ok {
+		return false
 	}
-	named, ok := t.(*types.Named)
-	return ok && named.Obj().Name() == typeName
+	for _, parameter := range parameters {
+		if info.Uses[ident] == parameter {
+			return true
+		}
+	}
+	return false
 }
 
 // accessesFields reports whether body contains a selector expression
@@ -251,4 +274,16 @@ func accessesFields(body *ast.BlockStmt, params []string) bool {
 		return true
 	})
 	return found
+}
+
+func anemicFunctionIdentities(pkg *packages.Package, names []string) map[string]string {
+	ids := make(map[string]string, len(names))
+	for _, name := range names {
+		function, ok := pkg.Types.Scope().Lookup(name).(*types.Func)
+		if !ok {
+			continue
+		}
+		ids[name] = strings.Clone(patterns.FuncID(function))
+	}
+	return ids
 }

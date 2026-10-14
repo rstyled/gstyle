@@ -71,7 +71,7 @@ func TestBaseLabelKeysMatchExistingLabels(t *testing.T) {
 			cache.add(node)
 		}
 		for _, node := range g.Nodes {
-			if cache.hash(node) != fnv1a([]byte(label(node))) {
+			if cache.hash(node) != fnv1a([]byte(node.label())) {
 				t.Fatal("base-label hash changed")
 			}
 		}

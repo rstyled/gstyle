@@ -26,11 +26,11 @@ func (c *baseLabelCache) tables(t *pdg.Tables, seen map[*pdg.Tables]bool) {
 }
 
 func (c *baseLabelCache) add(n PdgNode) {
-	key := baseKey(n)
+	key := n.baseKey()
 	if _, ok := c.hashes[key]; ok {
 		return
 	}
-	c.hashes[key] = fnv1a([]byte(label(n)))
+	c.hashes[key] = fnv1a([]byte(n.label()))
 }
 
 func (c *baseLabelCache) attach(g *MiningGraph) {
@@ -42,17 +42,17 @@ func (c *baseLabelCache) attach(g *MiningGraph) {
 
 func (c *baseLabelCache) hash(n PdgNode) uint64 {
 	if c == nil {
-		return fnv1a([]byte(label(n)))
+		return fnv1a([]byte(n.label()))
 	}
-	if hash, ok := c.hashes[baseKey(n)]; ok {
+	if hash, ok := c.hashes[n.baseKey()]; ok {
 		return hash
 	}
 	// Normalization can introduce labels absent from the extracted table.
 	// The published map stays read-only, so concurrent readers remain safe.
-	return fnv1a([]byte(label(n)))
+	return fnv1a([]byte(n.label()))
 }
 
-func baseKey(n PdgNode) baseLabelKey {
+func (n PdgNode) baseKey() baseLabelKey {
 	switch n.Kind {
 	case Call:
 		return baseLabelKey{kind: Call, shape: n.SigClass, scope: callScope(n.CalleeID)}
