@@ -89,12 +89,13 @@ type nilDeref struct {
 // that has no guard in the function.
 func collectUnguardedDerefs(fn *ast.FuncDecl, info *types.Info, guarded map[types.Object]bool) []nilDeref {
 	seen := map[types.Object]bool{}
+	allocated := nonNilLocalDefinitions(fn, info)
 	var out []nilDeref
 	ast.Inspect(fn.Body, func(node ast.Node) bool {
 		if _, closure := node.(*ast.FuncLit); closure {
 			return false
 		}
-		if deref, ok := unguardedDeref(node, info, guarded, seen); ok {
+		if deref, ok := unguardedDeref(node, info, guarded, seen); ok && !allocationPrecedes(allocated, deref) {
 			seen[deref.obj] = true
 			out = append(out, deref)
 		}
@@ -106,19 +107,15 @@ func collectUnguardedDerefs(fn *ast.FuncDecl, info *types.Info, guarded map[type
 // unguardedDeref reports node as an unguarded pointer dereference when it is
 // a first-seen `*x` over a pointer object with no guard.
 func unguardedDeref(node ast.Node, info *types.Info, guarded, seen map[types.Object]bool) (nilDeref, bool) {
-	star, ok := node.(*ast.StarExpr)
-	if !ok {
-		return nilDeref{}, false
-	}
-	id, ok := star.X.(*ast.Ident)
-	if !ok {
+	id := dereferencedPointer(node, info)
+	if id == nil {
 		return nilDeref{}, false
 	}
 	obj := info.ObjectOf(id)
 	if !isPointerVar(obj) || guarded[obj] || seen[obj] {
 		return nilDeref{}, false
 	}
-	return nilDeref{obj: obj, name: id.Name, pos: star.Pos()}, true
+	return nilDeref{obj: obj, name: id.Name, pos: node.Pos()}, true
 }
 
 func buildNilGuardCandidate(pkg *packages.Package, fn *ast.FuncDecl, path, guards string, deref nilDeref) patterns.Candidate {
@@ -180,18 +177,10 @@ func isPointerVar(obj types.Object) bool {
 }
 
 func branchReturns(body *ast.BlockStmt) bool {
-	found := false
-	ast.Inspect(body, func(n ast.Node) bool {
-		if _, ok := n.(*ast.FuncLit); ok {
-			return false
-		}
-		if _, ok := n.(*ast.ReturnStmt); ok {
-			found = true
-			return false
-		}
-		return true
-	})
-	return found
+	if len(body.List) == 0 {
+		return false
+	}
+	return statementReturns(body.List[len(body.List)-1])
 }
 
 func guardedNames(guarded map[types.Object]bool) string {
@@ -201,4 +190,36 @@ func guardedNames(guarded map[types.Object]bool) string {
 	}
 	sort.Strings(names)
 	return strings.Join(names, ", ")
+}
+
+// Only compiler-resolved field selections imply a dereference. Pointer-receiver
+// method calls may accept nil and are deliberately excluded.
+func dereferencedPointer(node ast.Node, info *types.Info) *ast.Ident {
+	switch expr := node.(type) {
+	case *ast.StarExpr:
+		id, _ := unparen(expr.X).(*ast.Ident)
+		return id
+	case *ast.SelectorExpr:
+		selection := info.Selections[expr]
+		if selection == nil || selection.Kind() != types.FieldVal {
+			return nil
+		}
+		id, _ := unparen(expr.X).(*ast.Ident)
+		return id
+	default:
+		return nil
+	}
+}
+
+func statementReturns(stmt ast.Stmt) bool {
+	switch stmt := stmt.(type) {
+	case *ast.ReturnStmt:
+		return true
+	case *ast.BlockStmt:
+		return branchReturns(stmt)
+	case *ast.IfStmt:
+		return stmt.Else != nil && branchReturns(stmt.Body) && statementReturns(stmt.Else)
+	default:
+		return false
+	}
 }

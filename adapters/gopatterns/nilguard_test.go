@@ -19,7 +19,7 @@ func nilGuardTestCandidates(t *testing.T, src string) []patterns.Candidate {
 	if err != nil {
 		t.Fatal(err)
 	}
-	info := &types.Info{Types: map[ast.Expr]types.TypeAndValue{}, Defs: map[*ast.Ident]types.Object{}, Uses: map[*ast.Ident]types.Object{}, Scopes: map[ast.Node]*types.Scope{}}
+	info := &types.Info{Types: map[ast.Expr]types.TypeAndValue{}, Defs: map[*ast.Ident]types.Object{}, Uses: map[*ast.Ident]types.Object{}, Scopes: map[ast.Node]*types.Scope{}, Selections: map[*ast.SelectorExpr]*types.Selection{}}
 	pkg, err := (&types.Config{GoVersion: "go1.26"}).Check("example", fset, []*ast.File{file}, info)
 	if err != nil {
 		t.Fatal(err)
@@ -39,6 +39,17 @@ func TestNilGuard(t *testing.T) {
 		name, body string
 		find       bool
 	}{
+		{"implicit field dereference", `type Item struct { N int }; func Get(p, q *Item) int { if q == nil { return -1 }; return p.N }`, true},
+		{"parenthesized field dereference", `type Item struct { N int }; func Get(p, q *Item) int { if q == nil { return -1 }; return (p).N }`, true},
+		{"new local is nonnil", `func Get(q *int) int { if q == nil { return -1 }; p := new(int); return *p }`, false},
+		{"address local is nonnil", `func Get(q *int) int { if q == nil { return -1 }; n := 1; p := &n; return *p }`, false},
+		{"reassigned local stays unknown", `func Get(q *int) int { if q == nil { return -1 }; p := new(int); p = nil; return *p }`, true},
+		{"escaped local stays unknown", `func Get(q *int) int { if q == nil { return -1 }; p := new(int); overwrite(&p); return *p }; func overwrite(p **int) { *p = nil }`, true},
+		{"closure written local stays unknown", `func Get(q *int) int { if q == nil { return -1 }; p := new(int); f := func() { p = nil }; f(); return *p }`, true},
+		{"branch allocation does not dominate", `func Get(q *int) int { if q == nil { return -1 }; var p *int; if *q > 0 { p = new(int) }; return *p }`, true},
+		{"shadowed new is not allocation", `func Get(q *int) int { if q == nil { return -1 }; new := func(int) *int { return nil }; p := new(1); return *p }`, true},
+		{"nil receiver method may be safe", `type Item struct{}; func (p *Item) Value() int { return 0 }; func Get(p, q *Item) int { if q == nil { return -1 }; return p.Value() }`, false},
+		{"partial return is not a guard", `func Get(p, q *int) int { if q == nil { if p == nil { return -1 } }; return *p }`, false},
 		{"wrong variable guarded", `func Get(p, q *int) int { if q == nil { return -1 }; return *p }`, true},
 		{"same variable guarded", `func Get(p *int) int { if p == nil { return -1 }; return *p }`, false},
 		{"no guard at all", `func Get(p *int) int { return *p }`, false},
