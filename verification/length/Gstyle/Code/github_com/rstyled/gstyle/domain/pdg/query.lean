@@ -88,10 +88,7 @@ noncomputable def BooleanValue [FfiSyntax] [GoGlobalContext] : GoString :=
 noncomputable def KnownFalse [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/pdg/query.KnownFalse"
 
-/-- ReferenceIndex resolves a one-based reference without indexing a table.
-    Zero, negative table lengths and references beyond the table are unavailable.
-
-    go: query.go:6:6 -/
+/-- go: query.go:3:6 -/
 noncomputable def ReferenceIndex.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "ref"
   (Lam "count"
@@ -107,10 +104,7 @@ noncomputable def ReferenceIndex.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (Val #())))))))))
 
-/-- EvidenceAt resolves an actual record and preserves absence separately from a
-    present record whose status is Unknown. The evidence table is borrowed.
-
-    go: query.go:15:6 -/
+/-- go: query.go:10:6 -/
 noncomputable def EvidenceAt.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "evidence"
   (Lam "ref"
@@ -142,9 +136,7 @@ noncomputable def EvidenceAt.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore go.int))) (Pair (Var "index") (Var "$r0")))))))))))))))))
 
-/-- EvidenceStatus preserves unavailable evidence as Unknown.
-
-    go: query.go:24:6 -/
+/-- go: query.go:18:6 -/
 noncomputable def EvidenceStatus.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "evidence"
   (Lam "ref"
@@ -175,10 +167,7 @@ noncomputable def EvidenceStatus.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore Capability.ty))) (Pair (Var "record") (Var "$r0")))))))))))))))))
 
-/-- CoverageSupported admits an explicitly inapplicable capability, but never
-    unknown, unsupported or approximate evidence.
-
-    go: query.go:34:6 -/
+/-- go: query.go:26:6 -/
 noncomputable def CoverageSupported.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "status"
   (App (Val exceptionDo)
@@ -186,10 +175,7 @@ noncomputable def CoverageSupported.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doReturn)
   (If (If (App (Val (GoInstruction (GoOp GoEquals Status.ty))) (Pair (App (Val (GoInstruction (GoLoad Status.ty))) (Var "status")) (Val Supported))) (Val #true) (App (Val (GoInstruction (GoOp GoEquals Status.ty))) (Pair (App (Val (GoInstruction (GoLoad Status.ty))) (Var "status")) (Val Known)))) (Val #true) (App (Val (GoInstruction (GoOp GoEquals Status.ty))) (Pair (App (Val (GoInstruction (GoLoad Status.ty))) (Var "status")) (Val NotApplicable))))))))
 
-/-- DependencySupported requires affirmative evidence for an existing edge.
-    NotApplicable cannot certify an edge that is actually present.
-
-    go: query.go:40:6 -/
+/-- go: query.go:30:6 -/
 noncomputable def DependencySupported.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "status"
   (App (Val exceptionDo)
@@ -197,10 +183,7 @@ noncomputable def DependencySupported.impl [FfiSyntax] [GoGlobalContext] : val :
   (App (Val doReturn)
   (If (App (Val (GoInstruction (GoOp GoEquals Status.ty))) (Pair (App (Val (GoInstruction (GoLoad Status.ty))) (Var "status")) (Val Supported))) (Val #true) (App (Val (GoInstruction (GoOp GoEquals Status.ty))) (Pair (App (Val (GoInstruction (GoLoad Status.ty))) (Var "status")) (Val Known))))))))
 
-/-- DependencyAdmitted is the edge-evidence rule used by semantic patterns.
-    Missing records and non-affirmative statuses cannot certify a dependency.
-
-    go: query.go:46:6 -/
+/-- go: query.go:34:6 -/
 noncomputable def DependencyAdmitted.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "evidence"
   (Lam "ref"
@@ -213,10 +196,7 @@ noncomputable def DependencyAdmitted.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (App (App (Val (GoInstruction (FuncResolve EvidenceStatus []))) (Val #())) (Var "$a0")) (Var "$a1"))))
   (App (App (Val (GoInstruction (FuncResolve DependencySupported []))) (Val #())) (Var "$a0")))))))))
 
-/-- BooleanValue keeps a known false distinct from unavailable evidence. Unknown
-    payload bits are not semantic values, even if a malformed record sets them.
-
-    go: query.go:52:6 -/
+/-- go: query.go:38:6 -/
 noncomputable def BooleanValue.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "fact"
   (App (Val exceptionDo)
@@ -230,9 +210,7 @@ noncomputable def BooleanValue.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (Val #())))))))
 
-/-- KnownFalse is the checked Boolean gate used for non-variadic interfaces.
-
-    go: query.go:60:6 -/
+/-- go: query.go:45:6 -/
 noncomputable def KnownFalse.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "fact"
   (App (Val exceptionDo)
