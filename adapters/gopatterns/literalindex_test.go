@@ -103,3 +103,22 @@ func TestLiteralIndexConstantBranchReview(t *testing.T) {
 		t.Fatalf("reachable access: got %d findings, want 1", len(got))
 	}
 }
+
+func TestLiteralIndexReversedLocalBounds(t *testing.T) {
+	cases := []struct {
+		body string
+		want int
+	}{
+		{`lo:=0;if lo>i || i>=2{return 0};return []int{1,2}[i]`, 0},
+		{`want:=1;if want!=i{return 0};return []int{1,2}[i]`, 0},
+		{`lo:=-1;if lo>i || i>=2{return 0};return []int{1,2}[i]`, 1},
+		{`want:=3;if want!=i{return 0};return []int{1,2}[i]`, 1},
+		{`lo:=0;if lo>i || i>=2{return 0};i=-1;return []int{1,2}[i]`, 1},
+	}
+	for _, tc := range cases {
+		src := `package p;func f(i int)int{` + tc.body + `}`
+		if got := literalIndexTestCandidates(t, src); len(got) != tc.want {
+			t.Fatalf("%s: got %d findings,want %d", tc.body, len(got), tc.want)
+		}
+	}
+}
