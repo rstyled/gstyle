@@ -114,15 +114,32 @@ Value fields. Four superseded private wrappers are removed. Value projection
 and copying the returned bounds into Value have the execution contracts below.
 
 `make verify-runtime-value` checks the actual `Value.Bounds` method and
-`integerConstraint` caller. Three audited theorems prove exact projection, the
+`integerConstraint` caller, plus Value.mergeBounds, Value.mergePointers and Value.merge. Seven audited theorems prove exact projection, the
 exact returned Value after copying all four bounds, and semantic preservation
 through the dispatcher. The exact result retains every non-interval field,
-including pointer identity and guard/length/extent metadata. Eleven mutation
-controls swap or forge projected fields, damage copied bounds, clobber other
-metadata or alter the dispatcher inputs.
+including pointer identity and guard/length/extent metadata. Twenty-one mutation
+controls cover projected/copied fields, dispatcher inputs and the complete join.
+
+The actual `Value.merge` execution theorem composes both join helpers and the
+three metadata updates. It proves the entire returned Value: interval bounds
+come from the proved Join; UpperChecked is a union of trigger metadata; Length,
+BelowLength, NonNil, Nil and Guarded survive only when both inputs carry them.
+Identity survives when both inputs agree and otherwise becomes zero. Integer,
+Extent and HasExtent are reset, as in the original code. The bounds helper's
+exact contract also covers those zero defaults. The pointer helper is proved
+for arbitrary supplied output records, preserving their other fields.
+
+A composed execution theorem proves that every integer represented by either
+input Value's interval is represented by the actual merged Value. This includes
+unknown payloads, contradictory intervals and signed extremes. This semantic
+soundness statement covers the interval component; pointer/alias semantics and
+real Go control-flow states still require separate proofs. Ten added mutants
+drop an input range, corrupt a bound, change metadata union/intersection or
+confuse identities. Go tests check interval-set preservation, common versus
+one-sided facts, equal/different/maximum identities and dropped extent metadata.
 
 Goose translates the original runtimeguard package with only Value and those
-two bodies enabled. Its emitted code also declares unrelated opaque types and
+projection, comparison and join bodies enabled. Its emitted code also declares unrelated opaque types and
 globals; these do not enter the proof contracts. The generic proof generator
 would supply unproved instances for those unrelated types, so this profile does
 not import that output. `ValueLayout.lean` proves the actual generated Value's
@@ -141,7 +158,7 @@ and retains its source hashes and proof logs.
 ## Remaining work and trust
 
 This does not establish that PDG extraction or transfer functions produce sound
-intervals for Go executions. State transfer, widening, convergence, graph traversal,
+intervals for Go executions. Remaining state transfers, state-map joins, widening, convergence, graph traversal,
 Access projection, query integration, corpus traversal and the common
 Candidate projection/presentation remain outside Lean. Generic table lookup and
 payload construction themselves are proved; the complete matcher wiring and

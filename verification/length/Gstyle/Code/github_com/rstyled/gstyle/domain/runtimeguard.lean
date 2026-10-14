@@ -175,6 +175,36 @@ noncomputable def integerConstraint.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore _root_.Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.Range.ty))) (Pair (Var "r") (Var "$r0"))))))))))))))
 
+/-- go: value.go:20:16 -/
+noncomputable def Value.merge.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "v"
+  (Lam "other"
+  (App (Val exceptionDo)
+  (Let "v" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "v"))
+  (Let "other" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "other"))
+  (Let "$r0" (Let "$a0" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "other"))
+  (App (App (Val (GoInstruction (MethodResolve Value.ty go!"mergeBounds"))) (App (Val (GoInstruction (GoLoad Value.ty))) (Var "v"))) (Var "$a0")))
+  (Let "out" (App (Val (GoInstruction (GoAlloc Value.ty))) (App (Val (GoInstruction (GoZeroVal Value.ty))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (If (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"UpperChecked"))) (Var "v"))) (Val #true) (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"UpperChecked"))) (Var "other"))))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (If (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Length"))) (Var "v"))) (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Length"))) (Var "other"))) (Val #false))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (If (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"BelowLength"))) (Var "v"))) (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"BelowLength"))) (Var "other"))) (Val #false))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "other"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "out"))
+  (App (App (App (Val (GoInstruction (MethodResolve Value.ty go!"mergePointers"))) (App (Val (GoInstruction (GoLoad Value.ty))) (Var "v"))) (Var "$a0")) (Var "$a1")))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.bool))) (Pair (App (Val (GoInstruction (StructFieldRef Value.ty go!"BelowLength"))) (Var "out")) (Var "$r0"))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.bool))) (Pair (App (Val (GoInstruction (StructFieldRef Value.ty go!"Length"))) (Var "out")) (Var "$r0"))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.bool))) (Pair (App (Val (GoInstruction (StructFieldRef Value.ty go!"UpperChecked"))) (Var "out")) (Var "$r0"))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore Value.ty))) (Pair (Var "out") (Var "$r0"))))))))))))
+
 /-- go: value.go:28:16 -/
 noncomputable def Value.Bounds.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
@@ -187,6 +217,60 @@ noncomputable def Value.Bounds.impl [FfiSyntax] [GoGlobalContext] : val :=
   (Let "$v2" (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"HasLower"))) (Var "v")))
   (Let "$v3" (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"HasUpper"))) (Var "v")))
   (App (Val (GoInstruction (CompositeLiteral _root_.Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.Range.ty))) (LiteralValue [(KeyedElement (some (KeyField go!"Lower")) (ElementExpression go.int64 (Var "$v0"))), (KeyedElement (some (KeyField go!"Upper")) (ElementExpression go.int64 (Var "$v1"))), (KeyedElement (some (KeyField go!"HasLower")) (ElementExpression go.bool (Var "$v2"))), (KeyedElement (some (KeyField go!"HasUpper")) (ElementExpression go.bool (Var "$v3")))])))))))))))
+
+/-- go: value.go:32:16 -/
+noncomputable def Value.mergeBounds.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "v"
+  (Lam "other"
+  (App (Val exceptionDo)
+  (Let "v" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "v"))
+  (Let "other" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "other"))
+  (Let "$r0" (Let "$a0" (App (App (Val (GoInstruction (MethodResolve Value.ty go!"Bounds"))) (App (Val (GoInstruction (GoLoad Value.ty))) (Var "v"))) (Val #()))
+  (Let "$a1" (App (App (Val (GoInstruction (MethodResolve Value.ty go!"Bounds"))) (App (Val (GoInstruction (GoLoad Value.ty))) (Var "other"))) (Val #()))
+  (App (App (App (Val (GoInstruction (FuncResolve _root_.Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.Join []))) (Val #())) (Var "$a0")) (Var "$a1"))))
+  (Let "r" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.Range.ty))) (App (Val (GoInstruction (GoZeroVal _root_.Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.Range.ty))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Let "$v0" (App (Val (GoInstruction (GoLoad go.int64))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.Range.ty go!"Lower"))) (Var "r")))
+  (Let "$v1" (App (Val (GoInstruction (GoLoad go.int64))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.Range.ty go!"Upper"))) (Var "r")))
+  (Let "$v2" (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.Range.ty go!"HasLower"))) (Var "r")))
+  (Let "$v3" (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.Range.ty go!"HasUpper"))) (Var "r")))
+  (App (Val (GoInstruction (CompositeLiteral Value.ty))) (LiteralValue [(KeyedElement (some (KeyField go!"Lower")) (ElementExpression go.int64 (Var "$v0"))), (KeyedElement (some (KeyField go!"Upper")) (ElementExpression go.int64 (Var "$v1"))), (KeyedElement (some (KeyField go!"HasLower")) (ElementExpression go.bool (Var "$v2"))), (KeyedElement (some (KeyField go!"HasUpper")) (ElementExpression go.bool (Var "$v3")))])))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore _root_.Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.Range.ty))) (Pair (Var "r") (Var "$r0"))))))))))))
+
+/-- go: value.go:37:16 -/
+noncomputable def Value.mergePointers.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "v"
+  (Lam "other"
+  (Lam "out"
+  (App (Val exceptionDo)
+  (Let "v" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "v"))
+  (Let "out" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "out"))
+  (Let "other" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "other"))
+  (Let "$l0" (App (Val (GoInstruction (StructFieldRef Value.ty go!"NonNil"))) (Var "out"))
+  (Let "$l1" (App (Val (GoInstruction (StructFieldRef Value.ty go!"Nil"))) (Var "out"))
+  (Let "$r0" (If (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"NonNil"))) (Var "v"))) (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"NonNil"))) (Var "other"))) (Val #false))
+  (Let "$r1" (If (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Nil"))) (Var "v"))) (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Nil"))) (Var "other"))) (Val #false))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (If (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Guarded"))) (Var "v"))) (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Guarded"))) (Var "other"))) (Val #false))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoLoad Value.ty))) (Var "out")))))
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (App (Val (GoInstruction (GoOp GoEquals go.uint64))) (Pair (App (Val (GoInstruction (GoLoad go.uint64))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Identity"))) (Var "v"))) (App (Val (GoInstruction (GoLoad go.uint64))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Identity"))) (Var "other"))))))
+  (Let "$r0" (App (Val (GoInstruction (GoLoad go.uint64))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Identity"))) (Var "v")))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.uint64))) (Pair (App (Val (GoInstruction (StructFieldRef Value.ty go!"Identity"))) (Var "out")) (Var "$r0")))))
+  (App (Val doExecute)
+  (Val #()))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.bool))) (Pair (App (Val (GoInstruction (StructFieldRef Value.ty go!"Guarded"))) (Var "out")) (Var "$r0"))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.bool))) (Pair (Var "$l1") (Var "$r1")))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.bool))) (Pair (Var "$l0") (Var "$r0"))))))))))))))))
 
 instance info' : PkgInfo pkg_id.github_com.rstyled.gstyle.domain.runtimeguard where
   pkgImportedPkgs := [pkg_id.github_com.rstyled.gstyle.domain.runtimeguard.interval]
@@ -311,8 +395,17 @@ class Value.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSe
   get_HasExtent : ∀ (x : Value), go.IsGoStepPureDetTagged under (StructFieldGet Value.underlying go!"HasExtent") #x (Val #(x.HasExtent'))
   set_HasExtent : ∀ (x : Value) (y : Bool), go.IsGoStepPureDetTagged under (StructFieldSet Value.underlying go!"HasExtent") (PairV #x #y) (Val #(({ x with HasExtent' := y } : Value)))
   Bounds_unfold : MethodUnfold Value.ty go!"Bounds" Value.Bounds.impl
+  merge_unfold : MethodUnfold Value.ty go!"merge" Value.merge.impl
+  mergeBounds_unfold : MethodUnfold Value.ty go!"mergeBounds" Value.mergeBounds.impl
+  mergePointers_unfold : MethodUnfold Value.ty go!"mergePointers" Value.mergePointers.impl
   ptr_Bounds_unfold : MethodUnfold (go.GoType.PointerType Value.ty) go!"Bounds" (LamV "$r"
 (App (Val (GoInstruction (MethodResolve Value.ty go!"Bounds"))) (App (Val (GoInstruction (GoLoad Value.ty))) (Var "$r"))))
+  ptr_merge_unfold : MethodUnfold (go.GoType.PointerType Value.ty) go!"merge" (LamV "$r"
+(App (Val (GoInstruction (MethodResolve Value.ty go!"merge"))) (App (Val (GoInstruction (GoLoad Value.ty))) (Var "$r"))))
+  ptr_mergeBounds_unfold : MethodUnfold (go.GoType.PointerType Value.ty) go!"mergeBounds" (LamV "$r"
+(App (Val (GoInstruction (MethodResolve Value.ty go!"mergeBounds"))) (App (Val (GoInstruction (GoLoad Value.ty))) (Var "$r"))))
+  ptr_mergePointers_unfold : MethodUnfold (go.GoType.PointerType Value.ty) go!"mergePointers" (LamV "$r"
+(App (Val (GoInstruction (MethodResolve Value.ty go!"mergePointers"))) (App (Val (GoInstruction (GoLoad Value.ty))) (Var "$r"))))
 
 attribute [instance] Value.TypeAssumptions.type_repr
   Value.TypeAssumptions.underlying
@@ -346,7 +439,13 @@ attribute [instance] Value.TypeAssumptions.type_repr
   Value.TypeAssumptions.get_HasExtent
   Value.TypeAssumptions.set_HasExtent
   Value.TypeAssumptions.Bounds_unfold
+  Value.TypeAssumptions.merge_unfold
+  Value.TypeAssumptions.mergeBounds_unfold
+  Value.TypeAssumptions.mergePointers_unfold
   Value.TypeAssumptions.ptr_Bounds_unfold
+  Value.TypeAssumptions.ptr_merge_unfold
+  Value.TypeAssumptions.ptr_mergeBounds_unfold
+  Value.TypeAssumptions.ptr_mergePointers_unfold
 
 axiom State : Type
 axiom State.zero_val : ZeroVal State

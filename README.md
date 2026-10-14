@@ -250,4 +250,5 @@ that the risk decision reports represented negative values when its pattern
 triggers apply. The map-based selector keeps the first risky occurrence per
 binding in input order. Generic node lookup and advisory payload construction are
 also proved. `make verify-runtime-value` proves the actual Value projection and
-comparison copy-back, including preservation of other fields. PDG transfer/traversal and outer projections remain outside the proof. See [the negative-index verification scope](verification/length/NEGATIVE_INDEX.md).
+comparison copy-back, plus the complete Value join and its interval-set
+preservation contract. PDG transfer/traversal and outer projections remain outside the proof. See [the negative-index verification scope](verification/length/NEGATIVE_INDEX.md).

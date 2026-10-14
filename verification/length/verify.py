@@ -245,8 +245,18 @@ def runtime_value_profile():
     return Profile(
         ROOT / "dist/verification/runtime-value", "github_com/rstyled/gstyle/domain/runtimeguard.lean",
         "./domain/runtimeguard", source, sources,
-        {prefix + name for name in ("wp_Bounds", "wp_integerConstraint", "wp_integerConstraintSound")},
+        {prefix + name for name in ("wp_Bounds", "wp_integerConstraint", "wp_integerConstraintSound", "wp_mergeBounds", "wp_mergePointers", "wp_merge", "wp_mergeSound")},
         {
+            "merge-drops-other-range": ("interval.Join(v.Bounds(), other.Bounds())", "interval.Join(v.Bounds(), v.Bounds())", value),
+            "merge-swaps-lower": ("return Value{Lower: r.Lower, Upper: r.Upper", "return Value{Lower: r.Upper, Upper: r.Upper", value),
+            "merge-loses-trigger": ("v.UpperChecked || other.UpperChecked", "v.UpperChecked && other.UpperChecked", value),
+            "merge-forges-length": ("v.Length && other.Length", "v.Length || other.Length", value),
+            "merge-forges-below-length": ("v.BelowLength && other.BelowLength", "v.BelowLength || other.BelowLength", value),
+            "merge-forges-non-nil": ("v.NonNil && other.NonNil", "v.NonNil || other.NonNil", value),
+            "merge-forges-nil": ("v.Nil && other.Nil", "v.Nil || other.Nil", value),
+            "merge-forges-guard": ("v.Guarded && other.Guarded", "v.Guarded || other.Guarded", value),
+            "merge-confuses-identity": ("v.Identity == other.Identity", "v.Identity != other.Identity", value),
+            "merge-drops-common-identity": ("out.Identity = v.Identity", "out.Identity = 0", value),
             "project-wrong-lower": ("Lower: v.Lower", "Lower: v.Upper", value),
             "project-wrong-upper": ("Upper: v.Upper", "Upper: v.Lower", value),
             "project-forged-lower": ("HasLower: v.HasLower", "HasLower: true", value),
@@ -259,8 +269,8 @@ def runtime_value_profile():
             "wrong-operator-input": ("interval.Constrain(value.Bounds(), operator, bound)", 'interval.Constrain(value.Bounds(), ">=", bound)'),
             "wrong-bound-input": ("interval.Constrain(value.Bounds(), operator, bound)", "interval.Constrain(value.Bounds(), operator, bound+1)"),
         },
-        "AuditRuntimeValue.lean", "Gstyle/Proof/RuntimeValue.lean", "actual Value interval projection, comparison adapter and preservation of other fields",
-        ("PDG extraction", "other state transfers, joins and fixpoint traversal", "Access and Candidate projection"), ("Code",),
+        "AuditRuntimeValue.lean", "Gstyle/Proof/RuntimeValue.lean", "actual Value interval projection, comparison adapter and complete Value join",
+        ("PDG extraction", "other state transfers, state-map joins and fixpoint traversal", "Access and Candidate projection"), ("Code",),
         (("github_com/rstyled/gstyle/domain/runtimeguard/interval.lean", "./domain/runtimeguard/interval"),),
     )
 
