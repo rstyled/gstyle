@@ -11,6 +11,33 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
+type tableIndexScan struct {
+	pkg  *packages.Package
+	fn   *ast.FuncDecl
+	path string
+	info *types.Info
+}
+
+// unchecked reports node as a composite-literal index over an unbounded
+// variable, once per site.
+func (s tableIndexScan) unchecked(node ast.Node) (patterns.Candidate, bool) {
+	idx, ok := node.(*ast.IndexExpr)
+	if !ok || !isArrayOrSliceLit(idx.X, s.info) {
+		return patterns.Candidate{}, false
+	}
+	if s.info.Types[idx.Index].Value != nil {
+		return patterns.Candidate{}, false
+	}
+	id, ok := unparen(idx.Index).(*ast.Ident)
+	if !ok {
+		return patterns.Candidate{}, false
+	}
+	if literalIndexBounded(s.fn, idx, s.info) {
+		return patterns.Candidate{}, false
+	}
+	return buildLiteralIndexCandidate(s.pkg, s.fn, s.path, id.Name, idx.Pos()), true
+}
+
 // findLiteralIndices flags index expressions over array or slice composite
 // literals with a non-constant index and no bounds check on that index in
 // the function. `[...]string{...}[s]` panics for any s outside the table.
@@ -47,8 +74,7 @@ func literalIndicesForFile(pkg *packages.Package, file *ast.File, root string, p
 
 func literalIndexCandidates(pkg *packages.Package, fn *ast.FuncDecl, path string) []patterns.Candidate {
 	info := pkg.TypesInfo
-	bounded := collectBoundedIdents(fn, info)
-	scan := tableIndexScan{pkg: pkg, fn: fn, path: path, info: info, bounded: bounded, seen: map[token.Pos]bool{}}
+	scan := tableIndexScan{pkg: pkg, fn: fn, path: path, info: info}
 	var out []patterns.Candidate
 	ast.Inspect(fn.Body, func(node ast.Node) bool {
 		if _, closure := node.(*ast.FuncLit); closure {
@@ -62,97 +88,17 @@ func literalIndexCandidates(pkg *packages.Package, fn *ast.FuncDecl, path string
 	return out
 }
 
-type tableIndexScan struct {
-	pkg     *packages.Package
-	fn      *ast.FuncDecl
-	path    string
-	info    *types.Info
-	bounded map[types.Object]bool
-	seen    map[token.Pos]bool
-}
-
-// unchecked reports node as a composite-literal index over an unbounded
-// variable, once per site.
-func (s tableIndexScan) unchecked(node ast.Node) (patterns.Candidate, bool) {
-	idx, ok := node.(*ast.IndexExpr)
-	if !ok || !isArrayOrSliceLit(idx.X) {
-		return patterns.Candidate{}, false
-	}
-	id, ok := idx.Index.(*ast.Ident)
+func isArrayOrSliceLit(e ast.Expr, info *types.Info) bool {
+	lit, ok := unparen(e).(*ast.CompositeLit)
 	if !ok {
-		return patterns.Candidate{}, false
-	}
-	obj := s.info.ObjectOf(id)
-	if s.bounded[obj] || s.seen[idx.Pos()] {
-		return patterns.Candidate{}, false
-	}
-	s.seen[idx.Pos()] = true
-	return buildLiteralIndexCandidate(s.pkg, s.fn, s.path, id.Name, idx.Pos()), true
-}
-
-// collectBoundedIdents returns objects checked against integer bounds
-// (`i >= 0`, `i < n`, `i < len(s)`) anywhere in the function.
-func collectBoundedIdents(fn *ast.FuncDecl, info *types.Info) map[types.Object]bool {
-	bounded := map[types.Object]bool{}
-	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		if _, closure := node.(*ast.FuncLit); closure {
-			return false
-		}
-		bin, ok := node.(*ast.BinaryExpr)
-		if !ok {
-			return true
-		}
-		for _, id := range boundIdentsIn(bin, info) {
-			if obj := info.ObjectOf(id); isIntVar(obj) {
-				bounded[obj] = true
-			}
-		}
-		return true
-	})
-	return bounded
-}
-
-// boundIdentsIn returns identifiers bounded in a comparison: either side of
-// `<`, `<=`, `>`, `>=` against an integer literal, len() call, or another
-// expression, provided the identifier itself is not the bound.
-func boundIdentsIn(bin *ast.BinaryExpr, info *types.Info) []*ast.Ident {
-	switch bin.Op {
-	case token.LSS, token.LEQ, token.GTR, token.GEQ:
-		var out []*ast.Ident
-		if id, ok := bin.X.(*ast.Ident); ok && isBoundTarget(bin.Y, info) {
-			out = append(out, id)
-		}
-		if id, ok := bin.Y.(*ast.Ident); ok && isBoundTarget(bin.X, info) {
-			out = append(out, id)
-		}
-		return out
-	}
-	return nil
-}
-
-// isBoundTarget reports whether e can serve as a bound: integer literal,
-// len() call, or any non-identifier expression.
-func isBoundTarget(e ast.Expr, info *types.Info) bool {
-	switch v := e.(type) {
-	case *ast.BasicLit:
-		return true
-	case *ast.CallExpr:
-		return true
-	case *ast.Ident:
-		_ = v
 		return false
+	}
+	switch info.TypeOf(lit).Underlying().(type) {
+	case *types.Array, *types.Slice:
+		return true
 	default:
-		return true
-	}
-}
-
-func isArrayOrSliceLit(e ast.Expr) bool {
-	lit, ok := e.(*ast.CompositeLit)
-	if !ok {
 		return false
 	}
-	_, isArray := lit.Type.(*ast.ArrayType)
-	return isArray
 }
 
 func buildLiteralIndexCandidate(pkg *packages.Package, fn *ast.FuncDecl, path, name string, pos token.Pos) patterns.Candidate {
