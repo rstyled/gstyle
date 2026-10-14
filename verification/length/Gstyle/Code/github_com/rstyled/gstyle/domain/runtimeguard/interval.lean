@@ -26,11 +26,19 @@ def Range.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
 
 attribute [irreducible] Range.ty
 
+def Access.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.Named go!"github.com/rstyled/gstyle/domain/runtimeguard/interval.Access" [])
+
+attribute [irreducible] Access.ty
+
 noncomputable def Join [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard/interval.Join"
 
 noncomputable def NegativeIndex [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard/interval.NegativeIndex"
+
+noncomputable def Select [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard/interval.Select"
 
 /-- go: interval.go:8:6 -/
 noncomputable def Join.impl [FfiSyntax] [GoGlobalContext] : val :=
@@ -86,6 +94,60 @@ noncomputable def NegativeIndex.impl [FfiSyntax] [GoGlobalContext] : val :=
   (Val #false))
   (App (Val doExecute)
   (Val #())))))))))))
+
+/-- go: interval.go:33:6 -/
+noncomputable def Select.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "accesses"
+  (App (Val exceptionDo)
+  (Let "accesses" (App (Val (GoInstruction (GoAlloc (go.GoType.SliceType Access.ty)))) (Var "accesses"))
+  (Let "$r0" (App (App (Val (GoInstruction (FuncResolve go.make1 [(go.GoType.MapType go.uint32 go.bool)]))) (Val #())) (Val #()))
+  (Let "seen" (App (Val (GoInstruction (GoAlloc (go.GoType.MapType go.uint32 go.bool)))) (App (Val (GoInstruction (GoZeroVal (go.GoType.MapType go.uint32 go.bool)))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "out" (App (Val (GoInstruction (GoAlloc (go.GoType.SliceType Access.ty)))) (App (Val (GoInstruction (GoZeroVal (go.GoType.SliceType Access.ty)))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoLoad (go.GoType.SliceType Access.ty)))) (Var "out")))))
+  (Let "$r0" (Val #(W64 0))
+  (Let "i" (App (Val (GoInstruction (GoAlloc go.int))) (App (Val (GoInstruction (GoZeroVal go.int))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (App (Val doFor) (Lam BAnon
+  (App (Val (GoInstruction (GoOp GoLt go.int))) (Pair (App (Val (GoInstruction (GoLoad go.int))) (Var "i")) (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType Access.ty)))) (Var "accesses"))
+  (App (App (Val (GoInstruction (FuncResolve go.len [(go.GoType.SliceType Access.ty)]))) (Val #())) (Var "$a0"))))))) (Lam BAnon
+  (Let "$r0" (App (Val (GoInstruction (GoLoad Access.ty))) (App (Val (GoInstruction (IndexRef (go.GoType.SliceType Access.ty)))) (Pair (App (Val (GoInstruction (GoLoad (go.GoType.SliceType Access.ty)))) (Var "accesses")) (App (Val (GoInstruction (GoLoad go.int))) (Var "i")))))
+  (Let "site" (App (Val (GoInstruction (GoAlloc Access.ty))) (App (Val (GoInstruction (GoZeroVal Access.ty))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (Val #true)
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType Access.ty)))) (Var "out"))
+  (Let "$a1" (Let "$sl0" (App (Val (GoInstruction (GoLoad Access.ty))) (Var "site"))
+  (App (Val (GoInstruction (CompositeLiteral (go.GoType.SliceType Access.ty)))) (LiteralValue [(KeyedElement none (ElementExpression Access.ty (Var "$sl0")))])))
+  (App (App (App (Val (GoInstruction (FuncResolve go.append [(go.GoType.SliceType Access.ty)]))) (Val #())) (Var "$a0")) (Var "$a1"))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore (go.GoType.SliceType Access.ty)))) (Pair (Var "out") (Var "$r0")))))))
+  (App (Val doExecute)
+  (App (App (App (Val (map.insert go.uint32)) (App (Val (GoInstruction (GoLoad (go.GoType.MapType go.uint32 go.bool)))) (Var "seen"))) (App (Val (GoInstruction (GoLoad go.uint32))) (App (Val (GoInstruction (StructFieldRef Access.ty go!"Symbol"))) (Var "site")))) (Var "$r0")))))))
+  (If (App (App (Val (map.lookup1 go.uint32 go.bool)) (App (Val (GoInstruction (GoLoad (go.GoType.MapType go.uint32 go.bool)))) (Var "seen"))) (App (Val (GoInstruction (GoLoad go.uint32))) (App (Val (GoInstruction (StructFieldRef Access.ty go!"Symbol"))) (Var "site"))))
+  (App (Val doContinue) (Val #()))
+  (App (Val doExecute)
+  (Val #()))))))
+  (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (Let "$a0" (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Access.ty go!"Index"))) (Var "site")))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Access.ty go!"UpperChecked"))) (Var "site")))
+  (Let "$a2" (App (Val (GoInstruction (GoLoad Range.ty))) (App (Val (GoInstruction (StructFieldRef Access.ty go!"Bounds"))) (Var "site")))
+  (App (App (App (App (Val (GoInstruction (FuncResolve NegativeIndex []))) (Val #())) (Var "$a0")) (Var "$a1")) (Var "$a2"))))))
+  (App (Val doContinue) (Val #()))
+  (App (Val doExecute)
+  (Val #()))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore Access.ty))) (Pair (Var "site") (Var "$r0")))))))))
+  (Lam BAnon
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.int))) (Pair (Var "i") (App (Val (GoInstruction (GoOp GoPlus go.int))) (Pair (App (Val (GoInstruction (GoLoad go.int))) (Var "i")) (Val #(W64 1)))))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.int))) (Pair (Var "i") (Var "$r0")))))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore (go.GoType.MapType go.uint32 go.bool)))) (Pair (Var "seen") (Var "$r0"))))))))))
 
 instance info' : PkgInfo pkg_id.github_com.rstyled.gstyle.domain.runtimeguard.interval where
   pkgImportedPkgs := []
@@ -148,14 +210,75 @@ attribute [instance] Range.TypeAssumptions.type_repr
   Range.TypeAssumptions.get_HasUpper
   Range.TypeAssumptions.set_HasUpper
 
+structure Access [FfiSyntax] where
+  mk ::
+  Node' : w32
+  Symbol' : w32
+  Index' : Bool
+  UpperChecked' : Bool
+  Bounds' : Range
+
+instance Access.zero_val [FfiSyntax] : ZeroVal Access :=
+  ⟨Access.mk zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def Access.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"Node" go.uint32),
+(go.field_decl.FieldDecl go!"Symbol" go.uint32),
+(go.field_decl.FieldDecl go!"Index" go.bool),
+(go.field_decl.FieldDecl go!"UpperChecked" go.bool),
+(go.field_decl.FieldDecl go!"Bounds" Range.ty)]
+
+@[irreducible] def Access.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Access.fieldsUnsealed
+
+instance equals_unfold_Access [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Access.fields Access.fieldsUnsealed :=
+  ⟨by unfold Access.fields; rfl⟩
+
+@[reducible] def Access.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Access.fields)
+
+class Access.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
+  type_repr : go.TypeReprUnderlying Access.underlying Access
+  underlying : go.UnderlyingDirectedEq Access.ty Access.underlying
+  layout : go.StructLayout Access [(go!"Node", typeSize w32, typeAlign w32), (go!"Symbol", typeSize w32, typeAlign w32), (go!"Index", typeSize Bool, typeAlign Bool), (go!"UpperChecked", typeSize Bool, typeAlign Bool), (go!"Bounds", typeSize Range, typeAlign Range)]
+  get_Node : ∀ (x : Access), go.IsGoStepPureDetTagged under (StructFieldGet Access.underlying go!"Node") #x (Val #(x.Node'))
+  set_Node : ∀ (x : Access) (y : w32), go.IsGoStepPureDetTagged under (StructFieldSet Access.underlying go!"Node") (PairV #x #y) (Val #(({ x with Node' := y } : Access)))
+  get_Symbol : ∀ (x : Access), go.IsGoStepPureDetTagged under (StructFieldGet Access.underlying go!"Symbol") #x (Val #(x.Symbol'))
+  set_Symbol : ∀ (x : Access) (y : w32), go.IsGoStepPureDetTagged under (StructFieldSet Access.underlying go!"Symbol") (PairV #x #y) (Val #(({ x with Symbol' := y } : Access)))
+  get_Index : ∀ (x : Access), go.IsGoStepPureDetTagged under (StructFieldGet Access.underlying go!"Index") #x (Val #(x.Index'))
+  set_Index : ∀ (x : Access) (y : Bool), go.IsGoStepPureDetTagged under (StructFieldSet Access.underlying go!"Index") (PairV #x #y) (Val #(({ x with Index' := y } : Access)))
+  get_UpperChecked : ∀ (x : Access), go.IsGoStepPureDetTagged under (StructFieldGet Access.underlying go!"UpperChecked") #x (Val #(x.UpperChecked'))
+  set_UpperChecked : ∀ (x : Access) (y : Bool), go.IsGoStepPureDetTagged under (StructFieldSet Access.underlying go!"UpperChecked") (PairV #x #y) (Val #(({ x with UpperChecked' := y } : Access)))
+  get_Bounds : ∀ (x : Access), go.IsGoStepPureDetTagged under (StructFieldGet Access.underlying go!"Bounds") #x (Val #(x.Bounds'))
+  set_Bounds : ∀ (x : Access) (y : Range), go.IsGoStepPureDetTagged under (StructFieldSet Access.underlying go!"Bounds") (PairV #x #y) (Val #(({ x with Bounds' := y } : Access)))
+
+attribute [instance] Access.TypeAssumptions.type_repr
+  Access.TypeAssumptions.underlying
+  Access.TypeAssumptions.layout
+  Access.TypeAssumptions.get_Node
+  Access.TypeAssumptions.set_Node
+  Access.TypeAssumptions.get_Symbol
+  Access.TypeAssumptions.set_Symbol
+  Access.TypeAssumptions.get_Index
+  Access.TypeAssumptions.set_Index
+  Access.TypeAssumptions.get_UpperChecked
+  Access.TypeAssumptions.set_UpperChecked
+  Access.TypeAssumptions.get_Bounds
+  Access.TypeAssumptions.set_Bounds
+
 class Assumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   Range_instance : Range.TypeAssumptions
+  Access_instance : Access.TypeAssumptions
   Join_unfold : FuncUnfold Join [] Join.impl
   NegativeIndex_unfold : FuncUnfold NegativeIndex [] NegativeIndex.impl
+  Select_unfold : FuncUnfold Select [] Select.impl
 
 attribute [instance] Assumptions.Range_instance
+  Assumptions.Access_instance
   Assumptions.Join_unfold
   Assumptions.NegativeIndex_unfold
+  Assumptions.Select_unfold
 
 end github_com.rstyled.gstyle.domain.runtimeguard.interval
 

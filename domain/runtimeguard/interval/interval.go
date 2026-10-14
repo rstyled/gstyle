@@ -23,3 +23,26 @@ func NegativeIndex(index, upperChecked bool, r Range) bool {
 	}
 	return !r.HasLower || r.Lower < 0
 }
+
+type Access struct {
+	Node, Symbol        uint32
+	Index, UpperChecked bool
+	Bounds              Range
+}
+
+func Select(accesses []Access) []Access {
+	seen := make(map[uint32]bool)
+	var out []Access
+	for i := 0; i < len(accesses); i++ {
+		site := accesses[i]
+		if !NegativeIndex(site.Index, site.UpperChecked, site.Bounds) {
+			continue
+		}
+		if seen[site.Symbol] {
+			continue
+		}
+		seen[site.Symbol] = true
+		out = append(out, site)
+	}
+	return out
+}

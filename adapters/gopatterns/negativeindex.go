@@ -9,13 +9,12 @@ import (
 
 func negativeIndexCandidates(function FuncPdg, report runtimeguard.Report) []patterns.Candidate {
 	var out []patterns.Candidate
-	seen := make(map[pdg.Ref]bool)
+	var accesses []interval.Access
 	for _, site := range report.Accesses {
-		if !negativeIndexRisk(site) || seen[site.Symbol] {
-			continue
-		}
-		seen[site.Symbol] = true
-		name := runtimeSymbolName(&function.Pdg, site.Symbol)
+		accesses = append(accesses, interval.Access{Node: uint32(site.Node), Symbol: uint32(site.Symbol), Index: site.Index, UpperChecked: site.Value.UpperChecked, Bounds: site.Value.Bounds()})
+	}
+	for _, site := range interval.Select(accesses) {
+		name := runtimeSymbolName(&function.Pdg, pdg.Ref(site.Symbol))
 		line := int(function.Pdg.Nodes[site.Node-1].Line)
 		out = append(out, patterns.Candidate{
 			Kind: patterns.NegativeIndex, ScoreMilli: 800,
@@ -26,8 +25,4 @@ func negativeIndexCandidates(function FuncPdg, report runtimeguard.Report) []pat
 		})
 	}
 	return out
-}
-
-func negativeIndexRisk(site runtimeguard.Access) bool {
-	return interval.NegativeIndex(site.Index, site.Value.UpperChecked, site.Value.Bounds())
 }

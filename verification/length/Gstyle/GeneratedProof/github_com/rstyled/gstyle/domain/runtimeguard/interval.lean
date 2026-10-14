@@ -108,6 +108,114 @@ instance Range_access_store_HasUpper (l : Loc) (v : github_com.rstyled.gstyle.do
 end def_
 end Range
 
+namespace Access
+section def_
+
+variable [ext : FfiSyntax] [ffi : FfiModel] [FfiInterp ffi] [FfiSemantics ext ffi] [go_gctx : GoGlobalContext]
+variable {hlc : HasLC} {GF : BundledGFunctors} [hG : HeapGS hlc GF]
+variable [sem : go.Semantics]
+variable [package_sem' : github_com.rstyled.gstyle.domain.runtimeguard.interval.Assumptions]
+
+instance Access_typed_pointsto :
+    TypedPointsto (GF := GF) github_com.rstyled.gstyle.domain.runtimeguard.interval.Access where
+  typedPointstoDef l v dq := iprop(
+    "Node" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Node" l) v.Node' dq ∗
+    "Symbol" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Symbol" l) v.Symbol' dq ∗
+    "Index" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Index" l) v.Index' dq ∗
+    "UpperChecked" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"UpperChecked" l) v.UpperChecked' dq ∗
+    "Bounds" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Bounds" l) v.Bounds' dq ∗
+    "_" ∷ True)
+  typedPointstoDef_dfractional := by solve_typed_pointsto_dfractional
+  typedPointstoDef_timeless := by solve_typed_pointsto_timeless
+  typedPointsto_agree := by solve_typed_pointsto_agree
+
+instance Access_into_val_typed :
+    IntoValTypedUnderlying (GF := GF) github_com.rstyled.gstyle.domain.runtimeguard.interval.Access github_com.rstyled.gstyle.domain.runtimeguard.interval.Access.underlying := by
+  solve_into_val_typed_struct
+
+instance Access_access_load_Node (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Access) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Node" l) v.Node' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Node" l) v.Node' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Access_access_store_Node (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Access) (Node' : w32) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Node" l) v.Node' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Node" l) Node' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with Node' := Node' } : github_com.rstyled.gstyle.domain.runtimeguard.interval.Access) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Access_access_load_Symbol (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Access) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Symbol" l) v.Symbol' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Symbol" l) v.Symbol' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Access_access_store_Symbol (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Access) (Symbol' : w32) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Symbol" l) v.Symbol' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Symbol" l) Symbol' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with Symbol' := Symbol' } : github_com.rstyled.gstyle.domain.runtimeguard.interval.Access) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Access_access_load_Index (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Access) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Index" l) v.Index' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Index" l) v.Index' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Access_access_store_Index (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Access) (Index' : Bool) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Index" l) v.Index' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Index" l) Index' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with Index' := Index' } : github_com.rstyled.gstyle.domain.runtimeguard.interval.Access) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Access_access_load_UpperChecked (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Access) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"UpperChecked" l) v.UpperChecked' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"UpperChecked" l) v.UpperChecked' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Access_access_store_UpperChecked (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Access) (UpperChecked' : Bool) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"UpperChecked" l) v.UpperChecked' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"UpperChecked" l) UpperChecked' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with UpperChecked' := UpperChecked' } : github_com.rstyled.gstyle.domain.runtimeguard.interval.Access) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Access_access_load_Bounds (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Access) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Bounds" l) v.Bounds' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Bounds" l) v.Bounds' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Access_access_store_Bounds (l : Loc) (v : github_com.rstyled.gstyle.domain.runtimeguard.interval.Access) (Bounds' : github_com.rstyled.gstyle.domain.runtimeguard.interval.Range) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Bounds" l) v.Bounds' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.runtimeguard.interval.Access go!"Bounds" l) Bounds' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with Bounds' := Bounds' } : github_com.rstyled.gstyle.domain.runtimeguard.interval.Access) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+end def_
+end Access
+
 end github_com.rstyled.gstyle.domain.runtimeguard.interval
 end
 end Perennial

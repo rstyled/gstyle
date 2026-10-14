@@ -247,5 +247,6 @@ pattern findings are not yet formally proved.
 Run `make verify-negative-index` using the same pinned Lean project. The current
 stage proves that the production interval join preserves both input sets and
 that the risk decision reports represented negative values when its pattern
-triggers apply. PDG transfer/traversal and candidate construction remain outside
+triggers apply. The map-based selector keeps the first risky occurrence per
+binding in input order. PDG transfer/traversal and candidate construction remain outside
 this proof. See [the negative-index verification scope](verification/length/NEGATIVE_INDEX.md).

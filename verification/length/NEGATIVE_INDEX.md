@@ -1,9 +1,8 @@
 # Negative-index verification
 
 Run `make verify-negative-index` with the shared pinned Lean/Goose project.
-This is the interval and risk-decision stage of negative-index verification.
-Candidate deduplication, payload construction and the PDG transfer analysis are
-not yet proved.
+This stage covers intervals, the risk decision and stable per-binding selection.
+Payload construction and the PDG transfer analysis are not yet proved.
 
 `domain/runtimeguard/interval` owns the actual Go join and risk decision.
 `Value.mergeBounds` uses that join; the negative-index matcher uses that decision.
@@ -31,24 +30,37 @@ input range contains a negative integer, it returns true. This prevents a false
 safe decision relative to the supplied interval. UpperChecked is pattern-trigger
 metadata; it is not an assertion that all control-flow paths are upper-bounded.
 
-Six theorems are audited: interval-union preservation and negative-value detection
-in the mathematical model, exact execution contracts for Join and NegativeIndex,
-and their semantic execution consequences. Ten Go mutations test bound narrowing,
-forged knowledge, missing normalization, omitted triggers, zero-bound handling
-and trusting an unknown lower payload. Each mutation builds only this proof
-module after the full unchanged preflight.
+`Select` uses a Go hash map and returns the first risky occurrence of each supplied
+binding ID, in input order. Safe accesses do not mark their binding as seen. Its
+loop proof relates every map lookup to the model's seen set, proves index bounds
+and counter safety, and preserves ownership and contents of the input slice.
+Selected records retain all fields, including the original source-node reference.
+The semantic execution theorem establishes a subsequence of input records, unique
+binding IDs, risky-only output and coverage of every risky binding. Zero and the
+largest uint32 ID remain ordinary raw keys, as in the former matcher; this does
+not validate those IDs against the PDG tables.
+
+Thirteen theorems are audited: the interval model and execution properties,
+selection order/key properties, and the actual Go selector contracts. Eighteen
+Go mutations test bound narrowing, forged knowledge, normalization, trigger and
+zero handling, missing deduplication, key confusion, forgotten map writes, safe
+accesses hiding later risks, skipped/duplicated access records and forged source
+nodes. Each mutation builds only this proof module after the full preflight.
 
 Go tests compare actual joins against set membership at integer extremes and with
 all combinations of known/unknown flags, including contradictory intervals. The
 existing typed PDG/negative-index regression suite checks the runtimeguard and
-pattern adapters.
+pattern adapters. An independent prefix oracle checks every binding/risk sequence
+through length six using three IDs, including zero and uint32 maximum. Additional
+cases cover absent trigger flags, positive/zero lower bounds and unknown positive
+payloads. Tests check both input preservation and absence of output aliasing.
 
 ## Remaining work and trust
 
 This does not establish that PDG extraction or transfer functions produce sound
 intervals for Go executions. State transfer, widening, convergence, graph traversal,
-Value-to-Range projection, candidate deduplication and rendering remain outside
-Lean. The negative-index pattern is not yet fully verified.
+Value/Access projection, source-node resolution and candidate payload construction
+and rendering remain outside Lean. The negative-index pattern is not yet fully verified.
 
 The pinned translation and Go semantics, the 64-bit model, package unfolding and
 record-layout hypotheses, compiler and Lean kernel are trust boundaries. Global

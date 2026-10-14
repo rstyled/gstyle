@@ -177,8 +177,16 @@ def interval_profile():
     return Profile(
         ROOT / "dist/verification/negative-index", "github_com/rstyled/gstyle/domain/runtimeguard/interval.lean",
         "./domain/runtimeguard/interval", source, (source,),
-        {prefix + name for name in ("join_sound", "negative_detected", "wp_Join", "wp_NegativeIndex", "wp_JoinSound", "wp_NegativeDetected")},
+        {prefix + name for name in ("join_sound", "negative_detected", "wp_Join", "wp_NegativeIndex", "wp_JoinSound", "wp_NegativeDetected", "selected_avoids", "selected_risky", "selected_unique", "selected_sublist", "selected_keys", "wp_Select", "wp_SelectProperties")},
         {
+            "omit-deduplication": ("if seen[site.Symbol] {", "if false {"),
+            "deduplicate-by-node": ("if seen[site.Symbol]", "if seen[site.Node]"),
+            "forget-seen-binding": ("seen[site.Symbol] = true", "seen[site.Symbol] = false"),
+            "ignore-access-risk": ("if !NegativeIndex(site.Index, site.UpperChecked, site.Bounds) {", "if false {"),
+            "mark-safe-binding": ("site := accesses[i]", "site := accesses[i]\n\t\tseen[site.Symbol] = true"),
+            "skip-last-access": ("i < len(accesses)", "i < len(accesses)-1"),
+            "duplicate-access": ("append(out, site)", "append(out, site, site)"),
+            "forge-source-node": ("out = append(out, site)", "site.Node = 0\n\t\tout = append(out, site)"),
             "narrow-lower-bound": ("min(a.Lower, b.Lower)", "max(a.Lower, b.Lower)"),
             "narrow-upper-bound": ("max(a.Upper, b.Upper)", "min(a.Upper, b.Upper)"),
             "forge-known-lower": ("a.HasLower && b.HasLower", "a.HasLower || b.HasLower"),
@@ -190,8 +198,8 @@ def interval_profile():
             "treat-zero-as-negative": ("r.Lower < 0", "r.Lower <= 0"),
             "trust-unknown-lower": ("!r.HasLower || r.Lower < 0", "r.Lower < 0"),
         },
-        "AuditInterval.lean", "Gstyle/Proof/Interval.lean", "sound interval join and negative-index decision",
-        ("PDG extraction", "state transfer and fixpoint traversal", "Value-to-Range projection", "candidate deduplication and rendering"),
+        "AuditInterval.lean", "Gstyle/Proof/Interval.lean", "sound interval join, negative-index decision and stable binding selection",
+        ("PDG extraction", "state transfer and fixpoint traversal", "Value-to-Range projection", "Access projection, source-node resolution and candidate rendering"),
     )
 
 
