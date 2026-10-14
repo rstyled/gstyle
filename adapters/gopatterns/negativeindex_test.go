@@ -108,3 +108,16 @@ func TestNegativeIndexStableOrderWithinGuard(t *testing.T) {
 		}
 	}
 }
+
+func TestNegativeStringIndexReview(t *testing.T) {
+	for _, typ := range []string{"string", "Text"} {
+		src := `package p; type Text string; func f(s ` + typ + `,i int) byte { if i>=len(s){return 0}; return s[i] }`
+		if got := negativeIndexTestCandidates(t, src); len(got) != 1 {
+			t.Fatalf("%s: got %d findings, want 1", typ, len(got))
+		}
+	}
+	src := `package p; func f(s string,i int) byte { if i<0 || i>=len(s){return 0}; return s[i] }`
+	if got := negativeIndexTestCandidates(t, src); len(got) != 0 {
+		t.Fatalf("safe string access: got %d findings", len(got))
+	}
+}
