@@ -49,3 +49,10 @@ test:
 
 test-race:
 	go test -buildvcs=false -race -count=1 ./...
+
+.PHONY: verify-output
+
+# Partial formal proof: production decision logic, not the AST/type adapter.
+verify-output:
+	python3 -B -m unittest discover -s verification -p 'test_*.py'
+	python3 -B verification/unchecked_output.py

@@ -9,22 +9,30 @@ import (
 // Restrict this rule to typed stdlib formatted writes with a syntactically
 // discarded error. It does not prove later uses of assigned error bindings.
 func (w *errorCheckWalker) discardsOutput(call *ast.CallExpr) bool {
-	if !formattedOutputCall(call, w.info) {
-		return false
+	input := outputDecision{Formatted: formattedOutputCall(call, w.info)}
+	if !input.Formatted {
+		return discardsOutputDecision(input)
 	}
-	if memoryOutput(w.info.TypeOf(call.Args[0])) {
-		return false
-	}
+	input.Memory = memoryOutput(w.info.TypeOf(call.Args[0]))
+	return discardsOutputDecision(w.outputDecision(input))
+}
+
+// This adapter remains outside the formal proof. It supplies syntactic counts
+// and blank-target identity to the verified, import-free decision function.
+func (w *errorCheckWalker) outputDecision(input outputDecision) outputDecision {
 	switch parent := w.callParent().(type) {
 	case *ast.ExprStmt:
-		return true
+		input.Standalone = true
 	case *ast.AssignStmt:
-		return discardedOutputAssignment(parent)
+		input.Values, input.Results = len(parent.Rhs), len(parent.Lhs)
+		input.ErrorBlank = blankOutputTarget(parent.Lhs)
 	case *ast.ValueSpec:
-		return discardedOutputDeclaration(parent)
-	default:
-		return false
+		input.Values, input.Results = len(parent.Values), len(parent.Names)
+		if len(parent.Names) == 2 {
+			input.ErrorBlank = parent.Names[1].Name == "_"
+		}
 	}
+	return input
 }
 
 func formattedOutputCall(call *ast.CallExpr, info *types.Info) bool {
@@ -55,17 +63,10 @@ func memoryOutput(typ types.Type) bool {
 	return slices.Contains([]string{"bytes.Buffer", "strings.Builder"}, key)
 }
 
-func discardedOutputAssignment(assign *ast.AssignStmt) bool {
-	if len(assign.Rhs) != 1 || len(assign.Lhs) != 2 {
+func blankOutputTarget(targets []ast.Expr) bool {
+	if len(targets) != 2 {
 		return false
 	}
-	id, ok := assign.Lhs[1].(*ast.Ident)
+	id, ok := targets[1].(*ast.Ident)
 	return ok && id.Name == "_"
-}
-
-func discardedOutputDeclaration(declaration *ast.ValueSpec) bool {
-	if len(declaration.Values) != 1 || len(declaration.Names) != 2 {
-		return false
-	}
-	return declaration.Names[1].Name == "_"
 }
