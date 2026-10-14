@@ -43,7 +43,7 @@ func (w *errorCheckWalker) visitCall(call *ast.CallExpr) {
 		return
 	}
 	checked := w.isChecked(call)
-	line := w.fset.Position(call.Pos()).Line
+	line := w.fset.PositionFor(call.Pos(), false).Line
 	*w.sites = append(*w.sites, patterns.ErrorCheckSite{
 		Line:            line,
 		Callee:          callee,

@@ -212,12 +212,12 @@ Run `make verify-output` with Go, Python 3 and elan on `PATH`. The same pinned
 Goose/Perennial project as the length and PDG proofs translates the production
 `domain/patterns/outputcheck` package into Lean. The proofs cover exact function
 and writer identities, the output decision, suppression-name lookup and composed
-selection of all flagged call sites. Selection preserves order, metadata and
-the input. Eighteen deliberate Go mutations check these contracts. CI preserves
+selection and advisory payload construction. The reporting loop preserves order,
+metadata and both inputs. Twenty-eight deliberate Go mutations check these contracts. CI preserves
 logs and source hashes.
 
-This remains a **partial detector proof**: AST/type extraction and candidate
-rendering are checked by Go tests. Incorrect extracted facts can still produce
+This remains a **partial detector proof**: AST/type extraction, corpus traversal and
+Candidate projection are checked by Go tests. Incorrect extracted facts can still produce
 incorrect findings. See [the output verification scope](verification/length/OUTPUT.md)
 for the contract
 and trust boundaries. The former Gobra-only decision pilot is replaced by this

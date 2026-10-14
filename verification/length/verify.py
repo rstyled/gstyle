@@ -129,8 +129,18 @@ def output_profile():
     return Profile(
         ROOT / "dist/verification/unchecked-output", "github_com/rstyled/gstyle/domain/patterns/outputcheck.lean",
         "./domain/patterns/outputcheck", source, (source,),
-        {prefix + name for name in ("wp_Discards", "wp_Select", "wp_Formatted", "wp_Memory", "wp_hasSuppression", "wp_Find")},
+        {prefix + name for name in ("wp_Discards", "wp_Select", "wp_Formatted", "wp_Memory", "wp_hasSuppression", "wp_Find", "wp_describe", "wp_Report")},
         {
+            "wrong-finding-path": ("Path: function.Path", "Path: function.Name"),
+            "wrong-finding-owner": ("ID: function.ID", "ID: site.FuncID"),
+            "wrong-finding-name": ("Name: function.Name", "Name: function.ID"),
+            "wrong-finding-line": ("Path: function.Path, Line: site.Line", "Path: function.Path, Line: 0"),
+            "wrong-finding-end-line": ("EndLine: site.Line", "EndLine: 0"),
+            "wrong-finding-kind": ('Kind: "unchecked_output"', 'Kind: "nilerr"'),
+            "wrong-finding-score": ("ScoreMilli: 800", "ScoreMilli: 801"),
+            "drop-callee-name": (" + site.Callee", ""),
+            "skip-last-report": ("i < len(selected)", "i < len(selected)-1"),
+            "duplicate-report": ("append(out, describe(function, selected[i]))", "append(out, describe(function, selected[i]), describe(function, selected[i]))"),
             "wrong-suppression-name": ('kinds[i] == "unchecked_output"', 'kinds[i] == "other"'),
             "inverted-suppression-match": ('kinds[i] == "unchecked_output"', 'kinds[i] != "unchecked_output"'),
             "skip-last-suppression": ("i < len(kinds)", "i < len(kinds)-1"),
@@ -150,8 +160,8 @@ def output_profile():
             "skip-last-site": ("i < len(sites)", "i < len(sites)-1"),
             "duplicate-site": ("append(out, site)", "append(out, site, site)"),
         },
-        "AuditOutput.lean", "Gstyle/Proof/Output.lean", "unchecked-output identities, decision, suppression lookup and composed site selection",
-        ("AST/type fact extraction", "candidate rendering", "Go compiler and stdlib behavior"),
+        "AuditOutput.lean", "Gstyle/Proof/Output.lean", "unchecked-output identities, decision, suppression, selection and advisory payloads",
+        ("AST/type fact extraction", "corpus traversal, input/Candidate projection and presentation", "Go compiler and stdlib behavior"),
     )
 
 

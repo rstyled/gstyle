@@ -5,13 +5,14 @@ import "github.com/rstyled/gstyle/domain/patterns/outputcheck"
 func uncheckedOutputCandidates(facts []*MiningFacts) []Candidate {
 	var out []Candidate
 	for _, function := range facts {
-		for _, site := range outputcheck.Find(function.ErrorCheckSites, function.SuppressedKinds) {
+		context := outputcheck.Function{Path: function.Path, ID: function.ID, Name: function.Name}
+		for _, finding := range outputcheck.Report(context, function.ErrorCheckSites, function.SuppressedKinds) {
 			out = append(out, Candidate{
-				Kind: UncheckedOutput, ScoreMilli: 800,
-				Observation:     "formatted output error is discarded: " + site.Callee,
-				Inference:       "a failed write can be reported as success; propagate or explicitly handle the output error",
-				CounterEvidence: []string{"best-effort output may deliberately ignore failures; no automatic fix"},
-				Sites:           []Site{{Path: function.Path, Line: site.Line, EndLine: site.Line, ID: function.ID, Name: function.Name}},
+				Kind: CandidateKind(finding.Kind), ScoreMilli: finding.ScoreMilli,
+				Observation:     finding.Observation,
+				Inference:       finding.Inference,
+				CounterEvidence: []string{finding.CounterEvidence},
+				Sites:           []Site{{Path: finding.Path, Line: finding.Line, EndLine: finding.EndLine, ID: finding.ID, Name: finding.Name}},
 			})
 		}
 	}

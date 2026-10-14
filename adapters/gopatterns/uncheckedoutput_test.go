@@ -132,3 +132,12 @@ func f(w io.Writer)error{print.Fprintln(w,"text");return nil}`
 		t.Fatalf("renamed stdlib import loses identity: %+v", sites)
 	}
 }
+
+func TestUncheckedOutputUsesPhysicalSourceLine(t *testing.T) {
+	source := "package p\nimport(\"fmt\";\"io\")\nfunc f(w io.Writer)error{\n//line virtual.go:900\nfmt.Fprintln(w,\"text\")\nreturn nil\n}\n"
+	file, fs, info, _ := typeCheck(t, source)
+	sites := findErrorCheckSites(findFunc(file, "f"), fs, info)
+	if len(sites) != 1 || !sites[0].DiscardedOutput || sites[0].Line != 5 {
+		t.Fatalf("finding does not point to physical source line 5: %+v", sites)
+	}
+}

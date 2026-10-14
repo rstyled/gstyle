@@ -61,3 +61,42 @@ func hasSuppression(kinds []string) bool {
 func Find(sites []Site, suppressions []string) []Site {
 	return Select(sites, hasSuppression(suppressions))
 }
+
+type Function struct {
+	Path string
+	ID   string
+	Name string
+}
+
+type Advisory struct {
+	Path            string
+	Line            int
+	EndLine         int
+	ID              string
+	Name            string
+	Kind            string
+	ScoreMilli      uint32
+	Observation     string
+	Inference       string
+	CounterEvidence string
+}
+
+func describe(function Function, site Site) Advisory {
+	return Advisory{
+		Path: function.Path, Line: site.Line, EndLine: site.Line,
+		ID: function.ID, Name: function.Name,
+		Kind: "unchecked_output", ScoreMilli: 800,
+		Observation:     "formatted output error is discarded: " + site.Callee,
+		Inference:       "a failed write can be reported as success; propagate or explicitly handle the output error",
+		CounterEvidence: "best-effort output may deliberately ignore failures; no automatic fix",
+	}
+}
+
+func Report(function Function, sites []Site, suppressions []string) []Advisory {
+	selected := Find(sites, suppressions)
+	var out []Advisory
+	for i := 0; i < len(selected); i++ {
+		out = append(out, describe(function, selected[i]))
+	}
+	return out
+}

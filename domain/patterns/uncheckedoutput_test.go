@@ -3,6 +3,8 @@ package patterns
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/rstyled/gstyle/domain/patterns/outputcheck"
 )
 
 func TestUncheckedOutputFactsRoundTripAndSuppression(t *testing.T) {
@@ -50,5 +52,31 @@ func TestUncheckedOutputSelectionPreservesOccurrences(t *testing.T) {
 		if len(got[i].Sites) != 1 || got[i].Sites[0] != want || got[i].Kind != UncheckedOutput || got[i].ScoreMilli != 800 || got[i].FixSpec != nil {
 			t.Fatalf("finding %d loses metadata or advisory policy: %+v", i, got[i])
 		}
+	}
+}
+
+func TestUncheckedOutputCandidateProjection(t *testing.T) {
+	facts := MiningFacts{ID: "p.Report", Name: "Report", Path: "a.go", ErrorCheckSites: []ErrorCheckSite{
+		{FuncID: "different-owner", Line: 5, Callee: "alias.Fprintln", DiscardedOutput: true},
+		{Line: 6, Callee: "alias.Fprintln", Checked: true},
+	}}
+	payloads := outputcheck.Report(outputcheck.Function{Path: "a.go", ID: "p.Report", Name: "Report"}, facts.ErrorCheckSites, nil)
+	candidates := uncheckedOutputCandidates([]*MiningFacts{&facts})
+	if len(payloads) != 1 || len(candidates) != 1 {
+		t.Fatalf("unexpected findings: payloads=%+v candidates=%+v", payloads, candidates)
+	}
+	want, got := payloads[0], candidates[0]
+	if string(got.Kind) != want.Kind || got.ScoreMilli != want.ScoreMilli || got.Observation != want.Observation || got.Inference != want.Inference {
+		t.Fatalf("candidate changes proved payload: got=%+v want=%+v", got, want)
+	}
+	if len(got.CounterEvidence) != 1 || got.CounterEvidence[0] != want.CounterEvidence || len(got.Sites) != 1 {
+		t.Fatalf("candidate drops payload evidence: %+v", got)
+	}
+	location := got.Sites[0]
+	if location != (Site{Path: want.Path, Line: want.Line, EndLine: want.EndLine, ID: want.ID, Name: want.Name}) {
+		t.Fatalf("candidate changes proved location: %+v", got)
+	}
+	if got.FixSpec != nil || got.Analysis != nil || got.Definitions != nil || got.PossibleRefactor != "" || got.Breakdown != (Breakdown{}) {
+		t.Fatalf("advisory invents an action or analysis: %+v", got)
 	}
 }

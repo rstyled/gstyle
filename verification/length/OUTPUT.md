@@ -44,6 +44,15 @@ selection proofs over the actual two borrowed slices. It returns the stable
 filter exactly when that name is absent. `uncheckedOutputCandidates` calls
 `Find` directly; it no longer supplies an unproved suppression Boolean.
 
+`describe` builds the exact advisory payload: the owning function's path, ID and
+name, the call's line in both line fields, kind `unchecked_output`, score 800,
+the callee-bearing observation, inference and counter-evidence text. `Report`
+composes `Find` with a proved mapping loop. Its output is exactly the ordered map
+of those payloads over the selected records, with both inputs preserved. The
+payload type has no automatic-fix field. Production candidate construction calls
+`Report` for each function. The outer corpus traversal, per-function input
+projection and projection into the common Candidate type remain outside Lean.
+
 The package owns the canonical Site record; `patterns.ErrorCheckSite` is an
 alias. Field names, values and JSON stay unchanged. Reflection's defining
 package path changes to `domain/patterns/outputcheck`.
@@ -51,18 +60,16 @@ package path changes to `domain/patterns/outputcheck`.
 ## Pipeline and checks
 
 Verification builds pinned dependencies once per run, regenerates the actual
-Go translation, compares it with the committed translation, checks all six Lean
+Go translation, compares it with the committed translation, checks all eight Lean
 theorems and audits their axioms. The allowed axioms are `propext`,
 `Classical.choice` and `Quot.sound`. No `sorry`, native decision axioms, or
 replacement implementations are admitted by this profile.
 
-Eighteen Go mutants must fail the unchanged proofs: unrecognized function, memory
-writer, wrong result count, wrong value count, handled error, missed standalone
-call, ignored suppression, inverted selection, skipped last site and duplicated
-site, wrong function package, omitted Fprintln, wrong writer package, and a
-crossed writer identity, wrong suppression name, inverted suppression matching,
-skipped last suppression name, and bypassed suppression lookup. Tool or dependency
-errors abort verification instead of passing a mutant.
+Twenty-eight Go mutants must fail the unchanged proofs. They cover identity and
+discard policies, suppression lookup and composition, skipped/duplicated selected
+sites, every location/owner field, kind, score, missing callee text, and
+skipped/duplicated report payloads. Tool or dependency errors abort verification
+instead of passing a mutant.
 
 Go tests cross the syntax, writer and call forms at the extraction boundary;
 exercise negative and extreme decision counts; and enumerate all selection
@@ -71,13 +78,17 @@ also check that modifying returned records does not mutate the input. Candidate
 tests cover JSON round trips, suppression, occurrence order and source metadata.
 Suppression tests include absent names, the exact name in the first/middle/last
 slot, repeated names and similar names that must not match. Extraction regressions
-include nested parentheses around a blank error target.
+include nested parentheses around a blank error target and `//line` directives
+that must not replace a call's physical source line. Projection tests compare
+the common Candidate against the proved payload and check that it adds no fix,
+refactor, analysis or unrelated evidence.
 
 ## Remaining boundaries
 
-This is a proof of the pattern's decision and site selection, not complete
-source-to-finding soundness. AST/type extraction and candidate rendering remain
-outside Lean. The adapter intentionally omits
+This is a proof of the pattern's decision and fact-to-advisory pipeline, not
+complete source-to-finding soundness. AST/type extraction, outer corpus traversal,
+input and common Candidate projections, and final presentation remain outside
+Lean. The adapter intentionally omits
 indirect function calls, deferred calls, goroutines and nested closures in the
 current function. Named error variables that are later ignored are outside this
 syntactic rule. Existing Boolean facts loaded from JSON remain trusted inputs.
