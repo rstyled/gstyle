@@ -15,7 +15,7 @@ var errOverlappingPlans = errors.New("overlapping fix plans")
 func signatureSpecs(specs []*patterns.FixSpec) ([]*patterns.FixSpec, []*patterns.FixSpec) {
 	var signature, local []*patterns.FixSpec
 	for _, spec := range specs {
-		if spec.Kind == patterns.ValueObject || spec.Kind == patterns.AnemicModel {
+		if multiFileFix(spec) {
 			signature = append(signature, spec)
 		} else {
 			local = append(local, spec)
@@ -37,7 +37,7 @@ func addSignaturePlan(plan *fixPlan, spec *patterns.FixSpec) error {
 	if spec.Context != plan.sources {
 		return fmt.Errorf("fixes use different extraction revisions")
 	}
-	overlay, err := gopatterns.PlanSignatureFix(spec)
+	overlay, err := multiFileOverlay(spec)
 	if err != nil {
 		return err
 	}
@@ -118,4 +118,18 @@ func signatureCountPath(overlay map[string][]byte, primary string) string {
 		}
 	}
 	return first
+}
+
+func multiFileFix(spec *patterns.FixSpec) bool {
+	if spec.Kind == patterns.Parameterize {
+		return spec.Params["secondary_file"] != ""
+	}
+	return spec.Kind == patterns.ValueObject || spec.Kind == patterns.AnemicModel
+}
+
+func multiFileOverlay(spec *patterns.FixSpec) (map[string][]byte, error) {
+	if spec.Kind == patterns.Parameterize {
+		return gopatterns.PlanParameterizationFix(spec)
+	}
+	return gopatterns.PlanSignatureFix(spec)
 }

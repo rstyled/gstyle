@@ -8,6 +8,7 @@ func (c *SourceContext) EvidenceOnly() *SourceContext {
 	evidence := c.copyEvidence()
 	for i := range evidence.files {
 		evidence.files[i].SyntaxProfile, evidence.files[i].Syntax = "", ""
+		evidence.files[i].Imports = nil
 	}
 	return evidence
 }

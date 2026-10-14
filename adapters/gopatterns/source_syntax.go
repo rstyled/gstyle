@@ -159,6 +159,7 @@ func (e *syntaxEncoder) text(data []byte, text string, node ast.Node) []byte {
 }
 
 type syntaxDecoder struct {
+	base   int
 	data   string
 	source string
 	nodes  []reflect.Value
@@ -268,6 +269,9 @@ func (d *syntaxDecoder) scalar(value reflect.Value, assign bool) error {
 	}
 	d.cursor += size
 	if assign {
+		if value.Type() == syntaxPosition && number != 0 {
+			number += int64(d.base - 1)
+		}
 		value.SetInt(number)
 	}
 	return nil
@@ -403,23 +407,29 @@ func captureSourceSyntax(fset *token.FileSet, file *ast.File, source []byte) (st
 }
 
 func sourceSyntaxTree(path string, sources *pdg.SourceContext) (*token.FileSet, *ast.File, error) {
+	fset := token.NewFileSet()
+	file, err := sourceSyntaxTreeIn(path, sources, fset)
+	return fset, file, err
+}
+
+func sourceSyntaxTreeIn(path string, sources *pdg.SourceContext, fset *token.FileSet) (*ast.File, error) {
 	snapshot, ok := sources.Snapshot(sources.Reference(path))
 	if !ok {
-		return nil, nil, fmt.Errorf("%w: source evidence is missing: %s", errSourceSyntax, path)
+		return nil, fmt.Errorf("%w: source evidence is missing: %s", errSourceSyntax, path)
 	}
 	if snapshot.SyntaxProfile != sourceSyntaxProfile || snapshot.Syntax == "" {
-		return nil, nil, fmt.Errorf("%w: source syntax inventory is missing: %s", errSourceSyntax, path)
+		return nil, fmt.Errorf("%w: source syntax inventory is missing: %s", errSourceSyntax, path)
 	}
 	data, err := inflateSourceSyntax(snapshot.Syntax, len(snapshot.Content))
 	if err != nil {
-		return nil, nil, fmt.Errorf("%w: %s: %v", errSourceSyntax, path, err)
+		return nil, fmt.Errorf("%w: %s: %v", errSourceSyntax, path, err)
 	}
-	decoder := &syntaxDecoder{data: data, source: snapshot.Content}
+	tokenFile := fset.AddFile(path, -1, len(snapshot.Content))
+	tokenFile.SetLinesForContent([]byte(snapshot.Content))
+	decoder := &syntaxDecoder{data: data, source: snapshot.Content, base: tokenFile.Base()}
 	file, err := decoder.file()
 	if err != nil {
-		return nil, nil, fmt.Errorf("%w: %s: %v", errSourceSyntax, path, err)
+		return nil, fmt.Errorf("%w: %s: %v", errSourceSyntax, path, err)
 	}
-	fset := token.NewFileSet()
-	fset.AddFile(path, 1, len(snapshot.Content)).SetLinesForContent([]byte(snapshot.Content))
-	return fset, file, nil
+	return file, nil
 }

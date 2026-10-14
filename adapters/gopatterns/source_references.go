@@ -26,6 +26,7 @@ func collectSourceReferences(sources *pdg.SourceContext, pkgs []*packages.Packag
 }
 
 func collectFileReferences(sources *pdg.SourceContext, pkg *packages.Package, file *ast.File, ref pdg.Ref) {
+	sources.SetImports(ref, sourceImports(pkg, file))
 	direct := make(map[*ast.Ident]*ast.CallExpr)
 	ast.Inspect(file, func(node ast.Node) bool {
 		recordDirectCall(direct, node)

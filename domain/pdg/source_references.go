@@ -38,3 +38,11 @@ type SourceReceiver struct {
 	Copy                    ByteRange
 	ExactType, Parenthesize bool
 }
+
+// SourceImport keeps package identity and uses without compiler objects or source copies.
+type SourceImport struct {
+	Name, Path                 string
+	Spec, Declaration, Binding ByteRange
+	Uses                       []ByteRange
+	Grouped                    bool
+}

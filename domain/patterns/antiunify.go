@@ -72,7 +72,7 @@ func (au *antiUnifier) unifyDispatchComplex(a ast.Node, b ast.Node) ast.Node {
 	case *ast.AssignStmt:
 		return au.unifyAssignStmt(at, b)
 	default:
-		return au.unifyDispatchStmt(at, b)
+		return au.unifyExpressionShape(at, b)
 	}
 }
 
@@ -325,6 +325,75 @@ func (au *antiUnifier) unifyBlock(a, b *ast.BlockStmt) *ast.BlockStmt {
 		list[i] = s
 	}
 	return &ast.BlockStmt{List: list}
+}
+
+func (au *antiUnifier) unifyExpressionShape(a, b ast.Node) ast.Node {
+	switch node := a.(type) {
+	case *ast.SelectorExpr:
+		return au.unifySelector(node, b)
+	case *ast.ParenExpr:
+		return au.unifyParen(node, b)
+	case *ast.UnaryExpr:
+		return au.unifyUnary(node, b)
+	case *ast.IndexExpr:
+		return au.unifyIndex(node, b)
+	default:
+		return au.unifyDispatchStmt(a, b)
+	}
+}
+
+func (au *antiUnifier) unifySelector(a *ast.SelectorExpr, b ast.Node) ast.Node {
+	other, ok := b.(*ast.SelectorExpr)
+	if !ok {
+		return nil
+	}
+	if a.Sel.Name != other.Sel.Name {
+		return au.freshHole(a, b)
+	}
+	base := au.unifyExpr(a.X, other.X)
+	if base == nil {
+		return nil
+	}
+	return &ast.SelectorExpr{X: base, Sel: ast.NewIdent(a.Sel.Name)}
+}
+
+func (au *antiUnifier) unifyParen(a *ast.ParenExpr, b ast.Node) ast.Node {
+	other, ok := b.(*ast.ParenExpr)
+	if !ok {
+		return nil
+	}
+	expression := au.unifyExpr(a.X, other.X)
+	if expression == nil {
+		return nil
+	}
+	return &ast.ParenExpr{X: expression}
+}
+
+func (au *antiUnifier) unifyUnary(a *ast.UnaryExpr, b ast.Node) ast.Node {
+	other, ok := b.(*ast.UnaryExpr)
+	if !ok {
+		return nil
+	}
+	if a.Op != other.Op {
+		return au.freshHole(a, b)
+	}
+	expression := au.unifyExpr(a.X, other.X)
+	if expression == nil {
+		return nil
+	}
+	return &ast.UnaryExpr{Op: a.Op, X: expression}
+}
+
+func (au *antiUnifier) unifyIndex(a *ast.IndexExpr, b ast.Node) ast.Node {
+	other, ok := b.(*ast.IndexExpr)
+	if !ok {
+		return nil
+	}
+	base, index := au.unifyExpr(a.X, other.X), au.unifyExpr(a.Index, other.Index)
+	if base == nil || index == nil {
+		return nil
+	}
+	return &ast.IndexExpr{X: base, Index: index}
 }
 
 type forParts struct {

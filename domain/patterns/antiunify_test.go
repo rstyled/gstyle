@@ -60,3 +60,27 @@ func TestAntiUnifyDifferentVars(t *testing.T) {
 		t.Errorf("LHS should be a hole ident, got %T", assign.Lhs[0])
 	}
 }
+
+func TestAntiUnifyCommonExpressionStructure(t *testing.T) {
+	for _, source := range []string{"return pkg.Format(x)", "return (-values[i])", "return table[key].Value"} {
+		t.Run(source, func(t *testing.T) {
+			template, holes := AntiUnify(parseStmt(t, source), parseStmt(t, source))
+			if len(holes) != 0 {
+				t.Fatalf("common expression became opaque: %d", len(holes))
+			}
+			if _, ok := template.(*ast.ReturnStmt); !ok {
+				t.Fatalf("return shape lost: %T", template)
+			}
+		})
+	}
+}
+
+func TestAntiUnifyPreservesExpressionDifferences(t *testing.T) {
+	pairs := [][2]string{{"return a.Value", "return a.Other"}, {"return -x", "return +x"}, {"return values[0]", "return values[1]"}}
+	for _, pair := range pairs {
+		_, holes := AntiUnify(parseStmt(t, pair[0]), parseStmt(t, pair[1]))
+		if len(holes) != 1 {
+			t.Fatalf("difference lost between %s and %s: %d", pair[0], pair[1], len(holes))
+		}
+	}
+}

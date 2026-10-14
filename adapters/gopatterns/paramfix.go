@@ -42,19 +42,22 @@ func (p ParamFix) FixKind() string { return p.Kind }
 const maxParamHoles = 3
 
 type parameterizeConfig struct {
-	candidates []patterns.Candidate
-	signatures map[string]string
-	helperName string
+	typedInterfaces bool
+	candidates      []patterns.Candidate
+	signatures      map[string]string
+	helperName      string
 }
 
 // tryCtx carries the context for trying function pairs.
 type tryCtx struct {
-	helperName string
-	signatures map[string]string
-	fset       *token.FileSet
-	allow      map[[2]string]bool
-	used       map[string]bool
-	src        []byte
+	typedInterfaces bool
+	comments        []*ast.CommentGroup
+	helperName      string
+	signatures      map[string]string
+	fset            *token.FileSet
+	allow           map[[2]string]bool
+	used            map[string]bool
+	src             []byte
 }
 
 // tryPair attempts one pair, marking used on success.
@@ -82,6 +85,7 @@ type hole struct {
 
 // paramCtx carries the shared context for parameterizing a function pair.
 type paramCtx struct {
+	comments      []*ast.CommentGroup
 	signatures    map[string]string
 	fset          *token.FileSet
 	a, b          *ast.FuncDecl
@@ -192,7 +196,7 @@ func fixParameterizeWithTypes(fset *token.FileSet, f *ast.File, src []byte, conf
 		return src, nil, nil
 	}
 	allow := buildAllowlist(config.candidates)
-	tc := &tryCtx{fset: fset, allow: allow, used: make(map[string]bool), src: src, signatures: config.signatures, helperName: config.helperName}
+	tc := &tryCtx{typedInterfaces: config.typedInterfaces, comments: f.Comments, fset: fset, allow: allow, used: make(map[string]bool), src: src, signatures: config.signatures, helperName: config.helperName}
 	edits, fixes := collectEdits(tc, funcs)
 	if len(edits) == 0 {
 		return src, nil, nil
@@ -271,6 +275,10 @@ func safeToExtract(fset *token.FileSet, a, b *ast.FuncDecl) bool {
 	if !sameSignature(fset, a, b) {
 		return false
 	}
+	return safeExtractionBodies(a, b)
+}
+
+func safeExtractionBodies(a, b *ast.FuncDecl) bool {
 	if unsafeExtractionBody(a) || unsafeExtractionBody(b) {
 		return false
 	}
@@ -297,17 +305,14 @@ func allIdentHoles(holes []hole) bool {
 // paramEdit computes the text edit that extracts the common body of a and b.
 // It returns false when the extraction cannot be proven safe.
 func paramEdit(tc *tryCtx, a, b *ast.FuncDecl) (textEdit, ParamFix, bool) {
-	if !safeToExtract(tc.fset, a, b) {
+	if !safeParameterizationPair(tc, a, b) {
 		return textEdit{}, ParamFix{}, false
 	}
 	r, holes, ok := diffPair(a, b)
 	if !ok {
 		return textEdit{}, ParamFix{}, false
 	}
-	if !adjacent(tc.fset, a, b, tc.src) {
-		return textEdit{}, ParamFix{}, false
-	}
-	ctx := &paramCtx{fset: tc.fset, a: a, b: b, src: tc.src, r: r, holes: holes, signatures: tc.signatures, extractedName: tc.helperName}
+	ctx := &paramCtx{comments: tc.comments, fset: tc.fset, a: a, b: b, src: tc.src, r: r, holes: holes, signatures: tc.signatures, extractedName: tc.helperName}
 	return buildEdit(ctx)
 }
 
@@ -345,33 +350,6 @@ func buildEdit(ctx *paramCtx) (textEdit, ParamFix, bool) {
 	return textEdit{start: aStart, end: bEnd, replacement: replacement},
 		ParamFix{Lines: []int{lineA, lineB}, Kind: "parameterize", Extracted: ctx.extractedName},
 		true
-}
-
-// adjacent reports whether b immediately follows a (only whitespace/comments
-// between).
-func adjacent(fset *token.FileSet, a, b *ast.FuncDecl, src []byte) bool {
-	aEnd := fset.PositionFor(a.End(), false).Offset
-	bStart := fset.PositionFor(b.Pos(), false).Offset
-	between := bytes.TrimSpace(src[aEnd:bStart])
-	for len(between) > 0 {
-		if bytes.HasPrefix(between, []byte("//")) {
-			idx := bytes.IndexByte(between, '\n')
-			if idx < 0 {
-				return true
-			}
-			between = bytes.TrimSpace(between[idx+1:])
-		} else {
-			if !bytes.HasPrefix(between, []byte("/*")) {
-				return false
-			}
-			idx := bytes.Index(between, []byte("*/"))
-			if idx < 0 {
-				return false
-			}
-			between = bytes.TrimSpace(between[idx+2:])
-		}
-	}
-	return true
 }
 
 // sameSignature reports whether a and b have identical parameter and result
@@ -1066,29 +1044,33 @@ func writeOrigParams(out *bytes.Buffer, fset *token.FileSet, a *ast.FuncDecl, ha
 
 // buildReplacement generates the replacement source: the extracted helper
 // followed by the two thin wrappers.
-func buildReplacement(ctx *paramCtx) ([]byte, bool) {
+func buildPrimaryReplacement(ctx *paramCtx) ([]byte, bool) {
 	params, ok := holeParams(ctx)
 	if !ok {
 		return nil, false
 	}
 	ctx.params = params
-
 	var out bytes.Buffer
 	writeHelperSig(&out, ctx)
-
 	bodyText, ok := buildHelperBody(ctx)
 	if !ok {
 		return nil, false
 	}
 	out.Write(bodyText)
 	out.WriteString("}\n\n")
-
-	// --- Wrapper for a ---
 	writeWrapper(&out, ctx, ctx.a, true)
-	out.WriteString("\n")
-	// --- Wrapper for b ---
-	writeWrapper(&out, ctx, ctx.b, false)
+	return out.Bytes(), true
+}
 
+func buildReplacement(ctx *paramCtx) ([]byte, bool) {
+	primary, ok := buildPrimaryReplacement(ctx)
+	if !ok {
+		return nil, false
+	}
+	var out bytes.Buffer
+	out.Write(primary)
+	out.Write(ctx.src[ctx.fset.PositionFor(ctx.a.End(), false).Offset:declarationStart(ctx.fset, ctx.b)])
+	writeWrapper(&out, ctx, ctx.b, false)
 	return out.Bytes(), true
 }
 
@@ -1239,6 +1221,9 @@ func writeWrapper(out *bytes.Buffer, ctx *paramCtx, fn *ast.FuncDecl, isA bool) 
 	}
 	out.WriteString(" {\n")
 	// Body: return extracted(holeArgs..., origArgs...)
+	if !isA {
+		writeRetainedBodyComments(out, ctx, fn)
+	}
 	out.WriteString(wrapperCallPrefix(fn) + ctx.extractedName + "(")
 	var args []string
 	for _, h := range ctx.holes {
@@ -1317,4 +1302,21 @@ func antiUnifyHoles(a, b *ast.BlockStmt, r *renames) ([]hole, bool) {
 		holes = append(holes, hole{aExpr: aExpr, bExpr: bExpr})
 	}
 	return holes, true
+}
+
+func writeRetainedBodyComments(out *bytes.Buffer, ctx *paramCtx, fn *ast.FuncDecl) {
+	for _, comment := range ctx.comments {
+		if comment.Pos() > fn.Body.Pos() && comment.End() < fn.Body.End() {
+			start, end := ctx.fset.PositionFor(comment.Pos(), false).Offset, ctx.fset.PositionFor(comment.End(), false).Offset
+			out.Write(ctx.src[start:end])
+			out.WriteByte('\n')
+		}
+	}
+}
+
+func safeParameterizationPair(ctx *tryCtx, a, b *ast.FuncDecl) bool {
+	if ctx.typedInterfaces {
+		return safeExtractionBodies(a, b)
+	}
+	return safeToExtract(ctx.fset, a, b)
 }
