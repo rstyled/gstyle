@@ -5,6 +5,7 @@ import (
 	"go/token"
 	"go/types"
 	"path/filepath"
+	"sort"
 
 	"github.com/rstyled/gstyle/domain/patterns"
 	"github.com/rstyled/gstyle/domain/pdg"
@@ -49,14 +50,17 @@ func negativeIndexCandidates(pkg *packages.Package, fn *ast.FuncDecl, path strin
 	lower := collectLowerBounded(fn, info)
 	upper := collectUpperBounded(fn, info)
 	var out []patterns.Candidate
-	for id, pos := range upper {
+	seen := map[types.Object]bool{}
+	for _, id := range orderedUpperChecks(upper) {
+		pos := upper[id]
 		obj := info.ObjectOf(id)
-		if lower[obj] || !isIntVar(obj) {
+		if !needsLowerBound(obj, lower, seen) {
 			continue
 		}
 		if !indexUsed(fn, info, obj) {
 			continue
 		}
+		seen[obj] = true
 		out = append(out, buildNegativeIndexCandidate(pkg, fn, path, id.Name, pos))
 	}
 	return out
@@ -103,7 +107,7 @@ func collectUpperBounded(fn *ast.FuncDecl, info *types.Info) map[*ast.Ident]toke
 }
 
 func recordUpperBounds(stmt *ast.IfStmt, info *types.Info, bounded map[*ast.Ident]token.Pos) {
-	for _, bin := range flattenAnd(stmt.Cond) {
+	for _, bin := range flattenComparisons(stmt.Cond) {
 		if id := upperBoundIdent(bin, info); id != nil {
 			if _, dup := bounded[id]; !dup {
 				bounded[id] = stmt.Pos()
@@ -112,29 +116,17 @@ func recordUpperBounds(stmt *ast.IfStmt, info *types.Info, bounded map[*ast.Iden
 	}
 }
 
-// flattenAnd splits `a && b && ...` into its comparison operands.
-func flattenAnd(cond ast.Expr) []*ast.BinaryExpr {
-	bin, ok := cond.(*ast.BinaryExpr)
+// Returning branches may accept in-range values or reject out-of-range
+// values. Both forms carry an upper-bound check, including combined guards.
+func flattenComparisons(cond ast.Expr) []*ast.BinaryExpr {
+	bin, ok := unparen(cond).(*ast.BinaryExpr)
 	if !ok {
 		return nil
 	}
-	if bin.Op != token.LAND {
-		return []*ast.BinaryExpr{bin}
+	if bin.Op == token.LAND || bin.Op == token.LOR {
+		return append(flattenComparisons(bin.X), flattenComparisons(bin.Y)...)
 	}
-	var out []*ast.BinaryExpr
-	var walk func(e ast.Expr)
-	walk = func(e ast.Expr) {
-		if inner, ok := e.(*ast.BinaryExpr); ok && inner.Op == token.LAND {
-			walk(inner.X)
-			walk(inner.Y)
-			return
-		}
-		if inner, ok := e.(*ast.BinaryExpr); ok {
-			out = append(out, inner)
-		}
-	}
-	walk(cond)
-	return out
+	return []*ast.BinaryExpr{bin}
 }
 
 // lowerBoundIdent returns the identifier lower-bounded by bin:
@@ -166,31 +158,26 @@ func isZeroLit(e ast.Expr) bool {
 	return ok && lit.Value == "0"
 }
 
-// upperBoundIdent returns the identifier upper-bounded against len() in bin:
-// `i < len(s)` or `len(s) > i`, including `<=` forms.
+// The direction distinguishes acceptance from rejection, but both are
+// relevant to this advisory rule. Only the builtin len is accepted.
 func upperBoundIdent(bin *ast.BinaryExpr, info *types.Info) *ast.Ident {
 	switch bin.Op {
-	case token.LSS, token.LEQ:
-		return upperBoundBelow(bin, info)
-	case token.GTR, token.GEQ:
-		return upperBoundAbove(bin, info)
+	case token.LSS, token.LEQ, token.GTR, token.GEQ:
+		if id := indexComparedWithLength(bin.X, bin.Y, info); id != nil {
+			return id
+		}
+		return indexComparedWithLength(bin.Y, bin.X, info)
+	default:
+		return nil
 	}
-	return nil
 }
 
-func upperBoundBelow(bin *ast.BinaryExpr, info *types.Info) *ast.Ident {
-	if id, ok := bin.X.(*ast.Ident); ok && isLenCallExpr(bin.Y, info) {
-		return id
+func indexComparedWithLength(index, bound ast.Expr, info *types.Info) *ast.Ident {
+	id, ok := unparen(index).(*ast.Ident)
+	if !ok || !isLenCallExpr(unparen(bound), info) {
+		return nil
 	}
-	return nil
-}
-
-func upperBoundAbove(bin *ast.BinaryExpr, info *types.Info) *ast.Ident {
-	// Note: `len(s) > i` and `len(s) >= i` both bound i from above.
-	if id, ok := bin.Y.(*ast.Ident); ok && isLenCallExpr(bin.X, info) {
-		return id
-	}
-	return nil
+	return id
 }
 
 func isLenCallExpr(e ast.Expr, info *types.Info) bool {
@@ -198,7 +185,21 @@ func isLenCallExpr(e ast.Expr, info *types.Info) bool {
 	if !ok {
 		return false
 	}
-	return isLenCall(call, info)
+	if isLenCall(call, info) {
+		return true
+	}
+	if !integerBoundConversion(call, info) {
+		return false
+	}
+	return isLenCallExpr(call.Args[0], info)
+}
+
+func integerBoundConversion(call *ast.CallExpr, info *types.Info) bool {
+	if len(call.Args) != 1 || !info.Types[call.Fun].IsType() {
+		return false
+	}
+	basic, ok := info.TypeOf(call).Underlying().(*types.Basic)
+	return ok && basic.Info()&types.IsInteger != 0
 }
 
 // indexUsed reports whether obj is used in an index expression in the body.
@@ -253,4 +254,25 @@ func buildNegativeIndexCandidate(pkg *packages.Package, fn *ast.FuncDecl, path, 
 			ID: funcName, Name: funcName,
 		}},
 	}
+}
+
+func isSignedIntVar(obj types.Object) bool {
+	if !isIntVar(obj) {
+		return false
+	}
+	basic := obj.Type().Underlying().(*types.Basic)
+	return basic.Info()&types.IsUnsigned == 0
+}
+
+func needsLowerBound(obj types.Object, lower, seen map[types.Object]bool) bool {
+	return !lower[obj] && !seen[obj] && isSignedIntVar(obj)
+}
+
+func orderedUpperChecks(checks map[*ast.Ident]token.Pos) []*ast.Ident {
+	ids := make([]*ast.Ident, 0, len(checks))
+	for id := range checks {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return checks[ids[i]] < checks[ids[j]] })
+	return ids
 }

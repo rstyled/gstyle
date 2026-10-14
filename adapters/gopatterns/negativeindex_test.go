@@ -39,6 +39,13 @@ func TestNegativeIndex(t *testing.T) {
 		name, body string
 		find       bool
 	}{
+		{"rejection guard", `func At(s []int, i int) int { if i >= len(s) { return -1 }; return s[i] }`, true},
+		{"reversed rejection guard", `func At(s []int, i int) int { if len(s) <= i { return -1 }; return s[i] }`, true},
+		{"parenthesized rejection", `func At(s []int, i int) int { if (i >= len(s)) { return -1 }; return s[i] }`, true},
+		{"combined rejection", `func At(s []int, i int) int { if i < 0 || i >= len(s) { return -1 }; return s[i] }`, false},
+		{"unsigned array index cannot be negative", `func At(s [2]int, i uint) int { if i < uint(len(s)) { return s[i] }; return -1 }`, false},
+		{"named unsigned index cannot be negative", `type Index uint; func At(s [2]int, i Index) int { if i < Index(len(s)) { return s[i] }; return -1 }`, false},
+		{"shadowed length is not builtin", `func At(s []int, i int) int { len := func([]int) int { return 1 }; if i < len(s) { return s[i] }; return -1 }`, false},
 		{"missing lower bound", `func At(s []int, i int) int { if i < len(s) { return s[i] }; return -1 }`, true},
 		{"reversed comparison", `func At(s []int, i int) int { if len(s) > i { return s[i] }; return -1 }`, true},
 		{"combined guard present", `func At(s []int, i int) int { if i >= 0 && i < len(s) { return s[i] }; return -1 }`, false},
@@ -72,5 +79,20 @@ func TestNegativeIndex(t *testing.T) {
 				t.Error("detection-only finding must not carry a fix spec")
 			}
 		})
+	}
+}
+
+func TestNegativeIndexOneFindingPerBinding(t *testing.T) {
+	src := `package example
+ func At(s []int, i int) int {
+  if i >= len(s) { return -1 }
+  if i < len(s) { return s[i] }
+  return -1
+ }`
+	for range 20 {
+		got := negativeIndexTestCandidates(t, src)
+		if len(got) != 1 {
+			t.Fatalf("got %d findings, want one per binding", len(got))
+		}
 	}
 }
