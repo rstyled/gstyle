@@ -37,11 +37,14 @@ loop proof relates every map lookup to the model's seen set, proves index bounds
 and counter safety, and preserves ownership and contents of the input slice.
 Selected records retain all fields, including the original source-node reference.
 The semantic execution theorem establishes a subsequence of input records, unique
-binding IDs, risky-only output and coverage of every risky binding. Zero and the
-largest uint32 ID remain ordinary raw keys, as in the former matcher; this does
+binding IDs, risky-only output and coverage of every risky binding. A composed
+execution theorem proves that a triggered access whose supplied interval contains
+a negative integer has a risky output record for the same binding. The retained
+record can be an earlier risky occurrence; this does not claim every access is
+reported separately. Zero and the largest uint32 ID remain ordinary raw keys, as in the former matcher; this does
 not validate those IDs against the PDG tables.
 
-Fifteen interval/pattern theorems are audited: the interval model and execution properties,
+Seventeen interval/pattern theorems are audited: the interval model and execution properties,
 selection order/key properties, and the actual Go selector contracts. Twenty-four
 Go mutations test bound narrowing, forged knowledge, normalization, trigger and
 zero handling, missing deduplication, key confusion, forgotten map writes, safe

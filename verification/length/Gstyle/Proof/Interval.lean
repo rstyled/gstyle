@@ -120,6 +120,21 @@ theorem selected_keys (seen : List w32) (records : List Access) (key : w32) :
     all_goals simp_all [selectFrom, ih, hkSymm]
 
 
+
+theorem selected_negative (records : List Access) (site : Access) (x : Int)
+    (hs : site ∈ records) (hi : site.Index' = true) (hu : site.UpperChecked' = true)
+    (hx : contains site.Bounds' x) (hn : x < 0) :
+    ∃ found ∈ selectFrom [] records, found.Symbol' = site.Symbol' ∧ risky found = true := by
+  have hr : risky site = true := by
+    unfold risky
+    rw [hi, hu]
+    exact negative_detected site.Bounds' x hx hn
+  have hk : site.Symbol' ∈ (selectFrom [] records).map Access.Symbol' :=
+    (selected_keys [] records site.Symbol').mpr ⟨by simp, site, hs, hr, rfl⟩
+  obtain ⟨found, hf, he⟩ := List.mem_map.mp hk
+  exact ⟨found, hf, he, selected_risky [] records found hf⟩
+
+
 def advisory (path functionName name : GoString) (line : w32) : Advisory :=
   { Path' := path, Line' := W64 (uint.Z line), EndLine' := W64 (uint.Z line),
     ID' := functionName, Name' := functionName, Kind' := go!"negative_index", ScoreMilli' := W32 800,
@@ -355,6 +370,26 @@ theorem wp_SelectProperties (accesses : GoSlice) (records : List Access) :
     exact selected_risky [] records site hs
   · intro key
     simpa using selected_keys [] records key
+
+
+
+theorem wp_SelectNegative (accesses : GoSlice) (records : List Access)
+    (site : Access) (x : Int) (hs : site ∈ records)
+    (hi : site.Index' = true) (hu : site.UpperChecked' = true)
+    (hx : contains site.Bounds' x) (hn : x < 0) :
+    {{ isPkgInit (PROP := IProp GF) pkg ∗ accesses ↦* records }}
+      (App (Val (@! Select)) (Val #accesses))
+    {{ (out : GoSlice), RET #out;
+      accesses ↦* records ∗ out ↦* selectFrom [] records ∗
+      ⌜∃ found ∈ selectFrom [] records,
+        found.Symbol' = site.Symbol' ∧ risky found = true⌝ }} := by
+  wp_start_folded as Haccesses
+  wp_apply wp_Select accesses records $$ [Haccesses] with %out ⟨Haccesses, Hout⟩
+  · iframe
+  wp_end
+  iframe
+  ipureintro
+  exact selected_negative records site x hs hi hu hx hn
 
 
 theorem wp_Describe (path functionName name : GoString) (line : w32) :
