@@ -6,6 +6,9 @@ var inverse = map[string]string{"<": ">=", "<=": ">", ">": "<=", ">=": "<", "=="
 var reverse = map[string]string{"<": ">", "<=": ">=", ">": "<", ">=": "<=", "==": "==", "!=": "!="}
 
 func (v *graphView) assume(ref pdg.Ref, truth bool, state State) State {
+	if value := v.fact(ref, "boolean"); value != "" && (value == "true") != truth {
+		return nil
+	}
 	operator := v.graph.Tables.Text(v.attrs(ref).Operator.Value)
 	switch operator {
 	case "parentheses":

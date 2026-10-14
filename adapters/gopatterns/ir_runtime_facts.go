@@ -61,6 +61,9 @@ func (b *irBuilder) runtimeConstant(expr ast.Expr, attrs *pdg.Attributes) {
 		b.runtimeExtension(attrs, "nil", "true")
 		return
 	}
+	if value.Value != nil && value.Value.Kind() == constant.Bool {
+		b.runtimeExtension(attrs, "boolean", value.Value.ExactString())
+	}
 	if value.Value != nil && value.Value.Kind() == constant.Int {
 		b.runtimeExtension(attrs, "integer", value.Value.ExactString())
 	}
@@ -71,9 +74,7 @@ func (b *irBuilder) runtimeAccessFacts(expr ast.Expr, attrs *pdg.Attributes) {
 	case *ast.StarExpr:
 		b.runtimeExtension(attrs, "dereference", "true")
 	case *ast.SelectorExpr:
-		if runtimeAccess(expr, b.info) {
-			b.runtimeExtension(attrs, "dereference", "true")
-		}
+		b.runtimeFieldFacts(expr, attrs)
 	case *ast.IndexExpr:
 		b.runtimeIndexFacts(expr, attrs)
 	case *ast.CompositeLit:
@@ -134,6 +135,33 @@ func (b *irBuilder) cancelRuntimeDereference(expr ast.Expr) {
 	attrs.Extensions = slices.DeleteFunc(attrs.Extensions, func(value pdg.Extension) bool { return b.pool.Tables.Text(value.Name) == "gstyle.runtime:dereference" })
 }
 
+func (b *irBuilder) runtimeRangeFacts(node ast.Node) {
+	stmt, ok := node.(*ast.RangeStmt)
+	if !ok || !nonnegativeRangeKey(b.info.TypeOf(stmt.X)) {
+		return
+	}
+	key, ok := stmt.Key.(*ast.Ident)
+	if !ok {
+		return
+	}
+	ref := b.symbols[b.info.ObjectOf(key)]
+	if ref == 0 {
+		return
+	}
+	attrs := &b.attributes[b.graph.Nodes[b.nodes[stmt]-1].Attributes-1]
+	b.runtimeExtension(attrs, "range-index", strconv.Itoa(int(ref)))
+}
+
+func (b *irBuilder) runtimeFieldFacts(expr *ast.SelectorExpr, attrs *pdg.Attributes) {
+	if !runtimeAccess(expr, b.info) {
+		return
+	}
+	b.runtimeExtension(attrs, "dereference", "true")
+	if embeddedPointerAccess(b.info.Selections[expr]) {
+		b.runtimeExtension(attrs, "embedded-dereference", "true")
+	}
+}
+
 // Compiler facts annotate the canonical PDG once. They describe values and
 // accesses, not findings or safety decisions.
 func runtimeRelevant(fn *ast.FuncDecl, info *types.Info) bool {
@@ -153,8 +181,7 @@ func runtimeAccess(node ast.Node, info *types.Info) bool {
 	case *ast.StarExpr:
 		return !info.Types[node].IsType()
 	case *ast.SelectorExpr:
-		selection := info.Selections[node]
-		return selection != nil && selection.Kind() == types.FieldVal && pointerType(info.TypeOf(node.X))
+		return runtimePointerField(node, info)
 	case *ast.IndexExpr:
 		return collectionType(info.TypeOf(node.X))
 	default:
@@ -174,7 +201,9 @@ func collectionType(typ types.Type) bool {
 	if typ == nil {
 		return false
 	}
-	switch typ.Underlying().(type) {
+	switch typ := typ.Underlying().(type) {
+	case *types.Basic:
+		return typ.Info()&types.IsString != 0
 	case *types.Array, *types.Slice:
 		return true
 	default:
@@ -235,27 +264,42 @@ func runtimeMissingNode(ref pdg.Ref, expr ast.Expr, info *types.Info) bool {
 	return ref == 0 && runtimeFactExpression(expr, info)
 }
 
-func (b *irBuilder) runtimeRangeFacts(node ast.Node) {
-	stmt, ok := node.(*ast.RangeStmt)
-	if !ok || !nonnegativeRangeKey(b.info.TypeOf(stmt.X)) {
-		return
-	}
-	key, ok := stmt.Key.(*ast.Ident)
-	if !ok {
-		return
-	}
-	ref := b.symbols[b.info.ObjectOf(key)]
-	if ref == 0 {
-		return
-	}
-	attrs := &b.attributes[b.graph.Nodes[b.nodes[stmt]-1].Attributes-1]
-	b.runtimeExtension(attrs, "range-index", strconv.Itoa(int(ref)))
-}
-
 func nonnegativeRangeKey(typ types.Type) bool {
 	if collectionType(typ) {
 		return true
 	}
 	basic, ok := typ.Underlying().(*types.Basic)
 	return ok && basic.Info()&(types.IsInteger|types.IsString) != 0
+}
+
+// A promoted field can dereference an embedded pointer even when its receiver
+// is a value. The receiver's non-nil fact does not prove that field non-nil.
+func embeddedPointerAccess(selection *types.Selection) bool {
+	if selection == nil || selection.Kind() != types.FieldVal {
+		return false
+	}
+	typ := selection.Recv()
+	path := selection.Index()
+	for _, index := range path[:len(path)-1] {
+		typ = runtimeStructType(typ).Field(index).Type()
+		if pointerType(typ) {
+			return true
+		}
+	}
+	return false
+}
+
+func runtimeStructType(typ types.Type) *types.Struct {
+	if pointer, ok := typ.Underlying().(*types.Pointer); ok {
+		typ = pointer.Elem()
+	}
+	return typ.Underlying().(*types.Struct)
+}
+
+func runtimePointerField(expr *ast.SelectorExpr, info *types.Info) bool {
+	selection := info.Selections[expr]
+	if selection == nil || selection.Kind() != types.FieldVal {
+		return false
+	}
+	return pointerType(info.TypeOf(expr.X)) || embeddedPointerAccess(selection)
 }

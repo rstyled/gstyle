@@ -98,6 +98,9 @@ func (a *analysis) access(ref pdg.Ref, state State, report *Report) {
 		site.Literal = a.view.fact(ref, "literal-index") == "true"
 		site.Constant = a.view.fact(operand, "integer") != ""
 	}
+	if a.view.fact(ref, "embedded-dereference") == "true" {
+		site.Symbol, site.Value = 0, Value{}
+	}
 	site.Guards = pointerGuardContext(site, state)
 	report.Accesses = append(report.Accesses, site)
 }
