@@ -155,7 +155,7 @@ func TestSelectionTagsAndIncompletePackages(t *testing.T) {
 
 func TestCodeLinesIgnoreCommentsAndPreserveStrings(t *testing.T) {
 	source := "func f() {\n// comment\n/* block\ncomment */\n\ntext := `// value\n/* value */`\n_ = text // comment\n}\n"
-	if got := codeLines(source); got != 5 {
+	if got, err := codeLines(source); err != nil || got != 5 {
 		t.Fatalf("code lines = %d, want 5", got)
 	}
 }

@@ -1,0 +1,10 @@
+name = "gstyleLength"
+defaultTargets = ["Gstyle"]
+
+[[require]]
+name = "perennial"
+git = "https://github.com/mit-pdos/perennial"
+rev = "b09644c2004b11847c8d24e57d14e34bb02e3d06"
+
+[[lean_lib]]
+name = "Gstyle"

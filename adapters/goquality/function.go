@@ -3,7 +3,6 @@ package goquality
 import (
 	"fmt"
 	"go/ast"
-	"go/scanner"
 	"go/token"
 	"go/types"
 	"strconv"
@@ -160,7 +159,7 @@ func (x *extractor) objectID(object types.Object) string {
 	return strconv.Itoa(pos.Line) + ":" + strconv.Itoa(pos.Column)
 }
 
-func extractFunction(pkg *packages.Package, fn *ast.FuncDecl, path string, source []byte) quality.Function {
+func extractFunction(pkg *packages.Package, fn *ast.FuncDecl, path string, source []byte) (quality.Function, error) {
 	start, end := physicalPosition(pkg.Fset, fn.Pos()), physicalPosition(pkg.Fset, fn.End())
 	name := fn.Name.Name
 	if object, ok := pkg.TypesInfo.Defs[fn.Name].(*types.Func); ok {
@@ -172,7 +171,11 @@ func extractFunction(pkg *packages.Package, fn *ast.FuncDecl, path string, sourc
 		Source: string(source[start.Offset:end.Offset]), PrecedingLine: precedingSuppression(fn.Doc),
 		Mutations: []quality.Mutation{}, Calls: []quality.Call{}, Effects: []quality.Effect{},
 	}}
-	x.fact.CodeLines = codeLines(x.fact.Source)
+	lines, err := codeLines(x.fact.Source)
+	if err != nil {
+		return quality.Function{}, fmt.Errorf("count code lines for %s: %w", name, err)
+	}
+	x.fact.CodeLines = lines
 	x.indexParameters(fn.Type.Params)
 	x.noteReceiver(fn.Recv)
 	x.addParameters(fn.Type.Params)
@@ -180,7 +183,7 @@ func extractFunction(pkg *packages.Package, fn *ast.FuncDecl, path string, sourc
 	x.collectBindings(fn.Body)
 	ast.Inspect(fn.Body, x.visit)
 	x.fact.DDD = dddViolations(pkg, fn, path)
-	return x.fact
+	return x.fact, nil
 }
 
 // dddViolations runs the DDD detectors (Evans) for the quality gate:
@@ -318,34 +321,4 @@ func precedingSuppression(comments *ast.CommentGroup) string {
 		}
 	}
 	return ""
-}
-
-func codeLines(source string) int {
-	fset := token.NewFileSet()
-	file := fset.AddFile("function.go", -1, len(source))
-	var lexer scanner.Scanner
-	lexer.Init(file, []byte(source), nil, 0)
-	lines := map[int]bool{}
-	for {
-		pos, kind, literal := lexer.Scan()
-		if kind == token.EOF {
-			break
-		}
-		if kind == token.SEMICOLON && literal == "\n" {
-			continue
-		}
-		line := file.Position(pos).Line
-		lines[line] = true
-		markLiteralLines(lines, line, kind, literal)
-	}
-	return len(lines)
-}
-
-func markLiteralLines(lines map[int]bool, line int, kind token.Token, literal string) {
-	if kind != token.STRING {
-		return
-	}
-	for offset := 1; offset <= strings.Count(literal, "\n"); offset++ {
-		lines[line+offset] = true
-	}
 }

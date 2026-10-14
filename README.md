@@ -223,3 +223,14 @@ an incorrect finding. The pinned container does not supply the `go/ast` and `go/
 headers needed to verify that adapter directly. The Go toolchain and Gobra/Viper/Z3 are
 also trusted components. Typed integration and edge-case tests still cover the
 unverified boundary. VeGo was investigated, but no runnable release was found.
+
+### Lean verification of the function-length core
+
+Run `make verify-length` with Go, Python 3 and elan on `PATH`. The pinned
+Goose/Perennial stack translates the production token-span counter into Lean 4.
+Lean proofs cover exact added-line counts, input rejection, integer bounds and
+the strict threshold. The command audits theorem axioms, checks that generated
+code matches current Go source, and rejects four deliberate Go mutations.
+
+The scanner and analyzer integration remain outside the formal proof. See the
+[proof scope and instructions](verification/length/README.md).
