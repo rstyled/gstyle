@@ -82,3 +82,19 @@ jobs:
 
       - name: Quality gate
         run: make quality-gate
+
+  verify-output:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Verify unchecked-output decision and reject mutations
+        run: make verify-output
+
+      - name: Preserve proof logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unchecked-output-proof
+          path: dist/verification/unchecked-output/

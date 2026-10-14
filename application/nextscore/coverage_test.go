@@ -1,7 +1,6 @@
 package nextscore
 
 import (
-	"bytes"
 	"strings"
 	"testing"
 
@@ -9,7 +8,7 @@ import (
 )
 
 func TestIncompleteCoverageAndAdvisoryFixInstructions(t *testing.T) {
-	var output bytes.Buffer
+	var output strings.Builder
 	writeAnalysisCoverage(&output, []patterns.AnalysisCoverage{{Kind: patterns.TaintFlowKind, Partial: 1}})
 	writeFixInstructions(&output, patterns.Candidate{Kind: patterns.TaintFlowKind})
 	text := output.String()
@@ -22,7 +21,7 @@ func TestIncompleteCoverageAndAdvisoryFixInstructions(t *testing.T) {
 }
 
 func TestFixInstructionsUseVerifiedSpecFile(t *testing.T) {
-	var output bytes.Buffer
+	var output strings.Builder
 	candidate := patterns.Candidate{Kind: patterns.GuardClause, FixSpec: &patterns.FixSpec{Kind: patterns.GuardClause, File: "selected.go"}}
 	writeFixInstructions(&output, candidate)
 	if !strings.Contains(output.String(), "guard_clause selected.go") {

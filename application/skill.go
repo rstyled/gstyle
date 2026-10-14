@@ -147,6 +147,8 @@ Facts export uses schema_version 2 with helper summaries; version 1 remains read
 
 Suppressions use ` + "`// gstyle-allow(rule_a, rule_b): reason`" + ` above a function, with intervening doc comments allowed. Reasons are required; unknown rules fail validation. Prefer documenting a deliberate exception over hiding evidence.
 
+The advisory unchecked_output pattern flags standalone fmt.Fprint/Fprintf/Fprintln calls and assignments or declarations that discard their error with _. Typed stdlib identity is required; known *bytes.Buffer and *strings.Builder destinations are excluded. Best-effort diagnostics need review. This rule has no auto-fix and does not track indirect calls, deferred writes, or later assigned-error uses.
+
 Bug-pattern warnings are advisory. ` + "`nilerr`" + ` requires explicit nil in every error result of the error branch; propagating an error in another result is valid. ` + "`typednil`" + ` proves non-nil interface comparisons from compiler value kinds and supported PDG binding/value/return dependencies. A concrete value has a dynamic type even when its pointer, map, or slice is nil. The bounded acyclic analysis follows local overwrites, branch joins, named returns, and direct same-analysis function summaries. Mixed nil paths and unknown interface inputs remain unknown. Loops, address escapes, closures, deferred writes, concurrency, and multiple results/assignments are excluded; absence of a warning does not prove nil safety. Interface suggestions describe normalized signature shapes, not Go declarations; preserve the concrete parameter and result types.
 
 Taint and slicing use canonical PDG operations. Inspect analysis_coverage even

@@ -101,6 +101,13 @@ gstyle fix --kind declaration_order . # preview one kind
 Pattern analysis uses program dependence graphs to find repeated regions and
 track values and dependencies. It also reports opportunities such as guard
 clauses, parameter groups, declaration ordering, and unchecked type assertions.
+The advisory `unchecked_output` pattern flags discarded errors from typed
+`fmt.Fprint`, `fmt.Fprintf`, and `fmt.Fprintln` calls. It covers standalone
+calls, assignments, and declarations that discard the error with `_`. Known
+`*bytes.Buffer` and `*strings.Builder` destinations are excluded. Best-effort output needs
+review; this pattern has no automatic fix. It does not track indirect function
+calls, deferred writes, or later uses of assigned errors.
+
 Coverage can be partial; no finding does not establish that a dependency or bug
 is absent.
 
@@ -198,3 +205,21 @@ make quality-gate
 
 The command lives in `cmd/gstyle`. Analysis and command implementations live in
 `domain`, `adapters`, and `application`.
+
+### Partial formal verification of unchecked output
+
+Run `make verify-output` with Python 3 and Docker. The script pulls an official
+Gobra container pinned by digest, then runs it without network access against
+`adapters/gopatterns/outputdecision.go`, the decision function used in production.
+Its contract specifies the exact result for all input values and requires
+termination. Overflow checking is enabled. Five deliberate logic mutations must
+fail their postcondition; a timeout, parsing error, or missing dependency does
+not count as a successful negative test. CI preserves the logs and source hash.
+
+This is a **partial proof**, not a formally verified detector. The Go AST/type
+adapter, source-to-fact correspondence, and candidate construction remain outside
+the proof. In particular, a proof over incorrect input facts can still produce
+an incorrect finding. The pinned container does not supply the `go/ast` and `go/types` verification
+headers needed to verify that adapter directly. The Go toolchain and Gobra/Viper/Z3 are
+also trusted components. Typed integration and edge-case tests still cover the
+unverified boundary. VeGo was investigated, but no runnable release was found.

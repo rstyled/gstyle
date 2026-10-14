@@ -48,6 +48,8 @@ type ErrorCheckSite struct {
 	Line    int
 	Callee  string
 	Checked bool // True if the error was checked (if err != nil, etc.)
+	// DiscardedOutput marks typed fmt.Fprint* calls with a discarded error.
+	DiscardedOutput bool `json:",omitempty"`
 }
 
 // MineErrorBeliefs tallies error-checking behavior per callee.
