@@ -181,8 +181,16 @@ def interval_profile():
     return Profile(
         ROOT / "dist/verification/negative-index", "github_com/rstyled/gstyle/domain/runtimeguard/interval.lean",
         "./domain/runtimeguard/interval", source, (source,),
-        {prefix + name for name in ("join_sound", "negative_detected", "wp_Join", "wp_NegativeIndex", "wp_JoinSound", "wp_NegativeDetected", "selected_avoids", "selected_risky", "selected_unique", "selected_sublist", "selected_keys", "wp_Select", "wp_SelectProperties", "advisory_line", "wp_Describe", "selected_negative", "wp_SelectNegative")},
+        {prefix + name for name in ("join_sound", "negative_detected", "wp_Join", "wp_NegativeIndex", "wp_JoinSound", "wp_NegativeDetected", "selected_avoids", "selected_risky", "selected_unique", "selected_sublist", "selected_keys", "wp_Select", "wp_SelectProperties", "advisory_line", "wp_Describe", "selected_negative", "wp_SelectNegative", "lower_intersection", "upper_intersection", "wp_Lower", "wp_Upper", "wp_LowerIntersection", "wp_UpperIntersection")},
         {
+            "lower-forgets-knowledge": ("r.HasLower = true", "r.HasLower = false"),
+            "lower-trusts-unknown": ("!r.HasLower || r.Lower < bound", "r.Lower < bound"),
+            "lower-wrong-direction": ("r.Lower < bound", "r.Lower > bound"),
+            "lower-excludes-boundary": ("r.Lower = bound", "r.Lower = bound+1"),
+            "upper-forgets-knowledge": ("r.HasUpper = true", "r.HasUpper = false"),
+            "upper-trusts-unknown": ("!r.HasUpper || r.Upper > bound", "r.Upper > bound"),
+            "upper-wrong-direction": ("r.Upper > bound", "r.Upper < bound"),
+            "upper-excludes-boundary": ("r.Upper = bound", "r.Upper = bound-1"),
             "wrong-advisory-path": ("Path: path", "Path: function"),
             "wrong-advisory-owner": ("ID: function", "ID: name"),
             "wrong-advisory-line": ("Path: path, Line: int(line),", "Path: path, Line: int(line)+1,"),

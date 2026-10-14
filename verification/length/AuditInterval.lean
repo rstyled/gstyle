@@ -18,3 +18,10 @@ import Gstyle.Proof.Interval
 
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.selected_negative
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.wp_SelectNegative
+
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.lower_intersection
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.upper_intersection
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.wp_Lower
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.wp_Upper
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.wp_LowerIntersection
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.wp_UpperIntersection

@@ -48,6 +48,12 @@ noncomputable def Select [FfiSyntax] [GoGlobalContext] : GoString :=
 noncomputable def Describe [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard/interval.Describe"
 
+noncomputable def Lower [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard/interval.Lower"
+
+noncomputable def Upper [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard/interval.Upper"
+
 /-- go: interval.go:8:6 -/
 noncomputable def Join.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "a"
@@ -180,6 +186,48 @@ noncomputable def Describe.impl [FfiSyntax] [GoGlobalContext] : val :=
   (Let "$v8" (Val #(go!"verify negative indices are rejected or impossible before the index is used"))
   (Let "$v9" (Val #(go!"intent unknown; no automatic fix — verify against the contract"))
   (App (Val (GoInstruction (CompositeLiteral Advisory.ty))) (LiteralValue [(KeyedElement (some (KeyField go!"Path")) (ElementExpression go.string (Var "$v0"))), (KeyedElement (some (KeyField go!"Line")) (ElementExpression go.int (Var "$v1"))), (KeyedElement (some (KeyField go!"EndLine")) (ElementExpression go.int (Var "$v2"))), (KeyedElement (some (KeyField go!"ID")) (ElementExpression go.string (Var "$v3"))), (KeyedElement (some (KeyField go!"Name")) (ElementExpression go.string (Var "$v4"))), (KeyedElement (some (KeyField go!"Kind")) (ElementExpression go.string (Var "$v5"))), (KeyedElement (some (KeyField go!"ScoreMilli")) (ElementExpression go.uint32 (Var "$v6"))), (KeyedElement (some (KeyField go!"Observation")) (ElementExpression go.string (Var "$v7"))), (KeyedElement (some (KeyField go!"Inference")) (ElementExpression go.string (Var "$v8"))), (KeyedElement (some (KeyField go!"CounterEvidence")) (ElementExpression go.string (Var "$v9")))]))))))))))))))))))))))
+
+/-- go: interval.go:69:6 -/
+noncomputable def Lower.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "r"
+  (Lam "bound"
+  (App (Val exceptionDo)
+  (Let "bound" (App (Val (GoInstruction (GoAlloc go.int64))) (Var "bound"))
+  (Let "r" (App (Val (GoInstruction (GoAlloc Range.ty))) (Var "r"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (Val #true)
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoLoad Range.ty))) (Var "r")))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.bool))) (Pair (App (Val (GoInstruction (StructFieldRef Range.ty go!"HasLower"))) (Var "r")) (Var "$r0"))))))))
+  (If (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Range.ty go!"HasLower"))) (Var "r")))) (Val #true) (App (Val (GoInstruction (GoOp GoLt go.int64))) (Pair (App (Val (GoInstruction (GoLoad go.int64))) (App (Val (GoInstruction (StructFieldRef Range.ty go!"Lower"))) (Var "r"))) (App (Val (GoInstruction (GoLoad go.int64))) (Var "bound")))))
+  (Let "$r0" (App (Val (GoInstruction (GoLoad go.int64))) (Var "bound"))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.int64))) (Pair (App (Val (GoInstruction (StructFieldRef Range.ty go!"Lower"))) (Var "r")) (Var "$r0")))))
+  (App (Val doExecute)
+  (Val #())))))))))
+
+/-- go: interval.go:77:6 -/
+noncomputable def Upper.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "r"
+  (Lam "bound"
+  (App (Val exceptionDo)
+  (Let "bound" (App (Val (GoInstruction (GoAlloc go.int64))) (Var "bound"))
+  (Let "r" (App (Val (GoInstruction (GoAlloc Range.ty))) (Var "r"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (Val #true)
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoLoad Range.ty))) (Var "r")))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.bool))) (Pair (App (Val (GoInstruction (StructFieldRef Range.ty go!"HasUpper"))) (Var "r")) (Var "$r0"))))))))
+  (If (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Range.ty go!"HasUpper"))) (Var "r")))) (Val #true) (App (Val (GoInstruction (GoOp GoGt go.int64))) (Pair (App (Val (GoInstruction (GoLoad go.int64))) (App (Val (GoInstruction (StructFieldRef Range.ty go!"Upper"))) (Var "r"))) (App (Val (GoInstruction (GoLoad go.int64))) (Var "bound")))))
+  (Let "$r0" (App (Val (GoInstruction (GoLoad go.int64))) (Var "bound"))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.int64))) (Pair (App (Val (GoInstruction (StructFieldRef Range.ty go!"Upper"))) (Var "r")) (Var "$r0")))))
+  (App (Val doExecute)
+  (Val #())))))))))
 
 instance info' : PkgInfo pkg_id.github_com.rstyled.gstyle.domain.runtimeguard.interval where
   pkgImportedPkgs := []
@@ -394,6 +442,8 @@ class Assumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFun
   NegativeIndex_unfold : FuncUnfold NegativeIndex [] NegativeIndex.impl
   Select_unfold : FuncUnfold Select [] Select.impl
   Describe_unfold : FuncUnfold Describe [] Describe.impl
+  Lower_unfold : FuncUnfold Lower [] Lower.impl
+  Upper_unfold : FuncUnfold Upper [] Upper.impl
 
 attribute [instance] Assumptions.Range_instance
   Assumptions.Access_instance
@@ -402,6 +452,8 @@ attribute [instance] Assumptions.Range_instance
   Assumptions.NegativeIndex_unfold
   Assumptions.Select_unfold
   Assumptions.Describe_unfold
+  Assumptions.Lower_unfold
+  Assumptions.Upper_unfold
 
 end github_com.rstyled.gstyle.domain.runtimeguard.interval
 

@@ -48,3 +48,20 @@ func TestNegativeMemberRequiresWarning(t *testing.T) {
 		}
 	}
 }
+
+func TestConstraintsIntersectSets(t *testing.T) {
+	points := []int64{math.MinInt64, -2, -1, 0, 1, 2, math.MaxInt64}
+	for _, r := range samples() {
+		for _, bound := range points {
+			lower, upper := Lower(r, bound), Upper(r, bound)
+			for _, x := range points {
+				if members(lower, x) != (members(r, x) && x >= bound) {
+					t.Fatalf("lower intersection: r=%+v bound=%d x=%d result=%+v", r, bound, x, lower)
+				}
+				if members(upper, x) != (members(r, x) && x <= bound) {
+					t.Fatalf("upper intersection: r=%+v bound=%d x=%d result=%+v", r, bound, x, upper)
+				}
+			}
+		}
+	}
+}

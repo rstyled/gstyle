@@ -44,8 +44,8 @@ record can be an earlier risky occurrence; this does not claim every access is
 reported separately. Zero and the largest uint32 ID remain ordinary raw keys, as in the former matcher; this does
 not validate those IDs against the PDG tables.
 
-Seventeen interval/pattern theorems are audited: the interval model and execution properties,
-selection order/key properties, and the actual Go selector contracts. Twenty-four
+Twenty-three interval/pattern theorems are audited: the interval model and execution properties,
+selection order/key properties, and the actual Go selector contracts. Thirty-two
 Go mutations test bound narrowing, forged knowledge, normalization, trigger and
 zero handling, missing deduplication, key confusion, forgotten map writes, safe
 accesses hiding later risks, skipped/duplicated access records and forged source
@@ -75,6 +75,17 @@ payloads. Tests check both input preservation and absence of output aliasing. No
 include zero, out-of-range and uint32 maximum references, nil tables, and an
 invalid first occurrence followed by a valid occurrence of the same binding.
 Projection tests compare the final Candidate with the proved payload.
+
+The production non-strict lower and upper transfers now use `interval.Lower`
+and `interval.Upper`. Their execution theorems establish the exact resulting
+record, including unchanged opposite bounds. Semantic execution theorems prove
+that each result represents exactly the old set intersected with `x >= bound`
+or `x <= bound`. There are no consistency or known-bound preconditions; unknown
+payloads, contradictory ranges and signed extremes are included. Eight added
+mutants test direction, missing knowledge, unknown payloads and boundary loss.
+Go set-membership tests cover both intersections, while adapter tests check that
+all unrelated Value metadata survives delegation. The Value projection and
+copy-back are still outside Lean, as are strict comparisons and full transfer.
 
 ## Remaining work and trust
 

@@ -1,6 +1,9 @@
 package runtimeguard
 
-import "github.com/rstyled/gstyle/domain/pdg"
+import (
+	"github.com/rstyled/gstyle/domain/pdg"
+	"github.com/rstyled/gstyle/domain/runtimeguard/interval"
+)
 
 var inverse = map[string]string{"<": ">=", "<=": ">", ">": "<=", ">=": "<", "==": "!=", "!=": "=="}
 
@@ -129,18 +132,14 @@ func integerConstraint(value Value, operator string, bound int64) Value {
 }
 
 func lowerConstraint(value Value, bound int64) Value {
-	if !value.HasLower || value.Lower < bound {
-		value.Lower = bound
-	}
-	value.HasLower = true
+	r := interval.Lower(value.Bounds(), bound)
+	value.Lower, value.HasLower = r.Lower, r.HasLower
 	return value
 }
 
 func upperConstraint(value Value, bound int64) Value {
-	if !value.HasUpper || value.Upper > bound {
-		value.Upper = bound
-	}
-	value.HasUpper = true
+	r := interval.Upper(value.Bounds(), bound)
+	value.Upper, value.HasUpper = r.Upper, r.HasUpper
 	return value
 }
 

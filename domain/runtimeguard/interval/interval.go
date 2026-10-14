@@ -65,3 +65,19 @@ func Describe(path, function, name string, line uint32) Advisory {
 		CounterEvidence: "intent unknown; no automatic fix — verify against the contract",
 	}
 }
+
+func Lower(r Range, bound int64) Range {
+	if !r.HasLower || r.Lower < bound {
+		r.Lower = bound
+	}
+	r.HasLower = true
+	return r
+}
+
+func Upper(r Range, bound int64) Range {
+	if !r.HasUpper || r.Upper > bound {
+		r.Upper = bound
+	}
+	r.HasUpper = true
+	return r
+}
