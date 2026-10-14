@@ -52,18 +52,26 @@ func (w *errorCheckWalker) visitCall(call *ast.CallExpr) {
 // isChecked determines if the error from a call was checked.
 // Returns false if assigned to `_` or result ignored, true otherwise.
 func (w *errorCheckWalker) isChecked(call *ast.CallExpr) bool {
-	if len(w.stack) < 2 {
-		return false
-	}
-	parent := w.stack[len(w.stack)-2]
-	if _, ok := parent.(*ast.ReturnStmt); ok {
+	switch parent := w.callParent().(type) {
+	case *ast.ReturnStmt:
 		return true
-	}
-	assign, ok := parent.(*ast.AssignStmt)
-	if !ok {
+	case *ast.BinaryExpr:
+		return parent.Op == token.EQL || parent.Op == token.NEQ
+	case *ast.AssignStmt:
+		return w.assignedErrorChecked(call, parent)
+	default:
 		return false
 	}
-	return w.assignedErrorChecked(call, assign)
+}
+
+// Parentheses change source grouping, not how the error result is consumed.
+func (w *errorCheckWalker) callParent() ast.Node {
+	for i := len(w.stack) - 2; i >= 0; i-- {
+		if _, grouped := w.stack[i].(*ast.ParenExpr); !grouped {
+			return w.stack[i]
+		}
+	}
+	return nil
 }
 
 func (w *errorCheckWalker) assignedErrorChecked(call *ast.CallExpr, assign *ast.AssignStmt) bool {
@@ -186,7 +194,7 @@ func returnsError(call *ast.CallExpr, info *types.Info) bool {
 
 // isErrorTypeCheck checks if a type is the error interface.
 func isErrorTypeCheck(t types.Type) bool {
-	if named, ok := t.(*types.Named); ok {
+	if named, ok := types.Unalias(t).(*types.Named); ok {
 		obj := named.Obj()
 		return obj.Name() == "error" && obj.Pkg() == nil
 	}
@@ -198,7 +206,7 @@ func errorAssignmentOffset(assign *ast.AssignStmt, call *ast.CallExpr) int {
 		return 0
 	}
 	for i, expr := range assign.Rhs {
-		if expr == call {
+		if specUnwrapParens(expr) == call {
 			return i
 		}
 	}
