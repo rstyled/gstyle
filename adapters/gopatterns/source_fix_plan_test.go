@@ -16,6 +16,9 @@ func sourceFixModule(t *testing.T, files map[string]string) (string, *Extraction
 	root := t.TempDir()
 	files["go.mod"] = "module example.com/sourcefix\n\ngo 1.24\n"
 	for name, content := range files {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(root, name)), 0755); err != nil {
+			t.Fatal(err)
+		}
 		if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0644); err != nil {
 			t.Fatal(err)
 		}

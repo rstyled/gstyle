@@ -1,5 +1,16 @@
 package pdg
 
+func (flow *NormalFlow) compactNormalFlow() {
+	if flow == nil {
+		return
+	}
+	flow.Blocks = compactSlice(flow.Blocks)
+	for i := range flow.Blocks {
+		flow.Blocks[i].Operations = compactSlice(flow.Blocks[i].Operations)
+		flow.Blocks[i].Successors = compactSlice(flow.Blocks[i].Successors)
+	}
+}
+
 // Compact drops spare construction capacity before publishing a graph.
 // It preserves order, references and shared values.
 func Compact(g *Graph) {
@@ -12,7 +23,7 @@ func Compact(g *Graph) {
 	g.AttributeTables.References = compactSlice(g.AttributeTables.References)
 	g.AttributeTables.Accesses = compactSlice(g.AttributeTables.Accesses)
 	g.AttributeTables.Extensions = compactSlice(g.AttributeTables.Extensions)
-	compactNormalFlow(g.NormalFlow)
+	g.NormalFlow.compactNormalFlow()
 }
 
 func compactSlice[T any](values []T) []T {
@@ -22,15 +33,4 @@ func compactSlice[T any](values []T) []T {
 	out := make([]T, len(values))
 	copy(out, values)
 	return out
-}
-
-func compactNormalFlow(flow *NormalFlow) {
-	if flow == nil {
-		return
-	}
-	flow.Blocks = compactSlice(flow.Blocks)
-	for i := range flow.Blocks {
-		flow.Blocks[i].Operations = compactSlice(flow.Blocks[i].Operations)
-		flow.Blocks[i].Successors = compactSlice(flow.Blocks[i].Successors)
-	}
 }

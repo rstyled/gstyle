@@ -133,6 +133,110 @@ type guardFound struct {
 	bound int
 }
 
+// ---- R1: value construction --------------------------------------------------
+
+// isCtorOp matches rstyle's ctor/tuple ops, plus Go's composite literals:
+// "composite:{}" is Go's value-construction spelling.
+func (n *PdgNode) isCtorOp() bool {
+	if n.Kind != Op {
+		return false
+	}
+	return detailClass(n.Detail) == "composite" ||
+		opSuffix(n.Detail) == "ctor" || opSuffix(n.Detail) == "tuple"
+}
+
+// isUnitVariant mirrors the Rust check verbatim: a path literal naming a
+// variant (last segment capitalized, not a CONST). Inert on Go graphs: the
+// extractor never emits "path" literals.
+func (n *PdgNode) isUnitVariant() bool {
+	if n.Kind != Lit || n.LitKind != "path" || n.CalleeID != "" {
+		return false
+	}
+	return isVariantName(variantLast(n.Detail))
+}
+
+// isValueLeaf: literal operands and ctor nodes, the only things a constant
+// value is built from.
+func (n *PdgNode) isValueLeaf() bool {
+	return n.Kind == Lit && n.CalleeID == ""
+}
+
+// ---- R2: predicate collapse --------------------------------------------------
+
+func (n *PdgNode) isCombinator() bool {
+	if n.Kind != Op {
+		return false
+	}
+	switch opSuffix(n.Detail) {
+	case "&&", "||", "!":
+		return true
+	}
+	return false
+}
+
+// ---- R3: one multiway decision -----------------------------------------------
+
+func (n *PdgNode) isBranching() bool {
+	return n.Kind == Branch || n.Kind == Match
+}
+
+func (n *PdgNode) isNilLit() bool {
+	return n.Kind == Lit && n.LitKind == "nil" && n.CalleeID == ""
+}
+
+func (n *PdgNode) isCompare() bool {
+	return n.Kind == Op && slices.Contains(compares, opSuffix(n.Detail))
+}
+
+func (n *PdgNode) isIntLit() bool {
+	return n.isValueLeaf() && n.LitKind == "int"
+}
+
+func (e PdgEdge) reindexEdge(newIndex []int) (PdgEdge, bool) {
+	from, to := newIndex[e.From], newIndex[e.To]
+	if from < 0 || to < 0 {
+		return e, false
+	}
+	e.From, e.To = from, to
+	return e, true
+}
+
+// contractEdge rewrites one edge for a contracted Let; ok=false drops it.
+func (e PdgEdge) contractEdge(branchOf map[int]int) (PdgEdge, bool) {
+	if b, ok := branchOf[e.From]; ok {
+		if e.To == b {
+			return PdgEdge{}, false // the Let -> Branch edge itself goes
+		}
+		e.From = b
+		return e, true
+	}
+	if b, ok := branchOf[e.To]; ok {
+		if e.Kind != Data {
+			return PdgEdge{}, false // control into the Let goes
+		}
+		e.To = b
+		return e, true
+	}
+	return e, true
+}
+
+func (e PdgEdge) isCounterRead(loopOf map[int]int, steps map[int]bool) (int, bool) {
+	looped, ok := loopOf[e.From]
+	if !ok || e.Kind != Data || steps[e.To] {
+		return 0, false
+	}
+	return looped, true
+}
+
+func (e PdgEdge) guardBodyEdge(ownerOf map[int]int) (PdgEdge, bool) {
+	owner, ok := ownerOf[e.From]
+	if !ok || e.Kind != Ctrl {
+		return e, false
+	}
+	e.From = owner
+	return e, true
+}
+
 // ParseRules parses "ctor,pred", "all" or "". Unknown names are an error,
 // mirroring the Rust messages.
 func ParseRules(text string) (Rules, error) {
@@ -170,7 +274,7 @@ func Canonicalize(pdg *MiningGraph, rules Rules) *MiningGraph {
 	}
 	out := clonePdg(pdg)
 	// The abstraction projection must precede every normalization step.
-	out.Edges = slices.DeleteFunc(out.Edges, func(edge PdgEdge) bool { return !abstractionEdge(edge) })
+	out.Edges = slices.DeleteFunc(out.Edges, func(edge PdgEdge) bool { return !edge.abstractionEdge() })
 	for _, s := range steps {
 		if s.on {
 			out = s.step(out)
@@ -257,15 +361,6 @@ func reindexNodes(count int, dead map[int]struct{}) []int {
 	return newIndex
 }
 
-func reindexEdge(e PdgEdge, newIndex []int) (PdgEdge, bool) {
-	from, to := newIndex[e.From], newIndex[e.To]
-	if from < 0 || to < 0 {
-		return e, false
-	}
-	e.From, e.To = from, to
-	return e, true
-}
-
 // without removes dead nodes and every edge touching them; indices are
 // compacted in order.
 func without(pdg *MiningGraph, dead map[int]struct{}) *MiningGraph {
@@ -277,7 +372,7 @@ func without(pdg *MiningGraph, dead map[int]struct{}) *MiningGraph {
 		}
 	}
 	for _, e := range pdg.Edges {
-		if ne, ok := reindexEdge(e, newIndex); ok {
+		if ne, ok := e.reindexEdge(newIndex); ok {
 			out.Edges = append(out.Edges, ne)
 		}
 	}
@@ -318,28 +413,6 @@ func detailClass(detail string) string {
 	return ""
 }
 
-// ---- R1: value construction --------------------------------------------------
-
-// isCtorOp matches rstyle's ctor/tuple ops, plus Go's composite literals:
-// "composite:{}" is Go's value-construction spelling.
-func isCtorOp(n *PdgNode) bool {
-	if n.Kind != Op {
-		return false
-	}
-	return detailClass(n.Detail) == "composite" ||
-		opSuffix(n.Detail) == "ctor" || opSuffix(n.Detail) == "tuple"
-}
-
-// isUnitVariant mirrors the Rust check verbatim: a path literal naming a
-// variant (last segment capitalized, not a CONST). Inert on Go graphs: the
-// extractor never emits "path" literals.
-func isUnitVariant(n *PdgNode) bool {
-	if n.Kind != Lit || n.LitKind != "path" || n.CalleeID != "" {
-		return false
-	}
-	return isVariantName(variantLast(n.Detail))
-}
-
 func variantLast(detail string) string {
 	if i := strings.LastIndex(detail, "::"); i >= 0 {
 		return detail[i+2:]
@@ -352,23 +425,17 @@ func isVariantName(last string) bool {
 	return len(rs) > 0 && unicode.IsUpper(rs[0]) && slices.ContainsFunc(rs, unicode.IsLower)
 }
 
-// isValueLeaf: literal operands and ctor nodes, the only things a constant
-// value is built from.
-func isValueLeaf(n *PdgNode) bool {
-	return n.Kind == Lit && n.CalleeID == ""
-}
-
 // constantTree is true if node is a ctor/tuple whose whole input tree is
 // literals and ctors owned by it.
 func constantTree(pdg *MiningGraph, node int) bool {
-	if !isCtorOp(&pdg.Nodes[node]) {
+	if !(&pdg.Nodes[node]).isCtorOp() {
 		return false
 	}
 	for _, p := range dataProducers(pdg, node) {
 		if !ownedBy(pdg, p, node) {
 			return false
 		}
-		if !isValueLeaf(&pdg.Nodes[p]) && !constantTree(pdg, p) {
+		if !(&pdg.Nodes[p]).isValueLeaf() && !constantTree(pdg, p) {
 			return false
 		}
 	}
@@ -438,7 +505,7 @@ func movedCtrl(pdg *MiningGraph, rootOf map[int]int) []PdgEdge {
 }
 
 func foldNode(n *PdgNode, isRoot bool) PdgNode {
-	if isRoot || isUnitVariant(n) {
+	if isRoot || n.isUnitVariant() {
 		return asCtor(n)
 	}
 	return *n
@@ -478,7 +545,7 @@ func foldCtors(pdg *MiningGraph) *MiningGraph {
 
 // isNestedCtor: a ctor feeding only another ctor.
 func isNestedCtor(pdg *MiningGraph, n int) bool {
-	if !isCtorOp(&pdg.Nodes[n]) {
+	if !(&pdg.Nodes[n]).isCtorOp() {
 		return false
 	}
 	parents := dataConsumers(pdg, n)
@@ -486,7 +553,7 @@ func isNestedCtor(pdg *MiningGraph, n int) bool {
 		return false
 	}
 	for p := range parents {
-		return isCtorOp(&pdg.Nodes[p])
+		return (&pdg.Nodes[p]).isCtorOp()
 	}
 	return false
 }
@@ -544,23 +611,10 @@ func spliceNested(pdg *MiningGraph) *MiningGraph {
 	return without(&MiningGraph{Nodes: pdg.Nodes, Edges: dedupEdges(spliceEdges(pdg, inner))}, inner)
 }
 
-// ---- R2: predicate collapse --------------------------------------------------
-
-func isCombinator(n *PdgNode) bool {
-	if n.Kind != Op {
-		return false
-	}
-	switch opSuffix(n.Detail) {
-	case "&&", "||", "!":
-		return true
-	}
-	return false
-}
-
 // predicateTree: a combinator whose operands are calls or (recursively)
 // such combinators.
 func predicateTree(pdg *MiningGraph, node int) bool {
-	if !isCombinator(&pdg.Nodes[node]) {
+	if !(&pdg.Nodes[node]).isCombinator() {
 		return false
 	}
 	for _, p := range dataProducers(pdg, node) {
@@ -577,7 +631,7 @@ func predLeaves(pdg *MiningGraph, node int, negated bool) []predLeaf {
 	flip := negated != (opSuffix(pdg.Nodes[node].Detail) == "!")
 	var out []predLeaf
 	for _, p := range dataProducers(pdg, node) {
-		if isCombinator(&pdg.Nodes[p]) {
+		if (&pdg.Nodes[p]).isCombinator() {
 			out = append(out, predLeaves(pdg, p, flip)...)
 		} else {
 			out = append(out, predLeaf{p, flip})
@@ -672,12 +726,6 @@ func collapsePreds(pdg *MiningGraph) *MiningGraph {
 	return without(&MiningGraph{Nodes: nodes, Edges: edges}, trees)
 }
 
-// ---- R3: one multiway decision -----------------------------------------------
-
-func isBranching(n *PdgNode) bool {
-	return n.Kind == Branch || n.Kind == Match
-}
-
 func letBranches(pdg *MiningGraph) map[int]int {
 	branchOf := map[int]int{}
 	for _, e := range pdg.Edges {
@@ -686,25 +734,6 @@ func letBranches(pdg *MiningGraph) map[int]int {
 		}
 	}
 	return branchOf
-}
-
-// contractEdge rewrites one edge for a contracted Let; ok=false drops it.
-func contractEdge(e PdgEdge, branchOf map[int]int) (PdgEdge, bool) {
-	if b, ok := branchOf[e.From]; ok {
-		if e.To == b {
-			return PdgEdge{}, false // the Let -> Branch edge itself goes
-		}
-		e.From = b
-		return e, true
-	}
-	if b, ok := branchOf[e.To]; ok {
-		if e.Kind != Data {
-			return PdgEdge{}, false // control into the Let goes
-		}
-		e.To = b
-		return e, true
-	}
-	return e, true
 }
 
 // contractLets: `if let P = e {..}` — the destructuring Let feeding a Branch
@@ -718,7 +747,7 @@ func contractLets(pdg *MiningGraph) *MiningGraph {
 	}
 	moved := make([]PdgEdge, 0, len(pdg.Edges))
 	for _, e := range pdg.Edges {
-		if ne, ok := contractEdge(e, branchOf); ok {
+		if ne, ok := e.contractEdge(branchOf); ok {
 			moved = append(moved, ne)
 		}
 	}
@@ -745,17 +774,17 @@ func litOperand(pdg *MiningGraph, op int) (lit, x int, ok bool) {
 		return 0, 0, false
 	}
 	p, q := inputs[0], inputs[1]
-	if isValueLeaf(&pdg.Nodes[p]) {
+	if (&pdg.Nodes[p]).isValueLeaf() {
 		return p, q, true
 	}
-	if isValueLeaf(&pdg.Nodes[q]) {
+	if (&pdg.Nodes[q]).isValueLeaf() {
 		return q, p, true
 	}
 	return 0, 0, false
 }
 
 func litOwned(pdg *MiningGraph, op, lit, b, x int) bool {
-	return ownedBy(pdg, lit, op) && ownedBy(pdg, op, b) && !isValueLeaf(&pdg.Nodes[x])
+	return ownedBy(pdg, lit, op) && ownedBy(pdg, op, b) && !(&pdg.Nodes[x]).isValueLeaf()
 }
 
 func litScrutineeOp(pdg *MiningGraph, b int) (op, lit, x int, ok bool) {
@@ -905,7 +934,7 @@ func relabelCases(pdg *MiningGraph) *MiningGraph {
 	nodes := make([]PdgNode, len(pdg.Nodes))
 	for i := range pdg.Nodes {
 		n := pdg.Nodes[i]
-		if isBranching(&n) {
+		if (&n).isBranching() {
 			n.Kind = Case
 		}
 		nodes[i] = n
@@ -951,7 +980,7 @@ func matchArms(pdg *MiningGraph, m int) []int {
 }
 
 func propagationShape(pdg *MiningGraph, c, r int) bool {
-	return isCtorOp(&pdg.Nodes[c]) && pdg.Nodes[r].Kind == Return
+	return (&pdg.Nodes[c]).isCtorOp() && pdg.Nodes[r].Kind == Return
 }
 
 func propagationWiring(pdg *MiningGraph, m, c, r int) bool {
@@ -993,10 +1022,6 @@ func propagations(pdg *MiningGraph) [][3]int {
 	return out
 }
 
-func isNilLit(n *PdgNode) bool {
-	return n.Kind == Lit && n.LitKind == "nil" && n.CalleeID == ""
-}
-
 // nilCheckOp: the single != / == comparison feeding branch b.
 // neq reports the != polarity (error arm 0); == uses error arm 1.
 func nilCheckOp(pdg *MiningGraph, b int) (op int, neq bool, ok bool) {
@@ -1025,10 +1050,10 @@ func nilCheckOperands(pdg *MiningGraph, op int) (x, nilLit int, ok bool) {
 		return 0, 0, false
 	}
 	p, q := inputs[0], inputs[1]
-	if isNilLit(&pdg.Nodes[p]) {
+	if (&pdg.Nodes[p]).isNilLit() {
 		return q, p, true
 	}
-	if isNilLit(&pdg.Nodes[q]) {
+	if (&pdg.Nodes[q]).isNilLit() {
 		return p, q, true
 	}
 	return 0, 0, false
@@ -1143,20 +1168,12 @@ func propagateErrors(pdg *MiningGraph) *MiningGraph {
 	return without(&MiningGraph{Nodes: nodes, Edges: edges}, propagationDead(found, goFound))
 }
 
-func isCompare(n *PdgNode) bool {
-	return n.Kind == Op && slices.Contains(compares, opSuffix(n.Detail))
-}
-
-func isIntLit(n *PdgNode) bool {
-	return isValueLeaf(n) && n.LitKind == "int"
-}
-
 func isRangeCall(pdg *MiningGraph, call int) bool {
 	return strings.Contains(pdg.Nodes[call].CalleeID, "ops::range::")
 }
 
 func literalBound(pdg *MiningGraph, b, call int) bool {
-	return isIntLit(&pdg.Nodes[b]) && ownedBy(pdg, b, call)
+	return (&pdg.Nodes[b]).isIntLit() && ownedBy(pdg, b, call)
 }
 
 func literalBounds(pdg *MiningGraph, call int, bounds []int, iterate int) bool {
@@ -1267,11 +1284,11 @@ func operandAt(pdg *MiningGraph, to, pos int) (int, bool) {
 // int literals. Returns (init, amount).
 func addAssignOperands(pdg *MiningGraph, step int) (init, amount int, ok bool) {
 	amount, ok = operandAt(pdg, step, 0)
-	if !ok || !isIntLit(&pdg.Nodes[amount]) {
+	if !ok || !(&pdg.Nodes[amount]).isIntLit() {
 		return 0, 0, false
 	}
 	init, ok = operandAt(pdg, step, 1)
-	if !ok || !isIntLit(&pdg.Nodes[init]) {
+	if !ok || !(&pdg.Nodes[init]).isIntLit() {
 		return 0, 0, false
 	}
 	return init, amount, true
@@ -1281,7 +1298,7 @@ func addAssignOperands(pdg *MiningGraph, step int) (init, amount int, ok bool) {
 // amount implicitly 1. Returns (init, -1): no amount node exists.
 func incOperands(pdg *MiningGraph, step int) (init, amount int, ok bool) {
 	init, ok = operandAt(pdg, step, 0)
-	if !ok || !isIntLit(&pdg.Nodes[init]) {
+	if !ok || !(&pdg.Nodes[init]).isIntLit() {
 		return 0, 0, false
 	}
 	if len(dataProducers(pdg, step)) != 1 {
@@ -1334,20 +1351,12 @@ func counterMaps(founds []counterFound) (map[int]int, map[int]bool) {
 	return loopOf, steps
 }
 
-func isCounterRead(e PdgEdge, loopOf map[int]int, steps map[int]bool) (int, bool) {
-	looped, ok := loopOf[e.From]
-	if !ok || e.Kind != Data || steps[e.To] {
-		return 0, false
-	}
-	return looped, true
-}
-
 // counterReads: whatever read the counter now reads the loop node.
 func counterReads(pdg *MiningGraph, founds []counterFound) []PdgEdge {
 	loopOf, steps := counterMaps(founds)
 	var reads []PdgEdge
 	for _, e := range pdg.Edges {
-		looped, ok := isCounterRead(e, loopOf, steps)
+		looped, ok := e.isCounterRead(loopOf, steps)
 		if !ok {
 			continue
 		}
@@ -1393,7 +1402,7 @@ func loopGuardOwner(pdg *MiningGraph, g int) (int, bool) {
 // guardCond: the single comparison feeding guard g.
 func guardCond(pdg *MiningGraph, g int) (int, bool) {
 	cond := dataProducers(pdg, g)
-	if len(cond) != 1 || !isCompare(&pdg.Nodes[cond[0]]) {
+	if len(cond) != 1 || !(&pdg.Nodes[cond[0]]).isCompare() {
 		return 0, false
 	}
 	return cond[0], true
@@ -1401,7 +1410,7 @@ func guardCond(pdg *MiningGraph, g int) (int, bool) {
 
 func intLitInput(pdg *MiningGraph, inputs []int) (int, bool) {
 	for _, n := range inputs {
-		if isIntLit(&pdg.Nodes[n]) {
+		if (&pdg.Nodes[n]).isIntLit() {
 			return n, true
 		}
 	}
@@ -1469,15 +1478,6 @@ func findGuards(pdg *MiningGraph) []guardFound {
 	return out
 }
 
-func guardBodyEdge(e PdgEdge, ownerOf map[int]int) (PdgEdge, bool) {
-	owner, ok := ownerOf[e.From]
-	if !ok || e.Kind != Ctrl {
-		return e, false
-	}
-	e.From = owner
-	return e, true
-}
-
 func guardBodies(pdg *MiningGraph, founds []guardFound) []PdgEdge {
 	ownerOf := make(map[int]int, len(founds))
 	for _, f := range founds {
@@ -1485,7 +1485,7 @@ func guardBodies(pdg *MiningGraph, founds []guardFound) []PdgEdge {
 	}
 	var body []PdgEdge
 	for _, e := range pdg.Edges {
-		if ne, ok := guardBodyEdge(e, ownerOf); ok {
+		if ne, ok := e.guardBodyEdge(ownerOf); ok {
 			body = append(body, ne)
 		}
 	}
@@ -1517,7 +1517,7 @@ func counterLoops(pdg *MiningGraph) *MiningGraph {
 // literal, whatever the operator.
 func isCountedCompare(pdg *MiningGraph, n int) bool {
 	inputs := dataProducers(pdg, n)
-	if !isCompare(&pdg.Nodes[n]) || len(inputs) != 2 {
+	if !(&pdg.Nodes[n]).isCompare() || len(inputs) != 2 {
 		return false
 	}
 	return hasLoopInput(pdg, inputs) && hasIntLitInput(pdg, inputs)

@@ -42,7 +42,7 @@ func signatureSourceRef(context *pdg.SourceContext, spec *patterns.FixSpec) (pdg
 	if ref == 0 {
 		return 0, fmt.Errorf("source evidence is missing: %s", path)
 	}
-	if spec.Kind != patterns.ValueObject {
+	if spec.Kind != patterns.ValueObject && spec.Kind != patterns.AnemicModel {
 		return ref, nil
 	}
 	return ref, checkSignatureTargetEvidence(context, spec.Targets)

@@ -102,7 +102,7 @@ type TaintFlow struct {
 }
 
 // isTaintSource reports whether n is a taint source call.
-func isTaintSource(n PdgNode) bool {
+func (n PdgNode) isTaintSource() bool {
 	if n.Kind != Call {
 		return false
 	}
@@ -115,7 +115,7 @@ func isTaintSource(n PdgNode) bool {
 }
 
 // isTaintSanitizer reports whether n is a sanitizer call.
-func isTaintSanitizer(n PdgNode) bool {
+func (n PdgNode) isTaintSanitizer() bool {
 	if n.Kind != Call {
 		return false
 	}
@@ -128,7 +128,7 @@ func isTaintSanitizer(n PdgNode) bool {
 }
 
 // matchTaintSink returns the sink rule for n, or nil.
-func matchTaintSink(n PdgNode) *taintSink {
+func (n PdgNode) matchTaintSink() *taintSink {
 	if n.Kind != Call {
 		return nil
 	}
@@ -156,7 +156,7 @@ func propagateTaint(pdg *MiningGraph) map[int]bool {
 func seedTaintSources(pdg *MiningGraph) map[int]bool {
 	tainted := map[int]bool{}
 	for i, n := range pdg.Nodes {
-		if isTaintSource(n) {
+		if n.isTaintSource() {
 			tainted[i] = true
 		}
 	}
@@ -194,7 +194,7 @@ func taintSpreads(pdg *MiningGraph, tainted map[int]bool, from int, tos []int) b
 	}
 	spread := false
 	for _, to := range tos {
-		if tainted[to] || isTaintSanitizer(pdg.Nodes[to]) {
+		if tainted[to] || pdg.Nodes[to].isTaintSanitizer() {
 			continue
 		}
 		tainted[to] = true
@@ -253,7 +253,7 @@ func findTaintSourceNode(pdg *MiningGraph, tainted map[int]bool, from int) int {
 			continue
 		}
 		visited[cur] = true
-		if isTaintSource(pdg.Nodes[cur]) {
+		if pdg.Nodes[cur].isTaintSource() {
 			return cur
 		}
 		queue = append(queue, taintedPredecessors(pdg, tainted, cur, visited)...)
@@ -290,7 +290,7 @@ func taintFlowsForFunction(f *MiningFacts) []TaintFlow {
 	var out []TaintFlow
 	tainted := propagateTaint(f.Pdg)
 	for i, n := range f.Pdg.Nodes {
-		sink := matchTaintSink(n)
+		sink := n.matchTaintSink()
 		if sink == nil {
 			continue
 		}

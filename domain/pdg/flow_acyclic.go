@@ -2,7 +2,7 @@ package pdg
 
 import "fmt"
 
-func validateAcyclicFlow(flow *NormalFlow) error {
+func (flow *NormalFlow) validateAcyclicFlow() error {
 	pending := make([]int, len(flow.Blocks))
 	count := 0
 	for _, block := range flow.Blocks {
@@ -14,13 +14,13 @@ func validateAcyclicFlow(flow *NormalFlow) error {
 			pending[next-1]++
 		}
 	}
-	if consumeFlowBlocks(flow, pending) != count {
+	if flow.consumeFlowBlocks(pending) != count {
 		return fmt.Errorf("cyclic flow is outside the scalar normal profile")
 	}
 	return nil
 }
 
-func flowSeeds(flow *NormalFlow, pending []int) []Ref {
+func (flow *NormalFlow) flowSeeds(pending []int) []Ref {
 	var queue []Ref
 	for i, block := range flow.Blocks {
 		if block.Reachable && pending[i] == 0 {
@@ -30,8 +30,8 @@ func flowSeeds(flow *NormalFlow, pending []int) []Ref {
 	return queue
 }
 
-func consumeFlowBlocks(flow *NormalFlow, pending []int) int {
-	queue := flowSeeds(flow, pending)
+func (flow *NormalFlow) consumeFlowBlocks(pending []int) int {
+	queue := flow.flowSeeds(pending)
 	for cursor := 0; cursor < len(queue); cursor++ {
 		for _, next := range flow.Blocks[queue[cursor]-1].Successors {
 			pending[next-1]--

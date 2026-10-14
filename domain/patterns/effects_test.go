@@ -31,7 +31,7 @@ func TestEffectBitsMapping(t *testing.T) {
 func TestEffectDiffDetectsMismatch(t *testing.T) {
 	a := &PdgNode{Kind: Call, CalleeID: "fmt.Println", Effects: EffectIO}
 	b := &PdgNode{Kind: Call, CalleeID: "fmt.Println", Effects: EffectNone}
-	d, ok := effectDiff(a, b)
+	d, ok := a.effectDiff(b)
 	if !ok {
 		t.Fatal("expected effect diff for IO vs pure")
 	}
@@ -44,7 +44,7 @@ func TestEffectDiffDetectsMismatch(t *testing.T) {
 func TestEffectDiffIgnoresMatch(t *testing.T) {
 	a := &PdgNode{Kind: Call, CalleeID: "fmt.Println", Effects: EffectIO}
 	b := &PdgNode{Kind: Call, CalleeID: "os.Stdout.Write", Effects: EffectIO}
-	if _, ok := effectDiff(a, b); ok {
+	if _, ok := a.effectDiff(b); ok {
 		t.Error("expected no effect diff for identical effects")
 	}
 }
@@ -53,7 +53,7 @@ func TestEffectDiffIgnoresMatch(t *testing.T) {
 func TestEffectDiffIgnoresNonCall(t *testing.T) {
 	a := &PdgNode{Kind: Op, Effects: EffectIO}
 	b := &PdgNode{Kind: Op, Effects: EffectNone}
-	if _, ok := effectDiff(a, b); ok {
+	if _, ok := a.effectDiff(b); ok {
 		t.Error("expected no effect diff for non-Call nodes")
 	}
 }

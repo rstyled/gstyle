@@ -181,6 +181,32 @@ const (
 	dataSimWeight = 4
 )
 
+// label is the node label text. Names (callee ids, fields, literal values)
+// are deliberately absent — only kinds and signature/type classes — so
+// Dog::bark ≡ Cat::meow. CCGraph-style refinement: calls carry their package
+// scope (std vs local), so same-shape code calling stdlib vs local helpers
+// no longer collides. Data type classes stay erased: type differences must
+// surface as alignment holes (generic_fn), not as label mismatches.
+func (n PdgNode) label() string {
+	switch n.Kind {
+	case Call:
+		return "call:" + callScope(n.CalleeID) + ":" + n.SigClass
+	case Lit:
+		return "lit:" + n.LitKind
+	case Op:
+		class, _, _ := strings.Cut(n.Detail, ":")
+		return "op:" + class
+	case Param:
+		return "param:" + n.TyClass
+	default:
+		return string(n.Kind)
+	}
+}
+
+func (e PdgEdge) wlEdgeAllowed(n int, execution bool) bool {
+	return e.From < n && e.To < n && (execution || e.Kind != Exec)
+}
+
 func fnv1a(data []byte) uint64 {
 	h := fnvOffset64
 	for _, b := range data {
@@ -196,28 +222,6 @@ func combine(acc, value uint64) uint64 {
 	binary.LittleEndian.PutUint64(buf[0:8], acc)
 	binary.LittleEndian.PutUint64(buf[8:16], value)
 	return fnv1a(buf[:])
-}
-
-// label is the node label text. Names (callee ids, fields, literal values)
-// are deliberately absent — only kinds and signature/type classes — so
-// Dog::bark ≡ Cat::meow. CCGraph-style refinement: calls carry their package
-// scope (std vs local), so same-shape code calling stdlib vs local helpers
-// no longer collides. Data type classes stay erased: type differences must
-// surface as alignment holes (generic_fn), not as label mismatches.
-func label(n PdgNode) string {
-	switch n.Kind {
-	case Call:
-		return "call:" + callScope(n.CalleeID) + ":" + n.SigClass
-	case Lit:
-		return "lit:" + n.LitKind
-	case Op:
-		class, _, _ := strings.Cut(n.Detail, ":")
-		return "op:" + class
-	case Param:
-		return "param:" + n.TyClass
-	default:
-		return string(n.Kind)
-	}
 }
 
 // callScope classifies a call's package scope from its FuncID callee id
@@ -280,7 +284,7 @@ func edgeTag(kind EdgeKind, argPos int) uint64 {
 func adjacency(n int, pdg *MiningGraph, forward, execution bool) [][]Nb {
 	lists := make([][]Nb, n)
 	for _, e := range pdg.Edges {
-		if !wlEdgeAllowed(e, n, execution) {
+		if !e.wlEdgeAllowed(n, execution) {
 			continue
 		}
 		at, node := e.From, uint64(e.To)
@@ -293,10 +297,6 @@ func adjacency(n int, pdg *MiningGraph, forward, execution bool) [][]Nb {
 }
 
 func buildGraph(pdg *MiningGraph) Graph { return buildProfileGraph(pdg, false) }
-
-func wlEdgeAllowed(e PdgEdge, n int, execution bool) bool {
-	return e.From < n && e.To < n && (execution || e.Kind != Exec)
-}
 
 func buildProfileGraph(pdg *MiningGraph, execution bool) Graph {
 	n := len(pdg.Nodes)
@@ -569,7 +569,7 @@ func buildProjection(pdg *MiningGraph, kind EdgeKind) Graph {
 	n := len(pdg.Nodes)
 	labels := make([]uint64, n)
 	for i, node := range pdg.Nodes {
-		l := label(node)
+		l := node.label()
 		if kind == Ctrl {
 			l = string(node.Kind)
 		}

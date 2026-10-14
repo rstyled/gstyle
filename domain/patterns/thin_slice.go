@@ -10,6 +10,20 @@ package patterns
 // show the thin slice (5 lines) instead of the full dependence cone (50).
 // This is the "attention" part of "AI's guide for attention."
 
+// isProducer reports whether a node is a value producer (not control flow
+// or heap plumbing). For now: exclude control nodes and address computations.
+// This is a heuristic; the paper has a more precise definition.
+func (n PdgNode) isProducer() bool {
+	// Skip control-flow nodes.
+	switch n.Kind {
+	case "Ctrl", "Branch", "Loop", Branch, Loop, Iterate, Match, Try:
+		return false
+	}
+	// Skip address-of and dereference plumbing (heap manipulation).
+	// The Detail field may indicate this; for now, keep it simple.
+	return true
+}
+
 // ThinSlice returns the producer chain for a value at a PDG node.
 // Follows only Data edges backward, skipping control dependences.
 // Returns node indices, ordered from seed backward to producers.
@@ -41,26 +55,12 @@ func buildProducerGraph(pdg *MiningGraph) map[int][]int {
 // visitProducers adds unvisited producer nodes to the queue.
 func visitProducers(queue []int, visited map[int]bool, prods []int, pdg *MiningGraph) []int {
 	for _, prod := range prods {
-		if !visited[prod] && isProducer(pdg.Nodes[prod]) {
+		if !visited[prod] && pdg.Nodes[prod].isProducer() {
 			visited[prod] = true
 			queue = append(queue, prod)
 		}
 	}
 	return queue
-}
-
-// isProducer reports whether a node is a value producer (not control flow
-// or heap plumbing). For now: exclude control nodes and address computations.
-// This is a heuristic; the paper has a more precise definition.
-func isProducer(n PdgNode) bool {
-	// Skip control-flow nodes.
-	switch n.Kind {
-	case "Ctrl", "Branch", "Loop", Branch, Loop, Iterate, Match, Try:
-		return false
-	}
-	// Skip address-of and dereference plumbing (heap manipulation).
-	// The Detail field may indicate this; for now, keep it simple.
-	return true
 }
 
 // ThinSliceLines returns source lines for the thin slice.

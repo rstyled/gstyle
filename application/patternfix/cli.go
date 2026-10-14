@@ -269,7 +269,7 @@ func mineCandidates(ctx context.Context, opts options) ([]patterns.Candidate, er
 	candidates := fixableCandidates(report, opts.kind)
 	for i := range candidates {
 		candidates[i].FixSpec.Context = ext.Sources
-		for _, site := range candidates[i].Sites {
+		for _, site := range signatureTargetSites(candidates[i]) {
 			candidates[i].FixSpec.Targets = append(candidates[i].FixSpec.Targets, site.ID)
 		}
 	}
@@ -476,4 +476,11 @@ func phaseKindSet(kinds []patterns.CandidateKind) map[patterns.CandidateKind]boo
 		set[kind] = true
 	}
 	return set
+}
+
+func signatureTargetSites(candidate patterns.Candidate) []patterns.Site {
+	if candidate.Kind == patterns.AnemicModel {
+		return nil
+	}
+	return candidate.Sites
 }

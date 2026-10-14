@@ -96,6 +96,11 @@ type acquisition struct {
 	receiverIsRes bool
 }
 
+// isReleaseCall reports whether a Call node invokes the release method.
+func (n PdgNode) isReleaseCall(release string) bool {
+	return n.Kind == Call && strings.HasSuffix(n.CalleeID, "."+release)
+}
+
 // FindObligationViolations finds resources acquired without a deferred
 // release. Each violation is a candidate bug for the LLM to judge.
 func FindObligationViolations(facts []*MiningFacts) []ObligationViolation {
@@ -219,7 +224,7 @@ func hasDeferredRelease(pdg *MiningGraph, acq acquisition, deferred map[int]bool
 	}
 	reached := reachableFrom(fwd, root, 3)
 	for callIdx := range deferred {
-		if !isReleaseCall(pdg.Nodes[callIdx], acq.release) {
+		if !pdg.Nodes[callIdx].isReleaseCall(acq.release) {
 			continue
 		}
 		if anyDataSourceReached(pdg, callIdx, reached) {
@@ -227,11 +232,6 @@ func hasDeferredRelease(pdg *MiningGraph, acq acquisition, deferred map[int]bool
 		}
 	}
 	return false
-}
-
-// isReleaseCall reports whether a Call node invokes the release method.
-func isReleaseCall(n PdgNode, release string) bool {
-	return n.Kind == Call && strings.HasSuffix(n.CalleeID, "."+release)
 }
 
 // dataSourceAt returns the source of the Data edge into node at argPos,
