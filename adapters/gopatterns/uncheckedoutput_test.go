@@ -20,6 +20,10 @@ func TestUncheckedOutputEdges(t *testing.T) {
 		{"dot import", "io;.fmt", "", `Fprintln(w,"text")`, 1},
 		{"parenthesized function", "io;fmt", "", `(fmt.Fprintln)(w,"text")`, 1},
 		{"blank error", "io;fmt", "", `n,_:=fmt.Fprintln(w,"text");_=n`, 1},
+		{"parenthesized blank error", "io;fmt", "", `_,(_)=fmt.Fprintln(w,"text")`, 1},
+
+		{"nested parenthesized blank error", "io;fmt", "", `_,(((_)))=fmt.Fprintln(w,"text")`, 1},
+
 		{"both blank", "io;fmt", "", `_,_=fmt.Fprintln(w,"text")`, 1},
 		{"declared blank", "io;fmt", "", `var n,_=fmt.Fprintln(w,"text");_=n`, 1},
 		{"checked assignment", "io;fmt", "", `_,err:=fmt.Fprintln(w,"text");if err!=nil{return err}`, 0},
@@ -86,6 +90,9 @@ func TestUncheckedOutputCombinations(t *testing.T) {
 	}{
 		{"standalone", "", ";return 0,nil", true},
 		{"blank assignment", "_,_=", ";return 0,nil", true},
+		{"parenthesized blank assignment", "_,(_)=", ";return 0,nil", true},
+		{"nested parenthesized blank assignment", "_,(((_)))=", ";return 0,nil", true},
+
 		{"count assignment", "n,_:=", ";return n,nil", true},
 		{"blank declaration", "var n,_=", ";return n,nil", true},
 		{"checked", "n,err:=", ";if err!=nil{return n,err};return n,nil", false},

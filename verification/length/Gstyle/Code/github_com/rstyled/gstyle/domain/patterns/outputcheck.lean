@@ -43,6 +43,12 @@ noncomputable def Formatted [FfiSyntax] [GoGlobalContext] : GoString :=
 noncomputable def Memory [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/patterns/outputcheck.Memory"
 
+noncomputable def hasSuppression [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/patterns/outputcheck.hasSuppression"
+
+noncomputable def Find [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/patterns/outputcheck.Find"
+
 /-- go: output.go:12:6 -/
 noncomputable def Discards.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "input"
@@ -126,6 +132,44 @@ noncomputable def Memory.impl [FfiSyntax] [GoGlobalContext] : val :=
   (Let "pkg" (App (Val (GoInstruction (GoAlloc go.string))) (Var "pkg"))
   (App (Val doReturn)
   (If (If (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "pkg")) (Val #(go!"bytes")))) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "name")) (Val #(go!"Buffer")))) (Val #false)) (Val #true) (If (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "pkg")) (Val #(go!"strings")))) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "name")) (Val #(go!"Builder")))) (Val #false)))))))))
+
+/-- go: output.go:52:6 -/
+noncomputable def hasSuppression.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "kinds"
+  (App (Val exceptionDo)
+  (Let "kinds" (App (Val (GoInstruction (GoAlloc (go.GoType.SliceType go.string)))) (Var "kinds"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Val #false))))
+  (Let "$r0" (Val #(W64 0))
+  (Let "i" (App (Val (GoInstruction (GoAlloc go.int))) (App (Val (GoInstruction (GoZeroVal go.int))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (App (Val doFor) (Lam BAnon
+  (App (Val (GoInstruction (GoOp GoLt go.int))) (Pair (App (Val (GoInstruction (GoLoad go.int))) (Var "i")) (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType go.string)))) (Var "kinds"))
+  (App (App (Val (GoInstruction (FuncResolve go.len [(go.GoType.SliceType go.string)]))) (Val #())) (Var "$a0"))))))) (Lam BAnon
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (App (Val (GoInstruction (IndexRef (go.GoType.SliceType go.string)))) (Pair (App (Val (GoInstruction (GoLoad (go.GoType.SliceType go.string)))) (Var "kinds")) (App (Val (GoInstruction (GoLoad go.int))) (Var "i"))))) (Val #(go!"unchecked_output")))))
+  (App (Val doReturn)
+  (Val #true))
+  (App (Val doExecute)
+  (Val #())))))
+  (Lam BAnon
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.int))) (Pair (Var "i") (App (Val (GoInstruction (GoOp GoPlus go.int))) (Pair (App (Val (GoInstruction (GoLoad go.int))) (Var "i")) (Val #(W64 1)))))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.int))) (Pair (Var "i") (Var "$r0")))))))))))
+
+/-- go: output.go:61:6 -/
+noncomputable def Find.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "sites"
+  (Lam "suppressions"
+  (App (Val exceptionDo)
+  (Let "suppressions" (App (Val (GoInstruction (GoAlloc (go.GoType.SliceType go.string)))) (Var "suppressions"))
+  (Let "sites" (App (Val (GoInstruction (GoAlloc (go.GoType.SliceType Site.ty)))) (Var "sites"))
+  (App (Val doReturn)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType Site.ty)))) (Var "sites"))
+  (Let "$a1" (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType go.string)))) (Var "suppressions"))
+  (App (App (Val (GoInstruction (FuncResolve hasSuppression []))) (Val #())) (Var "$a0")))
+  (App (App (App (Val (GoInstruction (FuncResolve Select []))) (Val #())) (Var "$a0")) (Var "$a1"))))))))))
 
 instance info' : PkgInfo pkg_id.github_com.rstyled.gstyle.domain.patterns.outputcheck where
   pkgImportedPkgs := []
@@ -264,6 +308,8 @@ class Assumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFun
   Select_unfold : FuncUnfold Select [] Select.impl
   Formatted_unfold : FuncUnfold Formatted [] Formatted.impl
   Memory_unfold : FuncUnfold Memory [] Memory.impl
+  hasSuppression_unfold : FuncUnfold hasSuppression [] hasSuppression.impl
+  Find_unfold : FuncUnfold Find [] Find.impl
 
 attribute [instance] Assumptions.Decision_instance
   Assumptions.Site_instance
@@ -271,6 +317,8 @@ attribute [instance] Assumptions.Decision_instance
   Assumptions.Select_unfold
   Assumptions.Formatted_unfold
   Assumptions.Memory_unfold
+  Assumptions.hasSuppression_unfold
+  Assumptions.Find_unfold
 
 end github_com.rstyled.gstyle.domain.patterns.outputcheck
 

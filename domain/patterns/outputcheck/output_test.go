@@ -54,3 +54,33 @@ func checkSelection(t *testing.T, length, bits int, suppressed bool) {
 		}
 	}
 }
+
+func TestFindSuppressionNames(t *testing.T) {
+	sites := []Site{
+		{Line: 1, Callee: "fmt.Fprint", DiscardedOutput: true},
+		{Line: 2, Callee: "fmt.Fprint"},
+		{Line: 3, Callee: "fmt.Fprintf", DiscardedOutput: true},
+	}
+	for _, tc := range []struct {
+		names []string
+		lines []int
+	}{
+		{nil, []int{1, 3}},
+		{[]string{""}, []int{1, 3}},
+		{[]string{"other", "unchecked_Output", "unchecked_output\x00", "all"}, []int{1, 3}},
+		{[]string{"unchecked_output", "other"}, nil},
+		{[]string{"other", "unchecked_output", "other"}, nil},
+		{[]string{"other", "unchecked_output"}, nil},
+		{[]string{"unchecked_output", "unchecked_output"}, nil},
+	} {
+		before := append([]string(nil), tc.names...)
+		got := Find(sites, tc.names)
+		var lines []int
+		for _, site := range got {
+			lines = append(lines, site.Line)
+		}
+		if !reflect.DeepEqual(lines, tc.lines) || !reflect.DeepEqual(tc.names, before) {
+			t.Fatalf("Find with %q returns %v, want %v; names changed=%v", before, lines, tc.lines, !reflect.DeepEqual(tc.names, before))
+		}
+	}
+}

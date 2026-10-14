@@ -63,6 +63,6 @@ func blankOutputTarget(targets []ast.Expr) bool {
 	if len(targets) != 2 {
 		return false
 	}
-	id, ok := targets[1].(*ast.Ident)
+	id, ok := specUnwrapParens(targets[1]).(*ast.Ident)
 	return ok && id.Name == "_"
 }

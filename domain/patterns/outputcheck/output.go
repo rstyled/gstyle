@@ -48,3 +48,16 @@ func Formatted(pkg, name string) bool {
 func Memory(pkg, name string) bool {
 	return (pkg == "bytes" && name == "Buffer") || (pkg == "strings" && name == "Builder")
 }
+
+func hasSuppression(kinds []string) bool {
+	for i := 0; i < len(kinds); i++ {
+		if kinds[i] == "unchecked_output" {
+			return true
+		}
+	}
+	return false
+}
+
+func Find(sites []Site, suppressions []string) []Site {
+	return Select(sites, hasSuppression(suppressions))
+}

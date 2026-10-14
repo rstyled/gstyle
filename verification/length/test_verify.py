@@ -48,7 +48,7 @@ class VerificationGuardTests(unittest.TestCase):
 
     def test_only_expected_proof_diagnostics_reject_mutation(self):
         proof = "Gstyle/Proof/Queries.lean"
-        accepted = ["unsolved goals", "iapply: cannot apply Φ #false to Φ #true",
+        accepted = ["unsolved goals", "iexists: cannot turn Φ #true into an existential quantifier", "iapply: cannot apply Φ #false to Φ #true",
                     "Tactic `rfl` failed: The left-hand side", "wp_apply: cannot apply a slice contract", "wp_apply: the goal forPostcondition is not a WP",
                     "wp_if_destruct: no `decide` or Boolean variable in the expression"]
         for message in accepted:
