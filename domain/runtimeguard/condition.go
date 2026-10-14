@@ -115,31 +115,9 @@ func (v *graphView) impossibleSignedComparison(symbol pdg.Ref, operator string, 
 }
 
 func integerConstraint(value Value, operator string, bound int64) Value {
-	switch operator {
-	case ">=":
-		return lowerConstraint(value, bound)
-	case ">":
-		return strictLowerConstraint(value, bound)
-	case "<":
-		return strictUpperConstraint(value, bound)
-	case "<=":
-		return upperConstraint(value, bound)
-	case "==":
-		return upperConstraint(lowerConstraint(value, bound), bound)
-	default:
-		return value
-	}
-}
-
-func lowerConstraint(value Value, bound int64) Value {
-	r := interval.Lower(value.Bounds(), bound)
-	value.Lower, value.HasLower = r.Lower, r.HasLower
-	return value
-}
-
-func upperConstraint(value Value, bound int64) Value {
-	r := interval.Upper(value.Bounds(), bound)
-	value.Upper, value.HasUpper = r.Upper, r.HasUpper
+	r := interval.Constrain(value.Bounds(), operator, bound)
+	value.Lower, value.Upper = r.Lower, r.Upper
+	value.HasLower, value.HasUpper = r.HasLower, r.HasUpper
 	return value
 }
 
@@ -161,16 +139,4 @@ func exactInteger(value Value) bool {
 
 func emptyRange(value Value) bool {
 	return value.HasLower && value.HasUpper && value.Lower > value.Upper
-}
-
-func strictLowerConstraint(value Value, bound int64) Value {
-	r := interval.StrictLower(value.Bounds(), bound)
-	value.Lower, value.HasLower = r.Lower, r.HasLower
-	return value
-}
-
-func strictUpperConstraint(value Value, bound int64) Value {
-	r := interval.StrictUpper(value.Bounds(), bound)
-	value.Upper, value.HasUpper = r.Upper, r.HasUpper
-	return value
 }

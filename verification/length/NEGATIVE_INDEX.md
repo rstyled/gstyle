@@ -44,8 +44,8 @@ record can be an earlier risky occurrence; this does not claim every access is
 reported separately. Zero and the largest uint32 ID remain ordinary raw keys, as in the former matcher; this does
 not validate those IDs against the PDG tables.
 
-Twenty-nine interval/pattern theorems are audited: the interval model and execution properties,
-selection order/key properties, and the actual Go selector contracts. Thirty-eight
+Thirty-two interval/pattern theorems are audited: the interval model and execution properties,
+selection order/key properties, and the actual Go selector contracts. Forty-four
 Go mutations test bound narrowing, forged knowledge, normalization, trigger and
 zero handling, missing deduplication, key confusion, forgotten map writes, safe
 accesses hiding later risks, skipped/duplicated access records and forged source
@@ -99,6 +99,19 @@ wraparound. Six added mutation controls remove the overflow guards, include the
 strict boundary or use the wrong transfer. Go tests cover exact intersections
 away from those guards, unchanged extreme results and unrelated Value metadata.
 The graph-level removal of infeasible signed branches remains outside Lean.
+
+The production integer-comparison dispatcher uses `interval.Constrain`. Its
+execution theorem composes the actual lower/upper and strict transfer calls for
+all five supported operator strings; equality applies both bounds. Unsupported
+operators, including inequality and malformed strings, return the original
+record. A semantic execution theorem preserves every old member satisfying a
+supported comparison. Unsupported comparisons have an unconstrained predicate
+in this contract, so preservation covers every old member. The theorem does not
+establish infeasibility or precision for inequality. Six added mutation controls
+change each dispatch branch or narrow the default. Tests check set membership,
+unsupported strings, equality intersections, signed extremes and all unrelated
+Value fields. Four superseded private wrappers are removed. Value projection
+and copying the returned bounds into Value remain tested integration boundaries.
 
 ## Remaining work and trust
 

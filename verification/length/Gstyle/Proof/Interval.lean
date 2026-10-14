@@ -180,6 +180,30 @@ theorem strict_upper_sound (r : Range) (bound : w64) (x : Int)
     exact ⟨hr, by omega⟩
 
 
+def constrained (r : Range) (operator : GoString) (bound : w64) : Range :=
+  if operator = go!">=" then lowered r bound else
+  if operator = go!">" then strictLowered r bound else
+  if operator = go!"<" then strictUppered r bound else
+  if operator = go!"<=" then uppered r bound else
+  if operator = go!"==" then uppered (lowered r bound) bound else r
+
+def satisfies (operator : GoString) (x bound : Int) : Prop :=
+  if operator = go!">=" then bound ≤ x else
+  if operator = go!">" then bound < x else
+  if operator = go!"<" then x < bound else
+  if operator = go!"<=" then x ≤ bound else
+  if operator = go!"==" then x = bound else True
+
+theorem constrain_sound (r : Range) (operator : GoString) (bound : w64) (x : Int)
+    (hr : contains r x) (hx : satisfies operator x (sint.Z bound)) :
+    contains (constrained r operator bound) x := by
+  by_cases h0 : operator = go!">=" <;> by_cases h1 : operator = go!">" <;>
+    by_cases h2 : operator = go!"<" <;> by_cases h3 : operator = go!"<=" <;>
+    by_cases h4 : operator = go!"=="
+  all_goals simp_all [constrained, satisfies, lower_intersection, upper_intersection]
+  all_goals first | exact strict_lower_sound r bound x hr hx | exact strict_upper_sound r bound x hr hx
+
+
 def advisory (path functionName name : GoString) (line : w32) : Advisory :=
   { Path' := path, Line' := W64 (uint.Z line), EndLine' := W64 (uint.Z line),
     ID' := functionName, Name' := functionName, Kind' := go!"negative_index", ScoreMilli' := W32 800,
@@ -538,6 +562,48 @@ theorem wp_StrictUpperSound (r : Range) (bound : w64) (x : Int)
   wp_end
   ipureintro
   exact strict_upper_sound r bound x hr hx
+
+
+theorem wp_Constrain (r : Range) (operator : GoString) (bound : w64) :
+    {{ isPkgInit (PROP := IProp GF) pkg }}
+      (App (App (App (Val (@! Constrain)) (Val #r)) (Val #operator)) (Val #bound))
+    {{ RET #(constrained r operator bound); True }} := by
+  wp_start
+  wp_auto
+  wp_if_destruct
+  · simp [constrained]
+    wp_apply wp_Lower r bound
+    wp_end
+  · wp_if_destruct
+    · simp [constrained]
+      wp_apply wp_StrictLower r bound
+      wp_end
+    · wp_if_destruct
+      · simp [constrained]
+        wp_apply wp_StrictUpper r bound
+        wp_end
+      · wp_if_destruct
+        · simp [constrained]
+          wp_apply wp_Upper r bound
+          wp_end
+        · wp_if_destruct
+          · simp [constrained]
+            wp_apply wp_Lower r bound
+            wp_apply wp_Upper (lowered r bound) bound
+            wp_end
+          · simp_all [constrained]
+            wp_end
+
+theorem wp_ConstrainSound (r : Range) (operator : GoString) (bound : w64) (x : Int)
+    (hr : contains r x) (hx : satisfies operator x (sint.Z bound)) :
+    {{ isPkgInit (PROP := IProp GF) pkg }}
+      (App (App (App (Val (@! Constrain)) (Val #r)) (Val #operator)) (Val #bound))
+    {{ (out : Range), RET #out; ⌜contains out x⌝ }} := by
+  wp_start_folded
+  wp_apply wp_Constrain r operator bound
+  wp_end
+  ipureintro
+  exact constrain_sound r operator bound x hr hx
 
 
 theorem wp_Describe (path functionName name : GoString) (line : w32) :

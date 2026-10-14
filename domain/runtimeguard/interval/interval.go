@@ -95,3 +95,20 @@ func StrictUpper(r Range, bound int64) Range {
 	}
 	return Upper(r, bound-1)
 }
+
+func Constrain(r Range, operator string, bound int64) Range {
+	switch operator {
+	case ">=":
+		return Lower(r, bound)
+	case ">":
+		return StrictLower(r, bound)
+	case "<":
+		return StrictUpper(r, bound)
+	case "<=":
+		return Upper(r, bound)
+	case "==":
+		return Upper(Lower(r, bound), bound)
+	default:
+		return r
+	}
+}

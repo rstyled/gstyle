@@ -60,6 +60,9 @@ noncomputable def StrictLower [FfiSyntax] [GoGlobalContext] : GoString :=
 noncomputable def StrictUpper [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard/interval.StrictUpper"
 
+noncomputable def Constrain [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard/interval.Constrain"
+
 /-- go: interval.go:8:6 -/
 noncomputable def Join.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "a"
@@ -270,6 +273,46 @@ noncomputable def StrictUpper.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val (GoInstruction (GoLoad Range.ty))) (Var "r")))
   (App (Val doExecute)
   (Val #())))))))))
+
+/-- go: interval.go:99:6 -/
+noncomputable def Constrain.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "r"
+  (Lam "operator"
+  (Lam "bound"
+  (App (Val exceptionDo)
+  (Let "bound" (App (Val (GoInstruction (GoAlloc go.int64))) (Var "bound"))
+  (Let "operator" (App (Val (GoInstruction (GoAlloc go.string))) (Var "operator"))
+  (Let "r" (App (Val (GoInstruction (GoAlloc Range.ty))) (Var "r"))
+  (Let "$sw" (App (Val (GoInstruction (GoLoad go.string))) (Var "operator"))
+  (If (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (Var "$sw") (Val #(go!">="))))
+  (App (Val doReturn)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad Range.ty))) (Var "r"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad go.int64))) (Var "bound"))
+  (App (App (App (Val (GoInstruction (FuncResolve Lower []))) (Val #())) (Var "$a0")) (Var "$a1")))))
+  (If (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (Var "$sw") (Val #(go!">"))))
+  (App (Val doReturn)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad Range.ty))) (Var "r"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad go.int64))) (Var "bound"))
+  (App (App (App (Val (GoInstruction (FuncResolve StrictLower []))) (Val #())) (Var "$a0")) (Var "$a1")))))
+  (If (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (Var "$sw") (Val #(go!"<"))))
+  (App (Val doReturn)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad Range.ty))) (Var "r"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad go.int64))) (Var "bound"))
+  (App (App (App (Val (GoInstruction (FuncResolve StrictUpper []))) (Val #())) (Var "$a0")) (Var "$a1")))))
+  (If (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (Var "$sw") (Val #(go!"<="))))
+  (App (Val doReturn)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad Range.ty))) (Var "r"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad go.int64))) (Var "bound"))
+  (App (App (App (Val (GoInstruction (FuncResolve Upper []))) (Val #())) (Var "$a0")) (Var "$a1")))))
+  (If (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (Var "$sw") (Val #(go!"=="))))
+  (App (Val doReturn)
+  (Let "$a0" (Let "$a0" (App (Val (GoInstruction (GoLoad Range.ty))) (Var "r"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad go.int64))) (Var "bound"))
+  (App (App (App (Val (GoInstruction (FuncResolve Lower []))) (Val #())) (Var "$a0")) (Var "$a1"))))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad go.int64))) (Var "bound"))
+  (App (App (App (Val (GoInstruction (FuncResolve Upper []))) (Val #())) (Var "$a0")) (Var "$a1")))))
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoLoad Range.ty))) (Var "r"))))))))))))))))
 
 instance info' : PkgInfo pkg_id.github_com.rstyled.gstyle.domain.runtimeguard.interval where
   pkgImportedPkgs := []
@@ -488,6 +531,7 @@ class Assumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFun
   Upper_unfold : FuncUnfold Upper [] Upper.impl
   StrictLower_unfold : FuncUnfold StrictLower [] StrictLower.impl
   StrictUpper_unfold : FuncUnfold StrictUpper [] StrictUpper.impl
+  Constrain_unfold : FuncUnfold Constrain [] Constrain.impl
 
 attribute [instance] Assumptions.Range_instance
   Assumptions.Access_instance
@@ -500,6 +544,7 @@ attribute [instance] Assumptions.Range_instance
   Assumptions.Upper_unfold
   Assumptions.StrictLower_unfold
   Assumptions.StrictUpper_unfold
+  Assumptions.Constrain_unfold
 
 end github_com.rstyled.gstyle.domain.runtimeguard.interval
 

@@ -88,3 +88,34 @@ func TestStrictConstraints(t *testing.T) {
 		}
 	}
 }
+
+func TestConstrainOperatorSemantics(t *testing.T) {
+	cases := []struct {
+		operator string
+		holds    func(int64, int64) bool
+	}{
+		{">=", func(x, b int64) bool { return x >= b }},
+		{">", func(x, b int64) bool { return b == math.MaxInt64 || x > b }},
+		{"<", func(x, b int64) bool { return b == math.MinInt64 || x < b }},
+		{"<=", func(x, b int64) bool { return x <= b }},
+		{"==", func(x, b int64) bool { return x == b }},
+	}
+	points := []int64{math.MinInt64, math.MinInt64 + 1, -1, 0, 1, math.MaxInt64 - 1, math.MaxInt64}
+	for _, r := range samples() {
+		for _, bound := range points {
+			for _, tc := range cases {
+				got := Constrain(r, tc.operator, bound)
+				for _, x := range points {
+					if members(got, x) != (members(r, x) && tc.holds(x, bound)) {
+						t.Fatalf("operator=%q bound=%d x=%d range=%+v result=%+v", tc.operator, bound, x, r, got)
+					}
+				}
+			}
+			for _, operator := range []string{"", "!=", "≥", ">= ", "\x00", "unknown"} {
+				if got := Constrain(r, operator, bound); got != r {
+					t.Fatalf("unsupported operator %q changes range: got=%+v want=%+v", operator, got, r)
+				}
+			}
+		}
+	}
+}

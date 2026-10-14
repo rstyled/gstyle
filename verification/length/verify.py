@@ -181,8 +181,14 @@ def interval_profile():
     return Profile(
         ROOT / "dist/verification/negative-index", "github_com/rstyled/gstyle/domain/runtimeguard/interval.lean",
         "./domain/runtimeguard/interval", source, (source,),
-        {prefix + name for name in ("join_sound", "negative_detected", "wp_Join", "wp_NegativeIndex", "wp_JoinSound", "wp_NegativeDetected", "selected_avoids", "selected_risky", "selected_unique", "selected_sublist", "selected_keys", "wp_Select", "wp_SelectProperties", "advisory_line", "wp_Describe", "selected_negative", "wp_SelectNegative", "lower_intersection", "upper_intersection", "wp_Lower", "wp_Upper", "wp_LowerIntersection", "wp_UpperIntersection", "strict_lower_sound", "strict_upper_sound", "wp_StrictLower", "wp_StrictUpper", "wp_StrictLowerSound", "wp_StrictUpperSound")},
+        {prefix + name for name in ("join_sound", "negative_detected", "wp_Join", "wp_NegativeIndex", "wp_JoinSound", "wp_NegativeDetected", "selected_avoids", "selected_risky", "selected_unique", "selected_sublist", "selected_keys", "wp_Select", "wp_SelectProperties", "advisory_line", "wp_Describe", "selected_negative", "wp_SelectNegative", "lower_intersection", "upper_intersection", "wp_Lower", "wp_Upper", "wp_LowerIntersection", "wp_UpperIntersection", "strict_lower_sound", "strict_upper_sound", "wp_StrictLower", "wp_StrictUpper", "wp_StrictLowerSound", "wp_StrictUpperSound", "constrain_sound", "wp_Constrain", "wp_ConstrainSound")},
         {
+            "dispatch-lower-as-upper": ('case ">=":\n\t\treturn Lower(r, bound)', 'case ">=":\n\t\treturn Upper(r, bound)'),
+            "dispatch-strict-lower-as-upper": ('case ">":\n\t\treturn StrictLower(r, bound)', 'case ">":\n\t\treturn StrictUpper(r, bound)'),
+            "dispatch-strict-upper-as-lower": ('case "<":\n\t\treturn StrictUpper(r, bound)', 'case "<":\n\t\treturn StrictLower(r, bound)'),
+            "dispatch-upper-as-lower": ('case "<=":\n\t\treturn Upper(r, bound)', 'case "<=":\n\t\treturn Lower(r, bound)'),
+            "dispatch-equality-misses-upper": ("return Upper(Lower(r, bound), bound)", "return Lower(r, bound)"),
+            "dispatch-default-narrows": ("default:\n\t\treturn r", "default:\n\t\treturn Lower(r, bound)"),
             "strict-lower-overflow": ("if bound == int64(^uint64(0)>>1)", "if false"),
             "strict-upper-overflow": ("if bound == -int64(^uint64(0)>>1)-1", "if false"),
             "strict-lower-includes-boundary": ("return Lower(r, bound+1)", "return Lower(r, bound)"),
