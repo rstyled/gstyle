@@ -297,3 +297,6 @@ all references under shared read-only ownership. See
 
 The [operator availability proof](verification/length/OPERATOR.md) checks the
 production reader that separates known operators from unavailable reason text.
+
+The [generic PDG list proof](verification/length/PDG_LIST.md) preserves exact
+row descriptors and absence across production attribute-list lookups.

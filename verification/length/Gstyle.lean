@@ -22,3 +22,5 @@ public import Gstyle.Proof.Transfer.Branch
 public import Gstyle.Proof.Pdg.Text
 
 public import Gstyle.Proof.Transfer.Operator
+
+public import Gstyle.Proof.Pdg.List

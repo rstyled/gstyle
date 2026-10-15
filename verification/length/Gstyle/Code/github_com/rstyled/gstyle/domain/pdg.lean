@@ -575,6 +575,23 @@ noncomputable def Validate [FfiSyntax] [GoGlobalContext] : GoString :=
 noncomputable def contains [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/pdg.contains"
 
+/-- go: attributes.go:180:6 -/
+noncomputable def listAt.impl [FfiSyntax] [GoGlobalContext] (T : go.GoType) : val :=
+  (LamV "lists"
+  (Lam "ref"
+  (App (Val exceptionDo)
+  (Let "ref" (App (Val (GoInstruction (GoAlloc Ref.ty))) (Var "ref"))
+  (Let "lists" (App (Val (GoInstruction (GoAlloc (go.GoType.SliceType (go.GoType.SliceType T))))) (Var "lists"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoLoad (go.GoType.SliceType T)))) (App (Val (GoInstruction (IndexRef (go.GoType.SliceType (go.GoType.SliceType T))))) (Pair (App (Val (GoInstruction (GoLoad (go.GoType.SliceType (go.GoType.SliceType T))))) (Var "lists")) (App (Val (GoInstruction (Convert Ref.ty go.int))) (App (Val (GoInstruction (GoOp GoSub Ref.ty))) (Pair (App (Val (GoInstruction (GoLoad Ref.ty))) (Var "ref")) (Val #(W32 1)))))))))))
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (If (App (Val (GoInstruction (GoOp GoEquals Ref.ty))) (Pair (App (Val (GoInstruction (GoLoad Ref.ty))) (Var "ref")) (Val #(W32 0)))) (Val #true) (App (Val (GoInstruction (GoOp GoGt go.uint64))) (Pair (App (Val (GoInstruction (Convert Ref.ty go.uint64))) (App (Val (GoInstruction (GoLoad Ref.ty))) (Var "ref"))) (App (Val (GoInstruction (Convert go.int go.uint64))) (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType (go.GoType.SliceType T))))) (Var "lists"))
+  (App (App (Val (GoInstruction (FuncResolve go.len [(go.GoType.SliceType (go.GoType.SliceType T))]))) (Val #())) (Var "$a0"))))))))
+  (App (Val doReturn)
+  (App (Val (GoInstruction (Convert go.untypedNil (go.GoType.SliceType T)))) (Val UntypedNil)))
+  (App (Val doExecute)
+  (Val #())))))))))
+
 /-- go: tables.go:20:18 -/
 noncomputable def Tables.Text.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "t"
@@ -1401,6 +1418,7 @@ class Assumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFun
   Builder_instance : Builder.TypeAssumptions
   provenanceKey_instance : provenanceKey.TypeAssumptions
   validator_instance : validator.TypeAssumptions
+  listAt_unfold : ∀ (T : go.GoType), FuncUnfold listAt [T] (listAt.impl T)
   import_query_Assumption : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Assumptions
 
 attribute [instance] Assumptions.AttributeSet_instance
@@ -1453,6 +1471,7 @@ attribute [instance] Assumptions.AttributeSet_instance
   Assumptions.Builder_instance
   Assumptions.provenanceKey_instance
   Assumptions.validator_instance
+  Assumptions.listAt_unfold
   Assumptions.import_query_Assumption
 
 end github_com.rstyled.gstyle.domain.pdg

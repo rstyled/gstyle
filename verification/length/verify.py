@@ -532,6 +532,31 @@ def operator_profile():
     )
 
 
+def pdg_list_profile():
+    source = ROOT / "domain/pdg/attributes.go"
+    sources = tuple(sorted(path for directory in ("domain/pdg", "domain/pdg/query")
+                           for path in (ROOT / directory).glob("*.go") if not path.name.endswith("_test.go")))
+    prefix = "Perennial.github_com.rstyled.gstyle.domain.pdg."
+    return Profile(
+        ROOT / "dist/verification/pdg-list", "github_com/rstyled/gstyle/domain/pdg.lean", "./domain/pdg", source, sources,
+        {prefix + name for name in ("wp_listAt_present", "wp_listAt_absent", "wp_listAt")},
+        {
+            "list-wrong-slot": ("return lists[ref-1]", "return lists[ref]"),
+            "list-first-row": ("return lists[ref-1]", "return lists[0]"),
+            "list-uses-capacity": ("uint64(len(lists))", "uint64(cap(lists))"),
+            "list-rejects-last": ("uint64(ref) > uint64(len(lists))", "uint64(ref) >= uint64(len(lists))"),
+            "list-ignores-zero": ("if ref == 0 || uint64(ref) > uint64(len(lists)) {", "if uint64(ref) > uint64(len(lists)) {"),
+            "list-discards-present": ("return lists[ref-1]", "return nil"),
+            "list-collapses-empty": ("return lists[ref-1]", "if len(lists[ref-1]) == 0 { return nil }; return lists[ref-1]"),
+            "list-forges-absence": ("return nil\n\t}\n\treturn lists[ref-1]", "return lists[0]\n\t}\n\treturn lists[ref-1]"),
+            "list-mutates-table": ("return lists[ref-1]", "lists[ref-1] = nil; return lists[ref-1]"),
+        },
+        "AuditPdgList.lean", "Gstyle/Proof/Pdg/List.lean", "production generic PDG list lookup returns exact descriptors and preserves borrowed tables",
+        ("graph attributes and expansion", "inner row storage and graph construction", "fact provenance and condition/transfer integration", "package initialization"),
+        ("Code",), (("github_com/rstyled/gstyle/domain/pdg/query.lean", "./domain/pdg/query"),),
+    )
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -654,10 +679,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile}
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile}
         arguments = tuple(sys.argv[1:])
         if arguments not in profiles:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list]")
         main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error
