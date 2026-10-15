@@ -87,16 +87,28 @@ func (r reduction) finish(reduced []byte, reduceErr error) error {
 	return errors.Join(reduceErr, reportErr)
 }
 
-func parseOptions(args []string, output io.Writer) (options, error) {
+// Flags returns fresh flag definitions with the same terminal defaults as execution.
+func Flags(output io.Writer) *flag.FlagSet {
+	return flagsFor(&options{tui: terminalOutput(output)})
+}
+
+func flagsFor(result *options) *flag.FlagSet {
 	flags := flag.NewFlagSet("bug-reducer", flag.ContinueOnError)
-	flags.SetOutput(output)
-	flags.Usage = func() { fmt.Fprint(output, usage) }
-	result := options{}
+	flags.SetOutput(io.Discard)
 	flags.StringVar(&result.language, "language", "lines", "reduction mode: lines or go (Tree-sitter)")
 	flags.StringVar(&result.goParser, "go-parser", "", "Go parser dynamic library for Tree-sitter")
 	flags.StringVar(&result.output, "output", "", "new output file")
 	flags.DurationVar(&result.timeout, "timeout", 10*time.Second, "timeout per checker invocation")
-	flags.BoolVar(&result.tui, "tui", terminalOutput(output), "show the live terminal dashboard")
+	flags.BoolVar(&result.tui, "tui", result.tui, "show the live terminal dashboard")
+	return flags
+}
+
+func parseOptions(args []string, output io.Writer) (options, error) {
+	result := options{tui: terminalOutput(output)}
+	flags := flagsFor(&result)
+	flags.SetOutput(output)
+	flags.Usage = func() { fmt.Fprint(output, usage) }
+
 	err := flags.Parse(args)
 	if err != nil {
 		return options{}, err

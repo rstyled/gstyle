@@ -105,7 +105,7 @@ func TestQualityCheckHelpDoesNotStartTUI(t *testing.T) {
 	if err := run([]string{"check", "--help"}, &output); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(output.String(), "Usage: gstyle check") {
+	if !strings.Contains(output.String(), "gstyle check") {
 		t.Fatal(output.String())
 	}
 }

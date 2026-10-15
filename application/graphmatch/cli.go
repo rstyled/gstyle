@@ -33,22 +33,31 @@ type options struct {
 	source, contextOutput string
 }
 
-// Run writes JSON Lines pair traces followed by a complete/incomplete summary.
-func Run(ctx context.Context, args []string, output io.Writer) error {
+// Flags returns fresh flag definitions shared by command help and execution.
+func Flags() *flag.FlagSet { return flagsFor(&options{}) }
+
+func flagsFor(opts *options) *flag.FlagSet {
 	fs := flag.NewFlagSet("match-graphs", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	path := fs.String("input", "", "imported projected-stage input JSON")
-	source := fs.String("source", "", "Go source root for independently validated native matching")
-	contextPath := fs.String("context-output", "", "optional paired PDG/CFG conformance JSON Lines output")
-	configPath := fs.String("config", "", "strict matching overrides JSON")
-	timeout := fs.Duration("timeout", 0, "explicit resource deadline; zero is unlimited")
+	fs.StringVar(&opts.input, "input", "", "imported projected-stage input JSON")
+	fs.StringVar(&opts.source, "source", "", "Go source root for independently validated native matching")
+	fs.StringVar(&opts.contextOutput, "context-output", "", "optional paired PDG/CFG conformance JSON Lines output")
+	fs.StringVar(&opts.config, "config", "", "strict matching overrides JSON")
+	fs.DurationVar(&opts.timeout, "timeout", 0, "explicit resource deadline; zero is unlimited")
+	return fs
+}
+
+// Run writes JSON Lines pair traces followed by a complete/incomplete summary.
+func Run(ctx context.Context, args []string, output io.Writer) error {
+	opts := options{}
+	fs := flagsFor(&opts)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if err := inputOptions(*path, *source, *contextPath, fs.NArg()); err != nil {
+	if err := inputOptions(opts.input, opts.source, opts.contextOutput, fs.NArg()); err != nil {
 		return err
 	}
-	return runDeadline(ctx, options{input: *path, config: *configPath, timeout: *timeout, source: *source, contextOutput: *contextPath}, output)
+	return runDeadline(ctx, opts, output)
 }
 
 func runDeadline(ctx context.Context, opts options, output io.Writer) error {
