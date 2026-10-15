@@ -84,7 +84,8 @@ class VerificationGuardTests(unittest.TestCase):
                                 (verify.output_profile, "Gstyle.Proof.Output.Classify"),
                                 (verify.interval_profile, "Gstyle.Proof.Interval.Constrain"),
                                 (verify.runtime_value_profile, "Gstyle.Proof.RuntimeValue"),
-                                (verify.state_map_profile, "Gstyle.Proof.StateMap.Join")):
+                                (verify.state_map_profile, "Gstyle.Proof.StateMap.Join"),
+                                (verify.numeric_transfer_profile, "Gstyle.Proof.Transfer.Numeric")):
             profile = factory()
             mutation = next(iter(profile.mutations.items()))
             with self.subTest(package=profile.package), tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
@@ -109,7 +110,8 @@ class VerificationGuardTests(unittest.TestCase):
     def test_shards_cover_every_mutation_once(self):
         for factory, count in ((verify.interval_profile, 4), (verify.output_profile, 3),
                                (verify.runtime_value_profile, 2),
-                               (verify.state_map_profile, 2)):
+                               (verify.state_map_profile, 2),
+                               (verify.numeric_transfer_profile, 3)):
             mutations = factory().mutations
             selected = [name for index in range(count)
                         for name in verify.shard_mutations(mutations, (index, count))]

@@ -3,7 +3,8 @@
 Run `make verify-negative-index verify-runtime-value` with the shared pinned Lean/Goose project.
 This stage covers intervals, the risk decision and stable per-binding selection.
 Advisory payload construction and generic node lookup are also proved. PDG
-transfer analysis and the outer projections remain outside Lean.
+extraction, remaining transfers and the outer projections remain outside Lean.
+Numeric state constraints have a separate [proof contract](NUMERIC_TRANSFER.md).
 
 `domain/runtimeguard/interval` owns the actual Go join and risk decision.
 `Value.mergeBounds` uses that join; the negative-index matcher uses that decision.
@@ -98,7 +99,8 @@ comparison. Machine-word proofs justify adjusted-bound arithmetic without
 wraparound. Six added mutation controls remove the overflow guards, include the
 strict boundary or use the wrong transfer. Go tests cover exact intersections
 away from those guards, unchanged extreme results and unrelated Value metadata.
-The graph-level removal of infeasible signed branches remains outside Lean.
+The production numeric constraint path now has a separate
+[proof of infeasible signed-branch rejection](NUMERIC_TRANSFER.md).
 
 The production integer-comparison dispatcher uses `interval.Constrain`. Its
 execution theorem composes the actual lower/upper and strict transfer calls for

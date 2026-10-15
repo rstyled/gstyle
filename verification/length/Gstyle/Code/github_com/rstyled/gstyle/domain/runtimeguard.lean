@@ -132,6 +132,126 @@ noncomputable def copyState [FfiSyntax] [GoGlobalContext] : GoString :=
 noncomputable def equalState [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard.equalState"
 
+/-- go: condition.go:58:21 -/
+noncomputable def graphView.constrain.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "v"
+  (Lam "symbol"
+  (Lam "operator"
+  (Lam "bound"
+  (Lam "state"
+  (App (Val exceptionDo)
+  (Let "v" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType graphView.ty)))) (Var "v"))
+  (Let "state" (App (Val (GoInstruction (GoAlloc State.ty))) (Var "state"))
+  (Let "bound" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "bound"))
+  (Let "operator" (App (Val (GoInstruction (GoAlloc go.string))) (Var "operator"))
+  (Let "symbol" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad State.ty))) (Var "state"))
+  (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"binding"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v"))) (Var "$a0")) (Var "$a1"))))
+  (Let "value" (App (Val (GoInstruction (GoAlloc Value.ty))) (App (Val (GoInstruction (GoZeroVal Value.ty))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (Let "$a0" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "value"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad go.string))) (Var "operator"))
+  (Let "$a2" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "bound"))
+  (App (App (App (App (Val (GoInstruction (FuncResolve lengthConstraint []))) (Val #())) (Var "$a0")) (Var "$a1")) (Var "$a2")))))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "value"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoLoad State.ty))) (Var "state")))))
+  (App (Val doExecute)
+  (App (App (App (Val (map.insert _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty)) (App (Val (GoInstruction (GoLoad State.ty))) (Var "state"))) (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol"))) (Var "$r0")))))))
+  (If (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad go.string))) (Var "operator"))
+  (Let "$a2" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "bound"))
+  (Let "$a3" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "value"))
+  (App (App (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"infeasibleConstraint"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v"))) (Var "$a0")) (Var "$a1")) (Var "$a2")) (Var "$a3"))))))
+  (App (Val doReturn)
+  (App (Val (GoInstruction (Convert go.untypedNil State.ty))) (Val UntypedNil)))
+  (App (Val doExecute)
+  (Val #()))))))
+  (If (Let "$a0" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "bound"))
+  (App (App (Val (GoInstruction (FuncResolve exactInteger []))) (Val #())) (Var "$a0")))
+  (Let "$r0" (Let "$a0" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "value"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad go.string))) (Var "operator"))
+  (Let "$a2" (App (Val (GoInstruction (GoLoad go.int64))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Lower"))) (Var "bound")))
+  (App (App (App (App (Val (GoInstruction (FuncResolve integerConstraint []))) (Val #())) (Var "$a0")) (Var "$a1")) (Var "$a2")))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore Value.ty))) (Pair (Var "value") (Var "$r0")))))
+  (App (Val doExecute)
+  (Val #()))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore Value.ty))) (Pair (Var "value") (Var "$r0"))))))))
+  (If (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Nil"))) (Var "bound")))
+  (App (Val doReturn)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad go.string))) (Var "operator"))
+  (Let "$a2" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "value"))
+  (Let "$a3" (App (Val (GoInstruction (GoLoad State.ty))) (Var "state"))
+  (App (App (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"nilConstraint"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v"))) (Var "$a0")) (Var "$a1")) (Var "$a2")) (Var "$a3")))))))
+  (App (Val doExecute)
+  (Val #()))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore Value.ty))) (Pair (Var "value") (Var "$r0")))))))))
+  (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol"))
+  (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"trackedBinding"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v"))) (Var "$a0"))))
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoLoad State.ty))) (Var "state")))
+  (App (Val doExecute)
+  (Val #())))))))))))))))
+
+/-- go: condition.go:99:21 -/
+noncomputable def graphView.infeasibleConstraint.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "v"
+  (Lam "symbol"
+  (Lam "operator"
+  (Lam "bound"
+  (Lam "value"
+  (App (Val exceptionDo)
+  (Let "v" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType graphView.ty)))) (Var "v"))
+  (Let "value" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "value"))
+  (Let "bound" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "bound"))
+  (Let "operator" (App (Val (GoInstruction (GoAlloc go.string))) (Var "operator"))
+  (Let "symbol" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol"))
+  (App (Val doReturn)
+  (If (Let "$a0" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "value"))
+  (App (App (Val (GoInstruction (FuncResolve emptyRange []))) (Val #())) (Var "$a0"))) (Val #true) (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad go.string))) (Var "operator"))
+  (Let "$a2" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "bound"))
+  (App (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"impossibleSignedComparison"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v"))) (Var "$a0")) (Var "$a1")) (Var "$a2"))))))))))))))))))
+
+/-- go: condition.go:103:21 -/
+noncomputable def graphView.impossibleSignedComparison.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "v"
+  (Lam "symbol"
+  (Lam "operator"
+  (Lam "bound"
+  (App (Val exceptionDo)
+  (Let "v" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType graphView.ty)))) (Var "v"))
+  (Let "bound" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "bound"))
+  (Let "operator" (App (Val (GoInstruction (GoAlloc go.string))) (Var "operator"))
+  (Let "symbol" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$sw" (App (Val (GoInstruction (GoLoad go.string))) (Var "operator"))
+  (If (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (Var "$sw") (Val #(go!"<"))))
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoOp GoEquals go.int64))) (Pair (App (Val (GoInstruction (GoLoad go.int64))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Lower"))) (Var "bound"))) (App (Val (GoInstruction (GoOp GoSub go.int64))) (Pair (App (Val (GoInstruction (GoUnOp GoNeg go.int64))) (App (Val (GoInstruction (Convert go.uint64 go.int64))) (App (Val (GoInstruction (GoShift GoShiftr go.uint64 go.untypedInt))) (Pair (App (Val (GoInstruction (GoUnOp GoComplement go.uint64))) (Val #(W64 0))) (Val #(1 : Int)))))) (Val #(W64 1)))))))
+  (If (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (Var "$sw") (Val #(go!">"))))
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoOp GoEquals go.int64))) (Pair (App (Val (GoInstruction (GoLoad go.int64))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Lower"))) (Var "bound"))) (App (Val (GoInstruction (Convert go.uint64 go.int64))) (App (Val (GoInstruction (GoShift GoShiftr go.uint64 go.untypedInt))) (Pair (App (Val (GoInstruction (GoUnOp GoComplement go.uint64))) (Val #(W64 0))) (Val #(1 : Int))))))))
+  (App (Val doReturn)
+  (Val #false)))))))
+  (If (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (App (Val (GoInstruction (IndexRef (go.GoType.SliceType go.string)))) (Pair (App (Val (GoInstruction (GoLoad (go.GoType.SliceType go.string)))) (App (Val (GoInstruction (StructFieldRef graphView.ty go!"kinds"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v")))) (App (Val (GoInstruction (Convert _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty go.int))) (App (Val (GoInstruction (GoOp GoSub _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Pair (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol")) (Val #(W32 1)))))))) (Val #(go!"\"signed\""))))) (Val #true) (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (Let "$a0" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "bound"))
+  (App (App (Val (GoInstruction (FuncResolve exactInteger []))) (Val #())) (Var "$a0")))))
+  (App (Val doReturn)
+  (Val #false))
+  (App (Val doExecute)
+  (Val #())))))))))))))
+
 /-- go: condition.go:117:6 -/
 noncomputable def integerConstraint.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "value"
@@ -171,6 +291,54 @@ noncomputable def integerConstraint.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val (GoInstruction (GoStore go.int64))) (Pair (Var "$l0") (Var "$r0")))))))))))
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore _root_.Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.Range.ty))) (Pair (Var "r") (Var "$r0"))))))))))))))
+
+/-- go: condition.go:124:6 -/
+noncomputable def lengthConstraint.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "value"
+  (Lam "operator"
+  (Lam "bound"
+  (App (Val exceptionDo)
+  (Let "bound" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "bound"))
+  (Let "operator" (App (Val (GoInstruction (GoAlloc go.string))) (Var "operator"))
+  (Let "value" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "value"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (Val #true)
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (If (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"BelowLength"))) (Var "value"))) (Val #true) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "operator")) (Val #(go!"<")))))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoLoad Value.ty))) (Var "value")))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.bool))) (Pair (App (Val (GoInstruction (StructFieldRef Value.ty go!"BelowLength"))) (Var "value")) (Var "$r0"))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.bool))) (Pair (App (Val (GoInstruction (StructFieldRef Value.ty go!"UpperChecked"))) (Var "value")) (Var "$r0"))))))))
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "operator")) (Val #(go!"<"))))) (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "operator")) (Val #(go!"<="))))) (Val #false)))
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoLoad Value.ty))) (Var "value")))
+  (App (Val doExecute)
+  (Val #()))))))
+  (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Length"))) (Var "bound"))))
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoLoad Value.ty))) (Var "value")))
+  (App (Val doExecute)
+  (Val #())))))))))))
+
+/-- go: condition.go:136:6 -/
+noncomputable def exactInteger.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "value"
+  (App (Val exceptionDo)
+  (Let "value" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "value"))
+  (App (Val doReturn)
+  (If (If (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"HasLower"))) (Var "value"))) (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"HasUpper"))) (Var "value"))) (Val #false)) (App (Val (GoInstruction (GoOp GoEquals go.int64))) (Pair (App (Val (GoInstruction (GoLoad go.int64))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Lower"))) (Var "value"))) (App (Val (GoInstruction (GoLoad go.int64))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Upper"))) (Var "value"))))) (Val #false))))))
+
+/-- go: condition.go:140:6 -/
+noncomputable def emptyRange.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "value"
+  (App (Val exceptionDo)
+  (Let "value" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "value"))
+  (App (Val doReturn)
+  (If (If (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"HasLower"))) (Var "value"))) (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"HasUpper"))) (Var "value"))) (Val #false)) (App (Val (GoInstruction (GoOp GoGt go.int64))) (Pair (App (Val (GoInstruction (GoLoad go.int64))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Lower"))) (Var "value"))) (App (Val (GoInstruction (GoLoad go.int64))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Upper"))) (Var "value"))))) (Val #false))))))
 
 /-- go: flow.go:127:21 -/
 noncomputable def graphView.join.impl [FfiSyntax] [GoGlobalContext] : val :=
@@ -338,6 +506,17 @@ noncomputable def graphView.binding.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val (GoInstruction (CompositeLiteral Value.ty))) (LiteralValue [])))
   (App (Val doExecute)
   (Val #())))))))))))
+
+/-- go: track.go:60:21 -/
+noncomputable def graphView.trackedBinding.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "v"
+  (Lam "symbol"
+  (App (Val exceptionDo)
+  (Let "v" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType graphView.ty)))) (Var "v"))
+  (Let "symbol" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol"))
+  (App (Val doReturn)
+  (If (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoOp GoEquals _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Pair (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol")) (Val #(W32 0))))) (App (Val (GoInstruction (GoOp GoLe go.int))) (Pair (App (Val (GoInstruction (Convert _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty go.int))) (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol"))) (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType go.bool)))) (App (Val (GoInstruction (StructFieldRef graphView.ty go!"tracked"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v"))))
+  (App (App (Val (GoInstruction (FuncResolve go.len [(go.GoType.SliceType go.bool)]))) (Val #())) (Var "$a0"))))) (Val #false)) (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (IndexRef (go.GoType.SliceType go.bool)))) (Pair (App (Val (GoInstruction (GoLoad (go.GoType.SliceType go.bool)))) (App (Val (GoInstruction (StructFieldRef graphView.ty go!"tracked"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v")))) (App (Val (GoInstruction (Convert _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty go.int))) (App (Val (GoInstruction (GoOp GoSub _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Pair (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol")) (Val #(W32 1)))))))) (Val #false))))))))
 
 /-- go: value.go:20:16 -/
 noncomputable def Value.merge.impl [FfiSyntax] [GoGlobalContext] : val :=
@@ -560,7 +739,11 @@ class graphView.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [
   set_dereferences : ∀ (x : graphView) (y : GoMap), go.IsGoStepPureDetTagged under (StructFieldSet graphView.underlying go!"dereferences") (PairV #x #y) (Val #(({ x with dereferences' := y } : graphView)))
   ptr_base_unfold : MethodUnfold (go.GoType.PointerType graphView.ty) go!"base" graphView.base.impl
   ptr_binding_unfold : MethodUnfold (go.GoType.PointerType graphView.ty) go!"binding" graphView.binding.impl
+  ptr_constrain_unfold : MethodUnfold (go.GoType.PointerType graphView.ty) go!"constrain" graphView.constrain.impl
+  ptr_impossibleSignedComparison_unfold : MethodUnfold (go.GoType.PointerType graphView.ty) go!"impossibleSignedComparison" graphView.impossibleSignedComparison.impl
+  ptr_infeasibleConstraint_unfold : MethodUnfold (go.GoType.PointerType graphView.ty) go!"infeasibleConstraint" graphView.infeasibleConstraint.impl
   ptr_join_unfold : MethodUnfold (go.GoType.PointerType graphView.ty) go!"join" graphView.join.impl
+  ptr_trackedBinding_unfold : MethodUnfold (go.GoType.PointerType graphView.ty) go!"trackedBinding" graphView.trackedBinding.impl
 
 attribute [instance] graphView.TypeAssumptions.type_repr
   graphView.TypeAssumptions.underlying
@@ -585,7 +768,11 @@ attribute [instance] graphView.TypeAssumptions.type_repr
   graphView.TypeAssumptions.set_dereferences
   graphView.TypeAssumptions.ptr_base_unfold
   graphView.TypeAssumptions.ptr_binding_unfold
+  graphView.TypeAssumptions.ptr_constrain_unfold
+  graphView.TypeAssumptions.ptr_impossibleSignedComparison_unfold
+  graphView.TypeAssumptions.ptr_infeasibleConstraint_unfold
   graphView.TypeAssumptions.ptr_join_unfold
+  graphView.TypeAssumptions.ptr_trackedBinding_unfold
 
 structure Value [FfiSyntax] where
   mk ::
@@ -762,6 +949,9 @@ class Assumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFun
   Access_instance : Access.TypeAssumptions
   Report_instance : Report.TypeAssumptions
   integerConstraint_unfold : FuncUnfold integerConstraint [] integerConstraint.impl
+  lengthConstraint_unfold : FuncUnfold lengthConstraint [] lengthConstraint.impl
+  exactInteger_unfold : FuncUnfold exactInteger [] exactInteger.impl
+  emptyRange_unfold : FuncUnfold emptyRange [] emptyRange.impl
   copyState_unfold : FuncUnfold copyState [] copyState.impl
   import_pdg_Assumption : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Assumptions
   import_interval_Assumption : _root_.Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.Assumptions
@@ -773,6 +963,9 @@ attribute [instance] Assumptions.analysis_instance
   Assumptions.Access_instance
   Assumptions.Report_instance
   Assumptions.integerConstraint_unfold
+  Assumptions.lengthConstraint_unfold
+  Assumptions.exactInteger_unfold
+  Assumptions.emptyRange_unfold
   Assumptions.copyState_unfold
   Assumptions.import_pdg_Assumption
   Assumptions.import_interval_Assumption
