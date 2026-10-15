@@ -313,7 +313,7 @@ class VerificationGuardTests(unittest.TestCase):
                 verify.check_generated(profile, generated)
 
     def test_mutation_requires_a_bound_source(self):
-        for source in ("outside.go", "verification/length/Gstyle/Proof/Transfer/SymbolModel.lean"):
+        for source in ("outside.go", "verification/lean/Gstyle/Proof/Transfer/SymbolModel.lean"):
             profile = replace(verify.runtime_value_profile(), mutations={"unbound": ("before", "after", source)})
             with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
                 with self.assertRaisesRegex(RuntimeError, "source is not bound"):

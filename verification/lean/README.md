@@ -1,13 +1,14 @@
-# Function-length proof pilot
+# Lean verification
 
 This project uses Lean 4, Iris and Goose/Perennial. The Go runtime has no new
 external dependencies. Lean dependencies are development-only and pinned in
 `lakefile.toml`, `lake-manifest.json` and `lean-toolchain`.
 
-This directory also hosts the [PDG query proofs](PDG.md) and the
-[unchecked-output proofs](OUTPUT.md), and [negative-index core](NEGATIVE_INDEX.md).
-Each has its own verification profile,
-axiom audit and mutation controls.
+Profiles cover function length, [PDG queries](PDG.md),
+[unchecked output](OUTPUT.md), and [runtime state and interval proofs](NEGATIVE_INDEX.md).
+Each has its own verification profile, axiom audit and mutation controls.
+
+## Function-length profile
 
 The production metric counts physical lines containing Go tokens. Blank lines,
 comments and inserted semicolons do not count. The signature and braces count;
