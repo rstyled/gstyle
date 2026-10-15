@@ -128,7 +128,7 @@ class VerificationGuardTests(unittest.TestCase):
                 source.write_text("after")
                 return []
 
-            with patch.object(verify, "run", side_effect=run), patch.object(verify, "generate"), patch.object(verify, "check_generated"), patch.object(verify, "check_mutations", side_effect=mutate):
+            with patch.dict(os.environ, {"GSTYLE_MUTATION_CACHE": ""}), patch.object(verify, "run", side_effect=run), patch.object(verify, "generate"), patch.object(verify, "check_generated"), patch.object(verify, "check_mutations", side_effect=mutate):
                 with self.assertRaisesRegex(RuntimeError, "bound source changed"):
                     verify.main(profile)
             self.assertFalse((profile.report / "result.json").exists())
