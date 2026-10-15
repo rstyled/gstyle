@@ -691,12 +691,63 @@ def runtime_facts_profile():
                for name in mutations if name.startswith(("extension-", "boolean-"))}
     modules.update({name: ("Gstyle/Proof/Transfer/BindingRead.lean" if name.startswith(("read-", "symbol-zero-", "symbol-cache-")) else "Gstyle/Proof/Transfer/SymbolRead.lean")
                     for name in mutations if name.startswith(("read-", "symbol-"))})
+    model_source = "verification/length/Gstyle/Proof/Transfer/SymbolModel.lean"
+    rows_source = "verification/length/Gstyle/Proof/Pdg/ReadonlyRows.lean"
+    model_mutations = {
+        "model-zero-result": ('if ref = W32 0 then .inl (W32 0) else', 'if ref = W32 0 then .inl (W32 1) else'),
+        "model-cache-result": ('if cached ≠ W32 0 then .inl cached else', 'if cached ≠ W32 0 then .inl (cached + W32 1) else'),
+        "model-cache-guard": ('if cached ≠ W32 0 then .inl cached else', 'if cached = W32 0 then .inl cached else'),
+        "model-direct-location": ("(reads.head?.getD (zero_val pdg.Access)).Symbol'", "(reads.head?.getD (zero_val pdg.Access)).Location'"),
+        "model-direct-limit": ("boundedReadSymbol (sint.Z s.view.kinds'.len) (reads.head?", "boundedReadSymbol (sint.Z s.view.kinds'.len + 1) (reads.head?"),
+        "model-direct-inverted": ('if directReadValue node reads then', 'if !directReadValue node reads then'),
+        "model-operator-status": ("let op := if attrs.Operator'.Status' = 1#8 then", "let op := if attrs.Operator'.Status' = 0#8 then"),
+        "model-operator-name": ('if op = go!"parentheses" then', 'if op = go!"conversion" then'),
+        "model-child-position": ("(zero_val (GoArray w32 2))).arr[0]?", "(zero_val (GoArray w32 2))).arr[1]?"),
+        "model-recurses-parent": ('| .inr child => symbolResolve s fuel child', '| .inr child => symbolResolve s fuel ref'),
+        "model-empty-fuel": ('| 0, _ => none', '| 0, _ => some (W32 0)'),
+    }
+    mutations.update({name: (*mutation, model_source) for name, mutation in model_mutations.items()})
+    mutations["rows-shift-content"] = ('contents[(uint.Z ref - 1).toNat]?.getD []', 'contents[(uint.Z ref).toNat]?.getD []', rows_source)
+    mutations["rows-admit-zero"] = ('if 0 < uint.Z ref ∧ uint.Z ref ≤ contents.length then', 'if 0 ≤ uint.Z ref ∧ uint.Z ref ≤ contents.length then', rows_source)
+    modules.update({name: "Gstyle/Proof/Transfer/SymbolModel.lean" for name in model_mutations})
+    modules.update({name: "Gstyle/Proof/Pdg/ReadonlyRows.lean" for name in mutations if name.startswith("rows-")})
+    sources += (ROOT / model_source, ROOT / rows_source)
+    recursive_theorems = {
+        'Perennial.github_com.rstyled.gstyle.domain.pdg.readonlyRows_length',
+        'Perennial.github_com.rstyled.gstyle.domain.pdg.readonlyRows_at',
+        'Perennial.github_com.rstyled.gstyle.domain.pdg.readonlyRows_at_ref',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.querySnapshotOwn_rows',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.directReadValue_true',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.symbolStep_zero',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.symbolResolve_zero',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.symbolResolve_terminal',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.symbolResolve_child',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.symbolResolve_add',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.symbolResolve_deterministic',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.symbolResolve_rank',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.symbolStep_cached',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.symbolStep_absent',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.symbolStep_present',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_symbol_snapshot_zero',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_symbol_snapshot_cached',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_symbol_snapshot_absent',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_symbol_snapshot_direct',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_symbol_snapshot_unavailable_operator',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_symbol_snapshot_known_other',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_symbol_snapshot_parentheses',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.symbolRecordStep_direct',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.symbolRecordStep_unavailable',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.symbolRecordStep_other',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.symbolRecordStep_parentheses',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_symbol_resolve',
+        'Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_symbol_ranked',
+    }
     return Profile(
         ROOT / "dist/verification/runtime-facts", "github_com/rstyled/gstyle/domain/runtimeguard.lean", "./domain/runtimeguard", source, sources,
-        {prefix + name for name in ("extensionValue_first", "extensionValue_missing", "wp_extension", "wp_extension_empty", "wp_attrs_zero", "wp_attrs_absent", "wp_attrs_present", "wp_fact_zero", "wp_fact_absent", "wp_fact_present", "booleanConflict_unknown", "booleanConflict_literals", "wp_booleanContradiction", "wp_assume_boolean_reject", "wp_directBindingRead_other", "wp_directBindingRead_arity", "wp_directBindingRead_single", "wp_directBindingRead", "wp_operand_readonly", "wp_symbol_zero", "wp_symbol_cached", "wp_symbol_direct", "wp_symbol_unavailable_operator", "wp_symbol_known_other", "wp_symbol_absent_attributes", "wp_symbol_parentheses", "wp_symbol_parentheses_cached_child", "wp_symbol_parentheses_zero_child")},
+        {prefix + name for name in ("extensionValue_first", "extensionValue_missing", "wp_extension", "wp_extension_empty", "wp_attrs_zero", "wp_attrs_absent", "wp_attrs_present", "wp_fact_zero", "wp_fact_absent", "wp_fact_present", "booleanConflict_unknown", "booleanConflict_literals", "wp_booleanContradiction", "wp_assume_boolean_reject", "wp_directBindingRead_other", "wp_directBindingRead_arity", "wp_directBindingRead_single", "wp_directBindingRead", "wp_operand_readonly", "wp_symbol_zero", "wp_symbol_cached", "wp_symbol_direct", "wp_symbol_unavailable_operator", "wp_symbol_known_other", "wp_symbol_absent_attributes", "wp_symbol_parentheses", "wp_symbol_parentheses_cached_child", "wp_symbol_parentheses_zero_child")} | recursive_theorems,
         mutations, "AuditRuntimeFacts.lean", "Gstyle/Proof/Transfer/Facts.lean",
-        "production fact and binding-symbol lookup, Boolean admission and rejecting guard with preserved inputs",
-        ("unrestricted recursive symbol chains", "producer and semantic fact provenance", "metadata cache agreement and RHS evaluation", "actual condition and whole state-transfer semantics", "package initialization"),
+        "production runtime queries and finite/ranked recursive symbol resolution with preserved snapshots",
+        ("cyclic or unranked symbol inputs", "snapshot construction", "producer and semantic fact provenance", "metadata cache agreement and RHS evaluation", "actual condition and whole state-transfer semantics", "package initialization"),
         ("Code",), (("github_com/rstyled/gstyle/domain/pdg.lean", "./domain/pdg"),
                     ("github_com/rstyled/gstyle/domain/pdg/query.lean", "./domain/pdg/query"),
                     ("github_com/rstyled/gstyle/domain/runtimeguard/interval.lean", "./domain/runtimeguard/interval")),
@@ -719,6 +770,24 @@ def seed_build(lean):
     shutil.copytree(PROJECT / ".lake/build", lean / ".lake/build")
 
 
+def mutation_destination(source, work):
+    kind = source.suffix
+    source = source.resolve()
+    if source.suffix != kind:
+        raise RuntimeError(f"mutation source changes language through symlink: {source}")
+    if kind == ".go":
+        base, destination = ROOT.resolve(), work / "go"
+    elif kind == ".lean":
+        base, destination = (PROJECT / "Gstyle/Proof").resolve(), work / "lean/Gstyle/Proof"
+    else:
+        raise RuntimeError(f"unsupported mutation source: {source}")
+    try:
+        relative = source.relative_to(base)
+    except ValueError as error:
+        raise RuntimeError(f"mutation source escapes its source tree: {source}") from error
+    return destination / relative
+
+
 def check_mutation(profile, goose, proofgen, item):
     name, mutation = item
     scratch = profile.report / ".scratch"
@@ -728,14 +797,14 @@ def check_mutation(profile, goose, proofgen, item):
         raise RuntimeError(f"mutation source is not bound: {name}")
     with tempfile.TemporaryDirectory(prefix=name + "-", dir=scratch) as directory:
         work = Path(directory)
+        target = mutation_destination(source, work)
         for original_source in profile.sources:
-            target = work / "go" / original_source.relative_to(ROOT)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(original_source, target)
+            copied_source = work / "go" / original_source.relative_to(ROOT)
+            copied_source.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(original_source, copied_source)
         original = source.read_text()
         if original.count(before) != 1:
             raise RuntimeError(f"mutation target is not unique: {name}")
-        (work / "go" / source.relative_to(ROOT)).write_text(original.replace(before, after))
         (work / "go/go.mod").write_text("module github.com/rstyled/gstyle\n\ngo 1.26.0\n")
         lean = work / "lean"
         lean.mkdir()
@@ -745,7 +814,9 @@ def check_mutation(profile, goose, proofgen, item):
         (lean / ".lake").mkdir()
         (lean / ".lake/packages").symlink_to(PROJECT / ".lake/packages", target_is_directory=True)
         seed_build(lean)
-        generate(profile, goose, proofgen, work / "go", lean / "Gstyle", name)
+        target.write_text(original.replace(before, after))
+        if source.suffix == ".go":
+            generate(profile, goose, proofgen, work / "go", lean / "Gstyle", name)
         proof_file = profile.mutation_modules.get(name, profile.proof_file)
         module = proof_file.removesuffix(".lean").replace("/", ".")
         run(["lake", "build", module], lean, f"{name}-proof.log", expect_failure=True, report=profile.report, proof_file=proof_file)
@@ -788,12 +859,17 @@ def check_generated(profile, generated):
                 raise RuntimeError(f"stale generated source: {actual}")
 
 
+def source_hashes(paths):
+    return {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
+
+
 def main(profile=None):
     profile = profile or length_profile()
     report = profile.report
     report.mkdir(parents=True, exist_ok=True)
     success = report / "result.json"
     success.unlink(missing_ok=True)
+    bound_sources = source_hashes(profile.sources)
     run(["lake", "build"], PROJECT, "build.log", report=report)
     perennial = PROJECT / ".lake/packages/perennial"
     manifest = json.loads((PROJECT / "lake-manifest.json").read_text())
@@ -814,8 +890,10 @@ def main(profile=None):
     shard = mutation_shard()
     mutations = shard_mutations(profile.mutations, shard)
     mutants = check_mutations(replace(profile, mutations=mutations), goose, proofgen)
+    if source_hashes(profile.sources) != bound_sources:
+        raise RuntimeError("bound source changed during verification")
     success.write_text(json.dumps({
-        "sources_sha256": {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in profile.sources},
+        "sources_sha256": bound_sources,
         "verified": profile.verified, "unverified": profile.unverified,
         "rejected_mutations": mutants,
         "mutation_shard": {"index": shard[0], "count": shard[1], "total_mutations": len(profile.mutations)},

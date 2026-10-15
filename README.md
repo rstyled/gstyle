@@ -313,3 +313,7 @@ Boolean admission.
 The runtime-facts verification stage also covers [production binding-symbol
 lookup](verification/length/BINDING_READS.md), including borrowed Access records,
 cache/direct-read paths and explicit recursive-child contracts.
+
+[Recursive symbol resolution](verification/length/SYMBOL_RESOLUTION.md) uses a
+shared read-only snapshot and finite-chain induction, with no assumed child
+execution contract.

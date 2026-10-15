@@ -1,5 +1,6 @@
 from dataclasses import replace
 import os
+import json
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -98,13 +99,107 @@ class VerificationGuardTests(unittest.TestCase):
             mutation = next(iter(profile.mutations.items()))
             with self.subTest(package=profile.package), tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
                 profile = replace(profile, report=Path(directory), mutations=dict([mutation]))
-                with patch.object(verify, "seed_build") as seed, patch.object(verify, "generate"), patch.object(verify, "run") as run, patch.object(verify, "print", create=True):
+                with patch.object(verify, "seed_build") as seed, patch.object(verify, "generate") as generate, patch.object(verify, "run") as run, patch.object(verify, "print", create=True):
                     verify.check_mutations(profile, Path("goose"), Path("proofgen"))
                 seed.assert_called_once()
+                generate.assert_called_once()
                 run.assert_called_once()
                 self.assertEqual(run.call_args.args[0], ["lake", "build", module])
                 self.assertTrue(run.call_args.kwargs["expect_failure"])
                 self.assertEqual(run.call_args.kwargs["proof_file"], profile.mutation_modules.get(mutation[0], profile.proof_file))
+
+    def test_source_drift_cannot_publish_success(self):
+        manifest = json.loads((verify.PROJECT / "lake-manifest.json").read_text())
+        revisions = {package["name"]: package["rev"] for package in manifest["packages"]}
+        with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
+            root = Path(directory)
+            source = root / "input.go"
+            source.write_text("before")
+            profile = replace(verify.length_profile(), source=source, sources=(source,), report=root / "report")
+
+            def run(command, cwd, log, **kwargs):
+                if command[:2] == ["git", "rev-parse"]:
+                    return revisions[cwd.name]
+                if log == "axioms.log":
+                    return self.audit()
+                return ""
+
+            def mutate(*args):
+                source.write_text("after")
+                return []
+
+            with patch.object(verify, "run", side_effect=run), patch.object(verify, "generate"), patch.object(verify, "check_generated"), patch.object(verify, "check_mutations", side_effect=mutate):
+                with self.assertRaisesRegex(RuntimeError, "bound source changed"):
+                    verify.main(profile)
+            self.assertFalse((profile.report / "result.json").exists())
+
+    def test_model_mutation_is_private_and_keeps_generated_code(self):
+        profile = verify.runtime_facts_profile()
+        name = "model-cache-result"
+        before, after, relative = profile.mutations[name]
+        source = verify.ROOT / relative
+        baseline = source.read_bytes()
+        code = verify.PROJECT / "Gstyle/Code" / profile.package
+        canonical = code.read_bytes()
+        with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
+            profile = replace(profile, report=Path(directory), mutations={name: profile.mutations[name]})
+
+            def inspect(command, cwd, log, **kwargs):
+                self.assertEqual(command, ["lake", "build", "Gstyle.Proof.Transfer.SymbolModel"])
+                self.assertEqual((cwd / source.relative_to(verify.PROJECT)).read_text(), baseline.decode().replace(before, after))
+                self.assertEqual((cwd.parent / "go" / relative).read_bytes(), baseline)
+                self.assertEqual((cwd / "Gstyle/Code" / profile.package).read_bytes(), canonical)
+                self.assertTrue(kwargs["expect_failure"])
+                self.assertEqual(kwargs["proof_file"], "Gstyle/Proof/Transfer/SymbolModel.lean")
+
+            with patch.object(verify, "seed_build") as seed, patch.object(verify, "generate") as generate, patch.object(verify, "run", side_effect=inspect), patch.object(verify, "print", create=True):
+                verify.check_mutations(profile, Path("goose"), Path("proofgen"))
+            seed.assert_called_once()
+            generate.assert_not_called()
+        self.assertEqual(source.read_bytes(), baseline)
+        self.assertEqual(code.read_bytes(), canonical)
+
+    def test_go_mutation_regenerates_from_private_changed_source(self):
+        profile = verify.runtime_facts_profile()
+        name, mutation = next(iter(profile.mutations.items()))
+        before, after = mutation
+        source = profile.source
+        baseline = source.read_text()
+        with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
+            profile = replace(profile, report=Path(directory), mutations={name: mutation})
+
+            def inspect(selected, goose, proofgen, source_root, output, label):
+                self.assertEqual((source_root / source.relative_to(verify.ROOT)).read_text(), baseline.replace(before, after))
+                self.assertNotEqual(source_root.resolve(), verify.ROOT.resolve())
+                self.assertEqual(source.read_text(), baseline)
+                self.assertEqual(label, name)
+
+            with patch.object(verify, "seed_build"), patch.object(verify, "generate", side_effect=inspect) as generate, patch.object(verify, "run"), patch.object(verify, "print", create=True):
+                verify.check_mutations(profile, Path("goose"), Path("proofgen"))
+            generate.assert_called_once()
+        self.assertEqual(source.read_text(), baseline)
+
+    def test_mutations_cannot_target_generated_or_external_sources(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            for source in (verify.PROJECT / "Gstyle/Code" / verify.runtime_facts_profile().package,
+                           verify.PROJECT / "README.md", work / "outside.go", work / "outside.lean"):
+                with self.subTest(source=source), self.assertRaises(RuntimeError):
+                    verify.mutation_destination(source, work)
+
+    def test_model_symlinks_cannot_escape_the_proof_tree(self):
+        with tempfile.TemporaryDirectory() as outside, tempfile.TemporaryDirectory(dir=verify.PROJECT / "Gstyle/Proof", prefix=".guard-") as inside:
+            target = Path(outside) / "model.lean"
+            target.write_text("external")
+            link = Path(inside) / "model.lean"
+            link.symlink_to(target)
+            with self.assertRaisesRegex(RuntimeError, "escapes"):
+                verify.mutation_destination(link, Path(outside) / "scratch")
+            self.assertEqual(target.read_text(), "external")
+            link.unlink()
+            link.symlink_to(verify.runtime_facts_profile().source)
+            with self.assertRaisesRegex(RuntimeError, "changes language"):
+                verify.mutation_destination(link, Path(outside) / "scratch")
 
     def test_split_mutations_have_explicit_existing_contracts(self):
         for factory in (verify.interval_profile, verify.output_profile):
@@ -209,10 +304,11 @@ class VerificationGuardTests(unittest.TestCase):
                 verify.check_generated(profile, generated)
 
     def test_mutation_requires_a_bound_source(self):
-        profile = replace(verify.runtime_value_profile(), mutations={"unbound": ("before", "after", "outside.go")})
-        with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
-            with self.assertRaisesRegex(RuntimeError, "source is not bound"):
-                verify.check_mutations(replace(profile, report=Path(directory)), Path("goose"), Path("proofgen"))
+        for source in ("outside.go", "verification/length/Gstyle/Proof/Transfer/SymbolModel.lean"):
+            profile = replace(verify.runtime_value_profile(), mutations={"unbound": ("before", "after", source)})
+            with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
+                with self.assertRaisesRegex(RuntimeError, "source is not bound"):
+                    verify.check_mutations(replace(profile, report=Path(directory)), Path("goose"), Path("proofgen"))
 
     def test_failed_run_clears_success(self):
         with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:

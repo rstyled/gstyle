@@ -79,10 +79,11 @@ this contract. Zero and absent attribute paths need no allocation bound.
 
 ## Validation and remaining integration
 
-Twenty-four execution contracts and four model policy theorems have an exact
+Fifty-six named execution, model and ownership results have an exact
 standard-axiom audit. Source regeneration byte-compares runtimeguard, interval,
-PDG and query code. Fifty-seven valid source mutants fail their expected Lean
-module and independently fail the Go regressions. Controls cover namespace,
+PDG and query code. Fifty-seven Go source mutants fail their expected Lean
+module and independently fail the Go regressions. Thirteen additional private
+Lean model/row controls cover recursive resolution and snapshot access. Controls cover namespace,
 key/value fields and IDs, match direction, first/late/absent behavior, forbidden
 writes, node selection, discarded metadata and fact dispatch.
 
@@ -106,3 +107,6 @@ Convergence and program pointer/alias analysis remain separate stages.
 The profile also covers production binding-symbol queries; see
 [BINDING_READS.md](BINDING_READS.md) for contracts, explicit recursive-child
 obligations and the additional controls.
+
+[Recursive symbol resolution](SYMBOL_RESOLUTION.md) supplies actual child
+execution proofs by finite-chain induction and a decreasing-rank wrapper.

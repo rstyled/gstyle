@@ -49,24 +49,25 @@ symbol. Metadata construction, producer truth and agreement with source Go
 bindings remain separate obligations. The kind-slice contents are not read by
 the direct-symbol limit check; its contract uses the actual length header.
 
-Arbitrary nested parentheses are not yet closed by a well-founded recursion
-proof. The general handoff leaves that child contract explicit; its concrete
-zero/cached-child instances do not. Cyclic operand graphs and termination of
-recursive lookup are unsupported here. This is separate from convergence of
-the analysis worklist. Full value evaluation, conditions and state-transfer
-composition remain unfinished. Program pointer/alias semantics and package
-initialization remain separate stages.
+Finite recursive chains are now covered by the shared-snapshot induction in
+[SYMBOL_RESOLUTION.md](SYMBOL_RESOLUTION.md). That contract supplies the child
+proof internally under explicit reference, allocation and finite-witness/rank
+assumptions. The local handoff theorem remains useful independently. Queried
+cycles, snapshot construction and semantic cache/producer agreement remain
+outside this stage. Full value/condition/transfer and control-flow composition
+remain unfinished. Program pointer/alias semantics and initialization remain
+separate stages.
 
 ## Verification controls
 
-Fourteen new execution contracts extend the runtime-query audit to 28 named
-results, using only the existing standard-axiom allowlist. The profile checks
+The fourteen local execution contracts form part of the runtime-query audit
+extended to 56 named results by recursive resolution, using only the existing standard-axiom allowlist. The profile checks
 exact Go-to-Goose regeneration for runtimeguard, interval, PDG and query source.
 
 Eighteen new valid Go mutations cover category, arity, location, wrong access
 rows, zero references, cache selection, symbol limits, operator availability,
 exact operator names, operand selection, bypassed recursion and forbidden input
-writes. They join the existing 39 controls. Each must fail its expected proof
+writes. They join the prior 39 Go controls and thirteen recursive model/row controls. Each must fail its expected proof
 module with a recognized proof diagnostic; setup errors do not count.
 
 Go regressions check all 256 category and operator-status bytes, empty/single/
