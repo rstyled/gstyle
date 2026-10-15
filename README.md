@@ -222,7 +222,7 @@ logs and source hashes.
 
 This remains a **partial detector proof**: AST/type extraction, corpus traversal and
 Candidate projection are checked by Go tests. Incorrect extracted facts can still produce
-incorrect findings. See [the output verification scope](verification/length/OUTPUT.md)
+incorrect findings. See [the output verification scope](verification/lean/OUTPUT.md)
 for the contract
 and trust boundaries. The former Gobra-only decision pilot is replaced by this
 Lean pipeline; Docker is no longer needed.
@@ -236,14 +236,14 @@ the strict threshold. The command audits theorem axioms, checks that generated
 code matches current Go source, and rejects four deliberate Go mutations.
 
 The scanner and analyzer integration remain outside the formal proof. See the
-[proof scope and instructions](verification/length/README.md).
+[proof scope and instructions](verification/lean/README.md).
 
 ### Lean verification of PDG queries
 
 Run `make verify-pdg` to verify actual reference/evidence queries and the composed
 semantic-pattern dependency and interface admission rules. The command audits
 fourteen theorems, checks generated source, and rejects nine deliberate Go bugs. See the
-[PDG proof scope](verification/length/PDG.md); complete graph traversals and
+[PDG proof scope](verification/lean/PDG.md); complete graph traversals and
 pattern findings are not yet formally proved.
 
 ### Lean verification of the negative-index core
@@ -256,14 +256,14 @@ binding in input order. Generic node lookup and advisory payload construction ar
 also proved. `make verify-runtime-value` proves the actual Value projection and
 comparison copy-back, plus the complete Value join and its interval-set
 preservation contract. Numeric state constraints are covered separately below.
-Remaining transfers, traversal and outer projections remain outside the proof. See [the negative-index verification scope](verification/length/NEGATIVE_INDEX.md).
+Remaining transfers, traversal and outer projections remain outside the proof. See [the negative-index verification scope](verification/lean/NEGATIVE_INDEX.md).
 
 ### Lean verification of state-map joins and equality
 
 Run `make verify-state-map` to verify production content equality, the join and its binding/copy
 helpers. The contract covers both/missing keys, nil branches, input preservation
 and conditional interval soundness using the existing Value merge proof. See
-[the explicit assumptions and unsupported cases](verification/length/STATE_MAP.md).
+[the explicit assumptions and unsupported cases](verification/lean/STATE_MAP.md).
 
 ### Lean verification of numeric state constraints
 
@@ -271,53 +271,53 @@ Run `make verify-numeric-transfer` to verify the production numeric constraint
 path: tracking, integer and length constraints, impossible branches and exact
 map updates. The soundness contract retains represented integers that satisfy
 the branch comparison under explicit assumptions. See
-[the contract and remaining stages](verification/length/NUMERIC_TRANSFER.md).
+[the contract and remaining stages](verification/lean/NUMERIC_TRANSFER.md).
 
 ### Lean verification of signed steps
 
 Run `make verify-signed-step` to verify the production signed 64-bit increment
 and decrement helpers. The contract covers unknown bounds, negative values,
 wrapped results and metadata invalidation. See
-[the width assumptions and proof boundary](verification/length/SIGNED_STEP.md).
+[the width assumptions and proof boundary](verification/lean/SIGNED_STEP.md).
 
 ### Lean verification of assignment writes
 
 Run `make verify-assignment` to verify production RHS eligibility and non-pointer
 state-map writes, including unsigned defaults and conservative compound fallback.
-See [the contracts and remaining integration obligations](verification/length/ASSIGNMENT.md).
+See [the contracts and remaining integration obligations](verification/lean/ASSIGNMENT.md).
 
 ### Lean verification of branch composition
 
 Run `make verify-branch` to verify operand reads and production logical branch
 composition under explicit child contracts. It covers sequential refinement,
 independent forks and unreachable alternatives. See
-[the contract and unresolved child/PDG obligations](verification/length/BRANCH.md).
+[the contract and unresolved child/PDG obligations](verification/lean/BRANCH.md).
 
 ### Lean verification of PDG text lookup
 
 Run `make verify-pdg-text` to verify the production string-table accessor for
 all references under shared read-only ownership. See
-[the lookup contract and remaining PDG boundaries](verification/length/PDG_TEXT.md).
+[the lookup contract and remaining PDG boundaries](verification/lean/PDG_TEXT.md).
 
-The [operator availability proof](verification/length/OPERATOR.md) checks the
+The [operator availability proof](verification/lean/OPERATOR.md) checks the
 production reader that separates known operators from unavailable reason text.
 
-The [generic PDG list proof](verification/length/PDG_LIST.md) preserves exact
+The [generic PDG list proof](verification/lean/PDG_LIST.md) preserves exact
 row descriptors and absence across production attribute-list lookups.
 
 Run `make verify-pdg-attributes` for the [graph attribute and outcomes
-contracts](verification/length/PDG_ATTRIBUTES.md), including real record
+contracts](verification/lean/PDG_ATTRIBUTES.md), including real record
 selection, metadata preservation and the complete copying loop.
 
 Run `make verify-runtime-facts` for the [production node-to-fact query
-contracts](verification/length/RUNTIME_FACTS.md), including first-match
+contracts](verification/lean/RUNTIME_FACTS.md), including first-match
 extensions, actual node indirection, explicit absence behavior and literal
 Boolean admission.
 
 The runtime-facts verification stage also covers [production binding-symbol
-lookup](verification/length/BINDING_READS.md), including borrowed Access records,
+lookup](verification/lean/BINDING_READS.md), including borrowed Access records,
 cache/direct-read paths and explicit recursive-child contracts.
 
-[Recursive symbol resolution](verification/length/SYMBOL_RESOLUTION.md) uses a
+[Recursive symbol resolution](verification/lean/SYMBOL_RESOLUTION.md) uses a
 shared read-only snapshot and finite-chain induction, with no assumed child
 execution contract.

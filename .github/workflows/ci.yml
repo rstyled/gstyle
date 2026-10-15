@@ -116,17 +116,17 @@ jobs:
         with:
           path: |
             ~/.elan/toolchains
-            verification/length/.lake/packages
-          key: lean-deps-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}
+            verification/lean/.lake/packages
+          key: lean-deps-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/lean/lean-toolchain', 'verification/lean/lakefile.toml', 'verification/lean/lake-manifest.json') }}
 
       - name: Restore incremental project build
         uses: actions/cache@v5
         with:
-          path: verification/length/.lake/build
-          key: lean-preflight-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}-${{ hashFiles('verification/length/Gstyle.lean', 'verification/length/Gstyle/**/*.lean') }}
+          path: verification/lean/.lake/build
+          key: lean-preflight-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/lean/lean-toolchain', 'verification/lean/lakefile.toml', 'verification/lean/lake-manifest.json') }}-${{ hashFiles('verification/lean/Gstyle.lean', 'verification/lean/Gstyle/**/*.lean') }}
           restore-keys: |
-            lean-profile-v2-function-length-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}-
-            lean-project-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}-
+            lean-profile-v2-function-length-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/lean/lean-toolchain', 'verification/lean/lakefile.toml', 'verification/lean/lake-manifest.json') }}-
+            lean-project-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/lean/lean-toolchain', 'verification/lean/lakefile.toml', 'verification/lean/lake-manifest.json') }}-
 
       - name: Restore combined mutation evidence
         uses: actions/cache/restore@v5
@@ -147,8 +147,8 @@ jobs:
         env:
           GSTYLE_MUTATION_WORKERS: '4'
         run: |
-          python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-          python3 -B verification/length/ci_cached.py
+          python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+          python3 -B verification/lean/ci_cached.py
 
       - name: Preserve checked cache hits
         if: steps.cached.outputs.has-hits == 'true'
@@ -188,17 +188,17 @@ jobs:
         with:
           path: |
             ~/.elan/toolchains
-            verification/length/.lake/packages
-          key: lean-deps-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}
+            verification/lean/.lake/packages
+          key: lean-deps-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/lean/lean-toolchain', 'verification/lean/lakefile.toml', 'verification/lean/lake-manifest.json') }}
 
       - name: Restore incremental project build
         uses: actions/cache@v5
         with:
-          path: verification/length/.lake/build
-          key: lean-profile-v2-${{ matrix.profile }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}-${{ hashFiles('verification/length/Gstyle.lean', 'verification/length/Gstyle/**/*.lean') }}
+          path: verification/lean/.lake/build
+          key: lean-profile-v2-${{ matrix.profile }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/lean/lean-toolchain', 'verification/lean/lakefile.toml', 'verification/lean/lake-manifest.json') }}-${{ hashFiles('verification/lean/Gstyle.lean', 'verification/lean/Gstyle/**/*.lean') }}
           restore-keys: |
-            lean-profile-v2-${{ matrix.profile }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}-
-            lean-project-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}-
+            lean-profile-v2-${{ matrix.profile }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/lean/lean-toolchain', 'verification/lean/lakefile.toml', 'verification/lean/lake-manifest.json') }}-
+            lean-project-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/lean/lean-toolchain', 'verification/lean/lakefile.toml', 'verification/lean/lake-manifest.json') }}-
 
       - name: Restore mutation evidence
         uses: actions/cache@v5
@@ -260,7 +260,7 @@ jobs:
           path: dist/proof-artifacts
 
       - name: Assemble complete mutation cache
-        run: python3 -B verification/length/ci_evidence.py
+        run: python3 -B verification/lean/ci_evidence.py
 
       - name: Save combined mutation evidence
         uses: actions/cache/save@v5

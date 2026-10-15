@@ -54,114 +54,114 @@ test-race:
 
 # Lean proof of the output decision and stable site selection.
 verify-output:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --output
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --output
 
 .PHONY: verify-length
 
 # Actual Go -> Goose -> Lean/Iris, including source binding and negative controls.
 verify-length:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py
 
 .PHONY: verify-pdg
 
 # Reuse the pinned Lean project; verify actual PDG query records and decisions.
 verify-pdg:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --pdg
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --pdg
 
 .PHONY: verify-negative-index
 
 verify-negative-index:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --interval
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --interval
 
 .PHONY: verify-runtime-value
 verify-runtime-value:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --runtime-value
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --runtime-value
 
 .PHONY: verify-state-map
 verify-state-map:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --state-map
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --state-map
 
 .PHONY: verify-numeric-transfer
 verify-numeric-transfer:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --numeric-transfer
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --numeric-transfer
 
 .PHONY: verify-signed-step
 verify-signed-step:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --signed-step
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --signed-step
 
 .PHONY: verify-assignment
 verify-assignment:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --assignment
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --assignment
 
 .PHONY: verify-branch
 verify-branch:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --branch
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --branch
 
 .PHONY: verify-pdg-text
 verify-pdg-text:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --pdg-text
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --pdg-text
 
 .PHONY: verify-operator
 
 verify-operator:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --operator
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --operator
 
 .PHONY: verify-pdg-list
 
 verify-pdg-list:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --pdg-list
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --pdg-list
 
 .PHONY: verify-pdg-attributes
 
 verify-pdg-attributes:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --pdg-attributes
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --pdg-attributes
 
 .PHONY: verify-runtime-facts
 
 verify-runtime-facts:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --runtime-facts
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --runtime-facts
 
 .PHONY: verify-value-evaluation
 
 verify-value-evaluation:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --value-evaluation
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --value-evaluation
 
 .PHONY: verify-comparison
 
 verify-comparison:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --comparison
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --comparison
 
 .PHONY: verify-one-sided
 
 verify-one-sided:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --one-sided
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --one-sided
 
 .PHONY: verify-shared-flow
 
 verify-shared-flow:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --shared-flow
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --shared-flow
 
 .PHONY: verify-assume
 
 verify-assume:
-	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
-	python3 -B verification/length/verify.py --assume
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --assume

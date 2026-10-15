@@ -709,8 +709,8 @@ def runtime_facts_profile():
                for name in mutations if name.startswith(("extension-", "boolean-"))}
     modules.update({name: ("Gstyle/Proof/Transfer/BindingRead.lean" if name.startswith(("read-", "symbol-zero-", "symbol-cache-")) else "Gstyle/Proof/Transfer/SymbolRead.lean")
                     for name in mutations if name.startswith(("read-", "symbol-"))})
-    model_source = "verification/length/Gstyle/Proof/Transfer/SymbolModel.lean"
-    rows_source = "verification/length/Gstyle/Proof/Pdg/ReadonlyRows.lean"
+    model_source = "verification/lean/Gstyle/Proof/Transfer/SymbolModel.lean"
+    rows_source = "verification/lean/Gstyle/Proof/Pdg/ReadonlyRows.lean"
     model_mutations = {
         "model-zero-result": ('if ref = W32 0 then .inl (W32 0) else', 'if ref = W32 0 then .inl (W32 1) else'),
         "model-cache-result": ('if cached ≠ W32 0 then .inl cached else', 'if cached ≠ W32 0 then .inl (cached + W32 1) else'),
@@ -823,7 +823,7 @@ def value_evaluation_profile():
         modules.update({name: f"Gstyle/Proof/Transfer/{module}.lean" for name in entries})
     for name in ("value-ignores-binding", "value-wrong-binding"):
         modules[name] = "Gstyle/Proof/Transfer/ValueBindingDispatch.lean"
-    model_source = "verification/length/Gstyle/Proof/Transfer/ValueResolution.lean"
+    model_source = "verification/lean/Gstyle/Proof/Transfer/ValueResolution.lean"
     model_mutations = {
         "value-model-empty-fuel": ('| 0, _ => none', '| 0, _ => some (zero_val Value)'),
         "value-model-child-index": (').arr[0]?).getD (W32 0)', ').arr[1]?).getD (W32 0)'),
@@ -967,7 +967,7 @@ def comparison_profile():
                      for name in groups["ComparisonTransfers"]})
     expected.update({name: "Gstyle/Proof/Transfer/NumericConstrainQueries.lean"
                      for name in ("constraint-ignores-tracking", "constraint-drops-write", "constraint-keeps-infeasible")})
-    model_source = "verification/length/Gstyle/Proof/Transfer/ComparisonModel.lean"
+    model_source = "verification/lean/Gstyle/Proof/Transfer/ComparisonModel.lean"
     model_mutations = {
         "compare-model-inverse-strict": ('if op = go!"<" then go!">=" else', 'if op = go!"<" then go!">" else'),
         "compare-model-reverse-equality": ('if op = go!"==" then go!"==" else', 'if op = go!"==" then go!"!=" else'),
@@ -1060,7 +1060,7 @@ def comparison_profile():
 
 def one_sided_profile():
     base = comparison_profile()
-    source = "verification/length/Gstyle/Proof/Transfer/ComparisonOneSidedSound.lean"
+    source = "verification/lean/Gstyle/Proof/Transfer/ComparisonOneSidedSound.lean"
     proof = "Gstyle/Proof/Transfer/ComparisonOneSidedSound.lean"
     conclusion = "stateRepresents kind changing (constraintState active (kind key) (changing key) key m op bound) valuation := by"
     changes = {
@@ -1084,7 +1084,7 @@ def one_sided_profile():
              "wp_comparison_right_numeric_false_sound")
     return replace(base, report=ROOT / "dist/verification/one-sided", sources=base.sources + (ROOT / source,),
                    theorems={"Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name for name in names},
-                   mutations={name: (*change, "verification/length/Gstyle/Proof/Transfer/ComparisonSound.lean" if name.startswith("one-bound-") else source)
+                   mutations={name: (*change, "verification/lean/Gstyle/Proof/Transfer/ComparisonSound.lean" if name.startswith("one-bound-") else source)
                               for name, change in changes.items()},
                    mutation_modules={name: "Gstyle/Proof/Transfer/ComparisonSound.lean" for name in changes if name.startswith("one-bound-")},
                    audit="AuditOneSided.lean", proof_file=proof,
