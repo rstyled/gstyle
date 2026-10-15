@@ -275,7 +275,7 @@ def runtime_value_profile():
     sources = tuple(sorted(path for directory in ("domain/runtimeguard", "domain/runtimeguard/interval", "domain/pdg", "domain/pdg/query")
                            for path in (ROOT / directory).glob("*.go") if not path.name.endswith("_test.go")))
     prefix = "Perennial.github_com.rstyled.gstyle.domain.runtimeguard."
-    return Profile(
+    profile = Profile(
         ROOT / "dist/verification/runtime-value", "github_com/rstyled/gstyle/domain/runtimeguard.lean",
         "./domain/runtimeguard", source, sources,
         {prefix + name for name in ("wp_Bounds", "wp_integerConstraint", "wp_integerConstraintSound", "wp_mergeBounds", "wp_mergePointers", "wp_merge", "wp_mergeSound")},
@@ -309,6 +309,14 @@ def runtime_value_profile():
          ("github_com/rstyled/gstyle/domain/pdg/query.lean", "./domain/pdg/query")),
     )
 
+
+    targets = {
+        **{name: "Bounds" for name in profile.mutations if name.startswith("project-")},
+        **{name: "Constraint" for name in profile.mutations if name.startswith(("copy-", "wrong-"))},
+        **{name: "MergeBounds" for name in ("merge-drops-other-range", "merge-swaps-lower")},
+        **{name: "MergePointers" for name in ("merge-forges-non-nil", "merge-forges-nil", "merge-forges-guard", "merge-confuses-identity", "merge-drops-common-identity")},
+    }
+    return replace(profile, mutation_modules={name: "Gstyle/Proof/RuntimeValue/" + targets.get(name, "Merge") + ".lean" for name in profile.mutations})
 
 
 def state_map_profile():
@@ -829,6 +837,7 @@ def value_evaluation_profile():
         "Gstyle/Proof/Transfer/ValueResolution.lean",
         "Gstyle/Proof/StrconvPackage.lean", "Gstyle/Proof/RuntimeValue.lean",
         "Gstyle/Proof/RuntimePackage.lean", "Gstyle/Proof/RuntimeValueModel.lean",
+        *tuple("Gstyle/Proof/RuntimeValue/" + name + ".lean" for name in ("Bounds", "Constraint", "MergeBounds", "MergePointers", "Merge")),
         "Gstyle/Proof/StateMap/Binding.lean", "Gstyle/Proof/Pdg/GraphLayout.lean",
     )
     names = (

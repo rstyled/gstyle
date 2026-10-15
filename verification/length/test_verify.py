@@ -84,7 +84,7 @@ class VerificationGuardTests(unittest.TestCase):
                                 (verify.pdg_profile, "Gstyle.Proof.Queries"),
                                 (verify.output_profile, "Gstyle.Proof.Output.Classify"),
                                 (verify.interval_profile, "Gstyle.Proof.Interval.Constrain"),
-                                (verify.runtime_value_profile, "Gstyle.Proof.RuntimeValue"),
+                                (verify.runtime_value_profile, "Gstyle.Proof.RuntimeValue.MergeBounds"),
                                 (verify.state_map_profile, "Gstyle.Proof.StateMap.Join"),
                                 (verify.numeric_transfer_profile, "Gstyle.Proof.Transfer.Numeric"),
                                 (verify.signed_step_profile, "Gstyle.Proof.Transfer.Step"),

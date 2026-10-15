@@ -68,8 +68,9 @@ Lake checks input hashes and rebuilds changed modules and their dependents.
 Pinned dependency builds are shared. A worker failure aborts verification;
 result lists retain profile order even when progress messages finish out of order.
 
-Interval and unchecked-output proofs are split by operation. The public
-`Interval.lean` and `Output.lean` modules still export every original theorem.
+Interval, runtime-value, and unchecked-output proofs are split by operation.
+The public `Interval.lean`, `RuntimeValue.lean`, and `Output.lean` modules still
+export every original theorem.
 The baseline build and axiom audits remain complete; mutation builds target the
 specific operation contract listed in `verify.py`.
 
