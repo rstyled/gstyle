@@ -233,10 +233,14 @@ resources that must be released on *every* path, including error paths. Error
 paths are where resource discipline breaks. The paper found 800+ error-handling
 mistakes in ~4M LOC of Java from pure static analysis.
 
-**How gstyle implements it:** Tracks resource acquisition (open, lock, allocate)
-and verifies release (close, unlock, free) on all paths including error returns.
-Go's `defer` makes the common case easy; the analysis catches the cases where
-defer is missing or conditional.
+**How gstyle implements it:** Links acquisitions to local deferred releases.
+For typed `os` file acquisitions, it also follows normal control flow through
+direct closes and local single-argument helpers that always close their parameter.
+The acquisition's error arm is excluded only while its original error binding is
+unchanged. Conditional cleanup, early returns, cycles before cleanup, rebinding,
+address escapes, goroutines, closures, and unavailable helper bodies retain the
+warning. Helper chains and exceptional termination are outside this analysis.
+These are advisory findings; an unrecognized cleanup path is not proof of a leak.
 
 **Fidelity:** Adapted. Core obligation-tracking idea; adapted for Go's error-handling
 idioms.
