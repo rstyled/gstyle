@@ -129,3 +129,9 @@ verify-pdg-list:
 verify-pdg-attributes:
 	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
 	python3 -B verification/length/verify.py --pdg-attributes
+
+.PHONY: verify-runtime-facts
+
+verify-runtime-facts:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --runtime-facts

@@ -304,3 +304,7 @@ row descriptors and absence across production attribute-list lookups.
 Run `make verify-pdg-attributes` for the [graph attribute and outcomes
 contracts](verification/length/PDG_ATTRIBUTES.md), including real record
 selection, metadata preservation and the complete copying loop.
+
+Run `make verify-runtime-facts` for the [production node-to-fact query
+contracts](verification/length/RUNTIME_FACTS.md), including first-match
+extensions, actual node indirection and explicit absence behavior.

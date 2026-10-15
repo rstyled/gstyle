@@ -485,6 +485,22 @@ instance Graph_access_load_AttributeTables (l : Loc) (v : github_com.rstyled.gst
  by
   solve_pointsto_access_struct
 
+instance Graph_access_load_Tables (l : Loc) (v : github_com.rstyled.gstyle.domain.pdg.Graph) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Graph go!"Tables" l) v.Tables' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Graph go!"Tables" l) v.Tables' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Graph_access_load_Nodes (l : Loc) (v : github_com.rstyled.gstyle.domain.pdg.Graph) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Graph go!"Nodes" l) v.Nodes' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Graph go!"Nodes" l) v.Nodes' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
 end def_
 end Graph
 end github_com.rstyled.gstyle.domain.pdg

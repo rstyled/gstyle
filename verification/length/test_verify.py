@@ -92,7 +92,8 @@ class VerificationGuardTests(unittest.TestCase):
                                 (verify.pdg_text_profile, "Gstyle.Proof.Pdg.Text"),
                                 (verify.operator_profile, "Gstyle.Proof.Transfer.Operator"),
                                 (verify.pdg_list_profile, "Gstyle.Proof.Pdg.List"),
-                                (verify.pdg_attributes_profile, "Gstyle.Proof.Pdg.Attributes")):
+                                (verify.pdg_attributes_profile, "Gstyle.Proof.Pdg.Attributes"),
+                                (verify.runtime_facts_profile, "Gstyle.Proof.Transfer.Extension")):
             profile = factory()
             mutation = next(iter(profile.mutations.items()))
             with self.subTest(package=profile.package), tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
@@ -125,7 +126,8 @@ class VerificationGuardTests(unittest.TestCase):
                                (verify.pdg_text_profile, 1),
                                (verify.operator_profile, 1),
                                (verify.pdg_list_profile, 1),
-                               (verify.pdg_attributes_profile, 2)):
+                               (verify.pdg_attributes_profile, 2),
+                               (verify.runtime_facts_profile, 2)):
             mutations = factory().mutations
             selected = [name for index in range(count)
                         for name in verify.shard_mutations(mutations, (index, count))]

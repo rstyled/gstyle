@@ -171,6 +171,12 @@ jobs:
           - profile: pdg-attributes
             target: verify-pdg-attributes
             shard: 1/2
+          - profile: runtime-facts
+            target: verify-runtime-facts
+            shard: 0/2
+          - profile: runtime-facts
+            target: verify-runtime-facts
+            shard: 1/2
     steps:
       - name: Checkout
         uses: actions/checkout@v6

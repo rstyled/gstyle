@@ -298,8 +298,6 @@ axiom Origin.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Provenance.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
-axiom Extension.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
 axiom Source.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Role.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
@@ -1091,18 +1089,44 @@ attribute [instance] Provenance.TypeAssumptions.type_repr
   Provenance.TypeAssumptions.underlying
   Provenance.TypeAssumptions.isUnderlying
 
-axiom Extension : Type
-axiom Extension.zero_val : ZeroVal Extension
-attribute [instance] Extension.zero_val
+structure Extension [FfiSyntax] where
+  mk ::
+  Name' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  Value' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+
+instance Extension.zero_val [FfiSyntax] : ZeroVal Extension :=
+  ⟨Extension.mk zeroValDef zeroValDef⟩
+
+@[reducible] def Extension.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"Name" Text.ty),
+(go.field_decl.FieldDecl go!"Value" Text.ty)]
+
+@[irreducible] def Extension.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Extension.fieldsUnsealed
+
+instance equals_unfold_Extension [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Extension.fields Extension.fieldsUnsealed :=
+  ⟨by unfold Extension.fields; rfl⟩
+
+@[reducible] def Extension.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Extension.fields)
 
 class Extension.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying Extension.underlying Extension
   underlying : go.UnderlyingDirectedEq Extension.ty Extension.underlying
-  isUnderlying : go.IsUnderlying Extension.underlying Extension.underlying
+  layout : go.StructLayout Extension [(go!"Name", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Value", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text)]
+  get_Name : ∀ (x : Extension), go.IsGoStepPureDetTagged under (StructFieldGet Extension.underlying go!"Name") #x (Val #(x.Name'))
+  set_Name : ∀ (x : Extension) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Extension.underlying go!"Name") (PairV #x #y) (Val #(({ x with Name' := y } : Extension)))
+  get_Value : ∀ (x : Extension), go.IsGoStepPureDetTagged under (StructFieldGet Extension.underlying go!"Value") #x (Val #(x.Value'))
+  set_Value : ∀ (x : Extension) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Extension.underlying go!"Value") (PairV #x #y) (Val #(({ x with Value' := y } : Extension)))
 
 attribute [instance] Extension.TypeAssumptions.type_repr
   Extension.TypeAssumptions.underlying
-  Extension.TypeAssumptions.isUnderlying
+  Extension.TypeAssumptions.layout
+  Extension.TypeAssumptions.get_Name
+  Extension.TypeAssumptions.set_Name
+  Extension.TypeAssumptions.get_Value
+  Extension.TypeAssumptions.set_Value
 
 axiom Source : Type
 axiom Source.zero_val : ZeroVal Source

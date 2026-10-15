@@ -596,6 +596,57 @@ def pdg_attributes_profile():
     )
 
 
+def runtime_facts_profile():
+    source = ROOT / "domain/runtimeguard/graph.go"
+    sources = tuple(sorted(path for directory in ("domain/runtimeguard", "domain/runtimeguard/interval", "domain/pdg", "domain/pdg/query")
+                           for path in (ROOT / directory).glob("*.go") if not path.name.endswith("_test.go")))
+    prefix = "Perennial.github_com.rstyled.gstyle.domain.runtimeguard."
+    header = 'if g.Tables.Text(value.Name) == "gstyle.runtime:"+name {'
+    result = 'return g.Tables.Text(value.Value)'
+    attrs = 'return v.graph.NodeAttributes(v.graph.Nodes[ref-1])'
+    fact = 'return extension(v.graph, v.attrs(ref).Extensions, name)'
+    mutations = {
+        "extension-omits-namespace": ('"gstyle.runtime:"+name', 'name'),
+        "extension-wrong-namespace": ('"gstyle.runtime:"+name', '"gstyle.Runtime:"+name'),
+        "extension-key-from-value": ('g.Tables.Text(value.Name)', 'g.Tables.Text(value.Value)'),
+        "extension-shifts-key": ('g.Tables.Text(value.Name)', 'g.Tables.Text(value.Name+1)'),
+        "extension-inverts-match": (header, header.replace(' == ', ' != ')),
+        "extension-ignores-key": (header, 'if true {'),
+        "extension-returns-name": (result, 'return g.Tables.Text(value.Name)'),
+        "extension-discards-match": (result, 'return ""'),
+        "extension-shifts-value": (result, 'return g.Tables.Text(value.Value+1)'),
+        "extension-skips-first-name": (header, 'if value.Name == values[0].Name { continue }; '+header),
+        "extension-skips-tail-value": (header, 'if value.Value == values[len(values)-1].Value { continue }; '+header),
+        "extension-skips-absent-value": (header, header.removesuffix(' {')+' && value.Value != 0 {'),
+        "extension-stops-on-nonmatch": (result+'\n\t\t}\n\t}\n\treturn ""', result+'\n\t\t}\n\t\treturn ""\n\t}\n\treturn ""'),
+        "extension-forges-absence": ('return ""\n}\n\nfunc validateFlow', 'return "unknown"\n}\n\nfunc validateFlow'),
+        "extension-mutates-graph": (header, 'g.Profile = 0; '+header),
+        "extension-mutates-table": (header, 'g.Tables.Sources = nil; '+header),
+        "extension-mutates-rows": (header, 'values[0].Value = 0; '+header),
+        "extension-mutates-strings": (result, 'g.Tables.Strings[value.Value-1] = ""; '+result),
+        "attrs-ignores-zero": ('func (v *graphView) attrs(ref pdg.Ref) pdg.Attributes {\n\tif ref == 0 {', 'func (v *graphView) attrs(ref pdg.Ref) pdg.Attributes {\n\tif false && ref == 0 {'),
+        "attrs-wrong-node": (attrs, attrs.replace('[ref-1]', '[ref]')),
+        "attrs-first-node": (attrs, attrs.replace('[ref-1]', '[0]')),
+        "attrs-discards-record": (attrs, 'return pdg.Attributes{}'),
+        "attrs-mutates-view": (attrs, 'v.graph = nil; '+attrs),
+        "fact-wrong-name": (fact, 'return extension(v.graph, v.attrs(ref).Extensions, "other")'),
+        "fact-wrong-node": (fact, 'return extension(v.graph, v.attrs(0).Extensions, name)'),
+        "fact-discards-extensions": (fact, 'return extension(v.graph, nil, name)'),
+        "fact-mutates-view": (fact, 'v.kinds = nil; '+fact),
+    }
+    return Profile(
+        ROOT / "dist/verification/runtime-facts", "github_com/rstyled/gstyle/domain/runtimeguard.lean", "./domain/runtimeguard", source, sources,
+        {prefix + name for name in ("extensionValue_first", "extensionValue_missing", "wp_extension", "wp_extension_empty", "wp_attrs_zero", "wp_attrs_absent", "wp_attrs_present", "wp_fact_zero", "wp_fact_absent", "wp_fact_present")},
+        mutations, "AuditRuntimeFacts.lean", "Gstyle/Proof/Transfer/Facts.lean",
+        "production node-to-fact lookup with exact first-match extension policy and preserved inputs",
+        ("producer and semantic fact provenance", "metadata cache agreement and RHS evaluation", "actual condition and whole state-transfer semantics", "package initialization"),
+        ("Code",), (("github_com/rstyled/gstyle/domain/pdg.lean", "./domain/pdg"),
+                    ("github_com/rstyled/gstyle/domain/pdg/query.lean", "./domain/pdg/query"),
+                    ("github_com/rstyled/gstyle/domain/runtimeguard/interval.lean", "./domain/runtimeguard/interval")),
+        mutation_modules={name: "Gstyle/Proof/Transfer/Extension.lean" for name in mutations if name.startswith("extension-")},
+    )
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -718,10 +769,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile}
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile}
         arguments = tuple(sys.argv[1:])
         if arguments not in profiles:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts]")
         main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error
