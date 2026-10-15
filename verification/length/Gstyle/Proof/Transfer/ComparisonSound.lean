@@ -49,6 +49,23 @@ theorem numeric_state_step_sound (kind : w32 → GoString) (changing : w32 → B
   · have lookup := constraint_preserves_other_keys active (kind key) (changing key) key other m op b he
     simpa only [bindingValue, lookup] using hs other
 
+theorem numeric_bound_state_sound (kind : w32 → GoString) (changing : w32 → Bool)
+    (m : StateData) (valuation : w32 → Int) (key : w32) (active : Bool) (op : GoString) (bound : Value) (other : Int)
+    (hs : stateRepresents kind changing m valuation)
+    (hword : -9223372036854775808 ≤ valuation key ∧ valuation key ≤ 9223372036854775807)
+    (hbound : interval.contains (bounds bound) other)
+    (hrel : integerRelation op (valuation key) other) :
+    (active && constraintRejected (kind key) (changing key) key m op bound) = false ∧
+      stateRepresents kind changing (constraintState active (kind key) (changing key) key m op bound) valuation := by
+  have relation : isExact bound = true → interval.satisfies op (valuation key) (sint.Z bound.Lower') := by
+    intro he
+    have exactBound : other = sint.Z bound.Lower' := by
+      try exact exact_value_contains bound other hbound he
+    rw [← exactBound]
+    try exact integerRelation_satisfies _ _ _ hrel
+  try exact numeric_state_step_sound kind changing m valuation key active op bound hs hword relation
+
+
 theorem comparison_numeric_state_sound (c : NumericComparison) (m : StateData)
     (kind : w32 → GoString) (changing : w32 → Bool) (valuation : w32 → Int)
     (hkl : c.leftKind = kind c.leftKey) (hkr : c.rightKind = kind c.rightKey)

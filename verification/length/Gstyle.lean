@@ -59,3 +59,5 @@ public import Gstyle.Proof.Transfer.ComparisonTransfers
 public import Gstyle.Proof.Transfer.ComparisonBoth
 
 public import Gstyle.Proof.Transfer.ComparisonSound
+
+public import Gstyle.Proof.Transfer.ComparisonOneSidedSound

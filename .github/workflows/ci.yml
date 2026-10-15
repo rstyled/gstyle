@@ -198,6 +198,9 @@ jobs:
           - profile: comparison
             target: verify-comparison
             shard: 3/4
+          - profile: one-sided
+            target: verify-one-sided
+            shard: 0/1
     steps:
       - name: Checkout
         uses: actions/checkout@v6

@@ -1007,6 +1007,40 @@ def comparison_profile():
                    unverified=("operator table initialization", "ParseInt implementation and producer fact truth", "program pointer/nil and alias semantics", "32-bit Go execution", "query termination and worklist convergence", "general nil-state operand evaluation"))
 
 
+def one_sided_profile():
+    base = comparison_profile()
+    source = "verification/length/Gstyle/Proof/Transfer/ComparisonOneSidedSound.lean"
+    proof = "Gstyle/Proof/Transfer/ComparisonOneSidedSound.lean"
+    conclusion = "stateRepresents kind changing (constraintState active (kind key) (changing key) key m op bound) valuation := by"
+    changes = {
+        "one-bound-wrong-concrete": ("(hbound : interval.contains (bounds bound) other)", "(hbound : interval.contains (bounds bound) (valuation key))"),
+        "one-bound-reverses-relation": ("(hrel : integerRelation op (valuation key) other)", "(hrel : integerRelation op other (valuation key))"),
+        "one-bound-shifts-valuation": (conclusion, "stateRepresents kind changing (constraintState active (kind key) (changing key) key m op bound) (fun key => valuation key + 1) := by"),
+        "one-bound-wrong-key": (conclusion, "stateRepresents kind changing (constraintState active (kind key) (changing key) (key + W32 1) m op bound) valuation := by"),
+        "one-bound-rejects-feasible": ("(active && constraintRejected (kind key) (changing key) key m op bound) = false ∧", "(active && constraintRejected (kind key) (changing key) key m op bound) = true ∧"),
+        "one-bound-drops-input": ("(hs : stateRepresents kind changing m valuation)\n    (hword : -9223372036854775808 ≤ valuation key ∧ valuation key ≤ 9223372036854775807)\n    (hbound :", "(hs : True)\n    (hword : -9223372036854775808 ≤ valuation key ∧ valuation key ≤ 9223372036854775807)\n    (hbound :"),
+        "one-bound-drops-word-upper": ("(hword : -9223372036854775808 ≤ valuation key ∧ valuation key ≤ 9223372036854775807)\n    (hbound :", "(hword : -9223372036854775808 ≤ valuation key)\n    (hbound :"),
+        "one-left-true-swaps-operands": ("(hbranchFact : comparisonBranch true op (valuation key) other)", "(hbranchFact : comparisonBranch true op other (valuation key))"),
+        "one-left-false-keeps-truth": ("(hbranchFact : comparisonBranch false op (valuation key) other)", "(hbranchFact : comparisonBranch true op (valuation key) other)"),
+        "one-right-true-swaps-operands": ("(hbranchFact : comparisonBranch true op other (valuation key))", "(hbranchFact : comparisonBranch true op (valuation key) other)"),
+        "one-right-false-keeps-truth": ("(hbranchFact : comparisonBranch false op other (valuation key))", "(hbranchFact : comparisonBranch true op other (valuation key))"),
+        "one-left-false-no-inverse": ("(hcanonicalInverse : normal = inverseOperator op)", "(hcanonicalInverse : normal = op)"),
+        "one-right-true-no-reverse": ("(hcanonicalReverse : normal = reverseOperator op)", "(hcanonicalReverse : normal = op)"),
+        "one-right-false-reverses-raw": ("(hcanonicalReverse : normal = reverseOperator negated)", "(hcanonicalReverse : normal = reverseOperator op)"),
+    }
+    names = ("numeric_bound_state_sound", "wp_comparison_left_numeric_true_sound",
+             "wp_comparison_left_numeric_false_sound", "wp_comparison_right_numeric_true_sound",
+             "wp_comparison_right_numeric_false_sound")
+    return replace(base, report=ROOT / "dist/verification/one-sided", sources=base.sources + (ROOT / source,),
+                   theorems={"Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name for name in names},
+                   mutations={name: (*change, "verification/length/Gstyle/Proof/Transfer/ComparisonSound.lean" if name.startswith("one-bound-") else source)
+                              for name, change in changes.items()},
+                   mutation_modules={name: "Gstyle/Proof/Transfer/ComparisonSound.lean" for name in changes if name.startswith("one-bound-")},
+                   audit="AuditOneSided.lean", proof_file=proof,
+                   verified="production one-sided numeric comparisons preserve all represented binding values under explicit input assumptions",
+                   unverified=base.unverified + ("full condition/CFG and transfer composition",))
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -1156,10 +1190,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile}
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile}
         arguments = tuple(sys.argv[1:])
         if arguments not in profiles:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison | --one-sided]")
         main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

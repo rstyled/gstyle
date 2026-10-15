@@ -89,3 +89,8 @@ query contract, the explicit `ParseInt` premise, and remaining proof gaps.
 audits, and 40 Go/model mutations. CI uses four shards with the same two-worker
 limit. See [COMPARISON.md](COMPARISON.md) for map preservation, numeric interval
 soundness, explicit input assumptions, and remaining proof gaps.
+
+`make verify-one-sided` checks five one-sided numeric soundness contracts and
+fourteen semantic mutations in one CI shard. The comparison profile retains its
+existing Go execution controls. See [ONE_SIDED.md](ONE_SIDED.md) for operand
+interpretation, input assumptions, and remaining integration obligations.

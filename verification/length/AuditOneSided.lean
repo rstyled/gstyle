@@ -1,0 +1,7 @@
+import Gstyle.Proof.Transfer.ComparisonOneSidedSound
+
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.numeric_bound_state_sound
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_comparison_left_numeric_true_sound
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_comparison_left_numeric_false_sound
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_comparison_right_numeric_true_sound
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_comparison_right_numeric_false_sound
