@@ -48,13 +48,33 @@ func buildNilGuardCandidate(function FuncPdg, site runtimeguard.Access) patterns
 	}
 	name := runtimeSymbolName(&function.Pdg, site.Symbol)
 	line := int(function.Pdg.Nodes[site.Node-1].Line)
-	return patterns.Candidate{
+	candidate := patterns.Candidate{
 		Kind: patterns.NilGuard, ScoreMilli: 800,
 		Observation:     "nil guard checks " + strings.Join(names, ", ") + " while " + name + " is dereferenced without a guard",
 		Inference:       "verify the guard targets the dereferenced pointer; the checked variable may be the wrong one",
 		CounterEvidence: []string{"intent unknown; no automatic fix — verify against the contract"},
 		Sites:           []patterns.Site{{Path: function.Path, Line: line, EndLine: line, ID: function.Name, Name: function.Name}},
 	}
+	if !site.Value.Nil && receiverSymbol(&function.Pdg, site.Symbol) {
+		candidate.Observation = "receiver " + name + " is dereferenced without a local non-nil guarantee"
+		candidate.Inference = "review the method's receiver contract; a guard on another value does not establish that the receiver is non-nil"
+		candidate.CounterEvidence = []string{"the caller may guarantee a non-nil receiver; no automatic fix"}
+	}
+	return candidate
+}
+
+// Normal-flow lowering can store receivers as parameter symbols. The function
+// interface retains their declared role, independently of that storage choice.
+func receiverSymbol(graph *pdg.Graph, symbol pdg.Ref) bool {
+	if symbol == 0 {
+		return false
+	}
+	for _, input := range graph.Function.Inputs {
+		if input.Role == pdg.ReceiverRole && input.Symbol == symbol {
+			return true
+		}
+	}
+	return false
 }
 
 func runtimeSymbolName(graph *pdg.Graph, symbol pdg.Ref) string {
