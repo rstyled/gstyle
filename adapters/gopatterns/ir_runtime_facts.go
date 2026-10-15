@@ -315,21 +315,29 @@ func runtimePointerField(expr *ast.SelectorExpr, info *types.Info) bool {
 	return pointerType(info.TypeOf(expr.X)) || embeddedPointerAccess(selection)
 }
 
-// A strict length bound prevents ++ overflow for int and int64, including
-// named types. Narrower signed counters can wrap before reaching len.
 func (b *irBuilder) runtimeIncrementFacts(node ast.Node) {
 	increment, ok := node.(*ast.IncDecStmt)
-	if !ok || increment.Tok != token.INC {
+	if !ok {
 		return
 	}
 	basic, ok := b.info.TypeOf(increment.X).Underlying().(*types.Basic)
 	if !ok {
 		return
 	}
-	if basic.Kind() != types.Int && basic.Kind() != types.Int64 {
+	if !b.signedStep64Type(basic) {
 		return
 	}
 	ref := b.nodes[node]
 	attrs := &b.attributes[b.graph.Nodes[ref-1].Attributes-1]
-	b.runtimeExtension(attrs, "length-increment", "true")
+	b.runtimeExtension(attrs, "signed-step64", strconv.Quote(increment.Tok.String()))
+}
+
+func (b *irBuilder) signedStep64Type(basic *types.Basic) bool {
+	if basic.Kind() == types.Int64 {
+		return true
+	}
+	if basic.Kind() != types.Int || b.sizes == nil {
+		return false
+	}
+	return b.sizes.Sizeof(basic) == 8
 }

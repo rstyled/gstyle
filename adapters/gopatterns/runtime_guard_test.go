@@ -26,7 +26,7 @@ func runtimeTestGraphs(t *testing.T, src string) []FuncPdg {
 	if err != nil {
 		t.Fatal(err)
 	}
-	source := &packages.Package{Fset: fset, TypesInfo: info, Types: pkg, PkgPath: "example"}
+	source := &packages.Package{Fset: fset, TypesInfo: info, Types: pkg, TypesSizes: types.SizesFor("gc", "amd64"), PkgPath: "example"}
 	pool := pdg.NewBuilder()
 	var out []FuncPdg
 	for _, decl := range file.Decls {

@@ -75,7 +75,9 @@ extremes, unknown and contradictory bounds, instability and other map entries.
 
 Nil/pointer constraints, pointer/alias semantics, invalid references, unequal
 metadata slice lengths and concurrent mutation are outside this contract.
-Assignments, increments, comparison normalization, recursive branch composition,
+Assignments, comparison normalization, recursive branch composition,
 PDG extraction and concrete program soundness remain unproved here. Fixpoint
 convergence and package initialization require their own contracts and stages.
 This PR adds no production Go annotations or replacement model implementation.
+
+Signed increments and decrements have a separate [transfer proof](SIGNED_STEP.md).

@@ -384,6 +384,38 @@ def numeric_transfer_profile():
                    mutation_modules={})
 
 
+def signed_step_profile():
+    mutations = {
+        "step-reverses-increment": ("return incrementInteger(value)", "return decrementInteger(value)"),
+        "step-reverses-decrement": ("return decrementInteger(value)\n}", "return incrementInteger(value)\n}"),
+        "increment-loses-length-guard": ("!value.BelowLength &&", "true &&"),
+        "increment-trusts-unknown-upper": ("!value.HasUpper ||", "false ||"),
+        "increment-misses-overflow": ("value.Upper == int64(^uint64(0)>>1)", "value.Upper == int64(^uint64(0)>>1)-1"),
+        "increment-ignores-overflow": ("value.Upper == int64(^uint64(0)>>1)", "false"),
+        "increment-wrong-lower": ("Lower: value.Lower}", "Lower: value.Lower+1}"),
+        "increment-forges-lower": ("HasLower: value.HasLower", "HasLower: true"),
+        "increment-loses-lower": ("HasLower: value.HasLower", "HasLower: false"),
+        "increment-retains-length": ("Lower: value.Lower}", "Lower: value.Lower, BelowLength: value.BelowLength}"),
+        "increment-retains-upper-check": ("Lower: value.Lower}", "Lower: value.Lower, UpperChecked: value.UpperChecked}"),
+        "decrement-trusts-unknown-lower": ("!value.HasLower ||", "false ||"),
+        "decrement-misses-overflow": ("value.Lower == -int64(^uint64(0)>>1)-1", "value.Lower == -int64(^uint64(0)>>1)"),
+        "decrement-ignores-overflow": ("value.Lower == -int64(^uint64(0)>>1)-1", "false"),
+        "decrement-wrong-upper": ("Upper: value.Upper}", "Upper: value.Upper-1}"),
+        "decrement-forges-upper": ("HasUpper: value.HasUpper", "HasUpper: true"),
+        "decrement-retains-identity": ("Upper: value.Upper}", "Upper: value.Upper, Identity: value.Identity}"),
+    }
+    prefix = "Perennial.github_com.rstyled.gstyle.domain.runtimeguard."
+    names = ("increment_integer_sound", "decrement_integer_sound", "integer_step_sound", "integer_step_metadata",
+             "integer_step_interval_sound", "wp_incrementInteger", "wp_decrementInteger", "wp_integerStep", "wp_integerStep_sound")
+    return replace(runtime_value_profile(), report=ROOT / "dist/verification/signed-step",
+                   source=ROOT / "domain/runtimeguard/increment.go",
+                   theorems={prefix + name for name in names}, mutations=mutations,
+                   audit="AuditSignedStep.lean", proof_file="Gstyle/Proof/Transfer/Step.lean",
+                   verified="production signed 64-bit increment/decrement widening, wrapped-result interval soundness and metadata invalidation",
+                   unverified=("type-width and operator fact extraction/dispatch", "semantic provenance of BelowLength", "other arithmetic and narrower signed transfers", "state-map assignment integration", "fixpoint convergence", "pointer/alias semantics", "package initialization"),
+                   mutation_modules={})
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -506,10 +538,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile}
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile}
         arguments = tuple(sys.argv[1:])
         if arguments not in profiles:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step]")
         main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error
