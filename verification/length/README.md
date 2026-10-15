@@ -79,3 +79,8 @@ Every shard checks the full baseline, source binding and axiom audit, then check
 its assigned mutations. Results record the shard and total mutation count.
 The aggregate `verify-length` check requires every configured shard to pass.
 Local commands default to one shard and still run every mutation.
+
+`make verify-value-evaluation` checks the production runtime value evaluator,
+49 theorem audits, and 37 Go/model mutations. CI uses three shards with the same
+two-worker limit. See [VALUE_EVALUATION.md](VALUE_EVALUATION.md) for the finite
+query contract, the explicit `ParseInt` premise, and remaining proof gaps.

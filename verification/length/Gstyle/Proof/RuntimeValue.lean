@@ -1,6 +1,7 @@
 module
 public import Gstyle.Proof.ValueLayout
 public import Gstyle.Proof.Interval
+public import Gstyle.Proof.StrconvPackage
 @[expose] public section
 noncomputable section
 namespace Perennial

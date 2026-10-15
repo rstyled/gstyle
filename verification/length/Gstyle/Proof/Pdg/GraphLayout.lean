@@ -398,6 +398,13 @@ instance Attributes_access_load_Operator (l : Loc) (v : github_com.rstyled.gstyl
       (typedPointsto l v dq) (typedPointsto l v dq) := by
   solve_pointsto_access_struct
 
+instance Attributes_access_load_Callee (l : Loc) (v : github_com.rstyled.gstyle.domain.pdg.Attributes) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"Callee" l) v.Callee' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"Callee" l) v.Callee' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) := by
+  solve_pointsto_access_struct
+
 end def_
 end Attributes
 

@@ -755,6 +755,137 @@ def runtime_facts_profile():
     )
 
 
+def value_evaluation_profile():
+    base = runtime_facts_profile()
+    groups = {
+        "ConstantExecution": {
+            "constant-wrong-non-nil": ('v.fact(ref, "non-nil")', 'v.fact(ref, "nil")'),
+            "constant-wrong-nil": ('Nil: v.fact(ref, "nil")', 'Nil: v.fact(ref, "non-nil")'),
+            "constant-integer-key": ('strconv.ParseInt(v.fact(ref, "integer"), 10, 64)', 'strconv.ParseInt(v.fact(ref, "other"), 10, 64)'),
+            "constant-integer-base": ('strconv.ParseInt(v.fact(ref, "integer"), 10, 64)', 'strconv.ParseInt(v.fact(ref, "integer"), 16, 64)'),
+            "constant-integer-width": ('strconv.ParseInt(v.fact(ref, "integer"), 10, 64)', 'strconv.ParseInt(v.fact(ref, "integer"), 10, 32)'),
+            "constant-integer-error": ('strconv.ParseInt(v.fact(ref, "integer"), 10, 64); err == nil', 'strconv.ParseInt(v.fact(ref, "integer"), 10, 64); err != nil'),
+            "constant-lower-shift": ('value.Lower, value.Upper = integer, integer', 'value.Lower, value.Upper = integer+1, integer'),
+            "constant-upper-shift": ('value.Lower, value.Upper = integer, integer', 'value.Lower, value.Upper = integer, integer-1'),
+            "constant-missing-lower": ('value.HasLower, value.HasUpper, value.Integer = true, true, true', 'value.HasLower, value.HasUpper, value.Integer = false, true, true'),
+            "constant-missing-upper": ('value.HasLower, value.HasUpper, value.Integer = true, true, true', 'value.HasLower, value.HasUpper, value.Integer = true, false, true'),
+            "constant-missing-integer": ('value.HasLower, value.HasUpper, value.Integer = true, true, true', 'value.HasLower, value.HasUpper, value.Integer = true, true, false'),
+            "constant-extent-key": ('strconv.ParseInt(v.fact(ref, "literal-extent"), 10, 64)', 'strconv.ParseInt(v.fact(ref, "integer"), 10, 64)'),
+            "constant-extent-error": ('strconv.ParseInt(v.fact(ref, "literal-extent"), 10, 64); err == nil', 'strconv.ParseInt(v.fact(ref, "literal-extent"), 10, 64); err != nil'),
+            "constant-extent-shift": ('value.Extent, value.HasExtent = extent, true', 'value.Extent, value.HasExtent = extent+1, true'),
+            "constant-missing-extent": ('value.Extent, value.HasExtent = extent, true', 'value.Extent, value.HasExtent = extent, false'),
+            "constant-mutates-view": ('func (v *graphView) constantValue(ref pdg.Ref) Value {', 'func (v *graphView) constantValue(ref pdg.Ref) Value { v.fields = nil;'),
+        },
+        "LengthExecution": {
+            "value-zero-forges-bound": ('func (v *graphView) value(ref pdg.Ref, state State) Value {\n\tif ref == 0 {\n\t\treturn Value{}', 'func (v *graphView) value(ref pdg.Ref, state State) Value {\n\tif ref == 0 {\n\t\treturn Value{HasLower: true}'),
+            "length-inverts-admission": ('if !value.Length {', 'if value.Length {'),
+            "length-inverts-extent": ('if !source.HasExtent {', 'if source.HasExtent {'),
+            "length-shifts-lower": ('Lower: source.Extent, Upper: source.Extent', 'Lower: source.Extent+1, Upper: source.Extent'),
+            "length-shifts-upper": ('Lower: source.Extent, Upper: source.Extent', 'Lower: source.Extent, Upper: source.Extent-1'),
+            "length-drops-integer": ('return Value{Length: true, Integer: true, HasLower:', 'return Value{Length: true, Integer: false, HasLower:'),
+            "conversion-inverts-constant": ('if constant.Integer {', 'if !constant.Integer {'),
+        },
+        "ConversionExecution": {
+            "conversion-type-key": ('switch v.fact(ref, "type") {', 'switch v.fact(ref, "other") {'),
+            "conversion-swaps-nil": ('return Value{NonNil: source.NonNil, Nil: source.Nil}', 'return Value{NonNil: source.Nil, Nil: source.NonNil}'),
+            "conversion-unsigned-shift": ('return Value{HasLower: true, Lower: 0, Length: source.Length}', 'return Value{HasLower: true, Lower: 1, Length: source.Length}'),
+            "conversion-default-drops-length": ('return Value{Length: source.Length}', 'return Value{}'),
+        },
+        "ValueDispatch": {
+            "value-ignores-binding": ('if symbol := v.symbol(ref); symbol != 0 {', 'if symbol := v.symbol(ref); false && symbol != 0 {'),
+            "value-wrong-binding": ('return v.binding(symbol, state)', 'return v.binding(ref, state)'),
+            "value-parent-wrong-child": ('return v.value(v.operand(ref, 0), state)', 'return v.value(v.operand(ref, 1), state)'),
+            "value-ignores-callee-status": ('value.Length = attrs.Callee.Status == pdg.Known &&', 'value.Length = true &&'),
+            "value-wrong-callee": ('v.graph.Tables.Text(attrs.Callee.Value) == "len"', 'v.graph.Tables.Text(attrs.Callee.Value) == "cap"'),
+        },
+    }
+    mutations, modules = {}, {}
+    for module, entries in groups.items():
+        mutations.update(entries)
+        modules.update({name: f"Gstyle/Proof/Transfer/{module}.lean" for name in entries})
+    model_source = "verification/length/Gstyle/Proof/Transfer/ValueResolution.lean"
+    model_mutations = {
+        "value-model-empty-fuel": ('| 0, _ => none', '| 0, _ => some (zero_val Value)'),
+        "value-model-child-index": (').arr[0]?).getD (W32 0)', ').arr[1]?).getD (W32 0)'),
+        "value-model-wrong-parent": ('if op = go!"parentheses" then valueResolve', 'if op = go!"conversion" then valueResolve'),
+        "value-model-wrong-conversion": ('else if op = go!"conversion" then', 'else if op = go!"parentheses" then'),
+        "value-model-binding-limit": ('if uint.Z key ≤ s.kinds.length then', 'if uint.Z key < s.kinds.length then'),
+    }
+    mutations.update({name: (*mutation, model_source) for name, mutation in model_mutations.items()})
+    modules.update({name: "Gstyle/Proof/Transfer/ValueResolution.lean" for name in model_mutations})
+    proof_sources = (
+        "Gstyle/Proof/Transfer/FactSnapshot.lean",
+        "Gstyle/Proof/Transfer/ValueModel.lean",
+        "Gstyle/Proof/Transfer/ParseIntContract.lean",
+        "Gstyle/Proof/Transfer/ConstantExecution.lean",
+        "Gstyle/Proof/Transfer/LengthExecution.lean",
+        "Gstyle/Proof/Transfer/ConversionExecution.lean",
+        "Gstyle/Proof/Transfer/ValueDispatch.lean",
+        "Gstyle/Proof/Transfer/ValueEvaluation.lean",
+        "Gstyle/Proof/Transfer/ValueResolution.lean",
+        "Gstyle/Proof/StrconvPackage.lean", "Gstyle/Proof/RuntimeValue.lean",
+        "Gstyle/Proof/StateMap/Binding.lean", "Gstyle/Proof/Pdg/GraphLayout.lean",
+    )
+    names = (
+        "wp_fact_snapshot",
+        "wp_attrs_snapshot_absent",
+        "wp_attrs_snapshot",
+        "wp_operatorText_snapshot",
+        "signedDecimal_range",
+        "decimalInt64_range",
+        "decimalInt64_zero",
+        "decimalInt64_negative_zero",
+        "decimalInt64_positive",
+        "decimalInt64_negative",
+        "decimalInt64_leading_zero",
+        "decimalInt64_minimum",
+        "decimalInt64_maximum",
+        "decimalInt64_positive_overflow",
+        "decimalInt64_negative_overflow",
+        "decimalInt64_empty",
+        "decimalInt64_minus_only",
+        "decimalInt64_plus_only",
+        "decimalInt64_space",
+        "decimalInt64_underscore",
+        "decimalInt64_hex",
+        "decimalInt64_unicode",
+        "parseInt64Result_success",
+        "parseInt64Result_error",
+        "wp_constantValue_snapshot",
+        "wp_lengthValue_not_length",
+        "wp_value_zero",
+        "wp_conversionValue_integer",
+        "wp_lengthValue_child",
+        "wp_lengthValue_zero_child",
+        "wp_conversionValue_child",
+        "wp_value_binding_dispatch",
+        "wp_binding_snapshot",
+        "wp_value_cached",
+        "wp_value_parentheses_dispatch",
+        "wp_value_conversion_constant",
+        "wp_value_conversion_child",
+        "wp_value_other_dispatch",
+        "wp_value_other_no_length",
+        "wp_value_other_length_child",
+        "wp_value_bound",
+        "wp_binding_snapshot_out_of_range",
+        "wp_value_bound_out_of_range",
+        "wp_value_evaluation",
+        "valueChild_row",
+        "valueResolve_evaluation",
+        "wp_value_resolve",
+        "wp_base",
+        "wp_binding",
+    )
+    return replace(base, report=ROOT / "dist/verification/value-evaluation",
+                   sources=base.sources + tuple(PROJECT / path for path in proof_sources),
+                   theorems={"Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name for name in names},
+                   mutations=mutations, mutation_modules=modules, audit="AuditValueEvaluation.lean",
+                   proof_file="Gstyle/Proof/Transfer/ValueDispatch.lean",
+                   verified="production value evaluation for finite model witnesses with preserved PDG snapshots and state maps",
+                   unverified=("standard-library ParseInt implementation", "witness existence and termination", "snapshot construction and producer fact truth", "whole state-transfer and program interval soundness", "program pointer/alias semantics and package initialization"))
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -904,10 +1035,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile}
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile}
         arguments = tuple(sys.argv[1:])
         if arguments not in profiles:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation]")
         main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error
