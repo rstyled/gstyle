@@ -15,7 +15,8 @@ func TestPatternsNilGuardRegression(t *testing.T) {
 		"go.mod": "module example\n\ngo 1.26\n",
 		"sample.go": `package example
 type Item struct { Value int }
-func Unsafe(p, q *Item) int { if q == nil { return 0 }; return p.Value }
+func Unsafe(p *Item) int { if p != nil { return 0 }; return p.Value }
+func Unknown(p, q *Item) int { if q == nil { return 0 }; return p.Value }
 func Allocated(q *int) int { if q == nil { return 0 }; p := new(int); return *p }
 `,
 	}

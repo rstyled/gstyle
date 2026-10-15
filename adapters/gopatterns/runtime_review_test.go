@@ -1,6 +1,7 @@
 package gopatterns
 
 import (
+	"github.com/rstyled/gstyle/domain/pdg"
 	"github.com/rstyled/gstyle/domain/runtimeguard"
 	"testing"
 )
@@ -8,7 +9,7 @@ import (
 func TestRuntimeEmbeddedPointerAccess(t *testing.T) {
 	for _, receiver := range []string{"Outer", "*Outer"} {
 		src := `package p; type Inner struct { Value int }; type Outer struct { *Inner }; func f(p ` + receiver + `,q *int) int { if q==nil{return 0}; return p.Value }`
-		if got := nilGuardTestCandidates(t, src); len(got) != 1 {
+		if got := unprovenPointerAccesses(t, src); len(got) != 1 {
 			t.Fatalf("%s: got %d findings, want 1", receiver, len(got))
 		}
 	}
@@ -36,4 +37,26 @@ func TestRuntimeStringIndex(t *testing.T) {
 	if len(report.Accesses) != 1 || !report.Accesses[0].Index || !report.Accesses[0].Value.UpperChecked {
 		t.Fatalf("string access missing upper-bound facts: %+v", report)
 	}
+}
+
+// Flow tests must still check lost non-nil facts even when unknown accesses
+// are intentionally omitted from user-facing diagnostics.
+func unprovenPointerAccesses(t *testing.T, source string) []runtimeguard.Access {
+	t.Helper()
+	var accesses []runtimeguard.Access
+	for _, function := range runtimeTestGraphs(t, source) {
+		report, err := runtimeguard.Analyze(&function.Pdg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		seen := make(map[pdg.Ref]bool)
+		for _, site := range report.Accesses {
+			if site.Index || site.Value.NonNil || len(site.Guards) == 0 || seen[site.Symbol] {
+				continue
+			}
+			seen[site.Symbol] = true
+			accesses = append(accesses, site)
+		}
+	}
+	return accesses
 }
