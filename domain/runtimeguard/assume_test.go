@@ -21,7 +21,7 @@ func finiteAssumeView(t *testing.T, op string) *graphView {
 	for i, value := range map[int]string{5: "0", 9: "5", 13: "10"} {
 		attrs[i].Extensions = pool.SingletonExtension("gstyle.runtime:integer", value)
 	}
-	graph := pdg.Graph{Tables: pool.Tables, Nodes: nodes, Symbols: make([]pdg.Symbol, 1)}
+	graph := pdg.Graph{Tables: pool.Tables, Nodes: nodes, Symbols: make([]pdg.Symbol, 2)}
 	if err := pdg.PackAttributes(&graph, attrs); err != nil {
 		t.Fatal(err)
 	}
