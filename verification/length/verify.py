@@ -416,6 +416,38 @@ def signed_step_profile():
                    mutation_modules={})
 
 
+def assignment_profile():
+    pointer = "domain/runtimeguard/pointer.go"
+    write = "state[symbol] = value\n}\n\nfunc (v *graphView) forgetIdentity"
+    mutations = {
+        "selection-accepts-multiple": ("if writes != 1 {", "if writes < 1 {"),
+        "selection-rejects-single": ("if writes != 1 {", "if writes == 1 {"),
+        "selection-ignores-category": ('(form == "" && category == pdg.Declaration)', '(form == "")'),
+        "selection-copies-add-assignment": ('form == "=" || form == ":="', 'form == "=" || form == ":=" || form == "+="'),
+        "selection-copies-multiply-assignment": ('form == "=" || form == ":="', 'form == "=" || form == ":=" || form == "*="'),
+        "selection-copies-shift-assignment": ('form == "=" || form == ":="', 'form == "=" || form == ":=" || form == "<<="'),
+        "selection-wrong-declaration-tag": ("Declaration Category = iota", "Declaration Category = iota+1", "domain/pdg/model.go"),
+        "assignment-overwrites-known-lower": ("base.HasLower && !value.HasLower", "base.HasLower && value.HasLower"),
+        "assignment-forges-lower": ("value.Lower, value.HasLower = base.Lower, true", "value.Lower, value.HasLower = base.Lower+1, true"),
+        "assignment-loses-lower-flag": ("value.Lower, value.HasLower = base.Lower, true", "value.Lower, value.HasLower = base.Lower, false"),
+        "assignment-clobbers-upper": ("value.Lower, value.HasLower = base.Lower, true", "value.Lower, value.HasLower = base.Lower, true; value.Upper = 0"),
+        "store-wrong-key": (write, write.replace("state[symbol]", "state[symbol+1]"), pointer),
+        "store-loses-value": (write, write.replace("= value", "= Value{}"), pointer),
+        "store-drops-write": (write, write.replace("state[symbol] = value", "_, _ = state, value"), pointer),
+        "store-skips-normalization": ("value = v.assignmentValue(symbol, value)", "_ = v.assignmentValue(symbol, value)", pointer),
+    }
+    prefix = "Perennial.github_com.rstyled.gstyle.domain.runtimeguard."
+    names = ("assignment_interval_sound", "compound_discards_rhs", "wp_singleValueWrite", "wp_assignmentValue",
+             "wp_assign_nonpointer", "wp_singleValueWrite_compound", "wp_assign_interval_sound", "wp_assign_unknown_signed")
+    return replace(runtime_value_profile(), report=ROOT / "dist/verification/assignment",
+                   source=ROOT / "domain/runtimeguard/flow.go",
+                   theorems={prefix + name for name in names}, mutations=mutations,
+                   audit="AuditAssignment.lean", proof_file="Gstyle/Proof/Transfer/Assignment.lean",
+                   verified="production assignment eligibility and non-pointer state-map writes, conservative compound selection and conditional interval preservation",
+                   unverified=("RHS expression evaluation and PDG fact extraction", "full analysis.transfer composition, tracking, range writes and guard clearing", "pointer assignment and alias invalidation", "invalid references, nil maps and concurrent writes", "precise compound arithmetic", "branch composition and convergence", "package initialization"),
+                   mutation_modules={})
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -538,10 +570,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile}
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile}
         arguments = tuple(sys.argv[1:])
         if arguments not in profiles:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment]")
         main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

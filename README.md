@@ -275,3 +275,9 @@ Run `make verify-signed-step` to verify the production signed 64-bit increment
 and decrement helpers. The contract covers unknown bounds, negative values,
 wrapped results and metadata invalidation. See
 [the width assumptions and proof boundary](verification/length/SIGNED_STEP.md).
+
+### Lean verification of assignment writes
+
+Run `make verify-assignment` to verify production RHS eligibility and non-pointer
+state-map writes, including unsigned defaults and conservative compound fallback.
+See [the contracts and remaining integration obligations](verification/length/ASSIGNMENT.md).

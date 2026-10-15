@@ -96,3 +96,8 @@ verify-numeric-transfer:
 verify-signed-step:
 	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
 	python3 -B verification/length/verify.py --signed-step
+
+.PHONY: verify-assignment
+verify-assignment:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --assignment
