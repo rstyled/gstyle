@@ -117,6 +117,15 @@ noncomputable def validateRefs [FfiSyntax] [GoGlobalContext] : GoString :=
 noncomputable def directBindingRead [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard.directBindingRead"
 
+noncomputable def integerStep [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard.integerStep"
+
+noncomputable def incrementInteger [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard.incrementInteger"
+
+noncomputable def decrementInteger [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard.decrementInteger"
+
 noncomputable def invalidatesRoot [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard.invalidatesRoot"
 
@@ -506,6 +515,56 @@ noncomputable def graphView.binding.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val (GoInstruction (CompositeLiteral Value.ty))) (LiteralValue [])))
   (App (Val doExecute)
   (Val #())))))))))))
+
+/-- go: increment.go:13:6 -/
+noncomputable def integerStep.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "value"
+  (Lam "increment"
+  (App (Val exceptionDo)
+  (Let "increment" (App (Val (GoInstruction (GoAlloc go.bool))) (Var "increment"))
+  (Let "value" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "value"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "value"))
+  (App (App (Val (GoInstruction (FuncResolve decrementInteger []))) (Val #())) (Var "$a0"))))))
+  (If (App (Val (GoInstruction (GoLoad go.bool))) (Var "increment"))
+  (App (Val doReturn)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "value"))
+  (App (App (Val (GoInstruction (FuncResolve incrementInteger []))) (Val #())) (Var "$a0"))))
+  (App (Val doExecute)
+  (Val #())))))))))
+
+/-- go: increment.go:20:6 -/
+noncomputable def incrementInteger.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "value"
+  (App (Val exceptionDo)
+  (Let "value" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "value"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Let "$v0" (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"HasLower"))) (Var "value")))
+  (Let "$v1" (App (Val (GoInstruction (GoLoad go.int64))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Lower"))) (Var "value")))
+  (App (Val (GoInstruction (CompositeLiteral Value.ty))) (LiteralValue [(KeyedElement (some (KeyField go!"HasLower")) (ElementExpression go.bool (Var "$v0"))), (KeyedElement (some (KeyField go!"Lower")) (ElementExpression go.int64 (Var "$v1")))])))))))
+  (If (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"BelowLength"))) (Var "value")))) (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"HasUpper"))) (Var "value")))) (Val #true) (App (Val (GoInstruction (GoOp GoEquals go.int64))) (Pair (App (Val (GoInstruction (GoLoad go.int64))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Upper"))) (Var "value"))) (App (Val (GoInstruction (Convert go.uint64 go.int64))) (App (Val (GoInstruction (GoShift GoShiftr go.uint64 go.untypedInt))) (Pair (App (Val (GoInstruction (GoUnOp GoComplement go.uint64))) (Val #(W64 0))) (Val #(1 : Int)))))))) (Val #false))
+  (App (Val doReturn)
+  (App (Val (GoInstruction (CompositeLiteral Value.ty))) (LiteralValue [])))
+  (App (Val doExecute)
+  (Val #())))))))
+
+/-- go: increment.go:27:6 -/
+noncomputable def decrementInteger.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "value"
+  (App (Val exceptionDo)
+  (Let "value" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "value"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Let "$v0" (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"HasUpper"))) (Var "value")))
+  (Let "$v1" (App (Val (GoInstruction (GoLoad go.int64))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Upper"))) (Var "value")))
+  (App (Val (GoInstruction (CompositeLiteral Value.ty))) (LiteralValue [(KeyedElement (some (KeyField go!"HasUpper")) (ElementExpression go.bool (Var "$v0"))), (KeyedElement (some (KeyField go!"Upper")) (ElementExpression go.int64 (Var "$v1")))])))))))
+  (If (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoLoad go.bool))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"HasLower"))) (Var "value")))) (Val #true) (App (Val (GoInstruction (GoOp GoEquals go.int64))) (Pair (App (Val (GoInstruction (GoLoad go.int64))) (App (Val (GoInstruction (StructFieldRef Value.ty go!"Lower"))) (Var "value"))) (App (Val (GoInstruction (GoOp GoSub go.int64))) (Pair (App (Val (GoInstruction (GoUnOp GoNeg go.int64))) (App (Val (GoInstruction (Convert go.uint64 go.int64))) (App (Val (GoInstruction (GoShift GoShiftr go.uint64 go.untypedInt))) (Pair (App (Val (GoInstruction (GoUnOp GoComplement go.uint64))) (Val #(W64 0))) (Val #(1 : Int)))))) (Val #(W64 1)))))))
+  (App (Val doReturn)
+  (App (Val (GoInstruction (CompositeLiteral Value.ty))) (LiteralValue [])))
+  (App (Val doExecute)
+  (Val #())))))))
 
 /-- go: track.go:60:21 -/
 noncomputable def graphView.trackedBinding.impl [FfiSyntax] [GoGlobalContext] : val :=
@@ -952,6 +1011,9 @@ class Assumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFun
   lengthConstraint_unfold : FuncUnfold lengthConstraint [] lengthConstraint.impl
   exactInteger_unfold : FuncUnfold exactInteger [] exactInteger.impl
   emptyRange_unfold : FuncUnfold emptyRange [] emptyRange.impl
+  integerStep_unfold : FuncUnfold integerStep [] integerStep.impl
+  incrementInteger_unfold : FuncUnfold incrementInteger [] incrementInteger.impl
+  decrementInteger_unfold : FuncUnfold decrementInteger [] decrementInteger.impl
   copyState_unfold : FuncUnfold copyState [] copyState.impl
   import_pdg_Assumption : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Assumptions
   import_interval_Assumption : _root_.Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.Assumptions
@@ -966,6 +1028,9 @@ attribute [instance] Assumptions.analysis_instance
   Assumptions.lengthConstraint_unfold
   Assumptions.exactInteger_unfold
   Assumptions.emptyRange_unfold
+  Assumptions.integerStep_unfold
+  Assumptions.incrementInteger_unfold
+  Assumptions.decrementInteger_unfold
   Assumptions.copyState_unfold
   Assumptions.import_pdg_Assumption
   Assumptions.import_interval_Assumption

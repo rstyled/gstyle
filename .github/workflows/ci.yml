@@ -138,6 +138,12 @@ jobs:
           - profile: numeric-transfer
             target: verify-numeric-transfer
             shard: 2/3
+          - profile: signed-step
+            target: verify-signed-step
+            shard: 0/2
+          - profile: signed-step
+            target: verify-signed-step
+            shard: 1/2
     steps:
       - name: Checkout
         uses: actions/checkout@v6

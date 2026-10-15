@@ -91,3 +91,8 @@ verify-state-map:
 verify-numeric-transfer:
 	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
 	python3 -B verification/length/verify.py --numeric-transfer
+
+.PHONY: verify-signed-step
+verify-signed-step:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --signed-step

@@ -268,3 +268,10 @@ path: tracking, integer and length constraints, impossible branches and exact
 map updates. The soundness contract retains represented integers that satisfy
 the branch comparison under explicit assumptions. See
 [the contract and remaining stages](verification/length/NUMERIC_TRANSFER.md).
+
+### Lean verification of signed steps
+
+Run `make verify-signed-step` to verify the production signed 64-bit increment
+and decrement helpers. The contract covers unknown bounds, negative values,
+wrapped results and metadata invalidation. See
+[the width assumptions and proof boundary](verification/length/SIGNED_STEP.md).
