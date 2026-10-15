@@ -557,6 +557,45 @@ def pdg_list_profile():
     )
 
 
+def pdg_attributes_profile():
+    source = ROOT / "domain/pdg/attributes.go"
+    sources = tuple(sorted(path for directory in ("domain/pdg", "domain/pdg/query")
+                           for path in (ROOT / directory).glob("*.go") if not path.name.endswith("_test.go")))
+    prefix = "Perennial.github_com.rstyled.gstyle.domain.pdg."
+    mutations = {
+        "attributes-wrong-slot": ("g.Attributes[node.Attributes-1]", "g.Attributes[node.Attributes]"),
+        "attributes-first-record": ("g.Attributes[node.Attributes-1]", "g.Attributes[0]"),
+        "attributes-uses-capacity": ("uint64(len(g.Attributes))", "uint64(cap(g.Attributes))"),
+        "attributes-rejects-last": ("uint64(node.Attributes) > uint64(len(g.Attributes))", "uint64(node.Attributes) >= uint64(len(g.Attributes))"),
+        "attributes-ignores-zero": ("node.Attributes == 0 || uint64(node.Attributes)", "uint64(node.Attributes)"),
+        "attributes-discards-present": ("return g.expand(g.Attributes[node.Attributes-1])", "return Attributes{}"),
+        "expand-swaps-facts": ("Writes: listAt(g.AttributeTables.Accesses, a.Writes),\n\t\tOperator: a.Operator, Literal: a.Literal", "Writes: listAt(g.AttributeTables.Accesses, a.Writes),\n\t\tOperator: a.Literal, Literal: a.Operator"),
+        "expand-wrong-symbols": ("g.AttributeTables.References, a.Symbols", "g.AttributeTables.References, a.Defines"),
+        "expand-wrong-reads": ("g.AttributeTables.Accesses, a.Reads", "g.AttributeTables.Accesses, a.Writes"),
+        "expand-wrong-extensions": ("g.AttributeTables.Extensions, a.Extensions", "g.AttributeTables.Extensions, a.Reads"),
+        "expand-wrong-outcomes": ("g.outcomes(a.Outcomes)", "g.outcomes(a.Defines)"),
+        "outcomes-zeroes-values": ("texts[i] = Text(value)", "_ = value; texts[i] = 0"),
+        "outcomes-reverses-values": ("texts[i] = Text(value)", "texts[len(texts)-1-i] = Text(value)"),
+        "outcomes-shifts-values": ("texts[i] = Text(value)", "texts[i] = Text(value+1)"),
+        "outcomes-skips-last": ("texts[i] = Text(value)", "if i == len(refs)-1 { continue }; texts[i] = Text(value)"),
+        "outcomes-discards-result": ("return texts", "return nil"),
+        "outcomes-first-value": ("texts[i] = Text(value)", "_ = value; texts[i] = Text(refs[0])"),
+        "outcomes-allocates-empty": ("if len(refs) == 0 {\n\t\treturn nil", "if len(refs) == 0 {\n\t\treturn []Text{}"),
+        "attributes-mutates-graph": ("if node.Attributes == 0 ||", "g.Profile = 0; if node.Attributes == 0 ||"),
+        "attributes-mutates-record": ("return g.expand(g.Attributes[node.Attributes-1])", "g.Attributes[node.Attributes-1] = AttributeSet{}; return g.expand(g.Attributes[node.Attributes-1])"),
+        "outcomes-mutates-source": ("texts[i] = Text(value)", "refs[i] = 0; texts[i] = Text(value)"),
+    }
+    return Profile(
+        ROOT / "dist/verification/pdg-attributes", "github_com/rstyled/gstyle/domain/pdg.lean", "./domain/pdg", source, sources,
+        {prefix + name for name in ("filledPrefix_step", "wp_outcomes", "wp_expand", "wp_NodeAttributes_zero", "wp_NodeAttributes_absent", "wp_NodeAttributes_present")},
+        mutations, "AuditPdgAttributes.lean", "Gstyle/Proof/Pdg/Attributes.lean",
+        "production graph attribute selection, expansion and complete outcome copying with input preservation",
+        ("PDG construction and extension lookup", "producer and fact provenance", "condition and full transfer integration", "package initialization"),
+        ("Code",), (("github_com/rstyled/gstyle/domain/pdg/query.lean", "./domain/pdg/query"),),
+        mutation_modules={name: "Gstyle/Proof/Pdg/Outcomes.lean" for name in mutations if name.startswith("outcomes-")},
+    )
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -679,10 +718,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile}
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile}
         arguments = tuple(sys.argv[1:])
         if arguments not in profiles:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes]")
         main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

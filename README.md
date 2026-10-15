@@ -300,3 +300,7 @@ production reader that separates known operators from unavailable reason text.
 
 The [generic PDG list proof](verification/length/PDG_LIST.md) preserves exact
 row descriptors and absence across production attribute-list lookups.
+
+Run `make verify-pdg-attributes` for the [graph attribute and outcomes
+contracts](verification/length/PDG_ATTRIBUTES.md), including real record
+selection, metadata preservation and the complete copying loop.

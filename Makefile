@@ -123,3 +123,9 @@ verify-operator:
 verify-pdg-list:
 	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
 	python3 -B verification/length/verify.py --pdg-list
+
+.PHONY: verify-pdg-attributes
+
+verify-pdg-attributes:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --pdg-attributes

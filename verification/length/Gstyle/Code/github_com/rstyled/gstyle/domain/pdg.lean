@@ -272,10 +272,6 @@ def validator.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
 
 attribute [irreducible] validator.ty
 
-axiom AttributeSet.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
-axiom AttributeTables.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
 axiom attributeBuilder.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom NormalFlow.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
@@ -298,8 +294,6 @@ axiom Profile.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 @[reducible] def Capability.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
   _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Capability.ty
 
-axiom Span.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
 axiom Origin.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Provenance.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
@@ -308,15 +302,9 @@ axiom Extension.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Source.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
-axiom Producer.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
 axiom Role.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Parameter.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
-axiom CountFact.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
-axiom Function.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Symbol.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
@@ -324,17 +312,7 @@ axiom Definition.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Location.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
-axiom Position.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
-axiom CallForm.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
-axiom ExitKind.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
 axiom Access.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
-axiom Attributes.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
-axiom Node.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom EdgeKind.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
@@ -344,13 +322,7 @@ axiom Severity.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Diagnostic.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
-axiom ConformanceStatus.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
-axiom Conformance.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
 axiom NamedCapability.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
-axiom Graph.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom MatchLabel.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
@@ -575,6 +547,129 @@ noncomputable def Validate [FfiSyntax] [GoGlobalContext] : GoString :=
 noncomputable def contains [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/pdg.contains"
 
+/-- NodeAttributes returns a view over shared lists. Treat returned lists as
+    immutable; changing one can affect other nodes using the same record.
+
+    go: attributes.go:111:17 -/
+noncomputable def Graph.NodeAttributes.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "g"
+  (Lam "node"
+  (App (Val exceptionDo)
+  (Let "g" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType Graph.ty)))) (Var "g"))
+  (Let "node" (App (Val (GoInstruction (GoAlloc Node.ty))) (Var "node"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad AttributeSet.ty))) (App (Val (GoInstruction (IndexRef (go.GoType.SliceType AttributeSet.ty)))) (Pair (App (Val (GoInstruction (GoLoad (go.GoType.SliceType AttributeSet.ty)))) (App (Val (GoInstruction (StructFieldRef Graph.ty go!"Attributes"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType Graph.ty)))) (Var "g")))) (App (Val (GoInstruction (Convert Ref.ty go.int))) (App (Val (GoInstruction (GoOp GoSub Ref.ty))) (Pair (App (Val (GoInstruction (GoLoad Ref.ty))) (App (Val (GoInstruction (StructFieldRef Node.ty go!"Attributes"))) (Var "node"))) (Val #(W32 1))))))))
+  (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType Graph.ty) go!"expand"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType Graph.ty)))) (Var "g"))) (Var "$a0"))))))
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (If (App (Val (GoInstruction (GoOp GoEquals Ref.ty))) (Pair (App (Val (GoInstruction (GoLoad Ref.ty))) (App (Val (GoInstruction (StructFieldRef Node.ty go!"Attributes"))) (Var "node"))) (Val #(W32 0)))) (Val #true) (App (Val (GoInstruction (GoOp GoGt go.uint64))) (Pair (App (Val (GoInstruction (Convert Ref.ty go.uint64))) (App (Val (GoInstruction (GoLoad Ref.ty))) (App (Val (GoInstruction (StructFieldRef Node.ty go!"Attributes"))) (Var "node")))) (App (Val (GoInstruction (Convert go.int go.uint64))) (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType AttributeSet.ty)))) (App (Val (GoInstruction (StructFieldRef Graph.ty go!"Attributes"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType Graph.ty)))) (Var "g"))))
+  (App (App (Val (GoInstruction (FuncResolve go.len [(go.GoType.SliceType AttributeSet.ty)]))) (Val #())) (Var "$a0"))))))))
+  (App (Val doReturn)
+  (App (Val (GoInstruction (CompositeLiteral Attributes.ty))) (LiteralValue [])))
+  (App (Val doExecute)
+  (Val #())))))))))
+
+/-- go: attributes.go:118:17 -/
+noncomputable def Graph.expand.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "g"
+  (Lam "a"
+  (App (Val exceptionDo)
+  (Let "g" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType Graph.ty)))) (Var "g"))
+  (Let "a" (App (Val (GoInstruction (GoAlloc AttributeSet.ty))) (Var "a"))
+  (Let "$r0" (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType (go.GoType.SliceType Ref.ty))))) (App (Val (GoInstruction (StructFieldRef AttributeTables.ty go!"References"))) (App (Val (GoInstruction (StructFieldRef Graph.ty go!"AttributeTables"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType Graph.ty)))) (Var "g")))))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad Ref.ty))) (App (Val (GoInstruction (StructFieldRef AttributeSet.ty go!"Symbols"))) (Var "a")))
+  (App (App (App (Val (GoInstruction (FuncResolve listAt [Ref.ty]))) (Val #())) (Var "$a0")) (Var "$a1"))))
+  (Let "_order1" (App (Val (GoInstruction (GoAlloc (go.GoType.SliceType Ref.ty)))) (App (Val (GoInstruction (GoZeroVal (go.GoType.SliceType Ref.ty)))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType (go.GoType.SliceType Ref.ty))))) (App (Val (GoInstruction (StructFieldRef AttributeTables.ty go!"References"))) (App (Val (GoInstruction (StructFieldRef Graph.ty go!"AttributeTables"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType Graph.ty)))) (Var "g")))))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad Ref.ty))) (App (Val (GoInstruction (StructFieldRef AttributeSet.ty go!"Defines"))) (Var "a")))
+  (App (App (App (Val (GoInstruction (FuncResolve listAt [Ref.ty]))) (Val #())) (Var "$a0")) (Var "$a1"))))
+  (Let "_order2" (App (Val (GoInstruction (GoAlloc (go.GoType.SliceType Ref.ty)))) (App (Val (GoInstruction (GoZeroVal (go.GoType.SliceType Ref.ty)))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType (go.GoType.SliceType Access.ty))))) (App (Val (GoInstruction (StructFieldRef AttributeTables.ty go!"Accesses"))) (App (Val (GoInstruction (StructFieldRef Graph.ty go!"AttributeTables"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType Graph.ty)))) (Var "g")))))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad Ref.ty))) (App (Val (GoInstruction (StructFieldRef AttributeSet.ty go!"Reads"))) (Var "a")))
+  (App (App (App (Val (GoInstruction (FuncResolve listAt [Access.ty]))) (Val #())) (Var "$a0")) (Var "$a1"))))
+  (Let "_order3" (App (Val (GoInstruction (GoAlloc (go.GoType.SliceType Access.ty)))) (App (Val (GoInstruction (GoZeroVal (go.GoType.SliceType Access.ty)))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType (go.GoType.SliceType Access.ty))))) (App (Val (GoInstruction (StructFieldRef AttributeTables.ty go!"Accesses"))) (App (Val (GoInstruction (StructFieldRef Graph.ty go!"AttributeTables"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType Graph.ty)))) (Var "g")))))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad Ref.ty))) (App (Val (GoInstruction (StructFieldRef AttributeSet.ty go!"Writes"))) (Var "a")))
+  (App (App (App (Val (GoInstruction (FuncResolve listAt [Access.ty]))) (Val #())) (Var "$a0")) (Var "$a1"))))
+  (Let "_order4" (App (Val (GoInstruction (GoAlloc (go.GoType.SliceType Access.ty)))) (App (Val (GoInstruction (GoZeroVal (go.GoType.SliceType Access.ty)))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Let "$v0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType Ref.ty)))) (Var "_order1"))
+  (Let "$v1" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType Ref.ty)))) (Var "_order2"))
+  (Let "$v2" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType Access.ty)))) (Var "_order3"))
+  (Let "$v3" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType Access.ty)))) (Var "_order4"))
+  (Let "$v4" (App (Val (GoInstruction (GoLoad Fact.ty))) (App (Val (GoInstruction (StructFieldRef AttributeSet.ty go!"Operator"))) (Var "a")))
+  (Let "$v5" (App (Val (GoInstruction (GoLoad Fact.ty))) (App (Val (GoInstruction (StructFieldRef AttributeSet.ty go!"Literal"))) (Var "a")))
+  (Let "$v6" (App (Val (GoInstruction (GoLoad Fact.ty))) (App (Val (GoInstruction (StructFieldRef AttributeSet.ty go!"Callee"))) (Var "a")))
+  (Let "$v7" (App (Val (GoInstruction (GoLoad Text.ty))) (App (Val (GoInstruction (StructFieldRef AttributeSet.ty go!"Construct"))) (Var "a")))
+  (Let "$v8" (App (Val (GoInstruction (GoLoad Text.ty))) (App (Val (GoInstruction (StructFieldRef AttributeSet.ty go!"WriteForm"))) (Var "a")))
+  (Let "$v9" (App (Val (GoInstruction (GoLoad Text.ty))) (App (Val (GoInstruction (StructFieldRef AttributeSet.ty go!"Description"))) (Var "a")))
+  (Let "$v10" (App (Val (GoInstruction (GoLoad Position.ty))) (App (Val (GoInstruction (StructFieldRef AttributeSet.ty go!"Position"))) (Var "a")))
+  (Let "$v11" (App (Val (GoInstruction (GoLoad CallForm.ty))) (App (Val (GoInstruction (StructFieldRef AttributeSet.ty go!"CallForm"))) (Var "a")))
+  (Let "$v12" (App (Val (GoInstruction (GoLoad ExitKind.ty))) (App (Val (GoInstruction (StructFieldRef AttributeSet.ty go!"ExitKind"))) (Var "a")))
+  (Let "$v13" (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType (go.GoType.SliceType Extension.ty))))) (App (Val (GoInstruction (StructFieldRef AttributeTables.ty go!"Extensions"))) (App (Val (GoInstruction (StructFieldRef Graph.ty go!"AttributeTables"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType Graph.ty)))) (Var "g")))))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad Ref.ty))) (App (Val (GoInstruction (StructFieldRef AttributeSet.ty go!"Extensions"))) (Var "a")))
+  (App (App (App (Val (GoInstruction (FuncResolve listAt [Extension.ty]))) (Val #())) (Var "$a0")) (Var "$a1"))))
+  (Let "$v14" (Let "$a0" (App (Val (GoInstruction (GoLoad Ref.ty))) (App (Val (GoInstruction (StructFieldRef AttributeSet.ty go!"Outcomes"))) (Var "a")))
+  (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType Graph.ty) go!"outcomes"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType Graph.ty)))) (Var "g"))) (Var "$a0")))
+  (App (Val (GoInstruction (CompositeLiteral Attributes.ty))) (LiteralValue [(KeyedElement (some (KeyField go!"Symbols")) (ElementExpression (go.GoType.SliceType Ref.ty) (Var "$v0"))), (KeyedElement (some (KeyField go!"Defines")) (ElementExpression (go.GoType.SliceType Ref.ty) (Var "$v1"))), (KeyedElement (some (KeyField go!"Reads")) (ElementExpression (go.GoType.SliceType Access.ty) (Var "$v2"))), (KeyedElement (some (KeyField go!"Writes")) (ElementExpression (go.GoType.SliceType Access.ty) (Var "$v3"))), (KeyedElement (some (KeyField go!"Operator")) (ElementExpression Fact.ty (Var "$v4"))), (KeyedElement (some (KeyField go!"Literal")) (ElementExpression Fact.ty (Var "$v5"))), (KeyedElement (some (KeyField go!"Callee")) (ElementExpression Fact.ty (Var "$v6"))), (KeyedElement (some (KeyField go!"Construct")) (ElementExpression Text.ty (Var "$v7"))), (KeyedElement (some (KeyField go!"WriteForm")) (ElementExpression Text.ty (Var "$v8"))), (KeyedElement (some (KeyField go!"Description")) (ElementExpression Text.ty (Var "$v9"))), (KeyedElement (some (KeyField go!"Position")) (ElementExpression Position.ty (Var "$v10"))), (KeyedElement (some (KeyField go!"CallForm")) (ElementExpression CallForm.ty (Var "$v11"))), (KeyedElement (some (KeyField go!"ExitKind")) (ElementExpression ExitKind.ty (Var "$v12"))), (KeyedElement (some (KeyField go!"Extensions")) (ElementExpression (go.GoType.SliceType Extension.ty) (Var "$v13"))), (KeyedElement (some (KeyField go!"Outcomes")) (ElementExpression (go.GoType.SliceType Text.ty) (Var "$v14")))]))))))))))))))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore (go.GoType.SliceType Access.ty)))) (Pair (Var "_order4") (Var "$r0")))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore (go.GoType.SliceType Access.ty)))) (Pair (Var "_order3") (Var "$r0")))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore (go.GoType.SliceType Ref.ty)))) (Pair (Var "_order2") (Var "$r0")))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore (go.GoType.SliceType Ref.ty)))) (Pair (Var "_order1") (Var "$r0"))))))))))))
+
+/-- go: attributes.go:130:17 -/
+noncomputable def Graph.outcomes.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "g"
+  (Lam "ref"
+  (App (Val exceptionDo)
+  (Let "g" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType Graph.ty)))) (Var "g"))
+  (Let "ref" (App (Val (GoInstruction (GoAlloc Ref.ty))) (Var "ref"))
+  (Let "$r0" (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType (go.GoType.SliceType Ref.ty))))) (App (Val (GoInstruction (StructFieldRef AttributeTables.ty go!"References"))) (App (Val (GoInstruction (StructFieldRef Graph.ty go!"AttributeTables"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType Graph.ty)))) (Var "g")))))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad Ref.ty))) (Var "ref"))
+  (App (App (App (Val (GoInstruction (FuncResolve listAt [Ref.ty]))) (Val #())) (Var "$a0")) (Var "$a1"))))
+  (Let "refs" (App (Val (GoInstruction (GoAlloc (go.GoType.SliceType Ref.ty)))) (App (Val (GoInstruction (GoZeroVal (go.GoType.SliceType Ref.ty)))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (App (App (Val (GoInstruction (FuncResolve go.make2 [(go.GoType.SliceType Text.ty)]))) (Val #())) (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType Ref.ty)))) (Var "refs"))
+  (App (App (Val (GoInstruction (FuncResolve go.len [(go.GoType.SliceType Ref.ty)]))) (Val #())) (Var "$a0"))))
+  (Let "texts" (App (Val (GoInstruction (GoAlloc (go.GoType.SliceType Text.ty)))) (App (Val (GoInstruction (GoZeroVal (go.GoType.SliceType Text.ty)))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoLoad (go.GoType.SliceType Text.ty)))) (Var "texts")))))
+  (Let "$range" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType Ref.ty)))) (Var "refs"))
+  (Let "value" (App (Val (GoInstruction (GoAlloc Ref.ty))) (App (Val (GoInstruction (GoZeroVal Ref.ty))) (Val #())))
+  (Let "i" (App (Val (GoInstruction (GoAlloc go.int))) (App (Val (GoInstruction (GoZeroVal go.int))) (Val #())))
+  (App (App (Val (slice.forRange Ref.ty)) (Var "$range"))
+  (Lam "$key"
+  (Lam "$value"
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (App (Val (GoInstruction (GoLoad Ref.ty))) (Var "value"))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore Text.ty))) (Pair (App (Val (GoInstruction (IndexRef (go.GoType.SliceType Text.ty)))) (Pair (App (Val (GoInstruction (GoLoad (go.GoType.SliceType Text.ty)))) (Var "texts")) (App (Val (GoInstruction (GoLoad go.int))) (Var "i")))) (Var "$r0")))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.int))) (Pair (Var "i") (Var "$key")))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore Ref.ty))) (Pair (Var "value") (Var "$value"))))))))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore (go.GoType.SliceType Text.ty)))) (Pair (Var "texts") (Var "$r0")))))))))
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (App (Val (GoInstruction (GoOp GoEquals go.int))) (Pair (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType Ref.ty)))) (Var "refs"))
+  (App (App (Val (GoInstruction (FuncResolve go.len [(go.GoType.SliceType Ref.ty)]))) (Val #())) (Var "$a0"))) (Val #(W64 0)))))
+  (App (Val doReturn)
+  (App (Val (GoInstruction (Convert go.untypedNil (go.GoType.SliceType Text.ty)))) (Val UntypedNil)))
+  (App (Val doExecute)
+  (Val #()))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore (go.GoType.SliceType Ref.ty)))) (Pair (Var "refs") (Var "$r0"))))))))))))
+
 /-- go: attributes.go:180:6 -/
 noncomputable def listAt.impl [FfiSyntax] [GoGlobalContext] (T : go.GoType) : val :=
   (LamV "lists"
@@ -642,31 +737,236 @@ noncomputable def initialize' [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (App (Val _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.initialize') (Val #()))))))))
 
-axiom AttributeSet : Type
-axiom AttributeSet.zero_val : ZeroVal AttributeSet
-attribute [instance] AttributeSet.zero_val
+structure Fact [FfiSyntax] where
+  mk ::
+  Value' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  Status' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status
+
+instance Fact.zero_val [FfiSyntax] : ZeroVal Fact :=
+  ⟨Fact.mk zeroValDef zeroValDef⟩
+
+@[reducible] def Fact.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"Value" Text.ty),
+(go.field_decl.FieldDecl go!"Status" Status.ty)]
+
+@[irreducible] def Fact.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Fact.fieldsUnsealed
+
+instance equals_unfold_Fact [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Fact.fields Fact.fieldsUnsealed :=
+  ⟨by unfold Fact.fields; rfl⟩
+
+@[reducible] def Fact.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Fact.fields)
+
+class Fact.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
+  type_repr : go.TypeReprUnderlying Fact.underlying Fact
+  underlying : go.UnderlyingDirectedEq Fact.ty Fact.underlying
+  layout : go.StructLayout Fact [(go!"Value", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Status", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status)]
+  get_Value : ∀ (x : Fact), go.IsGoStepPureDetTagged under (StructFieldGet Fact.underlying go!"Value") #x (Val #(x.Value'))
+  set_Value : ∀ (x : Fact) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Fact.underlying go!"Value") (PairV #x #y) (Val #(({ x with Value' := y } : Fact)))
+  get_Status : ∀ (x : Fact), go.IsGoStepPureDetTagged under (StructFieldGet Fact.underlying go!"Status") #x (Val #(x.Status'))
+  set_Status : ∀ (x : Fact) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status), go.IsGoStepPureDetTagged under (StructFieldSet Fact.underlying go!"Status") (PairV #x #y) (Val #(({ x with Status' := y } : Fact)))
+
+attribute [instance] Fact.TypeAssumptions.type_repr
+  Fact.TypeAssumptions.underlying
+  Fact.TypeAssumptions.layout
+  Fact.TypeAssumptions.get_Value
+  Fact.TypeAssumptions.set_Value
+  Fact.TypeAssumptions.get_Status
+  Fact.TypeAssumptions.set_Status
+
+abbrev Position [FfiSyntax] : Type := w32
+
+@[reducible] def Position.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  go.uint32
+
+class Position.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
+  underlying : go.UnderlyingDirectedEq Position.ty Position.underlying
+
+attribute [instance] Position.TypeAssumptions.underlying
+
+abbrev CallForm [FfiSyntax] : Type := w8
+
+@[reducible] def CallForm.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  go.uint8
+
+class CallForm.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
+  underlying : go.UnderlyingDirectedEq CallForm.ty CallForm.underlying
+
+attribute [instance] CallForm.TypeAssumptions.underlying
+
+abbrev ExitKind [FfiSyntax] : Type := w8
+
+@[reducible] def ExitKind.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  go.uint8
+
+class ExitKind.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
+  underlying : go.UnderlyingDirectedEq ExitKind.ty ExitKind.underlying
+
+attribute [instance] ExitKind.TypeAssumptions.underlying
+
+structure AttributeSet [FfiSyntax] where
+  mk ::
+  Symbols' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Defines' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Reads' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Writes' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Outcomes' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Extensions' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Operator' : Fact
+  Literal' : Fact
+  Callee' : Fact
+  Construct' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  WriteForm' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  Description' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  Position' : Position
+  CallForm' : CallForm
+  ExitKind' : ExitKind
+
+instance AttributeSet.zero_val [FfiSyntax] : ZeroVal AttributeSet :=
+  ⟨AttributeSet.mk zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def AttributeSet.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"Symbols" Ref.ty),
+(go.field_decl.FieldDecl go!"Defines" Ref.ty),
+(go.field_decl.FieldDecl go!"Reads" Ref.ty),
+(go.field_decl.FieldDecl go!"Writes" Ref.ty),
+(go.field_decl.FieldDecl go!"Outcomes" Ref.ty),
+(go.field_decl.FieldDecl go!"Extensions" Ref.ty),
+(go.field_decl.FieldDecl go!"Operator" Fact.ty),
+(go.field_decl.FieldDecl go!"Literal" Fact.ty),
+(go.field_decl.FieldDecl go!"Callee" Fact.ty),
+(go.field_decl.FieldDecl go!"Construct" Text.ty),
+(go.field_decl.FieldDecl go!"WriteForm" Text.ty),
+(go.field_decl.FieldDecl go!"Description" Text.ty),
+(go.field_decl.FieldDecl go!"Position" Position.ty),
+(go.field_decl.FieldDecl go!"CallForm" CallForm.ty),
+(go.field_decl.FieldDecl go!"ExitKind" ExitKind.ty)]
+
+@[irreducible] def AttributeSet.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  AttributeSet.fieldsUnsealed
+
+instance equals_unfold_AttributeSet [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold AttributeSet.fields AttributeSet.fieldsUnsealed :=
+  ⟨by unfold AttributeSet.fields; rfl⟩
+
+@[reducible] def AttributeSet.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType AttributeSet.fields)
 
 class AttributeSet.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying AttributeSet.underlying AttributeSet
   underlying : go.UnderlyingDirectedEq AttributeSet.ty AttributeSet.underlying
-  isUnderlying : go.IsUnderlying AttributeSet.underlying AttributeSet.underlying
+  layout : go.StructLayout AttributeSet [(go!"Symbols", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Defines", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Reads", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Writes", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Outcomes", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Extensions", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Operator", typeSize Fact, typeAlign Fact), (go!"Literal", typeSize Fact, typeAlign Fact), (go!"Callee", typeSize Fact, typeAlign Fact), (go!"Construct", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"WriteForm", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Description", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Position", typeSize Position, typeAlign Position), (go!"CallForm", typeSize CallForm, typeAlign CallForm), (go!"ExitKind", typeSize ExitKind, typeAlign ExitKind)]
+  get_Symbols : ∀ (x : AttributeSet), go.IsGoStepPureDetTagged under (StructFieldGet AttributeSet.underlying go!"Symbols") #x (Val #(x.Symbols'))
+  set_Symbols : ∀ (x : AttributeSet) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet AttributeSet.underlying go!"Symbols") (PairV #x #y) (Val #(({ x with Symbols' := y } : AttributeSet)))
+  get_Defines : ∀ (x : AttributeSet), go.IsGoStepPureDetTagged under (StructFieldGet AttributeSet.underlying go!"Defines") #x (Val #(x.Defines'))
+  set_Defines : ∀ (x : AttributeSet) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet AttributeSet.underlying go!"Defines") (PairV #x #y) (Val #(({ x with Defines' := y } : AttributeSet)))
+  get_Reads : ∀ (x : AttributeSet), go.IsGoStepPureDetTagged under (StructFieldGet AttributeSet.underlying go!"Reads") #x (Val #(x.Reads'))
+  set_Reads : ∀ (x : AttributeSet) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet AttributeSet.underlying go!"Reads") (PairV #x #y) (Val #(({ x with Reads' := y } : AttributeSet)))
+  get_Writes : ∀ (x : AttributeSet), go.IsGoStepPureDetTagged under (StructFieldGet AttributeSet.underlying go!"Writes") #x (Val #(x.Writes'))
+  set_Writes : ∀ (x : AttributeSet) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet AttributeSet.underlying go!"Writes") (PairV #x #y) (Val #(({ x with Writes' := y } : AttributeSet)))
+  get_Outcomes : ∀ (x : AttributeSet), go.IsGoStepPureDetTagged under (StructFieldGet AttributeSet.underlying go!"Outcomes") #x (Val #(x.Outcomes'))
+  set_Outcomes : ∀ (x : AttributeSet) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet AttributeSet.underlying go!"Outcomes") (PairV #x #y) (Val #(({ x with Outcomes' := y } : AttributeSet)))
+  get_Extensions : ∀ (x : AttributeSet), go.IsGoStepPureDetTagged under (StructFieldGet AttributeSet.underlying go!"Extensions") #x (Val #(x.Extensions'))
+  set_Extensions : ∀ (x : AttributeSet) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet AttributeSet.underlying go!"Extensions") (PairV #x #y) (Val #(({ x with Extensions' := y } : AttributeSet)))
+  get_Operator : ∀ (x : AttributeSet), go.IsGoStepPureDetTagged under (StructFieldGet AttributeSet.underlying go!"Operator") #x (Val #(x.Operator'))
+  set_Operator : ∀ (x : AttributeSet) (y : Fact), go.IsGoStepPureDetTagged under (StructFieldSet AttributeSet.underlying go!"Operator") (PairV #x #y) (Val #(({ x with Operator' := y } : AttributeSet)))
+  get_Literal : ∀ (x : AttributeSet), go.IsGoStepPureDetTagged under (StructFieldGet AttributeSet.underlying go!"Literal") #x (Val #(x.Literal'))
+  set_Literal : ∀ (x : AttributeSet) (y : Fact), go.IsGoStepPureDetTagged under (StructFieldSet AttributeSet.underlying go!"Literal") (PairV #x #y) (Val #(({ x with Literal' := y } : AttributeSet)))
+  get_Callee : ∀ (x : AttributeSet), go.IsGoStepPureDetTagged under (StructFieldGet AttributeSet.underlying go!"Callee") #x (Val #(x.Callee'))
+  set_Callee : ∀ (x : AttributeSet) (y : Fact), go.IsGoStepPureDetTagged under (StructFieldSet AttributeSet.underlying go!"Callee") (PairV #x #y) (Val #(({ x with Callee' := y } : AttributeSet)))
+  get_Construct : ∀ (x : AttributeSet), go.IsGoStepPureDetTagged under (StructFieldGet AttributeSet.underlying go!"Construct") #x (Val #(x.Construct'))
+  set_Construct : ∀ (x : AttributeSet) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet AttributeSet.underlying go!"Construct") (PairV #x #y) (Val #(({ x with Construct' := y } : AttributeSet)))
+  get_WriteForm : ∀ (x : AttributeSet), go.IsGoStepPureDetTagged under (StructFieldGet AttributeSet.underlying go!"WriteForm") #x (Val #(x.WriteForm'))
+  set_WriteForm : ∀ (x : AttributeSet) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet AttributeSet.underlying go!"WriteForm") (PairV #x #y) (Val #(({ x with WriteForm' := y } : AttributeSet)))
+  get_Description : ∀ (x : AttributeSet), go.IsGoStepPureDetTagged under (StructFieldGet AttributeSet.underlying go!"Description") #x (Val #(x.Description'))
+  set_Description : ∀ (x : AttributeSet) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet AttributeSet.underlying go!"Description") (PairV #x #y) (Val #(({ x with Description' := y } : AttributeSet)))
+  get_Position : ∀ (x : AttributeSet), go.IsGoStepPureDetTagged under (StructFieldGet AttributeSet.underlying go!"Position") #x (Val #(x.Position'))
+  set_Position : ∀ (x : AttributeSet) (y : Position), go.IsGoStepPureDetTagged under (StructFieldSet AttributeSet.underlying go!"Position") (PairV #x #y) (Val #(({ x with Position' := y } : AttributeSet)))
+  get_CallForm : ∀ (x : AttributeSet), go.IsGoStepPureDetTagged under (StructFieldGet AttributeSet.underlying go!"CallForm") #x (Val #(x.CallForm'))
+  set_CallForm : ∀ (x : AttributeSet) (y : CallForm), go.IsGoStepPureDetTagged under (StructFieldSet AttributeSet.underlying go!"CallForm") (PairV #x #y) (Val #(({ x with CallForm' := y } : AttributeSet)))
+  get_ExitKind : ∀ (x : AttributeSet), go.IsGoStepPureDetTagged under (StructFieldGet AttributeSet.underlying go!"ExitKind") #x (Val #(x.ExitKind'))
+  set_ExitKind : ∀ (x : AttributeSet) (y : ExitKind), go.IsGoStepPureDetTagged under (StructFieldSet AttributeSet.underlying go!"ExitKind") (PairV #x #y) (Val #(({ x with ExitKind' := y } : AttributeSet)))
 
 attribute [instance] AttributeSet.TypeAssumptions.type_repr
   AttributeSet.TypeAssumptions.underlying
-  AttributeSet.TypeAssumptions.isUnderlying
+  AttributeSet.TypeAssumptions.layout
+  AttributeSet.TypeAssumptions.get_Symbols
+  AttributeSet.TypeAssumptions.set_Symbols
+  AttributeSet.TypeAssumptions.get_Defines
+  AttributeSet.TypeAssumptions.set_Defines
+  AttributeSet.TypeAssumptions.get_Reads
+  AttributeSet.TypeAssumptions.set_Reads
+  AttributeSet.TypeAssumptions.get_Writes
+  AttributeSet.TypeAssumptions.set_Writes
+  AttributeSet.TypeAssumptions.get_Outcomes
+  AttributeSet.TypeAssumptions.set_Outcomes
+  AttributeSet.TypeAssumptions.get_Extensions
+  AttributeSet.TypeAssumptions.set_Extensions
+  AttributeSet.TypeAssumptions.get_Operator
+  AttributeSet.TypeAssumptions.set_Operator
+  AttributeSet.TypeAssumptions.get_Literal
+  AttributeSet.TypeAssumptions.set_Literal
+  AttributeSet.TypeAssumptions.get_Callee
+  AttributeSet.TypeAssumptions.set_Callee
+  AttributeSet.TypeAssumptions.get_Construct
+  AttributeSet.TypeAssumptions.set_Construct
+  AttributeSet.TypeAssumptions.get_WriteForm
+  AttributeSet.TypeAssumptions.set_WriteForm
+  AttributeSet.TypeAssumptions.get_Description
+  AttributeSet.TypeAssumptions.set_Description
+  AttributeSet.TypeAssumptions.get_Position
+  AttributeSet.TypeAssumptions.set_Position
+  AttributeSet.TypeAssumptions.get_CallForm
+  AttributeSet.TypeAssumptions.set_CallForm
+  AttributeSet.TypeAssumptions.get_ExitKind
+  AttributeSet.TypeAssumptions.set_ExitKind
 
-axiom AttributeTables : Type
-axiom AttributeTables.zero_val : ZeroVal AttributeTables
-attribute [instance] AttributeTables.zero_val
+structure AttributeTables [FfiSyntax] where
+  mk ::
+  References' : GoSlice
+  Accesses' : GoSlice
+  Extensions' : GoSlice
+
+instance AttributeTables.zero_val [FfiSyntax] : ZeroVal AttributeTables :=
+  ⟨AttributeTables.mk zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def AttributeTables.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"References" (go.GoType.SliceType (go.GoType.SliceType Ref.ty))),
+(go.field_decl.FieldDecl go!"Accesses" (go.GoType.SliceType (go.GoType.SliceType Access.ty))),
+(go.field_decl.FieldDecl go!"Extensions" (go.GoType.SliceType (go.GoType.SliceType Extension.ty)))]
+
+@[irreducible] def AttributeTables.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  AttributeTables.fieldsUnsealed
+
+instance equals_unfold_AttributeTables [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold AttributeTables.fields AttributeTables.fieldsUnsealed :=
+  ⟨by unfold AttributeTables.fields; rfl⟩
+
+@[reducible] def AttributeTables.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType AttributeTables.fields)
 
 class AttributeTables.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying AttributeTables.underlying AttributeTables
   underlying : go.UnderlyingDirectedEq AttributeTables.ty AttributeTables.underlying
-  isUnderlying : go.IsUnderlying AttributeTables.underlying AttributeTables.underlying
+  layout : go.StructLayout AttributeTables [(go!"References", typeSize GoSlice, typeAlign GoSlice), (go!"Accesses", typeSize GoSlice, typeAlign GoSlice), (go!"Extensions", typeSize GoSlice, typeAlign GoSlice)]
+  get_References : ∀ (x : AttributeTables), go.IsGoStepPureDetTagged under (StructFieldGet AttributeTables.underlying go!"References") #x (Val #(x.References'))
+  set_References : ∀ (x : AttributeTables) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet AttributeTables.underlying go!"References") (PairV #x #y) (Val #(({ x with References' := y } : AttributeTables)))
+  get_Accesses : ∀ (x : AttributeTables), go.IsGoStepPureDetTagged under (StructFieldGet AttributeTables.underlying go!"Accesses") #x (Val #(x.Accesses'))
+  set_Accesses : ∀ (x : AttributeTables) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet AttributeTables.underlying go!"Accesses") (PairV #x #y) (Val #(({ x with Accesses' := y } : AttributeTables)))
+  get_Extensions : ∀ (x : AttributeTables), go.IsGoStepPureDetTagged under (StructFieldGet AttributeTables.underlying go!"Extensions") #x (Val #(x.Extensions'))
+  set_Extensions : ∀ (x : AttributeTables) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet AttributeTables.underlying go!"Extensions") (PairV #x #y) (Val #(({ x with Extensions' := y } : AttributeTables)))
 
 attribute [instance] AttributeTables.TypeAssumptions.type_repr
   AttributeTables.TypeAssumptions.underlying
-  AttributeTables.TypeAssumptions.isUnderlying
+  AttributeTables.TypeAssumptions.layout
+  AttributeTables.TypeAssumptions.get_References
+  AttributeTables.TypeAssumptions.set_References
+  AttributeTables.TypeAssumptions.get_Accesses
+  AttributeTables.TypeAssumptions.set_Accesses
+  AttributeTables.TypeAssumptions.get_Extensions
+  AttributeTables.TypeAssumptions.set_Extensions
 
 axiom attributeBuilder : Type
 axiom attributeBuilder.zero_val : ZeroVal attributeBuilder
@@ -707,45 +1007,6 @@ attribute [instance] FlowBlock.TypeAssumptions.type_repr
   FlowBlock.TypeAssumptions.underlying
   FlowBlock.TypeAssumptions.isUnderlying
 
-structure Fact [FfiSyntax] where
-  mk ::
-  Value' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
-  Status' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status
-
-instance Fact.zero_val [FfiSyntax] : ZeroVal Fact :=
-  ⟨Fact.mk zeroValDef zeroValDef⟩
-
-@[reducible] def Fact.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
-  [(go.field_decl.FieldDecl go!"Value" Text.ty),
-(go.field_decl.FieldDecl go!"Status" Status.ty)]
-
-@[irreducible] def Fact.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
-  Fact.fieldsUnsealed
-
-instance equals_unfold_Fact [FfiSyntax] [GoGlobalContext] :
-    EqualsUnfold Fact.fields Fact.fieldsUnsealed :=
-  ⟨by unfold Fact.fields; rfl⟩
-
-@[reducible] def Fact.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
-  (go.GoType.StructType Fact.fields)
-
-class Fact.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
-  type_repr : go.TypeReprUnderlying Fact.underlying Fact
-  underlying : go.UnderlyingDirectedEq Fact.ty Fact.underlying
-  layout : go.StructLayout Fact [(go!"Value", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Status", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status)]
-  get_Value : ∀ (x : Fact), go.IsGoStepPureDetTagged under (StructFieldGet Fact.underlying go!"Value") #x (Val #(x.Value'))
-  set_Value : ∀ (x : Fact) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Fact.underlying go!"Value") (PairV #x #y) (Val #(({ x with Value' := y } : Fact)))
-  get_Status : ∀ (x : Fact), go.IsGoStepPureDetTagged under (StructFieldGet Fact.underlying go!"Status") #x (Val #(x.Status'))
-  set_Status : ∀ (x : Fact) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status), go.IsGoStepPureDetTagged under (StructFieldSet Fact.underlying go!"Status") (PairV #x #y) (Val #(({ x with Status' := y } : Fact)))
-
-attribute [instance] Fact.TypeAssumptions.type_repr
-  Fact.TypeAssumptions.underlying
-  Fact.TypeAssumptions.layout
-  Fact.TypeAssumptions.get_Value
-  Fact.TypeAssumptions.set_Value
-  Fact.TypeAssumptions.get_Status
-  Fact.TypeAssumptions.set_Status
-
 axiom Profile : Type
 axiom Profile.zero_val : ZeroVal Profile
 attribute [instance] Profile.zero_val
@@ -759,18 +1020,50 @@ attribute [instance] Profile.TypeAssumptions.type_repr
   Profile.TypeAssumptions.underlying
   Profile.TypeAssumptions.isUnderlying
 
-axiom Span : Type
-axiom Span.zero_val : ZeroVal Span
-attribute [instance] Span.zero_val
+structure Span [FfiSyntax] where
+  mk ::
+  Source' : w32
+  Start' : w32
+  End' : w32
+
+instance Span.zero_val [FfiSyntax] : ZeroVal Span :=
+  ⟨Span.mk zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def Span.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"Source" go.uint32),
+(go.field_decl.FieldDecl go!"Start" go.uint32),
+(go.field_decl.FieldDecl go!"End" go.uint32)]
+
+@[irreducible] def Span.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Span.fieldsUnsealed
+
+instance equals_unfold_Span [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Span.fields Span.fieldsUnsealed :=
+  ⟨by unfold Span.fields; rfl⟩
+
+@[reducible] def Span.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Span.fields)
 
 class Span.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying Span.underlying Span
   underlying : go.UnderlyingDirectedEq Span.ty Span.underlying
-  isUnderlying : go.IsUnderlying Span.underlying Span.underlying
+  layout : go.StructLayout Span [(go!"Source", typeSize w32, typeAlign w32), (go!"Start", typeSize w32, typeAlign w32), (go!"End", typeSize w32, typeAlign w32)]
+  get_Source : ∀ (x : Span), go.IsGoStepPureDetTagged under (StructFieldGet Span.underlying go!"Source") #x (Val #(x.Source'))
+  set_Source : ∀ (x : Span) (y : w32), go.IsGoStepPureDetTagged under (StructFieldSet Span.underlying go!"Source") (PairV #x #y) (Val #(({ x with Source' := y } : Span)))
+  get_Start : ∀ (x : Span), go.IsGoStepPureDetTagged under (StructFieldGet Span.underlying go!"Start") #x (Val #(x.Start'))
+  set_Start : ∀ (x : Span) (y : w32), go.IsGoStepPureDetTagged under (StructFieldSet Span.underlying go!"Start") (PairV #x #y) (Val #(({ x with Start' := y } : Span)))
+  get_End : ∀ (x : Span), go.IsGoStepPureDetTagged under (StructFieldGet Span.underlying go!"End") #x (Val #(x.End'))
+  set_End : ∀ (x : Span) (y : w32), go.IsGoStepPureDetTagged under (StructFieldSet Span.underlying go!"End") (PairV #x #y) (Val #(({ x with End' := y } : Span)))
 
 attribute [instance] Span.TypeAssumptions.type_repr
   Span.TypeAssumptions.underlying
-  Span.TypeAssumptions.isUnderlying
+  Span.TypeAssumptions.layout
+  Span.TypeAssumptions.get_Source
+  Span.TypeAssumptions.set_Source
+  Span.TypeAssumptions.get_Start
+  Span.TypeAssumptions.set_Start
+  Span.TypeAssumptions.get_End
+  Span.TypeAssumptions.set_End
 
 axiom Origin : Type
 axiom Origin.zero_val : ZeroVal Origin
@@ -824,18 +1117,62 @@ attribute [instance] Source.TypeAssumptions.type_repr
   Source.TypeAssumptions.underlying
   Source.TypeAssumptions.isUnderlying
 
-axiom Producer : Type
-axiom Producer.zero_val : ZeroVal Producer
-attribute [instance] Producer.zero_val
+structure Producer [FfiSyntax] where
+  mk ::
+  Name' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  Version' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  Language' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  LanguageVersion' : Fact
+  Configuration' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+
+instance Producer.zero_val [FfiSyntax] : ZeroVal Producer :=
+  ⟨Producer.mk zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def Producer.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"Name" Text.ty),
+(go.field_decl.FieldDecl go!"Version" Text.ty),
+(go.field_decl.FieldDecl go!"Language" Text.ty),
+(go.field_decl.FieldDecl go!"LanguageVersion" Fact.ty),
+(go.field_decl.FieldDecl go!"Configuration" Text.ty)]
+
+@[irreducible] def Producer.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Producer.fieldsUnsealed
+
+instance equals_unfold_Producer [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Producer.fields Producer.fieldsUnsealed :=
+  ⟨by unfold Producer.fields; rfl⟩
+
+@[reducible] def Producer.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Producer.fields)
 
 class Producer.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying Producer.underlying Producer
   underlying : go.UnderlyingDirectedEq Producer.ty Producer.underlying
-  isUnderlying : go.IsUnderlying Producer.underlying Producer.underlying
+  layout : go.StructLayout Producer [(go!"Name", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Version", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Language", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"LanguageVersion", typeSize Fact, typeAlign Fact), (go!"Configuration", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text)]
+  get_Name : ∀ (x : Producer), go.IsGoStepPureDetTagged under (StructFieldGet Producer.underlying go!"Name") #x (Val #(x.Name'))
+  set_Name : ∀ (x : Producer) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Producer.underlying go!"Name") (PairV #x #y) (Val #(({ x with Name' := y } : Producer)))
+  get_Version : ∀ (x : Producer), go.IsGoStepPureDetTagged under (StructFieldGet Producer.underlying go!"Version") #x (Val #(x.Version'))
+  set_Version : ∀ (x : Producer) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Producer.underlying go!"Version") (PairV #x #y) (Val #(({ x with Version' := y } : Producer)))
+  get_Language : ∀ (x : Producer), go.IsGoStepPureDetTagged under (StructFieldGet Producer.underlying go!"Language") #x (Val #(x.Language'))
+  set_Language : ∀ (x : Producer) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Producer.underlying go!"Language") (PairV #x #y) (Val #(({ x with Language' := y } : Producer)))
+  get_LanguageVersion : ∀ (x : Producer), go.IsGoStepPureDetTagged under (StructFieldGet Producer.underlying go!"LanguageVersion") #x (Val #(x.LanguageVersion'))
+  set_LanguageVersion : ∀ (x : Producer) (y : Fact), go.IsGoStepPureDetTagged under (StructFieldSet Producer.underlying go!"LanguageVersion") (PairV #x #y) (Val #(({ x with LanguageVersion' := y } : Producer)))
+  get_Configuration : ∀ (x : Producer), go.IsGoStepPureDetTagged under (StructFieldGet Producer.underlying go!"Configuration") #x (Val #(x.Configuration'))
+  set_Configuration : ∀ (x : Producer) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Producer.underlying go!"Configuration") (PairV #x #y) (Val #(({ x with Configuration' := y } : Producer)))
 
 attribute [instance] Producer.TypeAssumptions.type_repr
   Producer.TypeAssumptions.underlying
-  Producer.TypeAssumptions.isUnderlying
+  Producer.TypeAssumptions.layout
+  Producer.TypeAssumptions.get_Name
+  Producer.TypeAssumptions.set_Name
+  Producer.TypeAssumptions.get_Version
+  Producer.TypeAssumptions.set_Version
+  Producer.TypeAssumptions.get_Language
+  Producer.TypeAssumptions.set_Language
+  Producer.TypeAssumptions.get_LanguageVersion
+  Producer.TypeAssumptions.set_LanguageVersion
+  Producer.TypeAssumptions.get_Configuration
+  Producer.TypeAssumptions.set_Configuration
 
 axiom Role : Type
 axiom Role.zero_val : ZeroVal Role
@@ -863,31 +1200,125 @@ attribute [instance] Parameter.TypeAssumptions.type_repr
   Parameter.TypeAssumptions.underlying
   Parameter.TypeAssumptions.isUnderlying
 
-axiom CountFact : Type
-axiom CountFact.zero_val : ZeroVal CountFact
-attribute [instance] CountFact.zero_val
+structure CountFact [FfiSyntax] where
+  mk ::
+  Value' : w64
+  Reason' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  Status' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status
+
+instance CountFact.zero_val [FfiSyntax] : ZeroVal CountFact :=
+  ⟨CountFact.mk zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def CountFact.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"Value" go.uint64),
+(go.field_decl.FieldDecl go!"Reason" Text.ty),
+(go.field_decl.FieldDecl go!"Status" Status.ty)]
+
+@[irreducible] def CountFact.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  CountFact.fieldsUnsealed
+
+instance equals_unfold_CountFact [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold CountFact.fields CountFact.fieldsUnsealed :=
+  ⟨by unfold CountFact.fields; rfl⟩
+
+@[reducible] def CountFact.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType CountFact.fields)
 
 class CountFact.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying CountFact.underlying CountFact
   underlying : go.UnderlyingDirectedEq CountFact.ty CountFact.underlying
-  isUnderlying : go.IsUnderlying CountFact.underlying CountFact.underlying
+  layout : go.StructLayout CountFact [(go!"Value", typeSize w64, typeAlign w64), (go!"Reason", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Status", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status)]
+  get_Value : ∀ (x : CountFact), go.IsGoStepPureDetTagged under (StructFieldGet CountFact.underlying go!"Value") #x (Val #(x.Value'))
+  set_Value : ∀ (x : CountFact) (y : w64), go.IsGoStepPureDetTagged under (StructFieldSet CountFact.underlying go!"Value") (PairV #x #y) (Val #(({ x with Value' := y } : CountFact)))
+  get_Reason : ∀ (x : CountFact), go.IsGoStepPureDetTagged under (StructFieldGet CountFact.underlying go!"Reason") #x (Val #(x.Reason'))
+  set_Reason : ∀ (x : CountFact) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet CountFact.underlying go!"Reason") (PairV #x #y) (Val #(({ x with Reason' := y } : CountFact)))
+  get_Status : ∀ (x : CountFact), go.IsGoStepPureDetTagged under (StructFieldGet CountFact.underlying go!"Status") #x (Val #(x.Status'))
+  set_Status : ∀ (x : CountFact) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status), go.IsGoStepPureDetTagged under (StructFieldSet CountFact.underlying go!"Status") (PairV #x #y) (Val #(({ x with Status' := y } : CountFact)))
 
 attribute [instance] CountFact.TypeAssumptions.type_repr
   CountFact.TypeAssumptions.underlying
-  CountFact.TypeAssumptions.isUnderlying
+  CountFact.TypeAssumptions.layout
+  CountFact.TypeAssumptions.get_Value
+  CountFact.TypeAssumptions.set_Value
+  CountFact.TypeAssumptions.get_Reason
+  CountFact.TypeAssumptions.set_Reason
+  CountFact.TypeAssumptions.get_Status
+  CountFact.TypeAssumptions.set_Status
 
-axiom Function : Type
-axiom Function.zero_val : ZeroVal Function
-attribute [instance] Function.zero_val
+structure Function [FfiSyntax] where
+  mk ::
+  ID' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  Name' : Fact
+  QualifiedName' : Fact
+  Span' : Span
+  Inputs' : GoSlice
+  Outputs' : GoSlice
+  Interface' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  ReferenceCount' : CountFact
+
+instance Function.zero_val [FfiSyntax] : ZeroVal Function :=
+  ⟨Function.mk zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def Function.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"ID" Text.ty),
+(go.field_decl.FieldDecl go!"Name" Fact.ty),
+(go.field_decl.FieldDecl go!"QualifiedName" Fact.ty),
+(go.field_decl.FieldDecl go!"Span" Span.ty),
+(go.field_decl.FieldDecl go!"Inputs" (go.GoType.SliceType Parameter.ty)),
+(go.field_decl.FieldDecl go!"Outputs" (go.GoType.SliceType Parameter.ty)),
+(go.field_decl.FieldDecl go!"Interface" Ref.ty),
+(go.field_decl.FieldDecl go!"ReferenceCount" CountFact.ty)]
+
+@[irreducible] def Function.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Function.fieldsUnsealed
+
+instance equals_unfold_Function [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Function.fields Function.fieldsUnsealed :=
+  ⟨by unfold Function.fields; rfl⟩
+
+@[reducible] def Function.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Function.fields)
 
 class Function.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying Function.underlying Function
   underlying : go.UnderlyingDirectedEq Function.ty Function.underlying
-  isUnderlying : go.IsUnderlying Function.underlying Function.underlying
+  layout : go.StructLayout Function [(go!"ID", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Name", typeSize Fact, typeAlign Fact), (go!"QualifiedName", typeSize Fact, typeAlign Fact), (go!"Span", typeSize Span, typeAlign Span), (go!"Inputs", typeSize GoSlice, typeAlign GoSlice), (go!"Outputs", typeSize GoSlice, typeAlign GoSlice), (go!"Interface", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"ReferenceCount", typeSize CountFact, typeAlign CountFact)]
+  get_ID : ∀ (x : Function), go.IsGoStepPureDetTagged under (StructFieldGet Function.underlying go!"ID") #x (Val #(x.ID'))
+  set_ID : ∀ (x : Function) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Function.underlying go!"ID") (PairV #x #y) (Val #(({ x with ID' := y } : Function)))
+  get_Name : ∀ (x : Function), go.IsGoStepPureDetTagged under (StructFieldGet Function.underlying go!"Name") #x (Val #(x.Name'))
+  set_Name : ∀ (x : Function) (y : Fact), go.IsGoStepPureDetTagged under (StructFieldSet Function.underlying go!"Name") (PairV #x #y) (Val #(({ x with Name' := y } : Function)))
+  get_QualifiedName : ∀ (x : Function), go.IsGoStepPureDetTagged under (StructFieldGet Function.underlying go!"QualifiedName") #x (Val #(x.QualifiedName'))
+  set_QualifiedName : ∀ (x : Function) (y : Fact), go.IsGoStepPureDetTagged under (StructFieldSet Function.underlying go!"QualifiedName") (PairV #x #y) (Val #(({ x with QualifiedName' := y } : Function)))
+  get_Span : ∀ (x : Function), go.IsGoStepPureDetTagged under (StructFieldGet Function.underlying go!"Span") #x (Val #(x.Span'))
+  set_Span : ∀ (x : Function) (y : Span), go.IsGoStepPureDetTagged under (StructFieldSet Function.underlying go!"Span") (PairV #x #y) (Val #(({ x with Span' := y } : Function)))
+  get_Inputs : ∀ (x : Function), go.IsGoStepPureDetTagged under (StructFieldGet Function.underlying go!"Inputs") #x (Val #(x.Inputs'))
+  set_Inputs : ∀ (x : Function) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Function.underlying go!"Inputs") (PairV #x #y) (Val #(({ x with Inputs' := y } : Function)))
+  get_Outputs : ∀ (x : Function), go.IsGoStepPureDetTagged under (StructFieldGet Function.underlying go!"Outputs") #x (Val #(x.Outputs'))
+  set_Outputs : ∀ (x : Function) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Function.underlying go!"Outputs") (PairV #x #y) (Val #(({ x with Outputs' := y } : Function)))
+  get_Interface : ∀ (x : Function), go.IsGoStepPureDetTagged under (StructFieldGet Function.underlying go!"Interface") #x (Val #(x.Interface'))
+  set_Interface : ∀ (x : Function) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Function.underlying go!"Interface") (PairV #x #y) (Val #(({ x with Interface' := y } : Function)))
+  get_ReferenceCount : ∀ (x : Function), go.IsGoStepPureDetTagged under (StructFieldGet Function.underlying go!"ReferenceCount") #x (Val #(x.ReferenceCount'))
+  set_ReferenceCount : ∀ (x : Function) (y : CountFact), go.IsGoStepPureDetTagged under (StructFieldSet Function.underlying go!"ReferenceCount") (PairV #x #y) (Val #(({ x with ReferenceCount' := y } : Function)))
 
 attribute [instance] Function.TypeAssumptions.type_repr
   Function.TypeAssumptions.underlying
-  Function.TypeAssumptions.isUnderlying
+  Function.TypeAssumptions.layout
+  Function.TypeAssumptions.get_ID
+  Function.TypeAssumptions.set_ID
+  Function.TypeAssumptions.get_Name
+  Function.TypeAssumptions.set_Name
+  Function.TypeAssumptions.get_QualifiedName
+  Function.TypeAssumptions.set_QualifiedName
+  Function.TypeAssumptions.get_Span
+  Function.TypeAssumptions.set_Span
+  Function.TypeAssumptions.get_Inputs
+  Function.TypeAssumptions.set_Inputs
+  Function.TypeAssumptions.get_Outputs
+  Function.TypeAssumptions.set_Outputs
+  Function.TypeAssumptions.get_Interface
+  Function.TypeAssumptions.set_Interface
+  Function.TypeAssumptions.get_ReferenceCount
+  Function.TypeAssumptions.set_ReferenceCount
 
 axiom Symbol : Type
 axiom Symbol.zero_val : ZeroVal Symbol
@@ -938,45 +1369,6 @@ class Category.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [G
 
 attribute [instance] Category.TypeAssumptions.underlying
 
-axiom Position : Type
-axiom Position.zero_val : ZeroVal Position
-attribute [instance] Position.zero_val
-
-class Position.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
-  type_repr : go.TypeReprUnderlying Position.underlying Position
-  underlying : go.UnderlyingDirectedEq Position.ty Position.underlying
-  isUnderlying : go.IsUnderlying Position.underlying Position.underlying
-
-attribute [instance] Position.TypeAssumptions.type_repr
-  Position.TypeAssumptions.underlying
-  Position.TypeAssumptions.isUnderlying
-
-axiom CallForm : Type
-axiom CallForm.zero_val : ZeroVal CallForm
-attribute [instance] CallForm.zero_val
-
-class CallForm.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
-  type_repr : go.TypeReprUnderlying CallForm.underlying CallForm
-  underlying : go.UnderlyingDirectedEq CallForm.ty CallForm.underlying
-  isUnderlying : go.IsUnderlying CallForm.underlying CallForm.underlying
-
-attribute [instance] CallForm.TypeAssumptions.type_repr
-  CallForm.TypeAssumptions.underlying
-  CallForm.TypeAssumptions.isUnderlying
-
-axiom ExitKind : Type
-axiom ExitKind.zero_val : ZeroVal ExitKind
-attribute [instance] ExitKind.zero_val
-
-class ExitKind.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
-  type_repr : go.TypeReprUnderlying ExitKind.underlying ExitKind
-  underlying : go.UnderlyingDirectedEq ExitKind.ty ExitKind.underlying
-  isUnderlying : go.IsUnderlying ExitKind.underlying ExitKind.underlying
-
-attribute [instance] ExitKind.TypeAssumptions.type_repr
-  ExitKind.TypeAssumptions.underlying
-  ExitKind.TypeAssumptions.isUnderlying
-
 axiom Access : Type
 axiom Access.zero_val : ZeroVal Access
 attribute [instance] Access.zero_val
@@ -990,31 +1382,215 @@ attribute [instance] Access.TypeAssumptions.type_repr
   Access.TypeAssumptions.underlying
   Access.TypeAssumptions.isUnderlying
 
-axiom Attributes : Type
-axiom Attributes.zero_val : ZeroVal Attributes
-attribute [instance] Attributes.zero_val
+structure Attributes [FfiSyntax] where
+  mk ::
+  Symbols' : GoSlice
+  Defines' : GoSlice
+  Reads' : GoSlice
+  Writes' : GoSlice
+  Operator' : Fact
+  Literal' : Fact
+  Callee' : Fact
+  Construct' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  WriteForm' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  Description' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  Outcomes' : GoSlice
+  Position' : Position
+  CallForm' : CallForm
+  ExitKind' : ExitKind
+  Extensions' : GoSlice
+
+instance Attributes.zero_val [FfiSyntax] : ZeroVal Attributes :=
+  ⟨Attributes.mk zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def Attributes.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"Symbols" (go.GoType.SliceType Ref.ty)),
+(go.field_decl.FieldDecl go!"Defines" (go.GoType.SliceType Ref.ty)),
+(go.field_decl.FieldDecl go!"Reads" (go.GoType.SliceType Access.ty)),
+(go.field_decl.FieldDecl go!"Writes" (go.GoType.SliceType Access.ty)),
+(go.field_decl.FieldDecl go!"Operator" Fact.ty),
+(go.field_decl.FieldDecl go!"Literal" Fact.ty),
+(go.field_decl.FieldDecl go!"Callee" Fact.ty),
+(go.field_decl.FieldDecl go!"Construct" Text.ty),
+(go.field_decl.FieldDecl go!"WriteForm" Text.ty),
+(go.field_decl.FieldDecl go!"Description" Text.ty),
+(go.field_decl.FieldDecl go!"Outcomes" (go.GoType.SliceType Text.ty)),
+(go.field_decl.FieldDecl go!"Position" Position.ty),
+(go.field_decl.FieldDecl go!"CallForm" CallForm.ty),
+(go.field_decl.FieldDecl go!"ExitKind" ExitKind.ty),
+(go.field_decl.FieldDecl go!"Extensions" (go.GoType.SliceType Extension.ty))]
+
+@[irreducible] def Attributes.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Attributes.fieldsUnsealed
+
+instance equals_unfold_Attributes [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Attributes.fields Attributes.fieldsUnsealed :=
+  ⟨by unfold Attributes.fields; rfl⟩
+
+@[reducible] def Attributes.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Attributes.fields)
 
 class Attributes.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying Attributes.underlying Attributes
   underlying : go.UnderlyingDirectedEq Attributes.ty Attributes.underlying
-  isUnderlying : go.IsUnderlying Attributes.underlying Attributes.underlying
+  layout : go.StructLayout Attributes [(go!"Symbols", typeSize GoSlice, typeAlign GoSlice), (go!"Defines", typeSize GoSlice, typeAlign GoSlice), (go!"Reads", typeSize GoSlice, typeAlign GoSlice), (go!"Writes", typeSize GoSlice, typeAlign GoSlice), (go!"Operator", typeSize Fact, typeAlign Fact), (go!"Literal", typeSize Fact, typeAlign Fact), (go!"Callee", typeSize Fact, typeAlign Fact), (go!"Construct", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"WriteForm", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Description", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Outcomes", typeSize GoSlice, typeAlign GoSlice), (go!"Position", typeSize Position, typeAlign Position), (go!"CallForm", typeSize CallForm, typeAlign CallForm), (go!"ExitKind", typeSize ExitKind, typeAlign ExitKind), (go!"Extensions", typeSize GoSlice, typeAlign GoSlice)]
+  get_Symbols : ∀ (x : Attributes), go.IsGoStepPureDetTagged under (StructFieldGet Attributes.underlying go!"Symbols") #x (Val #(x.Symbols'))
+  set_Symbols : ∀ (x : Attributes) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Attributes.underlying go!"Symbols") (PairV #x #y) (Val #(({ x with Symbols' := y } : Attributes)))
+  get_Defines : ∀ (x : Attributes), go.IsGoStepPureDetTagged under (StructFieldGet Attributes.underlying go!"Defines") #x (Val #(x.Defines'))
+  set_Defines : ∀ (x : Attributes) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Attributes.underlying go!"Defines") (PairV #x #y) (Val #(({ x with Defines' := y } : Attributes)))
+  get_Reads : ∀ (x : Attributes), go.IsGoStepPureDetTagged under (StructFieldGet Attributes.underlying go!"Reads") #x (Val #(x.Reads'))
+  set_Reads : ∀ (x : Attributes) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Attributes.underlying go!"Reads") (PairV #x #y) (Val #(({ x with Reads' := y } : Attributes)))
+  get_Writes : ∀ (x : Attributes), go.IsGoStepPureDetTagged under (StructFieldGet Attributes.underlying go!"Writes") #x (Val #(x.Writes'))
+  set_Writes : ∀ (x : Attributes) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Attributes.underlying go!"Writes") (PairV #x #y) (Val #(({ x with Writes' := y } : Attributes)))
+  get_Operator : ∀ (x : Attributes), go.IsGoStepPureDetTagged under (StructFieldGet Attributes.underlying go!"Operator") #x (Val #(x.Operator'))
+  set_Operator : ∀ (x : Attributes) (y : Fact), go.IsGoStepPureDetTagged under (StructFieldSet Attributes.underlying go!"Operator") (PairV #x #y) (Val #(({ x with Operator' := y } : Attributes)))
+  get_Literal : ∀ (x : Attributes), go.IsGoStepPureDetTagged under (StructFieldGet Attributes.underlying go!"Literal") #x (Val #(x.Literal'))
+  set_Literal : ∀ (x : Attributes) (y : Fact), go.IsGoStepPureDetTagged under (StructFieldSet Attributes.underlying go!"Literal") (PairV #x #y) (Val #(({ x with Literal' := y } : Attributes)))
+  get_Callee : ∀ (x : Attributes), go.IsGoStepPureDetTagged under (StructFieldGet Attributes.underlying go!"Callee") #x (Val #(x.Callee'))
+  set_Callee : ∀ (x : Attributes) (y : Fact), go.IsGoStepPureDetTagged under (StructFieldSet Attributes.underlying go!"Callee") (PairV #x #y) (Val #(({ x with Callee' := y } : Attributes)))
+  get_Construct : ∀ (x : Attributes), go.IsGoStepPureDetTagged under (StructFieldGet Attributes.underlying go!"Construct") #x (Val #(x.Construct'))
+  set_Construct : ∀ (x : Attributes) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Attributes.underlying go!"Construct") (PairV #x #y) (Val #(({ x with Construct' := y } : Attributes)))
+  get_WriteForm : ∀ (x : Attributes), go.IsGoStepPureDetTagged under (StructFieldGet Attributes.underlying go!"WriteForm") #x (Val #(x.WriteForm'))
+  set_WriteForm : ∀ (x : Attributes) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Attributes.underlying go!"WriteForm") (PairV #x #y) (Val #(({ x with WriteForm' := y } : Attributes)))
+  get_Description : ∀ (x : Attributes), go.IsGoStepPureDetTagged under (StructFieldGet Attributes.underlying go!"Description") #x (Val #(x.Description'))
+  set_Description : ∀ (x : Attributes) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Attributes.underlying go!"Description") (PairV #x #y) (Val #(({ x with Description' := y } : Attributes)))
+  get_Outcomes : ∀ (x : Attributes), go.IsGoStepPureDetTagged under (StructFieldGet Attributes.underlying go!"Outcomes") #x (Val #(x.Outcomes'))
+  set_Outcomes : ∀ (x : Attributes) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Attributes.underlying go!"Outcomes") (PairV #x #y) (Val #(({ x with Outcomes' := y } : Attributes)))
+  get_Position : ∀ (x : Attributes), go.IsGoStepPureDetTagged under (StructFieldGet Attributes.underlying go!"Position") #x (Val #(x.Position'))
+  set_Position : ∀ (x : Attributes) (y : Position), go.IsGoStepPureDetTagged under (StructFieldSet Attributes.underlying go!"Position") (PairV #x #y) (Val #(({ x with Position' := y } : Attributes)))
+  get_CallForm : ∀ (x : Attributes), go.IsGoStepPureDetTagged under (StructFieldGet Attributes.underlying go!"CallForm") #x (Val #(x.CallForm'))
+  set_CallForm : ∀ (x : Attributes) (y : CallForm), go.IsGoStepPureDetTagged under (StructFieldSet Attributes.underlying go!"CallForm") (PairV #x #y) (Val #(({ x with CallForm' := y } : Attributes)))
+  get_ExitKind : ∀ (x : Attributes), go.IsGoStepPureDetTagged under (StructFieldGet Attributes.underlying go!"ExitKind") #x (Val #(x.ExitKind'))
+  set_ExitKind : ∀ (x : Attributes) (y : ExitKind), go.IsGoStepPureDetTagged under (StructFieldSet Attributes.underlying go!"ExitKind") (PairV #x #y) (Val #(({ x with ExitKind' := y } : Attributes)))
+  get_Extensions : ∀ (x : Attributes), go.IsGoStepPureDetTagged under (StructFieldGet Attributes.underlying go!"Extensions") #x (Val #(x.Extensions'))
+  set_Extensions : ∀ (x : Attributes) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Attributes.underlying go!"Extensions") (PairV #x #y) (Val #(({ x with Extensions' := y } : Attributes)))
 
 attribute [instance] Attributes.TypeAssumptions.type_repr
   Attributes.TypeAssumptions.underlying
-  Attributes.TypeAssumptions.isUnderlying
+  Attributes.TypeAssumptions.layout
+  Attributes.TypeAssumptions.get_Symbols
+  Attributes.TypeAssumptions.set_Symbols
+  Attributes.TypeAssumptions.get_Defines
+  Attributes.TypeAssumptions.set_Defines
+  Attributes.TypeAssumptions.get_Reads
+  Attributes.TypeAssumptions.set_Reads
+  Attributes.TypeAssumptions.get_Writes
+  Attributes.TypeAssumptions.set_Writes
+  Attributes.TypeAssumptions.get_Operator
+  Attributes.TypeAssumptions.set_Operator
+  Attributes.TypeAssumptions.get_Literal
+  Attributes.TypeAssumptions.set_Literal
+  Attributes.TypeAssumptions.get_Callee
+  Attributes.TypeAssumptions.set_Callee
+  Attributes.TypeAssumptions.get_Construct
+  Attributes.TypeAssumptions.set_Construct
+  Attributes.TypeAssumptions.get_WriteForm
+  Attributes.TypeAssumptions.set_WriteForm
+  Attributes.TypeAssumptions.get_Description
+  Attributes.TypeAssumptions.set_Description
+  Attributes.TypeAssumptions.get_Outcomes
+  Attributes.TypeAssumptions.set_Outcomes
+  Attributes.TypeAssumptions.get_Position
+  Attributes.TypeAssumptions.set_Position
+  Attributes.TypeAssumptions.get_CallForm
+  Attributes.TypeAssumptions.set_CallForm
+  Attributes.TypeAssumptions.get_ExitKind
+  Attributes.TypeAssumptions.set_ExitKind
+  Attributes.TypeAssumptions.get_Extensions
+  Attributes.TypeAssumptions.set_Extensions
 
-axiom Node : Type
-axiom Node.zero_val : ZeroVal Node
-attribute [instance] Node.zero_val
+structure Node [FfiSyntax] where
+  mk ::
+  MatchLabel' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Line' : w32
+  ID' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  OriginalKind' : Fact
+  Span' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Attributes' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Provenance' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Evidence' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Annotations' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Category' : Category
+  Synthetic' : Bool
+
+instance Node.zero_val [FfiSyntax] : ZeroVal Node :=
+  ⟨Node.mk zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def Node.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"MatchLabel" Ref.ty),
+(go.field_decl.FieldDecl go!"Line" go.uint32),
+(go.field_decl.FieldDecl go!"ID" Text.ty),
+(go.field_decl.FieldDecl go!"OriginalKind" Fact.ty),
+(go.field_decl.FieldDecl go!"Span" Ref.ty),
+(go.field_decl.FieldDecl go!"Attributes" Ref.ty),
+(go.field_decl.FieldDecl go!"Provenance" Ref.ty),
+(go.field_decl.FieldDecl go!"Evidence" Ref.ty),
+(go.field_decl.FieldDecl go!"Annotations" Ref.ty),
+(go.field_decl.FieldDecl go!"Category" Category.ty),
+(go.field_decl.FieldDecl go!"Synthetic" go.bool)]
+
+@[irreducible] def Node.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Node.fieldsUnsealed
+
+instance equals_unfold_Node [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Node.fields Node.fieldsUnsealed :=
+  ⟨by unfold Node.fields; rfl⟩
+
+@[reducible] def Node.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Node.fields)
 
 class Node.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying Node.underlying Node
   underlying : go.UnderlyingDirectedEq Node.ty Node.underlying
-  isUnderlying : go.IsUnderlying Node.underlying Node.underlying
+  layout : go.StructLayout Node [(go!"MatchLabel", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Line", typeSize w32, typeAlign w32), (go!"ID", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"OriginalKind", typeSize Fact, typeAlign Fact), (go!"Span", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Attributes", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Provenance", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Evidence", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Annotations", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Category", typeSize Category, typeAlign Category), (go!"Synthetic", typeSize Bool, typeAlign Bool)]
+  get_MatchLabel : ∀ (x : Node), go.IsGoStepPureDetTagged under (StructFieldGet Node.underlying go!"MatchLabel") #x (Val #(x.MatchLabel'))
+  set_MatchLabel : ∀ (x : Node) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Node.underlying go!"MatchLabel") (PairV #x #y) (Val #(({ x with MatchLabel' := y } : Node)))
+  get_Line : ∀ (x : Node), go.IsGoStepPureDetTagged under (StructFieldGet Node.underlying go!"Line") #x (Val #(x.Line'))
+  set_Line : ∀ (x : Node) (y : w32), go.IsGoStepPureDetTagged under (StructFieldSet Node.underlying go!"Line") (PairV #x #y) (Val #(({ x with Line' := y } : Node)))
+  get_ID : ∀ (x : Node), go.IsGoStepPureDetTagged under (StructFieldGet Node.underlying go!"ID") #x (Val #(x.ID'))
+  set_ID : ∀ (x : Node) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Node.underlying go!"ID") (PairV #x #y) (Val #(({ x with ID' := y } : Node)))
+  get_OriginalKind : ∀ (x : Node), go.IsGoStepPureDetTagged under (StructFieldGet Node.underlying go!"OriginalKind") #x (Val #(x.OriginalKind'))
+  set_OriginalKind : ∀ (x : Node) (y : Fact), go.IsGoStepPureDetTagged under (StructFieldSet Node.underlying go!"OriginalKind") (PairV #x #y) (Val #(({ x with OriginalKind' := y } : Node)))
+  get_Span : ∀ (x : Node), go.IsGoStepPureDetTagged under (StructFieldGet Node.underlying go!"Span") #x (Val #(x.Span'))
+  set_Span : ∀ (x : Node) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Node.underlying go!"Span") (PairV #x #y) (Val #(({ x with Span' := y } : Node)))
+  get_Attributes : ∀ (x : Node), go.IsGoStepPureDetTagged under (StructFieldGet Node.underlying go!"Attributes") #x (Val #(x.Attributes'))
+  set_Attributes : ∀ (x : Node) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Node.underlying go!"Attributes") (PairV #x #y) (Val #(({ x with Attributes' := y } : Node)))
+  get_Provenance : ∀ (x : Node), go.IsGoStepPureDetTagged under (StructFieldGet Node.underlying go!"Provenance") #x (Val #(x.Provenance'))
+  set_Provenance : ∀ (x : Node) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Node.underlying go!"Provenance") (PairV #x #y) (Val #(({ x with Provenance' := y } : Node)))
+  get_Evidence : ∀ (x : Node), go.IsGoStepPureDetTagged under (StructFieldGet Node.underlying go!"Evidence") #x (Val #(x.Evidence'))
+  set_Evidence : ∀ (x : Node) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Node.underlying go!"Evidence") (PairV #x #y) (Val #(({ x with Evidence' := y } : Node)))
+  get_Annotations : ∀ (x : Node), go.IsGoStepPureDetTagged under (StructFieldGet Node.underlying go!"Annotations") #x (Val #(x.Annotations'))
+  set_Annotations : ∀ (x : Node) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Node.underlying go!"Annotations") (PairV #x #y) (Val #(({ x with Annotations' := y } : Node)))
+  get_Category : ∀ (x : Node), go.IsGoStepPureDetTagged under (StructFieldGet Node.underlying go!"Category") #x (Val #(x.Category'))
+  set_Category : ∀ (x : Node) (y : Category), go.IsGoStepPureDetTagged under (StructFieldSet Node.underlying go!"Category") (PairV #x #y) (Val #(({ x with Category' := y } : Node)))
+  get_Synthetic : ∀ (x : Node), go.IsGoStepPureDetTagged under (StructFieldGet Node.underlying go!"Synthetic") #x (Val #(x.Synthetic'))
+  set_Synthetic : ∀ (x : Node) (y : Bool), go.IsGoStepPureDetTagged under (StructFieldSet Node.underlying go!"Synthetic") (PairV #x #y) (Val #(({ x with Synthetic' := y } : Node)))
 
 attribute [instance] Node.TypeAssumptions.type_repr
   Node.TypeAssumptions.underlying
-  Node.TypeAssumptions.isUnderlying
+  Node.TypeAssumptions.layout
+  Node.TypeAssumptions.get_MatchLabel
+  Node.TypeAssumptions.set_MatchLabel
+  Node.TypeAssumptions.get_Line
+  Node.TypeAssumptions.set_Line
+  Node.TypeAssumptions.get_ID
+  Node.TypeAssumptions.set_ID
+  Node.TypeAssumptions.get_OriginalKind
+  Node.TypeAssumptions.set_OriginalKind
+  Node.TypeAssumptions.get_Span
+  Node.TypeAssumptions.set_Span
+  Node.TypeAssumptions.get_Attributes
+  Node.TypeAssumptions.set_Attributes
+  Node.TypeAssumptions.get_Provenance
+  Node.TypeAssumptions.set_Provenance
+  Node.TypeAssumptions.get_Evidence
+  Node.TypeAssumptions.set_Evidence
+  Node.TypeAssumptions.get_Annotations
+  Node.TypeAssumptions.set_Annotations
+  Node.TypeAssumptions.get_Category
+  Node.TypeAssumptions.set_Category
+  Node.TypeAssumptions.get_Synthetic
+  Node.TypeAssumptions.set_Synthetic
 
 axiom EdgeKind : Type
 axiom EdgeKind.zero_val : ZeroVal EdgeKind
@@ -1068,31 +1644,54 @@ attribute [instance] Diagnostic.TypeAssumptions.type_repr
   Diagnostic.TypeAssumptions.underlying
   Diagnostic.TypeAssumptions.isUnderlying
 
-axiom ConformanceStatus : Type
-axiom ConformanceStatus.zero_val : ZeroVal ConformanceStatus
-attribute [instance] ConformanceStatus.zero_val
+abbrev ConformanceStatus [FfiSyntax] : Type := w8
+
+@[reducible] def ConformanceStatus.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  go.uint8
 
 class ConformanceStatus.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
-  type_repr : go.TypeReprUnderlying ConformanceStatus.underlying ConformanceStatus
   underlying : go.UnderlyingDirectedEq ConformanceStatus.ty ConformanceStatus.underlying
-  isUnderlying : go.IsUnderlying ConformanceStatus.underlying ConformanceStatus.underlying
 
-attribute [instance] ConformanceStatus.TypeAssumptions.type_repr
-  ConformanceStatus.TypeAssumptions.underlying
-  ConformanceStatus.TypeAssumptions.isUnderlying
+attribute [instance] ConformanceStatus.TypeAssumptions.underlying
 
-axiom Conformance : Type
-axiom Conformance.zero_val : ZeroVal Conformance
-attribute [instance] Conformance.zero_val
+structure Conformance [FfiSyntax] where
+  mk ::
+  Reasons' : GoSlice
+  Status' : ConformanceStatus
+
+instance Conformance.zero_val [FfiSyntax] : ZeroVal Conformance :=
+  ⟨Conformance.mk zeroValDef zeroValDef⟩
+
+@[reducible] def Conformance.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"Reasons" (go.GoType.SliceType Text.ty)),
+(go.field_decl.FieldDecl go!"Status" ConformanceStatus.ty)]
+
+@[irreducible] def Conformance.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Conformance.fieldsUnsealed
+
+instance equals_unfold_Conformance [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Conformance.fields Conformance.fieldsUnsealed :=
+  ⟨by unfold Conformance.fields; rfl⟩
+
+@[reducible] def Conformance.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Conformance.fields)
 
 class Conformance.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying Conformance.underlying Conformance
   underlying : go.UnderlyingDirectedEq Conformance.ty Conformance.underlying
-  isUnderlying : go.IsUnderlying Conformance.underlying Conformance.underlying
+  layout : go.StructLayout Conformance [(go!"Reasons", typeSize GoSlice, typeAlign GoSlice), (go!"Status", typeSize ConformanceStatus, typeAlign ConformanceStatus)]
+  get_Reasons : ∀ (x : Conformance), go.IsGoStepPureDetTagged under (StructFieldGet Conformance.underlying go!"Reasons") #x (Val #(x.Reasons'))
+  set_Reasons : ∀ (x : Conformance) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Conformance.underlying go!"Reasons") (PairV #x #y) (Val #(({ x with Reasons' := y } : Conformance)))
+  get_Status : ∀ (x : Conformance), go.IsGoStepPureDetTagged under (StructFieldGet Conformance.underlying go!"Status") #x (Val #(x.Status'))
+  set_Status : ∀ (x : Conformance) (y : ConformanceStatus), go.IsGoStepPureDetTagged under (StructFieldSet Conformance.underlying go!"Status") (PairV #x #y) (Val #(({ x with Status' := y } : Conformance)))
 
 attribute [instance] Conformance.TypeAssumptions.type_repr
   Conformance.TypeAssumptions.underlying
-  Conformance.TypeAssumptions.isUnderlying
+  Conformance.TypeAssumptions.layout
+  Conformance.TypeAssumptions.get_Reasons
+  Conformance.TypeAssumptions.set_Reasons
+  Conformance.TypeAssumptions.get_Status
+  Conformance.TypeAssumptions.set_Status
 
 axiom NamedCapability : Type
 axiom NamedCapability.zero_val : ZeroVal NamedCapability
@@ -1107,18 +1706,158 @@ attribute [instance] NamedCapability.TypeAssumptions.type_repr
   NamedCapability.TypeAssumptions.underlying
   NamedCapability.TypeAssumptions.isUnderlying
 
-axiom Graph : Type
-axiom Graph.zero_val : ZeroVal Graph
-attribute [instance] Graph.zero_val
+structure Graph [FfiSyntax] where
+  mk ::
+  Tables' : Loc
+  NormalFlow' : Loc
+  ValueFlow' : Loc
+  Profile' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Producer' : Producer
+  Sources' : GoSlice
+  Function' : Function
+  Symbols' : GoSlice
+  Definitions' : GoSlice
+  Locations' : GoSlice
+  Nodes' : GoSlice
+  Edges' : GoSlice
+  Spans' : GoSlice
+  Attributes' : GoSlice
+  AttributeTables' : AttributeTables
+  Annotations' : GoSlice
+  Capabilities' : GoSlice
+  Diagnostics' : GoSlice
+  Conformance' : Conformance
+  Extensions' : GoSlice
+
+instance Graph.zero_val [FfiSyntax] : ZeroVal Graph :=
+  ⟨Graph.mk zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def Graph.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"Tables" (go.GoType.PointerType Tables.ty)),
+(go.field_decl.FieldDecl go!"NormalFlow" (go.GoType.PointerType NormalFlow.ty)),
+(go.field_decl.FieldDecl go!"ValueFlow" (go.GoType.PointerType NormalFlow.ty)),
+(go.field_decl.FieldDecl go!"Profile" Ref.ty),
+(go.field_decl.FieldDecl go!"Producer" Producer.ty),
+(go.field_decl.FieldDecl go!"Sources" (go.GoType.SliceType Source.ty)),
+(go.field_decl.FieldDecl go!"Function" Function.ty),
+(go.field_decl.FieldDecl go!"Symbols" (go.GoType.SliceType Symbol.ty)),
+(go.field_decl.FieldDecl go!"Definitions" (go.GoType.SliceType Definition.ty)),
+(go.field_decl.FieldDecl go!"Locations" (go.GoType.SliceType Location.ty)),
+(go.field_decl.FieldDecl go!"Nodes" (go.GoType.SliceType Node.ty)),
+(go.field_decl.FieldDecl go!"Edges" (go.GoType.SliceType Edge.ty)),
+(go.field_decl.FieldDecl go!"Spans" (go.GoType.SliceType Span.ty)),
+(go.field_decl.FieldDecl go!"Attributes" (go.GoType.SliceType AttributeSet.ty)),
+(go.field_decl.FieldDecl go!"AttributeTables" AttributeTables.ty),
+(go.field_decl.FieldDecl go!"Annotations" (go.GoType.SliceType (go.GoType.SliceType Extension.ty))),
+(go.field_decl.FieldDecl go!"Capabilities" (go.GoType.SliceType NamedCapability.ty)),
+(go.field_decl.FieldDecl go!"Diagnostics" (go.GoType.SliceType Diagnostic.ty)),
+(go.field_decl.FieldDecl go!"Conformance" Conformance.ty),
+(go.field_decl.FieldDecl go!"Extensions" (go.GoType.SliceType Extension.ty))]
+
+@[irreducible] def Graph.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Graph.fieldsUnsealed
+
+instance equals_unfold_Graph [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Graph.fields Graph.fieldsUnsealed :=
+  ⟨by unfold Graph.fields; rfl⟩
+
+@[reducible] def Graph.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Graph.fields)
 
 class Graph.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying Graph.underlying Graph
   underlying : go.UnderlyingDirectedEq Graph.ty Graph.underlying
-  isUnderlying : go.IsUnderlying Graph.underlying Graph.underlying
+  layout : go.StructLayout Graph [(go!"Tables", typeSize Loc, typeAlign Loc), (go!"NormalFlow", typeSize Loc, typeAlign Loc), (go!"ValueFlow", typeSize Loc, typeAlign Loc), (go!"Profile", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Producer", typeSize Producer, typeAlign Producer), (go!"Sources", typeSize GoSlice, typeAlign GoSlice), (go!"Function", typeSize Function, typeAlign Function), (go!"Symbols", typeSize GoSlice, typeAlign GoSlice), (go!"Definitions", typeSize GoSlice, typeAlign GoSlice), (go!"Locations", typeSize GoSlice, typeAlign GoSlice), (go!"Nodes", typeSize GoSlice, typeAlign GoSlice), (go!"Edges", typeSize GoSlice, typeAlign GoSlice), (go!"Spans", typeSize GoSlice, typeAlign GoSlice), (go!"Attributes", typeSize GoSlice, typeAlign GoSlice), (go!"AttributeTables", typeSize AttributeTables, typeAlign AttributeTables), (go!"Annotations", typeSize GoSlice, typeAlign GoSlice), (go!"Capabilities", typeSize GoSlice, typeAlign GoSlice), (go!"Diagnostics", typeSize GoSlice, typeAlign GoSlice), (go!"Conformance", typeSize Conformance, typeAlign Conformance), (go!"Extensions", typeSize GoSlice, typeAlign GoSlice)]
+  get_Tables : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"Tables") #x (Val #(x.Tables'))
+  set_Tables : ∀ (x : Graph) (y : Loc), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"Tables") (PairV #x #y) (Val #(({ x with Tables' := y } : Graph)))
+  get_NormalFlow : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"NormalFlow") #x (Val #(x.NormalFlow'))
+  set_NormalFlow : ∀ (x : Graph) (y : Loc), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"NormalFlow") (PairV #x #y) (Val #(({ x with NormalFlow' := y } : Graph)))
+  get_ValueFlow : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"ValueFlow") #x (Val #(x.ValueFlow'))
+  set_ValueFlow : ∀ (x : Graph) (y : Loc), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"ValueFlow") (PairV #x #y) (Val #(({ x with ValueFlow' := y } : Graph)))
+  get_Profile : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"Profile") #x (Val #(x.Profile'))
+  set_Profile : ∀ (x : Graph) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"Profile") (PairV #x #y) (Val #(({ x with Profile' := y } : Graph)))
+  get_Producer : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"Producer") #x (Val #(x.Producer'))
+  set_Producer : ∀ (x : Graph) (y : Producer), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"Producer") (PairV #x #y) (Val #(({ x with Producer' := y } : Graph)))
+  get_Sources : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"Sources") #x (Val #(x.Sources'))
+  set_Sources : ∀ (x : Graph) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"Sources") (PairV #x #y) (Val #(({ x with Sources' := y } : Graph)))
+  get_Function : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"Function") #x (Val #(x.Function'))
+  set_Function : ∀ (x : Graph) (y : Function), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"Function") (PairV #x #y) (Val #(({ x with Function' := y } : Graph)))
+  get_Symbols : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"Symbols") #x (Val #(x.Symbols'))
+  set_Symbols : ∀ (x : Graph) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"Symbols") (PairV #x #y) (Val #(({ x with Symbols' := y } : Graph)))
+  get_Definitions : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"Definitions") #x (Val #(x.Definitions'))
+  set_Definitions : ∀ (x : Graph) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"Definitions") (PairV #x #y) (Val #(({ x with Definitions' := y } : Graph)))
+  get_Locations : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"Locations") #x (Val #(x.Locations'))
+  set_Locations : ∀ (x : Graph) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"Locations") (PairV #x #y) (Val #(({ x with Locations' := y } : Graph)))
+  get_Nodes : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"Nodes") #x (Val #(x.Nodes'))
+  set_Nodes : ∀ (x : Graph) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"Nodes") (PairV #x #y) (Val #(({ x with Nodes' := y } : Graph)))
+  get_Edges : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"Edges") #x (Val #(x.Edges'))
+  set_Edges : ∀ (x : Graph) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"Edges") (PairV #x #y) (Val #(({ x with Edges' := y } : Graph)))
+  get_Spans : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"Spans") #x (Val #(x.Spans'))
+  set_Spans : ∀ (x : Graph) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"Spans") (PairV #x #y) (Val #(({ x with Spans' := y } : Graph)))
+  get_Attributes : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"Attributes") #x (Val #(x.Attributes'))
+  set_Attributes : ∀ (x : Graph) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"Attributes") (PairV #x #y) (Val #(({ x with Attributes' := y } : Graph)))
+  get_AttributeTables : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"AttributeTables") #x (Val #(x.AttributeTables'))
+  set_AttributeTables : ∀ (x : Graph) (y : AttributeTables), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"AttributeTables") (PairV #x #y) (Val #(({ x with AttributeTables' := y } : Graph)))
+  get_Annotations : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"Annotations") #x (Val #(x.Annotations'))
+  set_Annotations : ∀ (x : Graph) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"Annotations") (PairV #x #y) (Val #(({ x with Annotations' := y } : Graph)))
+  get_Capabilities : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"Capabilities") #x (Val #(x.Capabilities'))
+  set_Capabilities : ∀ (x : Graph) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"Capabilities") (PairV #x #y) (Val #(({ x with Capabilities' := y } : Graph)))
+  get_Diagnostics : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"Diagnostics") #x (Val #(x.Diagnostics'))
+  set_Diagnostics : ∀ (x : Graph) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"Diagnostics") (PairV #x #y) (Val #(({ x with Diagnostics' := y } : Graph)))
+  get_Conformance : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"Conformance") #x (Val #(x.Conformance'))
+  set_Conformance : ∀ (x : Graph) (y : Conformance), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"Conformance") (PairV #x #y) (Val #(({ x with Conformance' := y } : Graph)))
+  get_Extensions : ∀ (x : Graph), go.IsGoStepPureDetTagged under (StructFieldGet Graph.underlying go!"Extensions") #x (Val #(x.Extensions'))
+  set_Extensions : ∀ (x : Graph) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Graph.underlying go!"Extensions") (PairV #x #y) (Val #(({ x with Extensions' := y } : Graph)))
+  ptr_NodeAttributes_unfold : MethodUnfold (go.GoType.PointerType Graph.ty) go!"NodeAttributes" Graph.NodeAttributes.impl
+  ptr_expand_unfold : MethodUnfold (go.GoType.PointerType Graph.ty) go!"expand" Graph.expand.impl
+  ptr_outcomes_unfold : MethodUnfold (go.GoType.PointerType Graph.ty) go!"outcomes" Graph.outcomes.impl
 
 attribute [instance] Graph.TypeAssumptions.type_repr
   Graph.TypeAssumptions.underlying
-  Graph.TypeAssumptions.isUnderlying
+  Graph.TypeAssumptions.layout
+  Graph.TypeAssumptions.get_Tables
+  Graph.TypeAssumptions.set_Tables
+  Graph.TypeAssumptions.get_NormalFlow
+  Graph.TypeAssumptions.set_NormalFlow
+  Graph.TypeAssumptions.get_ValueFlow
+  Graph.TypeAssumptions.set_ValueFlow
+  Graph.TypeAssumptions.get_Profile
+  Graph.TypeAssumptions.set_Profile
+  Graph.TypeAssumptions.get_Producer
+  Graph.TypeAssumptions.set_Producer
+  Graph.TypeAssumptions.get_Sources
+  Graph.TypeAssumptions.set_Sources
+  Graph.TypeAssumptions.get_Function
+  Graph.TypeAssumptions.set_Function
+  Graph.TypeAssumptions.get_Symbols
+  Graph.TypeAssumptions.set_Symbols
+  Graph.TypeAssumptions.get_Definitions
+  Graph.TypeAssumptions.set_Definitions
+  Graph.TypeAssumptions.get_Locations
+  Graph.TypeAssumptions.set_Locations
+  Graph.TypeAssumptions.get_Nodes
+  Graph.TypeAssumptions.set_Nodes
+  Graph.TypeAssumptions.get_Edges
+  Graph.TypeAssumptions.set_Edges
+  Graph.TypeAssumptions.get_Spans
+  Graph.TypeAssumptions.set_Spans
+  Graph.TypeAssumptions.get_Attributes
+  Graph.TypeAssumptions.set_Attributes
+  Graph.TypeAssumptions.get_AttributeTables
+  Graph.TypeAssumptions.set_AttributeTables
+  Graph.TypeAssumptions.get_Annotations
+  Graph.TypeAssumptions.set_Annotations
+  Graph.TypeAssumptions.get_Capabilities
+  Graph.TypeAssumptions.set_Capabilities
+  Graph.TypeAssumptions.get_Diagnostics
+  Graph.TypeAssumptions.set_Diagnostics
+  Graph.TypeAssumptions.get_Conformance
+  Graph.TypeAssumptions.set_Conformance
+  Graph.TypeAssumptions.get_Extensions
+  Graph.TypeAssumptions.set_Extensions
+  Graph.TypeAssumptions.ptr_NodeAttributes_unfold
+  Graph.TypeAssumptions.ptr_expand_unfold
+  Graph.TypeAssumptions.ptr_outcomes_unfold
 
 axiom MatchLabel : Type
 axiom MatchLabel.zero_val : ZeroVal MatchLabel

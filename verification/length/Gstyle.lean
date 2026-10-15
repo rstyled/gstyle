@@ -24,3 +24,5 @@ public import Gstyle.Proof.Pdg.Text
 public import Gstyle.Proof.Transfer.Operator
 
 public import Gstyle.Proof.Pdg.List
+
+public import Gstyle.Proof.Pdg.Attributes

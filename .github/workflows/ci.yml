@@ -165,6 +165,12 @@ jobs:
           - profile: pdg-list
             target: verify-pdg-list
             shard: 0/1
+          - profile: pdg-attributes
+            target: verify-pdg-attributes
+            shard: 0/2
+          - profile: pdg-attributes
+            target: verify-pdg-attributes
+            shard: 1/2
     steps:
       - name: Checkout
         uses: actions/checkout@v6
