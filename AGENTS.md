@@ -17,6 +17,8 @@ takes the shortest path that compiles. These rules exist because an agent
 
 ## Working agreements
 
+- Keep Lean verification setup, commands, and proof scope in `verification/lean/`. Do not add them to the public `README.md`.
+
 - Open PRs autonomously; never merge without the operator's explicit instruction.
 - `make check` and `make quality-gate` must be green before pushing.
 - When the tool's own rules flag your draft, fix the code — don't contort it to appease the metric, and don't suppress without a reason. If splitting a function would only game the metric, say so and leave it.
