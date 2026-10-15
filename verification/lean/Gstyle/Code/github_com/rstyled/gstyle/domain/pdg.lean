@@ -401,7 +401,8 @@ axiom Computation [FfiSyntax] [GoGlobalContext] : val
 
 axiom Control [FfiSyntax] [GoGlobalContext] : val
 
-axiom Call [FfiSyntax] [GoGlobalContext] : val
+@[reducible] noncomputable def Call [FfiSyntax] [GoGlobalContext] : val :=
+  #(W8 5)
 
 axiom Entry [FfiSyntax] [GoGlobalContext] : val
 
