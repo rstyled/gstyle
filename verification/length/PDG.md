@@ -66,3 +66,10 @@ failures abort verification. No unchanged build is added per mutation.
 Each mutant builds only its affected proof module. The full unchanged project is
 checked before mutation tests, so unrelated pattern proofs are not rebuilt for
 every mutant.
+
+`At[T]` adds generic one-based lookup. Its two execution theorems quantify over
+represented Go element types and return the exact indexed value while preserving
+the table. Invalid references return the element type's zero value with false;
+present zero values retain true. The audit now covers fourteen theorems and nine
+mutants, including wrong generic slots and forged/lost presence. Negative-index
+source-node lookup uses this function without moving or duplicating the Node type.

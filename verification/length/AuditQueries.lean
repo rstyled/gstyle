@@ -13,3 +13,5 @@ import Gstyle.Proof.Queries
 
 #print axioms Perennial.github_com.rstyled.gstyle.domain.pdg.query.wp_BooleanValue
 #print axioms Perennial.github_com.rstyled.gstyle.domain.pdg.query.wp_KnownFalse
+#print axioms Perennial.github_com.rstyled.gstyle.domain.pdg.query.wp_At
+#print axioms Perennial.github_com.rstyled.gstyle.domain.pdg.query.wp_AtAbsent

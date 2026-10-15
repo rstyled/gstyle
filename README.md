@@ -238,6 +238,17 @@ The scanner and analyzer integration remain outside the formal proof. See the
 
 Run `make verify-pdg` to verify actual reference/evidence queries and the composed
 semantic-pattern dependency and interface admission rules. The command audits
-twelve theorems, checks generated source, and rejects six deliberate Go bugs. See the
+fourteen theorems, checks generated source, and rejects nine deliberate Go bugs. See the
 [PDG proof scope](verification/length/PDG.md); complete graph traversals and
 pattern findings are not yet formally proved.
+
+### Lean verification of the negative-index core
+
+Run `make verify-negative-index` using the same pinned Lean project. The current
+stage proves that the production interval join preserves both input sets and
+that the risk decision reports represented negative values when its pattern
+triggers apply. The map-based selector keeps the first risky occurrence per
+binding in input order. Generic node lookup and advisory payload construction are
+also proved. `make verify-runtime-value` proves the actual Value projection and
+comparison copy-back, plus the complete Value join and its interval-set
+preservation contract. PDG transfer/traversal and outer projections remain outside the proof. See [the negative-index verification scope](verification/length/NEGATIVE_INDEX.md).

@@ -1,11 +1,14 @@
 package gopatterns
 
 import (
+	"math"
 	"strings"
 	"testing"
 
 	"github.com/rstyled/gstyle/domain/patterns"
+	"github.com/rstyled/gstyle/domain/pdg"
 	"github.com/rstyled/gstyle/domain/runtimeguard"
+	"github.com/rstyled/gstyle/domain/runtimeguard/interval"
 )
 
 func negativeIndexTestCandidates(t *testing.T, src string) []patterns.Candidate {
@@ -146,5 +149,44 @@ func TestNegativePointerArrayIndex(t *testing.T) {
 		if got := negativeIndexTestCandidates(t, src); len(got) != tc.want {
 			t.Fatalf("%s: got %d findings,want %d", tc.body, len(got), tc.want)
 		}
+	}
+}
+
+func TestNegativeIndexInvalidNodesDoNotHideValidOccurrence(t *testing.T) {
+	function := FuncPdg{Name: "At", Path: "index.go", Pdg: pdg.Graph{Nodes: []pdg.Node{{Line: 11}, {Line: 22}}}}
+	var report runtimeguard.Report
+	for _, ref := range []pdg.Ref{0, 3, pdg.Ref(math.MaxUint32), 2, 1} {
+		report.Accesses = append(report.Accesses, runtimeguard.Access{Node: ref, Index: true, Value: runtimeguard.Value{UpperChecked: true}})
+	}
+	got := negativeIndexCandidates(function, report)
+	if len(got) != 1 || got[0].Sites[0].Line != 22 || got[0].Sites[0].Path != "index.go" {
+		t.Fatalf("bad node reference hides or relocates the first valid risk: %+v", got)
+	}
+	function.Pdg.Nodes = nil
+	if got := negativeIndexCandidates(function, report); len(got) != 0 {
+		t.Fatalf("nil node table produces findings: %+v", got)
+	}
+}
+
+func TestNegativeIndexCandidateProjection(t *testing.T) {
+	function := FuncPdg{Name: "pkg.At", Path: "index.go", Pdg: pdg.Graph{Nodes: []pdg.Node{{Line: math.MaxUint32}}}}
+	report := runtimeguard.Report{Accesses: []runtimeguard.Access{{Node: 1, Index: true, Value: runtimeguard.Value{UpperChecked: true}}}}
+	candidates := negativeIndexCandidates(function, report)
+	if len(candidates) != 1 {
+		t.Fatalf("got %d findings", len(candidates))
+	}
+	got := candidates[0]
+	want := interval.Describe("index.go", "pkg.At", "pointer expression", math.MaxUint32)
+	if string(got.Kind) != want.Kind || got.ScoreMilli != want.ScoreMilli || got.Observation != want.Observation || got.Inference != want.Inference {
+		t.Fatalf("candidate changes proved payload: got=%+v want=%+v", got, want)
+	}
+	if len(got.CounterEvidence) != 1 || got.CounterEvidence[0] != want.CounterEvidence || len(got.Sites) != 1 {
+		t.Fatalf("candidate drops evidence or source: %+v", got)
+	}
+	if got.Sites[0] != (patterns.Site{Path: want.Path, Line: want.Line, EndLine: want.EndLine, ID: want.ID, Name: want.Name}) {
+		t.Fatalf("candidate changes proved location: %+v", got)
+	}
+	if got.FixSpec != nil || got.Analysis != nil || got.Definitions != nil || got.PossibleRefactor != "" || got.Breakdown != (patterns.Breakdown{}) {
+		t.Fatalf("advisory invents a fix or unrelated analysis: %+v", got)
 	}
 }

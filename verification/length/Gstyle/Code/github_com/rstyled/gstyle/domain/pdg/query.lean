@@ -88,6 +88,9 @@ noncomputable def BooleanValue [FfiSyntax] [GoGlobalContext] : GoString :=
 noncomputable def KnownFalse [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/pdg/query.KnownFalse"
 
+noncomputable def At [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/pdg/query.At"
+
 /-- go: query.go:3:6 -/
 noncomputable def ReferenceIndex.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "ref"
@@ -232,6 +235,39 @@ noncomputable def KnownFalse.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore go.bool))) (Pair (Var "value") (Var "$r0")))))))))))))))
 
+/-- go: query.go:50:6 -/
+noncomputable def At.impl [FfiSyntax] [GoGlobalContext] (T : go.GoType) : val :=
+  (LamV "table"
+  (Lam "ref"
+  (App (Val exceptionDo)
+  (Let "ref" (App (Val (GoInstruction (GoAlloc Ref.ty))) (Var "ref"))
+  (Let "table" (App (Val (GoInstruction (GoAlloc (go.GoType.SliceType T)))) (Var "table"))
+  (Let "__p" (Let "$a0" (App (Val (GoInstruction (GoLoad Ref.ty))) (Var "ref"))
+  (Let "$a1" (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType T)))) (Var "table"))
+  (App (App (Val (GoInstruction (FuncResolve go.len [(go.GoType.SliceType T)]))) (Val #())) (Var "$a0")))
+  (App (App (App (Val (GoInstruction (FuncResolve ReferenceIndex []))) (Val #())) (Var "$a0")) (Var "$a1"))))
+  (Let "$ret0" (Fst (Var "__p"))
+  (Let "$ret1" (Snd (Var "__p"))
+  (Let "$r0" (Var "$ret0")
+  (Let "$r1" (Var "$ret1")
+  (Let "ok" (App (Val (GoInstruction (GoAlloc go.bool))) (App (Val (GoInstruction (GoZeroVal go.bool))) (Val #())))
+  (Let "index" (App (Val (GoInstruction (GoAlloc go.int))) (App (Val (GoInstruction (GoZeroVal go.int))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Pair (App (Val (GoInstruction (GoLoad T))) (App (Val (GoInstruction (IndexRef (go.GoType.SliceType T)))) (Pair (App (Val (GoInstruction (GoLoad (go.GoType.SliceType T)))) (Var "table")) (App (Val (GoInstruction (GoLoad go.int))) (Var "index"))))) (Val #true)))))
+  (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoLoad go.bool))) (Var "ok")))
+  (Let "zero" (App (Val (GoInstruction (GoAlloc T))) (App (Val (GoInstruction (GoZeroVal T))) (Val #())))
+  (App (Val doReturn)
+  (Pair (App (Val (GoInstruction (GoLoad T))) (Var "zero")) (Val #false))))
+  (App (Val doExecute)
+  (Val #()))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.bool))) (Pair (Var "ok") (Var "$r1")))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.int))) (Pair (Var "index") (Var "$r0")))))))))))))))))
+
 instance info' : PkgInfo pkg_id.github_com.rstyled.gstyle.domain.pdg.query where
   pkgImportedPkgs := []
 
@@ -370,6 +406,7 @@ class Assumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFun
   DependencyAdmitted_unfold : FuncUnfold DependencyAdmitted [] DependencyAdmitted.impl
   BooleanValue_unfold : FuncUnfold BooleanValue [] BooleanValue.impl
   KnownFalse_unfold : FuncUnfold KnownFalse [] KnownFalse.impl
+  At_unfold : ∀ (T : go.GoType), FuncUnfold At [T] (At.impl T)
 
 attribute [instance] Assumptions.Text_instance
   Assumptions.Ref_instance
@@ -384,6 +421,7 @@ attribute [instance] Assumptions.Text_instance
   Assumptions.DependencyAdmitted_unfold
   Assumptions.BooleanValue_unfold
   Assumptions.KnownFalse_unfold
+  Assumptions.At_unfold
 
 end github_com.rstyled.gstyle.domain.pdg.query
 

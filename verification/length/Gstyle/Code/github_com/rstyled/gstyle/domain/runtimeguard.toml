@@ -1,0 +1,2 @@
+translate = ["Value", "Value.Bounds", "Value.mergeBounds", "Value.mergePointers", "Value.merge", "integerConstraint"]
+imports = ["github.com/rstyled/gstyle/domain/runtimeguard/interval"]

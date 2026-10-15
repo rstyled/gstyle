@@ -70,3 +70,14 @@ verify-length:
 verify-pdg:
 	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
 	python3 -B verification/length/verify.py --pdg
+
+.PHONY: verify-negative-index
+
+verify-negative-index:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --interval
+
+.PHONY: verify-runtime-value
+verify-runtime-value:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --runtime-value
