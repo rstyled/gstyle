@@ -1,7 +1,7 @@
 module
 public import Gstyle.Proof.Pdg.Text
 public import Gstyle.Proof.Pdg.FactLayout
-public import Gstyle.Proof.RuntimeValue
+public import Gstyle.Proof.RuntimePackage
 @[expose] public section
 noncomputable section
 namespace Perennial

@@ -1,4 +1,5 @@
 module
+public import Gstyle.Proof.RuntimeValue
 public import Gstyle.Proof.StateMap.Binding
 @[expose] public section
 noncomputable section
