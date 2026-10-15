@@ -33,7 +33,7 @@ def go_configuration(root):
 def fingerprint(project, root, profile, tools):
     files = list((project / 'Gstyle').rglob('*'))
     files = [path for path in files if path.is_file()]
-    files += list(project.glob('*.lean')) + list(project.glob('*.py'))
+    files += list(project.glob('*.lean')) + list(project.glob('*.py')) + list(project.glob('*.json'))
     files += [project / name for name in ('lakefile.toml', 'lake-manifest.json', 'lean-toolchain')]
     files += list(profile.sources)
     files += [root / name for name in ('go.mod', 'go.sum', 'go.work', 'go.work.sum') if (root / name).exists()]
@@ -55,7 +55,8 @@ def fingerprint(project, root, profile, tools):
         'go': go_configuration(root),
         'platform': [platform.system(), platform.machine(), platform.python_version()],
         'environment': {name: value for name, value in os.environ.items()
-                        if name.startswith(('LEAN_', 'LAKE_', 'GO', 'CGO_', 'CC', 'CXX'))},
+                        if name in {'GODEBUG', 'GOMAXPROCS', 'CC', 'CXX'} or
+                        name.startswith(('LEAN_', 'LAKE_', 'CGO_'))},
         'profile': {
             'package': profile.package, 'go_package': profile.go_package,
             'source': str(profile.source.relative_to(root)),

@@ -70,6 +70,10 @@ class MutationCacheTests(unittest.TestCase):
                 self.assertNotEqual(key(replace(profile, source=root / 'second.go')), original)
                 with patch.dict(mutation_cache.os.environ, {'LEAN_NUM_THREADS': '17'}):
                     self.assertNotEqual(key(), original)
+                with patch.dict(mutation_cache.os.environ, {'GOROOT_1_26_X64': '/unused/preinstalled/go'}):
+                    self.assertEqual(key(), original)
+                with patch.dict(mutation_cache.os.environ, {'GODEBUG': 'checkptr=2'}):
+                    self.assertNotEqual(key(), original)
             with patch.object(mutation_cache.subprocess, 'check_output', return_value=b'untracked.lean'):
                 with self.assertRaisesRegex(RuntimeError, 'untracked dependency'):
                     key()
@@ -80,6 +84,8 @@ class MutationCacheTests(unittest.TestCase):
         for drift in (False, True):
             with self.subTest(drift=drift), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
+                (root / 'cache').mkdir()
+                (root / 'cache/evidence.json').write_text('{}')
                 profile = replace(verify.length_profile(), report=root / 'report')
 
                 def run(command, cwd, log, **kwargs):

@@ -83,27 +83,34 @@ builds.
 An older shared cache is a fallback; Lake still checks every restored input.
 Lake invalidates changed inputs before reusing artifacts. Larger mutation suites
 run across separate runners with `GSTYLE_MUTATION_SHARD=INDEX/COUNT` (zero-based).
-Every shard checks its complete profile baseline, source binding and axiom audit, then checks
-its assigned mutations. Results record the shard and total mutation count.
-The aggregate `verify-length` check requires every configured shard to pass.
-Local commands default to one shard and still run every mutation.
+CI first checks every baseline, source binding, and axiom audit in one preflight
+job. Shared generation configurations run once. It validates cached mutation
+evidence and starts the original shard jobs only for misses. Missing or invalid
+evidence executes the controls. Each fresh shard still checks its own baseline,
+source binding, and axioms. The aggregate `verify-length` check requires successful
+preflight plus every needed shard; a skipped shard matrix passes only when
+preflight reports no misses. A complete checked bundle is saved after aggregation.
+The matrix in `ci_profiles.json` covers all 432 controls exactly once. Runtime
+validation rejects omitted profiles, gaps, and duplicate controls.
+Local commands default to one shard and execute every mutation.
 
-CI also restores mutation evidence with `GSTYLE_MUTATION_CACHE`. Reuse requires
-an exact content key covering all project Lean/configuration files, bound Go
-sources, dependency contents, translator binaries, compiler settings, verifier
-code, and the selected controls. This deliberately invalidates all profiles when
-any project Lean file changes. Missing, incomplete, or invalid evidence reruns
-the controls. Cached proof diagnostics must still pass the rejection classifier.
-Every run builds its baseline, regenerates source bindings, and audits axioms.
-Inputs are hashed again before publishing results. `result.json` records
-`mutation_evidence` (`executed` or `reused`) and the content key; proof logs remain
-in the evidence artifact. Local runs execute controls unless the cache directory
-is explicitly set. Clear that directory to force fresh mutation execution.
-An unchanged warm run can benefit; a changed proof still requires a cold run.
+`GSTYLE_MUTATION_CACHE` enables local reuse explicitly. The content key covers all
+project Lean/configuration files, bound Go sources, dependency contents, translator
+binaries, effective compiler settings, verifier code, and selected controls.
+Unused preinstalled Go paths from runner images do not affect the key; the actual
+selected Go configuration still does. Any project Lean edit invalidates all
+profiles. Cached diagnostics must pass the current strict rejection classifier.
+Inputs are hashed again before publishing results. `result.json` distinguishes
+`executed` and `reused` evidence and records its key; proof logs stay in artifacts.
+Clear the local cache directory to force fresh controls.
+
+Warm CI avoids separate runner setup for all 40 shards. Changed proof inputs still
+require fresh controls. The Go race-test job has a separate build cache so a
+non-race build cannot supply an incomplete warm cache for it.
 
 `make verify-value-evaluation` checks the production runtime value evaluator,
-49 theorem audits, and 37 Go/model mutations. CI uses three shards with the same
-two-worker limit. See [VALUE_EVALUATION.md](VALUE_EVALUATION.md) for the finite
+49 theorem audits, and 37 Go/model mutations. CI uses three shards with four CPU-capped
+workers. See [VALUE_EVALUATION.md](VALUE_EVALUATION.md) for the finite
 query contract, the explicit `ParseInt` premise, and remaining proof gaps.
 
 `make verify-comparison` checks production numeric comparisons, 34 theorem

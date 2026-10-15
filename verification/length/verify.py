@@ -544,7 +544,7 @@ def operator_profile():
                            for path in (ROOT / directory).glob("*.go") if not path.name.endswith("_test.go")))
     prefix = "Perennial.github_com.rstyled.gstyle.domain.runtimeguard."
     return Profile(
-        ROOT / "dist/verification/operator", "github_com/rstyled/gstyle/domain/runtimeguard.lean", "./domain/runtimeguard", source, sources,
+        ROOT / "dist/verification/operator-availability", "github_com/rstyled/gstyle/domain/runtimeguard.lean", "./domain/runtimeguard", source, sources,
         {prefix + name for name in ("wp_operatorText_known", "wp_operatorText_unavailable")},
         {
             "operator-inverted-status": ("if fact.Status != pdg.Known {", "if fact.Status == pdg.Known {"),
@@ -1283,6 +1283,40 @@ def baseline_modules(profile):
     return sorted(modules)
 
 
+def check_dependencies(report):
+    perennial = PROJECT / ".lake/packages/perennial"
+    manifest = json.loads((PROJECT / "lake-manifest.json").read_text())
+    for package in manifest["packages"]:
+        path = PROJECT / ".lake/packages" / package["name"]
+        revision = run(["git", "rev-parse", "HEAD"], path, f"{package['name']}-revision.log", report=report).strip()
+        if revision != package["rev"]:
+            raise RuntimeError(f"dependency revision differs: {package['name']}")
+        run(["git", "diff", "--exit-code", "HEAD"], path, f"{package['name']}-diff.log", report=report)
+    return perennial
+
+
+def build_generators(perennial, report):
+    goose, proofgen = report / "goose", report / "proofgen"
+    for tool in (goose, proofgen):
+        run(["go", "build", "-buildvcs=false", "-o", str(tool), f"./goose/cmd/{tool.name}"],
+            perennial, f"build-{tool.name}.log", report=report)
+    return goose, proofgen
+
+
+def write_result(profile, bound_sources, mutants, shard, reused, key):
+    (profile.report / "result.json").write_text(json.dumps({
+        "sources_sha256": bound_sources,
+        "verified": profile.verified, "unverified": profile.unverified,
+        "rejected_mutations": mutants,
+        "mutation_workers": mutation_workers(),
+        "mutation_evidence": "reused" if reused else "executed",
+        "mutation_cache_key": key,
+        "mutation_shard": {"index": shard[0], "count": shard[1], "total_mutations": len(profile.mutations)},
+    }, indent=2) + "\n")
+    print(f"Mutation evidence: {'reused' if reused else 'executed'}", flush=True)
+    print(f"PASS {profile.verified}; source binding, axiom audit, and {len(mutants)} mutations (shard {shard[0]}/{shard[1]})", flush=True)
+
+
 def main(profile=None):
     profile = profile or length_profile()
     report = profile.report
@@ -1292,18 +1326,8 @@ def main(profile=None):
     mutation_workers()
     bound_sources = source_hashes(profile.sources)
     run(["lake", "build", *baseline_modules(profile)], PROJECT, "build.log", report=report)
-    perennial = PROJECT / ".lake/packages/perennial"
-    manifest = json.loads((PROJECT / "lake-manifest.json").read_text())
-    for package in manifest["packages"]:
-        path = PROJECT / ".lake/packages" / package["name"]
-        revision = run(["git", "rev-parse", "HEAD"], path, f"{package['name']}-revision.log", report=report).strip()
-        if revision != package["rev"]:
-            raise RuntimeError(f"dependency revision differs: {package['name']}")
-        run(["git", "diff", "--exit-code", "HEAD"], path, f"{package['name']}-diff.log", report=report)
-    goose, proofgen = report / "goose", report / "proofgen"
-    for tool in (goose, proofgen):
-        run(["go", "build", "-buildvcs=false", "-o", str(tool), f"./goose/cmd/{tool.name}"],
-            perennial, f"build-{tool.name}.log", report=report)
+    perennial = check_dependencies(report)
+    goose, proofgen = build_generators(perennial, report)
     generated = report / "regenerated/Gstyle"
     generate(profile, goose, proofgen, ROOT, generated, "source")
     check_generated(profile, generated)
@@ -1323,26 +1347,22 @@ def main(profile=None):
             raise RuntimeError("verification inputs changed during mutation checks")
         if not reused:
             mutation_cache.save(cache, key, selected)
-    success.write_text(json.dumps({
-        "sources_sha256": bound_sources,
-        "verified": profile.verified, "unverified": profile.unverified,
-        "rejected_mutations": mutants,
-        "mutation_workers": mutation_workers(),
-        "mutation_evidence": "reused" if reused else "executed",
-        "mutation_cache_key": key,
-        "mutation_shard": {"index": shard[0], "count": shard[1], "total_mutations": len(profile.mutations)},
-    }, indent=2) + "\n")
-    print(f"Mutation evidence: {'reused' if reused else 'executed'}", flush=True)
-    print(f"PASS {profile.verified}; source binding, axiom audit, and {len(mutants)} mutations (shard {shard[0]}/{shard[1]})", flush=True)
+    if cache:
+        shutil.copy2(cache / "evidence.json", report / "mutation-evidence.json")
+    write_result(profile, bound_sources, mutants, shard, reused, key)
+
+
+
+PROFILE_FACTORIES = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile, ("--shared-flow",): shared_flow_profile, ("--assume",): assume_profile}
 
 
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile, ("--shared-flow",): shared_flow_profile, ("--assume",): assume_profile}
+
         arguments = tuple(sys.argv[1:])
-        if arguments not in profiles:
+        if arguments not in PROFILE_FACTORIES:
             raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison | --one-sided | --shared-flow | --assume]")
-        main(profiles[arguments]())
+        main(PROFILE_FACTORIES[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

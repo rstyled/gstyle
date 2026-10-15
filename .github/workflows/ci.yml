@@ -51,6 +51,18 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          cache: false
+
+      - name: Restore race build cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-race-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('go.mod', 'go.sum') }}-${{ hashFiles('**/*.go') }}
+          restore-keys: |
+            go-race-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('go.mod', 'go.sum') }}-
+            setup-go-${{ runner.os }}-
 
       - name: Test with race detector
         run: make test-race
@@ -83,133 +95,85 @@ jobs:
       - name: Quality gate
         run: make quality-gate
 
+  verify-cache:
+    name: Lean / source, axioms and cache
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.cached.outputs.matrix }}
+      has-misses: ${{ steps.cached.outputs.has-misses }}
+      has-hits: ${{ steps.cached.outputs.has-hits }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Restore pinned Lean dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.elan/toolchains
+            verification/length/.lake/packages
+          key: lean-deps-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}
+
+      - name: Restore incremental project build
+        uses: actions/cache@v5
+        with:
+          path: verification/length/.lake/build
+          key: lean-preflight-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}-${{ hashFiles('verification/length/Gstyle.lean', 'verification/length/Gstyle/**/*.lean') }}
+          restore-keys: |
+            lean-profile-v2-function-length-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}-
+            lean-project-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}-
+
+      - name: Restore combined mutation evidence
+        uses: actions/cache/restore@v5
+        with:
+          path: dist/mutation-cache
+          key: lean-mutation-bundle-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}-${{ github.run_attempt }}
+          restore-keys: |
+            lean-mutation-bundle-v1-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install pinned Lean toolchain manager
+        run: |
+          curl -sSfL https://github.com/leanprover/elan/releases/download/v4.2.4/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          ./elan-init -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Check cached proofs and select fresh controls
+        id: cached
+        env:
+          GSTYLE_MUTATION_WORKERS: '4'
+        run: |
+          python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+          python3 -B verification/length/ci_cached.py
+
+      - name: Preserve checked cache hits
+        if: steps.cached.outputs.has-hits == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cached-proof-hits
+          path: dist/mutation-cache-hits/
+
+      - name: Preserve preflight evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preflight-audit-evidence
+          path: |
+            dist/verification/preflight/**/*.log
+            dist/verification/preflight/**/result.json
+
   verify-core:
     name: Lean / ${{ matrix.profile }} / ${{ matrix.shard }}
+    needs: verify-cache
+    if: needs.verify-cache.outputs.has-misses == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - profile: function-length
-            target: verify-length
-            shard: 0/1
-          - profile: pdg-queries
-            target: verify-pdg
-            shard: 0/1
-          - profile: unchecked-output
-            target: verify-output
-            shard: 0/3
-          - profile: unchecked-output
-            target: verify-output
-            shard: 1/3
-          - profile: unchecked-output
-            target: verify-output
-            shard: 2/3
-          - profile: negative-index
-            target: verify-negative-index
-            shard: 0/4
-          - profile: negative-index
-            target: verify-negative-index
-            shard: 1/4
-          - profile: negative-index
-            target: verify-negative-index
-            shard: 2/4
-          - profile: negative-index
-            target: verify-negative-index
-            shard: 3/4
-          - profile: runtime-value
-            target: verify-runtime-value
-            shard: 0/2
-          - profile: runtime-value
-            target: verify-runtime-value
-            shard: 1/2
-          - profile: state-map
-            target: verify-state-map
-            shard: 0/2
-          - profile: state-map
-            target: verify-state-map
-            shard: 1/2
-          - profile: numeric-transfer
-            target: verify-numeric-transfer
-            shard: 0/3
-          - profile: numeric-transfer
-            target: verify-numeric-transfer
-            shard: 1/3
-          - profile: numeric-transfer
-            target: verify-numeric-transfer
-            shard: 2/3
-          - profile: signed-step
-            target: verify-signed-step
-            shard: 0/2
-          - profile: signed-step
-            target: verify-signed-step
-            shard: 1/2
-          - profile: assignment
-            target: verify-assignment
-            shard: 0/2
-          - profile: assignment
-            target: verify-assignment
-            shard: 1/2
-          - profile: branch-composition
-            target: verify-branch
-            shard: 0/2
-          - profile: branch-composition
-            target: verify-branch
-            shard: 1/2
-          - profile: pdg-text
-            target: verify-pdg-text
-            shard: 0/1
-          - profile: operator-availability
-            target: verify-operator
-            shard: 0/1
-          - profile: pdg-list
-            target: verify-pdg-list
-            shard: 0/1
-          - profile: pdg-attributes
-            target: verify-pdg-attributes
-            shard: 0/2
-          - profile: pdg-attributes
-            target: verify-pdg-attributes
-            shard: 1/2
-          - profile: runtime-facts
-            target: verify-runtime-facts
-            shard: 0/2
-          - profile: runtime-facts
-            target: verify-runtime-facts
-            shard: 1/2
-          - profile: value-evaluation
-            target: verify-value-evaluation
-            shard: 0/3
-          - profile: value-evaluation
-            target: verify-value-evaluation
-            shard: 1/3
-          - profile: value-evaluation
-            target: verify-value-evaluation
-            shard: 2/3
-          - profile: comparison
-            target: verify-comparison
-            shard: 0/4
-          - profile: comparison
-            target: verify-comparison
-            shard: 1/4
-          - profile: comparison
-            target: verify-comparison
-            shard: 2/4
-          - profile: comparison
-            target: verify-comparison
-            shard: 3/4
-          - profile: one-sided
-            target: verify-one-sided
-            shard: 0/1
-          - profile: shared-flow
-            target: verify-shared-flow
-            shard: 0/1
-          - profile: assume
-            target: verify-assume
-            shard: 0/2
-          - profile: assume
-            target: verify-assume
-            shard: 1/2
+      matrix: ${{ fromJSON(needs.verify-cache.outputs.matrix) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -239,10 +203,10 @@ jobs:
       - name: Restore mutation evidence
         uses: actions/cache@v5
         with:
-          path: dist/mutation-cache/${{ strategy.job-index }}
-          key: lean-mutations-v1-${{ runner.os }}-${{ runner.arch }}-${{ strategy.job-index }}-${{ github.sha }}
+          path: dist/mutation-cache/${{ matrix.cache-index }}
+          key: lean-mutations-v1-${{ runner.os }}-${{ runner.arch }}-${{ matrix.cache-index }}-${{ github.sha }}-${{ github.run_attempt }}
           restore-keys: |
-            lean-mutations-v1-${{ runner.os }}-${{ runner.arch }}-${{ strategy.job-index }}-
+            lean-mutations-v1-${{ runner.os }}-${{ runner.arch }}-${{ matrix.cache-index }}-
 
       - name: Install pinned Lean toolchain manager
         run: |
@@ -254,25 +218,52 @@ jobs:
         env:
           GSTYLE_MUTATION_SHARD: ${{ matrix.shard }}
           GSTYLE_MUTATION_WORKERS: '4'
-          GSTYLE_MUTATION_CACHE: ${{ github.workspace }}/dist/mutation-cache/${{ strategy.job-index }}
+          GSTYLE_MUTATION_CACHE: ${{ github.workspace }}/dist/mutation-cache/${{ matrix.cache-index }}
         run: make ${{ matrix.target }}
 
       - name: Preserve proof evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.profile }}-proof-${{ strategy.job-index }}
+          name: ${{ matrix.profile }}-proof-${{ matrix.cache-index }}
           path: |
             dist/verification/${{ matrix.profile }}/*.log
-            dist/verification/${{ matrix.profile }}/result.json
+            dist/verification/${{ matrix.profile }}/*.json
 
-  # Preserve the existing required check name while all profiles run in parallel.
+  # Preserve the required check name and require fresh checks or exact evidence.
   verify-length:
-    needs: verify-core
+    needs: [verify-cache, verify-core]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Require every Lean profile to pass
         env:
+          CACHE_RESULT: ${{ needs.verify-cache.result }}
           PROOF_RESULT: ${{ needs.verify-core.result }}
-        run: test "$PROOF_RESULT" = success
+          HAS_MISSES: ${{ needs.verify-cache.outputs.has-misses }}
+        run: |
+          test "$CACHE_RESULT" = success
+          if [ "$HAS_MISSES" = true ]; then
+            test "$PROOF_RESULT" = success
+          else
+            test "$HAS_MISSES" = false
+            test "$PROOF_RESULT" = skipped
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download verified proof evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*proof*'
+          path: dist/proof-artifacts
+
+      - name: Assemble complete mutation cache
+        run: python3 -B verification/length/ci_evidence.py
+
+      - name: Save combined mutation evidence
+        uses: actions/cache/save@v5
+        with:
+          path: dist/mutation-cache
+          key: lean-mutation-bundle-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}-${{ github.run_attempt }}
