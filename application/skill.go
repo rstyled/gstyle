@@ -12,8 +12,8 @@ description: Inspect Go complexity, check mutation and effect guardrails, and mi
 
 # Gstyle
 
-Install with ` + "`go install github.com/rstyled/gstyle/cmd/gstyle@latest`" + `.
-From the repository root, build with ` + "`go build -o gstyle ./cmd/gstyle`" + `.
+Install with ` + "`go install github.com/rstyled/gstyle@latest`" + `.
+From the repository root, build with ` + "`go build -o gstyle .`" + `.
 
 Use Gstyle to locate Go code whose control flow deserves inspection. Treat complexity as a signal, not a score to game.
 

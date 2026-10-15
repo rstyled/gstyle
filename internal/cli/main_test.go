@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"bytes"
@@ -41,6 +41,13 @@ func TestSkillFlagPrintsAnAgentSkillWithoutStartingTheTUI(t *testing.T) {
 }
 
 func TestBinaryLaunchesGstyle(t *testing.T) {
+	for _, entry := range []string{"../..", "../../cmd/gstyle"} {
+		t.Run(entry, func(t *testing.T) { testBinaryLaunchesGstyle(t, entry) })
+	}
+}
+
+func testBinaryLaunchesGstyle(t *testing.T, entry string) {
+	t.Helper()
 	directory := t.TempDir()
 	t.Setenv("XDG_STATE_HOME", directory)
 	source := filepath.Join(directory, "sample.go")
@@ -53,7 +60,7 @@ func TestBinaryLaunchesGstyle(t *testing.T) {
 	buildContext, cancelBuild := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancelBuild()
 	binary := filepath.Join(t.TempDir(), "gstyle")
-	build := exec.CommandContext(buildContext, "go", "build", "-buildvcs=false", "-o", binary, ".")
+	build := exec.CommandContext(buildContext, "go", "build", "-buildvcs=false", "-o", binary, entry)
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build gstyle: %v\n%s", err, output)
 	}

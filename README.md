@@ -6,7 +6,7 @@ in a terminal UI, get JSON reports, or hand the tool to a agent.
 ## Install
 
 ```sh
-go install github.com/rstyled/gstyle/cmd/gstyle@latest
+go install github.com/rstyled/gstyle@latest
 ```
 
 ## Start with your code
@@ -195,7 +195,7 @@ Try the bundled demo from this repository with `sh examples/bug-reducer/demo.sh`
 ## Build and develop
 
 ```sh
-go build -o gstyle ./cmd/gstyle
+go build -o gstyle .
 ./gstyle --skill
 make check
 make cognitive
@@ -203,7 +203,8 @@ make lint
 make quality-gate
 ```
 
-The command lives in `cmd/gstyle`. Analysis and command implementations live in
+The root command and the compatible `cmd/gstyle` entry point share `internal/cli`.
+Analysis and command implementations live in
 `domain`, `adapters`, and `application`.
 
 ### Lean verification of unchecked output
