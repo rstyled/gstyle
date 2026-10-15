@@ -1,4 +1,5 @@
 module
+public import Gstyle.Proof.Transfer.ValueResolution
 public import Gstyle.Proof.Transfer.ComparisonConstraint
 @[expose] public section
 noncomputable section

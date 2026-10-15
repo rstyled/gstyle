@@ -315,6 +315,17 @@ class VerificationGuardTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "source is not bound"):
                     verify.check_mutations(replace(profile, report=Path(directory)), Path("goose"), Path("proofgen"))
 
+    def test_comparison_contracts_are_bound_and_audited(self):
+        profile = verify.comparison_profile()
+        for name in ("ComparisonQueries", "ComparisonNil", "NumericModel"):
+            self.assertIn(verify.PROJECT / f"Gstyle/Proof/Transfer/{name}.lean", profile.sources)
+        for name in ("wp_comparison_queries_true", "wp_comparison_queries_false"):
+            self.assertIn("Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name, profile.theorems)
+        self.assertEqual(profile.mutation_modules["compare-swaps-values"],
+                         "Gstyle/Proof/Transfer/ComparisonQueries.lean")
+        self.assertEqual(profile.mutation_modules["compare-continues-after-rejection"],
+                         "Gstyle/Proof/Transfer/ComparisonNil.lean")
+
     def test_baseline_covers_audit_and_mutation_targets(self):
         profile = verify.runtime_facts_profile()
         modules = verify.baseline_modules(profile)

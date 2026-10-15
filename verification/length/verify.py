@@ -932,6 +932,10 @@ def comparison_profile():
     for module, entries in groups.items():
         mutations.update(entries)
         expected.update({name: f"Gstyle/Proof/Transfer/{module}.lean" for name in entries})
+    expected.update({name: "Gstyle/Proof/Transfer/ComparisonQueries.lean"
+                     for name in groups["ComparisonExecution"]
+                     if name != "compare-continues-after-rejection"})
+    expected["compare-continues-after-rejection"] = "Gstyle/Proof/Transfer/ComparisonNil.lean"
     model_source = "verification/length/Gstyle/Proof/Transfer/ComparisonModel.lean"
     model_mutations = {
         "compare-model-inverse-strict": ('if op = go!"<" then go!">=" else', 'if op = go!"<" then go!">" else'),
@@ -957,7 +961,10 @@ def comparison_profile():
     expected.update({name: "Gstyle/Proof/Transfer/ComparisonBoth.lean" for name in state_mutations})
     proof_sources = (
         "Gstyle/Proof/Transfer/ComparisonModel.lean",
+        "Gstyle/Proof/Transfer/NumericModel.lean",
         "Gstyle/Proof/Transfer/ComparisonExecution.lean",
+        "Gstyle/Proof/Transfer/ComparisonQueries.lean",
+        "Gstyle/Proof/Transfer/ComparisonNil.lean",
         "Gstyle/Proof/Transfer/ComparisonConstraint.lean",
         "Gstyle/Proof/Transfer/ComparisonTransfers.lean",
         "Gstyle/Proof/Transfer/ComparisonBoth.lean",
@@ -974,6 +981,8 @@ def comparison_profile():
         "unknownOperator_relation",
         "reversedNormalizedOperator_relation",
         "normalizedBranchRelations",
+        "wp_comparison_queries_true",
+        "wp_comparison_queries_false",
         "wp_comparison_unbound_true",
         "wp_comparison_unbound_false",
         "wp_comparison_nil_zero_operands_true",

@@ -107,3 +107,9 @@ child-execution obligations.
 contracts and ten production-Go mutation controls in one CI shard.
 See [ASSUME.md](ASSUME.md) for supported certificates, meaning assumptions,
 and the distinction between finite recursive expansion and total correctness.
+
+Comparison mutation checks use small orchestration contracts for value and symbol
+queries. The original comparison theorems discharge those contracts with the
+production value/symbol proofs; their statements and assumptions are unchanged.
+Pure numeric/comparison models do not import execution proofs. Nil-state controls
+retain their existing theorem statements in a separate module.
