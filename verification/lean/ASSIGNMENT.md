@@ -59,9 +59,9 @@ assignment forms, including guard clearing and RHS preservation.
 
 ## Checks
 
-Eight named theorems have a fail-closed standard-axiom audit. Fifteen Go mutations
+Twelve named theorems have a fail-closed standard-axiom audit. Twenty Go mutations
 cover write counts, declaration tags, compound eligibility, unsigned defaults,
-record clobbering, missing writes, wrong keys and skipped normalization. Mutations
+record clobbering, missing writes, wrong keys, skipped normalization and local-state invalidation. Mutations
 must fail in the expected proof file; setup failures do not count. CI adds two
 shards and keeps private incremental build copies, pinned dependency checks,
 targeted modules, the two-worker limit and prior profile shard counts.
@@ -69,6 +69,12 @@ targeted modules, the two-worker limit and prior profile shard counts.
 Go regressions check raw metadata, replacement and insertion, preservation of
 other records and caller values, unsigned defaults and the full production
 fallback path. Production Go behavior does not change in this stage.
+
+## Local-state field invalidation
+
+The same profile now proves that field invalidation preserves complete local-only
+states. See [the claim, input rules and review guide](LOCAL_INVALIDATION.md). This
+is a prerequisite for plain-assignment integration, not a proof of the dispatcher.
 
 ## Remaining work
 

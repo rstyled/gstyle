@@ -104,6 +104,12 @@ func TestPlainTransferCopiesRhsAndClearsGuardMarker(t *testing.T) {
 		view := &graphView{graph: &graph, kinds: []string{`"signed"`, `"signed"`}, tracked: []bool{true, true}, unstable: []bool{false, false}, fields: make([]pdg.Ref, 2), operands: [][2]pdg.Ref{{2, 0}, {0, 0}}}
 		rhs := assignmentRawValue()
 		state := State{1: {Identity: 999}, 2: rhs}
+		requireLocalInvalidationInput(t, view, state)
+		before := maps.Clone(state)
+		view.invalidateFields(1, state)
+		if !maps.Equal(state, before) {
+			t.Fatalf("field invalidation changes a plain-assignment input: %+v", state)
+		}
 		analysis := analysis{view: view}
 		analysis.transfer(1, state)
 		want := rhs
