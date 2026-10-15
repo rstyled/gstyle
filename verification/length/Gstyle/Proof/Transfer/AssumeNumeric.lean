@@ -195,6 +195,108 @@ inductive NumericExecution (s : QuerySnapshot) (o : AssumeOperators)
     (hkindl : c.leftKind = kindOf c.leftKey) (hkindr : c.rightKind = kindOf c.rightKey)
     (hchangingl : c.leftChanging = changingOf c.leftKey) (hchangingr : c.rightChanging = changingOf c.rightKey) : NumericExecution s o kindOf changingOf m ref rawOperator false (if comparisonRejected c m then none else some (comparisonResultMap c m))
 
+  | neither (m : StateData) (ref left right : w32) (row : GoArray w32 2) (op : GoString) (truth : Bool)
+      (lv rv : Value) (sf lf rf : Nat) (wf : ValueSnapshotValid s)
+      (href : 0 < uint.Z ref ∧ uint.Z ref ≤ s.operands.length)
+      (hrow : s.operands[(uint.Z ref - 1).toNat]? = some row)
+      (hl : row.arr[0]? = some left) (hr : row.arr[1]? = some right)
+      (hlvalid : validSymbolRef s left) (hrvalid : validSymbolRef s right)
+      (hlvalue : valueResolve s m sf lf left = some lv) (hrvalue : valueResolve s m sf rf right = some rv)
+      (hlsymbol : symbolResolve s sf left = some (W32 0)) (hrsymbol : symbolResolve s sf right = some (W32 0)) : NumericExecution s o kindOf changingOf m ref op truth (some m)
+
+theorem wp_comparison_neither (receiver : Loc) (s : QuerySnapshot) (o : AssumeOperators) (state : Loc)
+    (m : StateData) (ref left right : w32) (row : GoArray w32 2) (op : GoString) (truth : Bool)
+      (lv rv : Value) (sf lf rf : Nat) (wf : ValueSnapshotValid s)
+      (href : 0 < uint.Z ref ∧ uint.Z ref ≤ s.operands.length)
+      (hrow : s.operands[(uint.Z ref - 1).toNat]? = some row)
+      (hl : row.arr[0]? = some left) (hr : row.arr[1]? = some right)
+      (hlvalid : validSymbolRef s left) (hrvalid : validSymbolRef s right)
+      (hlvalue : valueResolve s m sf lf left = some lv) (hrvalue : valueResolve s m sf rf right = some rv)
+      (hlsymbol : symbolResolve s sf left = some (W32 0)) (hrsymbol : symbolResolve s sf right = some (W32 0))
+    (hparse : parseInt64Contract (GF := GF)) :
+    {{ isPkgInit (PROP := IProp GF) pkg ∗ isPkgInit (PROP := IProp GF) pkg_id.github_com.rstyled.gstyle.domain.runtimeguard.interval ∗
+      (querySnapshotOwn receiver s ∗ assumeOperatorsOwn o ∗ state ↦$ m) }}
+      (App (App (App (App (Val #(methods (go.PointerType graphView.ty) go!"comparison" #receiver)) (Val #ref)) (Val #op)) (Val #truth)) (Val #state))
+    {{ RET #state; querySnapshotOwn receiver s ∗ assumeOperatorsOwn o ∗ state ↦$ m }} := by
+  cases truth
+  case false =>
+    wp_start as ⟨#Hsnapshot, #Hoperators, Hstate⟩
+    ihave %Hnonnull := ownMap_not_nil state m (DFrac.own 1) $$ Hstate
+    ihave #Hctx := Hsnapshot
+    iunfold querySnapshotOwn at Hctx
+    icases Hctx with ⟨Hview, _, _, Hrows, _, _, _, _, _, _, _, _, _, _, _, _, _⟩
+    try wp_auto
+    ihave #Ho := Hoperators
+    iunfold assumeOperatorsOwn at Ho
+    icases Ho with ⟨HinvGlobal, Hinv, _, _⟩
+    try wp_auto
+    wp_apply wp_map_lookup1 go.string go.string o.inverseLoc o.inverseTable op DFrac.discard $$ [Hinv] with Hinv
+    · iframe Hinv
+    try wp_auto
+    wp_apply wp_operand_readonly receiver s.view s.operands ref (W64 0) row left href (by decide) hrow hl DFrac.discard DFrac.discard
+      $$ [Hview Hrows] with ⟨Hview, Hrows⟩
+    · iframe Hview Hrows
+    try wp_auto
+    wp_apply wp_operand_readonly receiver s.view s.operands ref (W64 1) row right href (by decide) hrow hr DFrac.discard DFrac.discard
+      $$ [Hview Hrows] with ⟨Hview, Hrows⟩
+    · iframe Hview Hrows
+    try wp_auto
+    wp_apply wp_value_resolve receiver s state m sf lf left lv wf hlvalid hparse hlvalue
+      $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
+    · iframe Hsnapshot Hstate
+    try wp_auto
+    wp_apply wp_value_resolve receiver s state m sf rf right rv wf hrvalid hparse hrvalue
+      $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
+    · iframe Hsnapshot Hstate
+    try wp_auto
+    wp_apply wp_symbol_resolve receiver s sf left (W32 0) wf.symbols hlvalid hlsymbol
+      $$ [Hsnapshot] with Hsnapshot
+    · iframe Hsnapshot
+    try wp_auto
+    wp_if_destruct
+    · exfalso; contradiction
+    · wp_apply wp_symbol_resolve receiver s sf right (W32 0) wf.symbols hrvalid hrsymbol
+        $$ [Hsnapshot] with Hsnapshot
+      · iframe Hsnapshot
+      try wp_auto
+      wp_end
+      all_goals iframe Hsnapshot Hoperators Hstate
+  case true =>
+    wp_start as ⟨#Hsnapshot, #Hoperators, Hstate⟩
+    ihave %Hnonnull := ownMap_not_nil state m (DFrac.own 1) $$ Hstate
+    ihave #Hctx := Hsnapshot
+    iunfold querySnapshotOwn at Hctx
+    icases Hctx with ⟨Hview, _, _, Hrows, _, _, _, _, _, _, _, _, _, _, _, _, _⟩
+    try wp_auto
+    wp_apply wp_operand_readonly receiver s.view s.operands ref (W64 0) row left href (by decide) hrow hl DFrac.discard DFrac.discard
+      $$ [Hview Hrows] with ⟨Hview, Hrows⟩
+    · iframe Hview Hrows
+    try wp_auto
+    wp_apply wp_operand_readonly receiver s.view s.operands ref (W64 1) row right href (by decide) hrow hr DFrac.discard DFrac.discard
+      $$ [Hview Hrows] with ⟨Hview, Hrows⟩
+    · iframe Hview Hrows
+    try wp_auto
+    wp_apply wp_value_resolve receiver s state m sf lf left lv wf hlvalid hparse hlvalue
+      $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
+    · iframe Hsnapshot Hstate
+    try wp_auto
+    wp_apply wp_value_resolve receiver s state m sf rf right rv wf hrvalid hparse hrvalue
+      $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
+    · iframe Hsnapshot Hstate
+    try wp_auto
+    wp_apply wp_symbol_resolve receiver s sf left (W32 0) wf.symbols hlvalid hlsymbol
+      $$ [Hsnapshot] with Hsnapshot
+    · iframe Hsnapshot
+    try wp_auto
+    wp_if_destruct
+    · exfalso; contradiction
+    · wp_apply wp_symbol_resolve receiver s sf right (W32 0) wf.symbols hrvalid hrsymbol
+        $$ [Hsnapshot] with Hsnapshot
+      · iframe Hsnapshot
+      try wp_auto
+      wp_end
+      all_goals iframe Hsnapshot Hoperators Hstate
+
 theorem wp_numeric_execution (receiver : Loc) (s : QuerySnapshot) (o : AssumeOperators)
     (kindOf : w32 → GoString) (changingOf : w32 → Bool) (state : Loc) (m : StateData)
     (ref : w32) (op : GoString) (truth : Bool) (result : Option StateData)
@@ -309,6 +411,16 @@ theorem wp_numeric_execution (receiver : Loc) (s : QuerySnapshot) (o : AssumeOpe
     all_goals ipureintro
     all_goals simp [validBranchOption, hv]
 
+  | neither left right row op truth lv rv sf lf rf wf href hrow hl hr hlvalid hrvalid hlvalue hrvalue hlsymbol hrsymbol =>
+    wp_start_folded as Hinputs
+    wp_apply wp_comparison_neither receiver s o state m ref left right row op truth lv rv sf lf rf wf href hrow hl hr hlvalid hrvalid hlvalue hrvalue hlsymbol hrsymbol hparse
+      $$ [Hinputs] with ⟨Hsnapshot, Hoperators, Hstate⟩
+    · iexact Hinputs
+    wp_end
+    all_goals simp only [ownsBranch]
+    all_goals try iframe Hsnapshot Hoperators Hstate
+    all_goals ipureintro; exact hm
+
 theorem numeric_execution_valid (s : QuerySnapshot) (o : AssumeOperators)
     (kindOf : w32 → GoString) (changingOf : w32 → Bool) (m : StateData)
     (ref : w32) (op : GoString) (truth : Bool) (result : Option StateData)
@@ -334,6 +446,8 @@ theorem numeric_execution_valid (s : QuerySnapshot) (o : AssumeOperators)
   | bothFalse left right row c sf lf rf rawOperator wf href hrow hleft hright hlvalid hrvalid hlvalue hrvalue hlsymbol hrsymbol hleftNonzero hrightNonzero hleftMetadata hrightMetadata ht hnill hnilr hreverse hnegate hkindl hkindr hchangingl hchangingr =>
     have hv := comparison_result_valid s kindOf changingOf m c hm hleftMetadata hrightMetadata hkindl hkindr hchangingl hchangingr
     cases rejected : comparisonRejected c m <;> simp [rejected, validBranchOption, hv]
+
+  | neither => exact hm
 
 def valueIntervalMeaning (s : QuerySnapshot) (kind : w32 → GoString) (changing : w32 → Bool)
     (env values : w32 → Int) : Prop :=
@@ -438,6 +552,8 @@ theorem numeric_execution_sound (s : QuerySnapshot) (o : AssumeOperators)
       (by simpa only [hrmeaning] using hvalues m sf rf right c.rightValue hin hrvalue)
       (hword c.leftKey) (hword c.rightKey) rel.1 rel.2
     simpa only [hs.1, Bool.false_eq_true, ite_false, branchDenotes, stateDenotes, stateRepresents] using hs.2
+
+  | neither => exact hin
 
 end proof
 end github_com.rstyled.gstyle.domain.runtimeguard

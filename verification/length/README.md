@@ -100,7 +100,7 @@ production-Go mutation controls in one CI shard. See [SHARED_FLOW.md](SHARED_FLO
 for shared metadata permissions, exclusive map ownership, and the remaining
 child-execution obligations.
 
-`make verify-assume` checks fifteen finite-dispatch and interval-preservation
+`make verify-assume` checks sixteen finite-dispatch and interval-preservation
 contracts and ten production-Go mutation controls in one CI shard.
 See [ASSUME.md](ASSUME.md) for supported certificates, meaning assumptions,
 and the distinction between finite recursive expansion and total correctness.

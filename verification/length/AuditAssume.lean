@@ -2,6 +2,7 @@ import Gstyle.Proof.Transfer.Assume
 
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.constraint_state_valid
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.comparison_result_valid
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_comparison_neither
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_numeric_execution
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.numeric_execution_valid
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.numeric_execution_sound

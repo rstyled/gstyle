@@ -133,3 +133,28 @@ func TestFiniteAssumeAllocatedEmptyState(t *testing.T) {
 		}
 	}
 }
+
+func TestFiniteAssumeBooleanLiteralComposition(t *testing.T) {
+	for _, op := range []string{"&&", "||"} {
+		for _, truth := range []bool{false, true} {
+			for _, lhs := range []bool{false, true} {
+				for _, rhs := range []bool{false, true} {
+					view := branchTestView(t, lhs, rhs)
+					view.graph.Tables.Strings = append(view.graph.Tables.Strings, op)
+					view.graph.Attributes = append(view.graph.Attributes, pdg.AttributeSet{Operator: pdg.Fact{Status: pdg.Known, Value: pdg.Text(len(view.graph.Tables.Strings))}})
+					view.graph.Nodes[0].Attributes = pdg.Ref(len(view.graph.Attributes))
+					state := State{1: {HasLower: true, Lower: -7, HasUpper: true, Upper: 9}}
+					before := maps.Clone(state)
+					out := view.assume(1, truth, state)
+					condition := lhs || rhs
+					if op == "&&" {
+						condition = lhs && rhs
+					}
+					if (out != nil) != (condition == truth) || !maps.Equal(state, before) {
+						t.Fatalf("%s truth=%v lhs=%v rhs=%v: %+v", op, truth, lhs, rhs, out)
+					}
+				}
+			}
+		}
+	}
+}
