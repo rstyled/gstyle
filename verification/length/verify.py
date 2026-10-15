@@ -939,6 +939,13 @@ def comparison_profile():
                      for name in groups["ComparisonExecution"]
                      if name != "compare-continues-after-rejection"})
     expected["compare-continues-after-rejection"] = "Gstyle/Proof/Transfer/ComparisonNil.lean"
+    expected.update({name: "Gstyle/Proof/Transfer/Tracking.lean"
+                     for name in groups["Numeric"] if name.startswith("constraint-track") or
+                     name in ("constraint-skips-limit", "constraint-wrong-tracked-index")})
+    expected.update({name: "Gstyle/Proof/Transfer/ComparisonTransferQueries.lean"
+                     for name in groups["ComparisonTransfers"]})
+    expected.update({name: "Gstyle/Proof/Transfer/NumericConstrainQueries.lean"
+                     for name in ("constraint-ignores-tracking", "constraint-drops-write", "constraint-keeps-infeasible")})
     model_source = "verification/length/Gstyle/Proof/Transfer/ComparisonModel.lean"
     model_mutations = {
         "compare-model-inverse-strict": ('if op = go!"<" then go!">=" else', 'if op = go!"<" then go!">" else'),
@@ -965,11 +972,15 @@ def comparison_profile():
     proof_sources = (
         "Gstyle/Proof/Transfer/ComparisonModel.lean",
         "Gstyle/Proof/Transfer/NumericModel.lean",
+        "Gstyle/Proof/Transfer/Tracking.lean",
+        "Gstyle/Proof/Transfer/NumericPrimitives.lean",
+        "Gstyle/Proof/Transfer/NumericConstrainQueries.lean",
         "Gstyle/Proof/Transfer/ComparisonExecution.lean",
         "Gstyle/Proof/Transfer/ComparisonQueries.lean",
         "Gstyle/Proof/Transfer/ComparisonNil.lean",
         "Gstyle/Proof/Transfer/ComparisonConstraint.lean",
         "Gstyle/Proof/Transfer/ComparisonTransfers.lean",
+        "Gstyle/Proof/Transfer/ComparisonTransferQueries.lean",
         "Gstyle/Proof/Transfer/ComparisonBoth.lean",
         "Gstyle/Proof/Transfer/ComparisonSound.lean",
         "Gstyle/Proof/Transfer/Numeric.lean", "Gstyle/Proof/Transfer/Sound.lean",
@@ -993,6 +1004,10 @@ def comparison_profile():
         "wp_constrain_snapshot_numeric",
         "wp_constrain_snapshot_invalid",
         "wp_constrain_snapshot_numeric_any",
+        "wp_comparison_left_numeric_true_queries",
+        "wp_comparison_left_numeric_false_queries",
+        "wp_comparison_right_numeric_true_queries",
+        "wp_comparison_right_numeric_false_queries",
         "wp_comparison_left_numeric_true",
         "wp_comparison_left_numeric_false",
         "wp_comparison_right_numeric_true",
@@ -1010,6 +1025,7 @@ def comparison_profile():
         "wp_trackedBinding_invalid",
         "wp_impossibleSignedComparison",
         "wp_infeasibleConstraint",
+        "wp_constrain_numeric_query",
         "wp_constrain_numeric",
     )
     return replace(base, report=ROOT / "dist/verification/comparison", source=ROOT / "domain/runtimeguard/condition.go",

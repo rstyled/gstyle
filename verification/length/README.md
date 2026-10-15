@@ -113,3 +113,9 @@ queries. The original comparison theorems discharge those contracts with the
 production value/symbol proofs; their statements and assumptions are unchanged.
 Pure numeric/comparison models do not import execution proofs. Nil-state controls
 retain their existing theorem statements in a separate module.
+
+Numeric constraint orchestration also uses an integer-transfer contract, which
+the original `wp_constrain_numeric` theorem discharges with `wp_integerConstraint`.
+Tracking proofs are separate so their controls do not rebuild numeric transfer
+proofs. Comparison transfer callbacks are discharged by the existing production
+query and constraint theorems; callback assumptions do not replace those proofs.

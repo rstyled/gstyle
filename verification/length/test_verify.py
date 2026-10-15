@@ -317,10 +317,16 @@ class VerificationGuardTests(unittest.TestCase):
 
     def test_comparison_contracts_are_bound_and_audited(self):
         profile = verify.comparison_profile()
-        for name in ("ComparisonQueries", "ComparisonNil", "NumericModel"):
+        for name in ("ComparisonQueries", "ComparisonNil", "NumericModel", "Tracking", "ComparisonTransferQueries", "NumericPrimitives", "NumericConstrainQueries"):
             self.assertIn(verify.PROJECT / f"Gstyle/Proof/Transfer/{name}.lean", profile.sources)
         for name in ("wp_comparison_queries_true", "wp_comparison_queries_false"):
             self.assertIn("Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name, profile.theorems)
+        self.assertEqual(profile.mutation_modules["constraint-drops-write"],
+                         "Gstyle/Proof/Transfer/NumericConstrainQueries.lean")
+        self.assertEqual(profile.mutation_modules["constraint-tracks-zero"],
+                         "Gstyle/Proof/Transfer/Tracking.lean")
+        self.assertEqual(profile.mutation_modules["compare-wrong-right-bound"],
+                         "Gstyle/Proof/Transfer/ComparisonTransferQueries.lean")
         self.assertEqual(profile.mutation_modules["compare-swaps-values"],
                          "Gstyle/Proof/Transfer/ComparisonQueries.lean")
         self.assertEqual(profile.mutation_modules["compare-continues-after-rejection"],
