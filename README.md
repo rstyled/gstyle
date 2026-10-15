@@ -307,4 +307,5 @@ selection, metadata preservation and the complete copying loop.
 
 Run `make verify-runtime-facts` for the [production node-to-fact query
 contracts](verification/length/RUNTIME_FACTS.md), including first-match
-extensions, actual node indirection and explicit absence behavior.
+extensions, actual node indirection, explicit absence behavior and literal
+Boolean admission.

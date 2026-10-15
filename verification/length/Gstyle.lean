@@ -30,3 +30,5 @@ public import Gstyle.Proof.Pdg.Attributes
 public import Gstyle.Proof.Transfer.Extension
 
 public import Gstyle.Proof.Transfer.Facts
+
+public import Gstyle.Proof.Transfer.Boolean

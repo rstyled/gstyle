@@ -634,16 +634,33 @@ def runtime_facts_profile():
         "fact-discards-extensions": (fact, 'return extension(v.graph, nil, name)'),
         "fact-mutates-view": (fact, 'v.kinds = nil; '+fact),
     }
+    boolean_source = "domain/runtimeguard/condition.go"
+    reject = 'return value == "false" && truth'
+    mutations.update({
+        "boolean-inverts-true": ('return !truth', 'return truth', boolean_source),
+        "boolean-inverts-false": (reject, 'return value == "false" && !truth', boolean_source),
+        "boolean-swaps-true-literal": ('if value == "true" {', 'if value == "false" {', boolean_source),
+        "boolean-swaps-false-literal": (reject, 'return value == "true" && truth', boolean_source),
+        "boolean-unknown-as-false": (reject, 'return truth', boolean_source),
+        "boolean-empty-as-false": (reject, 'return (value == "false" || value == "") && truth', boolean_source),
+        "boolean-string-as-false": (reject, 'return (value == "false" || value == `"false"`) && truth', boolean_source),
+        "boolean-always-conflicts": (reject, 'return true', boolean_source),
+        "boolean-drops-true-conflict": ('return !truth', 'return false', boolean_source),
+        "boolean-drops-false-conflict": (reject, 'return false', boolean_source),
+        "boolean-bypasses-check": ('booleanContradiction(value, truth) {', 'false && booleanContradiction(value, truth) {', boolean_source),
+        "boolean-keeps-rejected-state": ('if value := v.fact(ref, "boolean"); booleanContradiction(value, truth) {\n\t\treturn nil', 'if value := v.fact(ref, "boolean"); booleanContradiction(value, truth) {\n\t\treturn state', boolean_source),
+    })
     return Profile(
         ROOT / "dist/verification/runtime-facts", "github_com/rstyled/gstyle/domain/runtimeguard.lean", "./domain/runtimeguard", source, sources,
-        {prefix + name for name in ("extensionValue_first", "extensionValue_missing", "wp_extension", "wp_extension_empty", "wp_attrs_zero", "wp_attrs_absent", "wp_attrs_present", "wp_fact_zero", "wp_fact_absent", "wp_fact_present")},
+        {prefix + name for name in ("extensionValue_first", "extensionValue_missing", "wp_extension", "wp_extension_empty", "wp_attrs_zero", "wp_attrs_absent", "wp_attrs_present", "wp_fact_zero", "wp_fact_absent", "wp_fact_present", "booleanConflict_unknown", "booleanConflict_literals", "wp_booleanContradiction", "wp_assume_boolean_reject")},
         mutations, "AuditRuntimeFacts.lean", "Gstyle/Proof/Transfer/Facts.lean",
-        "production node-to-fact lookup with exact first-match extension policy and preserved inputs",
+        "production node-to-fact lookup, literal Boolean admission and rejecting guard with preserved inputs",
         ("producer and semantic fact provenance", "metadata cache agreement and RHS evaluation", "actual condition and whole state-transfer semantics", "package initialization"),
         ("Code",), (("github_com/rstyled/gstyle/domain/pdg.lean", "./domain/pdg"),
                     ("github_com/rstyled/gstyle/domain/pdg/query.lean", "./domain/pdg/query"),
                     ("github_com/rstyled/gstyle/domain/runtimeguard/interval.lean", "./domain/runtimeguard/interval")),
-        mutation_modules={name: "Gstyle/Proof/Transfer/Extension.lean" for name in mutations if name.startswith("extension-")},
+        mutation_modules={name: ("Gstyle/Proof/Transfer/Extension.lean" if name.startswith("extension-") else "Gstyle/Proof/Transfer/Boolean.lean")
+                          for name in mutations if name.startswith(("extension-", "boolean-"))},
     )
 
 

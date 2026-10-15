@@ -3,7 +3,7 @@
 `make verify-runtime-facts` verifies the actual `extension`, `graphView.attrs`
 and `graphView.fact` bodies in `domain/runtimeguard/graph.go`. The chain uses
 proved production node-attribute expansion, generic list reads and Tables.Text.
-No production Go behavior changes.
+Boolean admission recognizes only canonical `true` and `false` facts.
 
 ## Lookup policy
 
@@ -29,6 +29,27 @@ lookup. `wp_fact_absent` and `wp_fact_zero` prove empty results on their
 respective absence paths. There are no assumed child implementations in this
 query chain. These contracts preserve the view, graph, node/attribute tables,
 shared rows, string table and selected source contents.
+
+## Boolean admission
+
+The generic extension schema allows any valid JSON value. Previously assume
+interpreted every nonempty boolean fact except `true` as false. A string-valued
+`"false"`, null or a number could therefore discard a feasible true branch.
+`booleanContradiction` now rejects only an exact Boolean literal opposite to
+the requested branch. Other values cause no Boolean conflict. This deliberately
+includes noncanonical whitespace/case forms; it does not normalize JSON.
+
+`booleanConflict_unknown` proves the unknown rule for every other byte string.
+`booleanConflict_literals` proves both literal directions.
+`wp_booleanContradiction` verifies the actual production predicate.
+`wp_assume_boolean_reject` follows the actual source-bound assume body through
+the proved fact query and predicate to its nil-map return, preserving metadata.
+This path never reads or writes the state map; existing state ownership can be
+framed around it. Its premise identifies an actual conflicting stored literal;
+semantic truth of producer facts still needs its own contract.
+
+The continuing, recursive and comparison paths of assume remain unproved.
+Selecting the complete assume body for source binding does not prove them.
 
 ## Ownership and boundaries
 
@@ -58,9 +79,9 @@ this contract. Zero and absent attribute paths need no allocation bound.
 
 ## Validation and remaining integration
 
-Eight execution contracts and two model policy theorems have an exact
+Ten execution contracts and four model policy theorems have an exact
 standard-axiom audit. Source regeneration byte-compares runtimeguard, interval,
-PDG and query code. Twenty-seven valid source mutants fail their expected Lean
+PDG and query code. Thirty-nine valid source mutants fail their expected Lean
 module and independently fail the Go regressions. Controls cover namespace,
 key/value fields and IDs, match direction, first/late/absent behavior, forbidden
 writes, node selection, discarded metadata and fact dispatch.
@@ -68,12 +89,13 @@ writes, node selection, discarded metadata and fact dispatch.
 Go regressions include duplicate keys (including different IDs with equal decoded names), an empty/missing first value, zero and
 maximum IDs, missing/empty tables, byte/empty names, namespace/case distinctions,
 reordered node records, zero and absent paths, shared views and input preservation.
-CI adds two profile shards. Dependency pins, private incremental copies,
+The existing two profile shards also cover twelve Boolean controls; no CI job
+is added by Boolean admission. Dependency pins, private incremental copies,
 targeted mutation builds, two workers, existing shards, setup-error rejection
 and the strict diagnostic filter remain unchanged.
 
 The query result is actual stored data. An empty result alone does not prove
-absence, and a nonempty result does not prove semantic truth. Typed decoding,
+absence, and a nonempty result does not prove semantic truth. Further typed decoding,
 producer/fact provenance, metadata-cache agreement, RHS/constant/conversion
 evaluation, actual recursive conditions and whole state-transfer/control-flow
 soundness remain open. Precise compound arithmetic remains outside the existing

@@ -10,7 +10,7 @@ var inverse = map[string]string{"<": ">=", "<=": ">", ">": "<=", ">=": "<", "=="
 var reverse = map[string]string{"<": ">", "<=": ">=", ">": "<", ">=": "<=", "==": "==", "!=": "!="}
 
 func (v *graphView) assume(ref pdg.Ref, truth bool, state State) State {
-	if value := v.fact(ref, "boolean"); value != "" && (value == "true") != truth {
+	if value := v.fact(ref, "boolean"); booleanContradiction(value, truth) {
 		return nil
 	}
 	operator := operatorText(v.graph.Tables, v.attrs(ref).Operator)
@@ -144,4 +144,11 @@ func exactInteger(value Value) bool {
 
 func emptyRange(value Value) bool {
 	return value.HasLower && value.HasUpper && value.Lower > value.Upper
+}
+
+func booleanContradiction(value string, truth bool) bool {
+	if value == "true" {
+		return !truth
+	}
+	return value == "false" && truth
 }
