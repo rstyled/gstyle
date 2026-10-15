@@ -804,6 +804,8 @@ def value_evaluation_profile():
     for module, entries in groups.items():
         mutations.update(entries)
         modules.update({name: f"Gstyle/Proof/Transfer/{module}.lean" for name in entries})
+    for name in ("value-ignores-binding", "value-wrong-binding"):
+        modules[name] = "Gstyle/Proof/Transfer/ValueBindingDispatch.lean"
     model_source = "verification/length/Gstyle/Proof/Transfer/ValueResolution.lean"
     model_mutations = {
         "value-model-empty-fuel": ('| 0, _ => none', '| 0, _ => some (zero_val Value)'),
@@ -822,6 +824,7 @@ def value_evaluation_profile():
         "Gstyle/Proof/Transfer/LengthExecution.lean",
         "Gstyle/Proof/Transfer/ConversionExecution.lean",
         "Gstyle/Proof/Transfer/ValueDispatch.lean",
+        "Gstyle/Proof/Transfer/ValueBindingDispatch.lean",
         "Gstyle/Proof/Transfer/ValueEvaluation.lean",
         "Gstyle/Proof/Transfer/ValueResolution.lean",
         "Gstyle/Proof/StrconvPackage.lean", "Gstyle/Proof/RuntimeValue.lean",

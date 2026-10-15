@@ -1,5 +1,6 @@
 module
 public import Gstyle.Proof.Transfer.LengthExecution
+public import Gstyle.Proof.Transfer.FactSnapshot
 @[expose] public section
 noncomputable section
 namespace Perennial
