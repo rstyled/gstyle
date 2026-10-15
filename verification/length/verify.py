@@ -303,8 +303,47 @@ def runtime_value_profile():
         },
         "AuditRuntimeValue.lean", "Gstyle/Proof/RuntimeValue.lean", "actual Value interval projection, comparison adapter and complete Value join",
         ("PDG extraction", "other state transfers, state-map joins and fixpoint traversal", "Access and Candidate projection"), ("Code",),
-        (("github_com/rstyled/gstyle/domain/runtimeguard/interval.lean", "./domain/runtimeguard/interval"),),
+        (("github_com/rstyled/gstyle/domain/runtimeguard/interval.lean", "./domain/runtimeguard/interval"),
+         ("github_com/rstyled/gstyle/domain/pdg.lean", "./domain/pdg"),
+         ("github_com/rstyled/gstyle/domain/pdg/query.lean", "./domain/pdg/query")),
     )
+
+
+
+def state_map_profile():
+    value = "domain/runtimeguard/value.go"
+    graph = "domain/runtimeguard/graph.go"
+    mutations = {
+        "join-left-wrong-state": ("value.merge(v.binding(symbol, next))", "value.merge(v.binding(symbol, previous))"),
+        "join-right-wrong-state": ("value.merge(v.binding(symbol, previous))", "value.merge(v.binding(symbol, next))"),
+        "join-loses-right-only": ("if _, present := previous[symbol]; !present {", "if _, present := previous[symbol]; present {"),
+        "join-overwrites-common": ("if _, present := previous[symbol]; !present {", "if _, present := previous[symbol]; present || !present {"),
+        "join-wrong-key": ("out[symbol] = value.merge(v.binding(symbol, next))", "out[symbol+1] = value.merge(v.binding(symbol, next))"),
+        "join-skips-left": ("for symbol, value := range previous {", "for symbol, value := range next {"),
+        "join-nil-left-alias": ("return copyState(next)", "return next"),
+        "join-nil-right-wrong-state": ("return copyState(previous)", "return copyState(next)"),
+        "copy-loses-values": ("out[symbol] = value", "_ = value; out[symbol] = Value{}", value),
+        "copy-loses-keys": ("out[symbol] = value", "_, _ = symbol, value", value),
+        "copy-aliases-input": ("out := make(State, len(state))", "out := state", value),
+        "copy-wrong-key": ("out[symbol] = value", "out[symbol+1] = value", value),
+        "binding-inverts-presence": ("if value, ok := state[symbol]; ok {", "if value, ok := state[symbol]; !ok {", graph),
+        "binding-ignores-unstable": ("if v.unstable[symbol-1] {", "if false {", graph),
+        "binding-wrong-key": ("if value, ok := state[symbol]; ok {", "if value, ok := state[symbol+1]; ok {", graph),
+        "binding-forges-unsigned-bound": ("return Value{Lower: 0, HasLower: true}", "return Value{Lower: 1, HasLower: true}", graph),
+        "binding-wrong-identity": ("uint64(symbol) * 2", "uint64(symbol) * 3", graph),
+    }
+    modules = {name: "Gstyle/Proof/StateMap/" +
+               ("Copy" if name.startswith("copy-") else "Binding" if name.startswith("binding-") else "Join") + ".lean"
+               for name in mutations}
+    prefix = "Perennial.github_com.rstyled.gstyle.domain.runtimeguard."
+    names = ("wp_base", "wp_binding", "wp_copyState", "wp_copyState_nil", "wp_join", "wp_join_sound",
+             "wp_join_left_nil", "wp_join_right_nil", "wp_join_both_nil", "joinLookup_domain", "state_join_sound")
+    return replace(runtime_value_profile(), report=ROOT / "dist/verification/state-map", source=ROOT / "domain/runtimeguard/flow.go",
+                   theorems={prefix + name for name in names}, mutations=mutations,
+                   audit="AuditStateMap.lean", proof_file="Gstyle/Proof/StateMap/Join.lean",
+                   verified="production state-map join, exact key coverage, input preservation and conditional interval soundness",
+                   unverified=("aliased non-nil input maps", "invalid cached binding references", "concurrent mutation", "Go-to-PDG facts and concrete execution semantics", "fixpoint convergence and other transfers", "package initialization"),
+                   mutation_modules=modules)
 
 
 def generate(profile, goose, proofgen, source_root, output, log_prefix):
@@ -429,10 +468,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile}
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile}
         arguments = tuple(sys.argv[1:])
         if arguments not in profiles:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map]")
         main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

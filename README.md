@@ -252,3 +252,10 @@ binding in input order. Generic node lookup and advisory payload construction ar
 also proved. `make verify-runtime-value` proves the actual Value projection and
 comparison copy-back, plus the complete Value join and its interval-set
 preservation contract. PDG transfer/traversal and outer projections remain outside the proof. See [the negative-index verification scope](verification/length/NEGATIVE_INDEX.md).
+
+### Lean verification of state-map joins
+
+Run `make verify-state-map` to verify the production join and its binding/copy
+helpers. The contract covers both/missing keys, nil branches, input preservation
+and conditional interval soundness using the existing Value merge proof. See
+[the explicit assumptions and unsupported cases](verification/length/STATE_MAP.md).
