@@ -111,3 +111,9 @@ verify-branch:
 verify-pdg-text:
 	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
 	python3 -B verification/length/verify.py --pdg-text
+
+.PHONY: verify-operator
+
+verify-operator:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --operator

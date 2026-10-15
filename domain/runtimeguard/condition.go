@@ -13,7 +13,7 @@ func (v *graphView) assume(ref pdg.Ref, truth bool, state State) State {
 	if value := v.fact(ref, "boolean"); value != "" && (value == "true") != truth {
 		return nil
 	}
-	operator := v.graph.Tables.Text(v.attrs(ref).Operator.Value)
+	operator := operatorText(v.graph.Tables, v.attrs(ref).Operator)
 	switch operator {
 	case "parentheses":
 		return v.assume(v.operand(ref, 0), truth, state)

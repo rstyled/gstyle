@@ -159,6 +159,9 @@ jobs:
           - profile: pdg-text
             target: verify-pdg-text
             shard: 0/1
+          - profile: operator-availability
+            target: verify-operator
+            shard: 0/1
     steps:
       - name: Checkout
         uses: actions/checkout@v6

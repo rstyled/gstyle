@@ -288,9 +288,8 @@ axiom FlowBlock.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 @[reducible] def Ref.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
   _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref.ty
 
-axiom Status [FfiSyntax] [GoGlobalContext] : go.GoType
-
-axiom Fact.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
+@[reducible] def Status.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status.ty
 
 axiom BooleanFact [FfiSyntax] [GoGlobalContext] : go.GoType
 
@@ -385,7 +384,8 @@ axiom SchemaVersion [FfiSyntax] [GoGlobalContext] : val
 
 axiom Unknown [FfiSyntax] [GoGlobalContext] : val
 
-axiom Known [FfiSyntax] [GoGlobalContext] : val
+@[reducible] noncomputable def Known [FfiSyntax] [GoGlobalContext] : val :=
+  #(W8 1)
 
 axiom Unsupported [FfiSyntax] [GoGlobalContext] : val
 
@@ -690,18 +690,44 @@ attribute [instance] FlowBlock.TypeAssumptions.type_repr
   FlowBlock.TypeAssumptions.underlying
   FlowBlock.TypeAssumptions.isUnderlying
 
-axiom Fact : Type
-axiom Fact.zero_val : ZeroVal Fact
-attribute [instance] Fact.zero_val
+structure Fact [FfiSyntax] where
+  mk ::
+  Value' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  Status' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status
+
+instance Fact.zero_val [FfiSyntax] : ZeroVal Fact :=
+  ⟨Fact.mk zeroValDef zeroValDef⟩
+
+@[reducible] def Fact.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"Value" Text.ty),
+(go.field_decl.FieldDecl go!"Status" Status.ty)]
+
+@[irreducible] def Fact.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Fact.fieldsUnsealed
+
+instance equals_unfold_Fact [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Fact.fields Fact.fieldsUnsealed :=
+  ⟨by unfold Fact.fields; rfl⟩
+
+@[reducible] def Fact.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Fact.fields)
 
 class Fact.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying Fact.underlying Fact
   underlying : go.UnderlyingDirectedEq Fact.ty Fact.underlying
-  isUnderlying : go.IsUnderlying Fact.underlying Fact.underlying
+  layout : go.StructLayout Fact [(go!"Value", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Status", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status)]
+  get_Value : ∀ (x : Fact), go.IsGoStepPureDetTagged under (StructFieldGet Fact.underlying go!"Value") #x (Val #(x.Value'))
+  set_Value : ∀ (x : Fact) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Fact.underlying go!"Value") (PairV #x #y) (Val #(({ x with Value' := y } : Fact)))
+  get_Status : ∀ (x : Fact), go.IsGoStepPureDetTagged under (StructFieldGet Fact.underlying go!"Status") #x (Val #(x.Status'))
+  set_Status : ∀ (x : Fact) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status), go.IsGoStepPureDetTagged under (StructFieldSet Fact.underlying go!"Status") (PairV #x #y) (Val #(({ x with Status' := y } : Fact)))
 
 attribute [instance] Fact.TypeAssumptions.type_repr
   Fact.TypeAssumptions.underlying
-  Fact.TypeAssumptions.isUnderlying
+  Fact.TypeAssumptions.layout
+  Fact.TypeAssumptions.get_Value
+  Fact.TypeAssumptions.set_Value
+  Fact.TypeAssumptions.get_Status
+  Fact.TypeAssumptions.set_Status
 
 axiom Profile : Type
 axiom Profile.zero_val : ZeroVal Profile

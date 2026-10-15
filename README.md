@@ -294,3 +294,6 @@ independent forks and unreachable alternatives. See
 Run `make verify-pdg-text` to verify the production string-table accessor for
 all references under shared read-only ownership. See
 [the lookup contract and remaining PDG boundaries](verification/length/PDG_TEXT.md).
+
+The [operator availability proof](verification/length/OPERATOR.md) checks the
+production reader that separates known operators from unavailable reason text.

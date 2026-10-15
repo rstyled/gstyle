@@ -96,6 +96,9 @@ noncomputable def pointerGuardContext [FfiSyntax] [GoGlobalContext] : GoString :
 noncomputable def newGraphView [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard.newGraphView"
 
+noncomputable def operatorText [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard.operatorText"
+
 noncomputable def sourceOperandEdge [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard.sourceOperandEdge"
 
@@ -573,7 +576,24 @@ noncomputable def graphView.operand.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (Val #())))))))))))
 
-/-- go: graph.go:85:21 -/
+/-- go: graph.go:59:6 -/
+noncomputable def operatorText.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "tables"
+  (Lam "fact"
+  (App (Val exceptionDo)
+  (Let "fact" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Fact.ty))) (Var "fact"))
+  (Let "tables" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Tables.ty)))) (Var "tables"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Text.ty))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Fact.ty go!"Value"))) (Var "fact")))
+  (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Tables.ty) go!"Text"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Tables.ty)))) (Var "tables"))) (Var "$a0"))))))
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoOp GoEquals _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status.ty))) (Pair (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Status.ty))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Fact.ty go!"Status"))) (Var "fact"))) (Val _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Known)))))
+  (App (Val doReturn)
+  (Val #(go!"")))
+  (App (Val doExecute)
+  (Val #())))))))))
+
+/-- go: graph.go:92:21 -/
 noncomputable def graphView.base.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "symbol"
@@ -598,7 +618,7 @@ noncomputable def graphView.base.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (Val #())))))))))
 
-/-- go: graph.go:95:21 -/
+/-- go: graph.go:102:21 -/
 noncomputable def graphView.binding.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "symbol"
@@ -1201,6 +1221,7 @@ class Assumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFun
   exactInteger_unfold : FuncUnfold exactInteger [] exactInteger.impl
   emptyRange_unfold : FuncUnfold emptyRange [] emptyRange.impl
   singleValueWrite_unfold : FuncUnfold singleValueWrite [] singleValueWrite.impl
+  operatorText_unfold : FuncUnfold operatorText [] operatorText.impl
   integerStep_unfold : FuncUnfold integerStep [] integerStep.impl
   incrementInteger_unfold : FuncUnfold incrementInteger [] incrementInteger.impl
   decrementInteger_unfold : FuncUnfold decrementInteger [] decrementInteger.impl
@@ -1219,6 +1240,7 @@ attribute [instance] Assumptions.analysis_instance
   Assumptions.exactInteger_unfold
   Assumptions.emptyRange_unfold
   Assumptions.singleValueWrite_unfold
+  Assumptions.operatorText_unfold
   Assumptions.integerStep_unfold
   Assumptions.incrementInteger_unfold
   Assumptions.decrementInteger_unfold

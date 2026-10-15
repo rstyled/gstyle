@@ -506,6 +506,32 @@ def pdg_text_profile():
     )
 
 
+def operator_profile():
+    source = ROOT / "domain/runtimeguard/graph.go"
+    sources = tuple(sorted(path for directory in ("domain/runtimeguard", "domain/runtimeguard/interval", "domain/pdg", "domain/pdg/query")
+                           for path in (ROOT / directory).glob("*.go") if not path.name.endswith("_test.go")))
+    prefix = "Perennial.github_com.rstyled.gstyle.domain.runtimeguard."
+    return Profile(
+        ROOT / "dist/verification/operator", "github_com/rstyled/gstyle/domain/runtimeguard.lean", "./domain/runtimeguard", source, sources,
+        {prefix + name for name in ("wp_operatorText_known", "wp_operatorText_unavailable")},
+        {
+            "operator-inverted-status": ("if fact.Status != pdg.Known {", "if fact.Status == pdg.Known {"),
+            "operator-accepts-unknown": ("if fact.Status != pdg.Known {", "if fact.Status > pdg.Known {"),
+            "operator-accepts-unsupported": ("if fact.Status != pdg.Known {", "if fact.Status != pdg.Known && fact.Status != pdg.Unsupported {"),
+            "operator-rejects-known": ("if fact.Status != pdg.Known {", "if fact.Status <= pdg.Known {"),
+            "operator-forges-unavailable": ('if fact.Status != pdg.Known {\n\t\treturn ""', 'if fact.Status != pdg.Known {\n\t\treturn "unknown"'),
+            "operator-wrong-reference": ("return tables.Text(fact.Value)", "return tables.Text(fact.Value+1)"),
+            "operator-discards-known": ("return tables.Text(fact.Value)", 'return ""'),
+            "operator-mutates-metadata": ("return tables.Text(fact.Value)", "tables.Sources = nil; return tables.Text(fact.Value)"),
+        },
+        "AuditOperator.lean", "Gstyle/Proof/Transfer/Operator.lean", "production operator reader rejects every unavailable status and preserves known text/table resources",
+        ("graph attribute extraction and reader call-site composition", "fact provenance and producer correctness", "condition and transfer semantics", "package initialization"),
+        ("Code",), (("github_com/rstyled/gstyle/domain/pdg.lean", "./domain/pdg"),
+                    ("github_com/rstyled/gstyle/domain/pdg/query.lean", "./domain/pdg/query"),
+                    ("github_com/rstyled/gstyle/domain/runtimeguard/interval.lean", "./domain/runtimeguard/interval")),
+    )
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -628,10 +654,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile}
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile}
         arguments = tuple(sys.argv[1:])
         if arguments not in profiles:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator]")
         main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error
