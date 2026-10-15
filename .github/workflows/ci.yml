@@ -236,6 +236,14 @@ jobs:
             lean-profile-v2-${{ matrix.profile }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}-
             lean-project-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}-
 
+      - name: Restore mutation evidence
+        uses: actions/cache@v5
+        with:
+          path: dist/mutation-cache/${{ strategy.job-index }}
+          key: lean-mutations-v1-${{ runner.os }}-${{ runner.arch }}-${{ strategy.job-index }}-${{ github.sha }}
+          restore-keys: |
+            lean-mutations-v1-${{ runner.os }}-${{ runner.arch }}-${{ strategy.job-index }}-
+
       - name: Install pinned Lean toolchain manager
         run: |
           curl -sSfL https://github.com/leanprover/elan/releases/download/v4.2.4/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
@@ -246,6 +254,7 @@ jobs:
         env:
           GSTYLE_MUTATION_SHARD: ${{ matrix.shard }}
           GSTYLE_MUTATION_WORKERS: '4'
+          GSTYLE_MUTATION_CACHE: ${{ github.workspace }}/dist/mutation-cache/${{ strategy.job-index }}
         run: make ${{ matrix.target }}
 
       - name: Preserve proof evidence

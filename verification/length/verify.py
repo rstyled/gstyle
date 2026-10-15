@@ -12,6 +12,8 @@ import shutil
 import subprocess
 import tempfile
 
+import mutation_cache
+
 PROJECT = Path(__file__).resolve().parent
 ROOT = PROJECT.parent.parent
 REPORT = ROOT / "dist/verification/function-length"
@@ -1308,16 +1310,29 @@ def main(profile=None):
     check_axioms(run(["lake", "env", "lean", profile.audit], PROJECT, "axioms.log", report=report), profile.theorems)
     shard = mutation_shard()
     mutations = shard_mutations(profile.mutations, shard)
-    mutants = check_mutations(replace(profile, mutations=mutations), goose, proofgen)
+    selected = replace(profile, mutations=mutations)
+    cache_path = os.environ.get("GSTYLE_MUTATION_CACHE")
+    cache = Path(cache_path) if cache_path else None
+    key = mutation_cache.fingerprint(PROJECT, ROOT, selected, (goose, proofgen)) if cache else None
+    reused = bool(cache and mutation_cache.restore(cache, key, selected, proof_rejected))
+    mutants = list(mutations) if reused else check_mutations(selected, goose, proofgen)
     if source_hashes(profile.sources) != bound_sources:
         raise RuntimeError("bound source changed during verification")
+    if cache:
+        if mutation_cache.fingerprint(PROJECT, ROOT, selected, (goose, proofgen)) != key:
+            raise RuntimeError("verification inputs changed during mutation checks")
+        if not reused:
+            mutation_cache.save(cache, key, selected)
     success.write_text(json.dumps({
         "sources_sha256": bound_sources,
         "verified": profile.verified, "unverified": profile.unverified,
         "rejected_mutations": mutants,
         "mutation_workers": mutation_workers(),
+        "mutation_evidence": "reused" if reused else "executed",
+        "mutation_cache_key": key,
         "mutation_shard": {"index": shard[0], "count": shard[1], "total_mutations": len(profile.mutations)},
     }, indent=2) + "\n")
+    print(f"Mutation evidence: {'reused' if reused else 'executed'}", flush=True)
     print(f"PASS {profile.verified}; source binding, axiom audit, and {len(mutants)} mutations (shard {shard[0]}/{shard[1]})", flush=True)
 
 
