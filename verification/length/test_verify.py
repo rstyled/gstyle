@@ -84,9 +84,9 @@ class VerificationGuardTests(unittest.TestCase):
                                 (verify.pdg_profile, "Gstyle.Proof.Queries"),
                                 (verify.output_profile, "Gstyle.Proof.Output.Classify"),
                                 (verify.interval_profile, "Gstyle.Proof.Interval.Constrain"),
-                                (verify.runtime_value_profile, "Gstyle.Proof.RuntimeValue"),
+                                (verify.runtime_value_profile, "Gstyle.Proof.RuntimeValue.MergeBounds"),
                                 (verify.state_map_profile, "Gstyle.Proof.StateMap.Join"),
-                                (verify.numeric_transfer_profile, "Gstyle.Proof.Transfer.Numeric"),
+                                (verify.numeric_transfer_profile, "Gstyle.Proof.Transfer.NumericPrimitives"),
                                 (verify.signed_step_profile, "Gstyle.Proof.Transfer.Step"),
                                 (verify.assignment_profile, "Gstyle.Proof.Transfer.Assignment"),
                                 (verify.branch_profile, "Gstyle.Proof.Transfer.Branch"),
@@ -128,7 +128,7 @@ class VerificationGuardTests(unittest.TestCase):
                 source.write_text("after")
                 return []
 
-            with patch.object(verify, "run", side_effect=run), patch.object(verify, "generate"), patch.object(verify, "check_generated"), patch.object(verify, "check_mutations", side_effect=mutate):
+            with patch.dict(os.environ, {"GSTYLE_MUTATION_CACHE": ""}), patch.object(verify, "run", side_effect=run), patch.object(verify, "generate"), patch.object(verify, "check_generated"), patch.object(verify, "check_mutations", side_effect=mutate):
                 with self.assertRaisesRegex(RuntimeError, "bound source changed"):
                     verify.main(profile)
             self.assertFalse((profile.report / "result.json").exists())
@@ -168,11 +168,15 @@ class VerificationGuardTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
             profile = replace(profile, report=Path(directory), mutations={name: mutation})
 
-            def inspect(selected, goose, proofgen, source_root, output, label):
+            def inspect(selected, goose, proofgen, source_root, output, label, **kwargs):
                 self.assertEqual((source_root / source.relative_to(verify.ROOT)).read_text(), baseline.replace(before, after))
                 self.assertNotEqual(source_root.resolve(), verify.ROOT.resolve())
                 self.assertEqual(source.read_text(), baseline)
                 self.assertEqual(label, name)
+                environment = kwargs["environment"]
+                self.assertEqual(environment["LEAN_NUM_THREADS"], os.environ.get("LEAN_NUM_THREADS", "1"))
+                self.assertEqual(environment["GOMAXPROCS"], os.environ.get("GOMAXPROCS", "1"))
+                self.assertIsNot(environment, os.environ)
 
             with patch.object(verify, "seed_build"), patch.object(verify, "generate", side_effect=inspect) as generate, patch.object(verify, "run"), patch.object(verify, "print", create=True):
                 verify.check_mutations(profile, Path("goose"), Path("proofgen"))
@@ -314,6 +318,112 @@ class VerificationGuardTests(unittest.TestCase):
             with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
                 with self.assertRaisesRegex(RuntimeError, "source is not bound"):
                     verify.check_mutations(replace(profile, report=Path(directory)), Path("goose"), Path("proofgen"))
+
+    def test_numeric_controls_follow_moved_contracts(self):
+        profile = verify.numeric_transfer_profile()
+        self.assertEqual(set(profile.mutation_modules), set(profile.mutations))
+        for proof in profile.mutation_modules.values():
+            self.assertIn(verify.PROJECT / proof, profile.sources)
+        self.assertTrue(profile.mutation_modules["exact-ignores-lower"].endswith("NumericPrimitives.lean"))
+        self.assertTrue(profile.mutation_modules["tracked-inverts-flag"].endswith("Tracking.lean"))
+        self.assertTrue(profile.mutation_modules["constrain-wrong-bound"].endswith("NumericConstrainQueries.lean"))
+
+    def test_comparison_contracts_are_bound_and_audited(self):
+        profile = verify.comparison_profile()
+        for name in ("ComparisonQueries", "ComparisonNil", "NumericModel", "Tracking", "ComparisonTransferQueries", "NumericPrimitives", "NumericConstrainQueries"):
+            self.assertIn(verify.PROJECT / f"Gstyle/Proof/Transfer/{name}.lean", profile.sources)
+        for name in ("wp_comparison_queries_true", "wp_comparison_queries_false"):
+            self.assertIn("Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name, profile.theorems)
+        self.assertEqual(profile.mutation_modules["constraint-drops-write"],
+                         "Gstyle/Proof/Transfer/NumericConstrainQueries.lean")
+        self.assertEqual(profile.mutation_modules["constraint-tracks-zero"],
+                         "Gstyle/Proof/Transfer/Tracking.lean")
+        self.assertEqual(profile.mutation_modules["compare-wrong-right-bound"],
+                         "Gstyle/Proof/Transfer/ComparisonTransferQueries.lean")
+        self.assertEqual(profile.mutation_modules["compare-swaps-values"],
+                         "Gstyle/Proof/Transfer/ComparisonQueries.lean")
+        self.assertEqual(profile.mutation_modules["compare-continues-after-rejection"],
+                         "Gstyle/Proof/Transfer/ComparisonNil.lean")
+
+    def test_baseline_covers_audit_and_mutation_targets(self):
+        profile = verify.runtime_facts_profile()
+        modules = verify.baseline_modules(profile)
+        self.assertIn("Gstyle.Proof.Transfer.Boolean", modules)
+        self.assertIn("Gstyle.Proof.Transfer.SymbolResolution", modules)
+        self.assertIn(profile.proof_file.removesuffix(".lean").replace("/", "."), modules)
+        for proof in profile.mutation_modules.values():
+            self.assertIn(proof.removesuffix(".lean").replace("/", "."), modules)
+        self.assertNotIn("Gstyle", modules)
+        self.assertNotIn("Gstyle.Proof.Transfer.BranchSnapshot", modules)
+
+    def test_only_length_profile_preserves_umbrella_build(self):
+        for name in dir(verify):
+            if not name.endswith("_profile"):
+                continue
+            with self.subTest(profile=name):
+                modules = verify.baseline_modules(getattr(verify, name)())
+                self.assertEqual("Gstyle" in modules, name == "length_profile")
+
+    def test_baseline_handles_line_comments_and_multiple_imports(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "Audit.lean").write_text(
+                "-- audit dependencies\n"
+                "import Gstyle.First Gstyle.Second -- both are required\n"
+                "#print axioms example\n")
+            for name in ("First", "Second"):
+                target = root / "Gstyle" / (name + ".lean")
+                target.parent.mkdir(exist_ok=True)
+                target.touch()
+            profile = replace(verify.length_profile(), proof_file="Gstyle/First.lean", umbrella=False)
+            with patch.object(verify, "PROJECT", root):
+                self.assertEqual(verify.baseline_modules(profile), ["Gstyle.First", "Gstyle.Second"])
+
+    def test_baseline_rejects_missing_or_unsupported_imports(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            audit = root / "Audit.lean"
+            profile = verify.length_profile()
+            for content, message in (
+                ("#print axioms example\n", "no project imports"),
+                ("public import Gstyle.Proof.Cardinality\n", "unsupported audit import"),
+                ("import Gstyle.Missing\n", "missing baseline module"),
+            ):
+                with self.subTest(content=content), patch.object(verify, "PROJECT", root):
+                    audit.write_text(content)
+                    with self.assertRaisesRegex(RuntimeError, message):
+                        verify.baseline_modules(profile)
+
+    def test_worker_limit_respects_cpu_affinity_and_rejects_invalid_config(self):
+        with patch.object(verify.os, "sched_getaffinity", return_value={0, 1, 2, 3}, create=True):
+            with patch.dict(os.environ, {}, clear=True):
+                self.assertEqual(verify.mutation_workers(), 2)
+            for raw, expected in (("1", 1), ("4", 4)):
+                with self.subTest(raw=raw), patch.dict(os.environ, {"GSTYLE_MUTATION_WORKERS": raw}):
+                    self.assertEqual(verify.mutation_workers(), expected)
+            for raw in ("0", "5", "-1", "auto"):
+                with self.subTest(raw=raw), patch.dict(os.environ, {"GSTYLE_MUTATION_WORKERS": raw}):
+                    with self.assertRaisesRegex(RuntimeError, "GSTYLE_MUTATION_WORKERS"):
+                        verify.mutation_workers()
+        with patch.object(verify.os, "sched_getaffinity", return_value={0, 1}, create=True):
+            with patch.dict(os.environ, {"GSTYLE_MUTATION_WORKERS": "4"}):
+                self.assertEqual(verify.mutation_workers(), 2)
+
+    def test_all_mutations_have_unique_bound_targets(self):
+        for factory in (getattr(verify, name) for name in dir(verify) if name.endswith("_profile")):
+            profile = factory()
+            for name, mutation in profile.mutations.items():
+                with self.subTest(profile=profile.report.name, mutation=name):
+                    source = verify.ROOT / mutation[2] if len(mutation) == 3 else profile.source
+                    self.assertIn(source, profile.sources)
+                    self.assertEqual(source.read_text().count(mutation[0]), 1)
+
+    def test_all_profile_audits_have_build_targets(self):
+        for name in dir(verify):
+            if not name.endswith("_profile"):
+                continue
+            with self.subTest(profile=name):
+                self.assertTrue(verify.baseline_modules(getattr(verify, name)()))
 
     def test_failed_run_clears_success(self):
         with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:

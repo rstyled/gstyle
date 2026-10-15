@@ -1,4 +1,6 @@
 module
+public import Gstyle.Proof.Transfer.ComparisonTransferQueries
+public import Gstyle.Proof.Transfer.ValueResolution
 public import Gstyle.Proof.Transfer.ComparisonConstraint
 @[expose] public section
 noncomputable section
@@ -55,52 +57,13 @@ theorem wp_comparison_left_numeric_true (receiver : Loc) (s : QuerySnapshot) (st
       (App (App (App (App (Val #(methods (go.PointerType graphView.ty) go!"comparison" #receiver)) (Val #ref)) (Val #op)) (Val #true)) (Val #state))
     {{ RET #(if active && constraintRejected kind changing key m op rv then map.nil else state);
       querySnapshotOwn receiver s ∗ state ↦$ (constraintState active kind changing key m op rv) }} := by
-  wp_start as ⟨#Hsnapshot, Hstate⟩
-  ihave %Hnonnull := ownMap_not_nil state m (DFrac.own 1) $$ Hstate
-  ihave #Hctx := Hsnapshot
-  iunfold querySnapshotOwn at Hctx
-  icases Hctx with ⟨Hview, _, _, Hrows, _, _, _, _, _, _, _, _, _, _, _, _, _⟩
-  try wp_auto
-  wp_apply wp_operand_readonly receiver s.view s.operands ref (W64 0) row left href (by decide) hrow hleft DFrac.discard DFrac.discard
-    $$ [Hview Hrows] with ⟨Hview, Hrows⟩
-  · iframe Hview Hrows
-  try wp_auto
-  wp_apply wp_operand_readonly receiver s.view s.operands ref (W64 1) row right href (by decide) hrow hright DFrac.discard DFrac.discard
-    $$ [Hview Hrows] with ⟨Hview, Hrows⟩
-  · iframe Hview Hrows
-  try wp_auto
-  wp_apply wp_value_resolve receiver s state m sf lf left lv wf hlvalid hparse hlvalue
-    $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-  · iframe Hsnapshot Hstate
-  try wp_auto
-  wp_apply wp_value_resolve receiver s state m sf rf right rv wf hrvalid hparse hrvalue
-    $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-  · iframe Hsnapshot Hstate
-  try wp_auto
-  wp_apply wp_symbol_resolve receiver s sf left key wf.symbols hlvalid hlsymbol
-    $$ [Hsnapshot] with Hsnapshot
-  · iframe Hsnapshot
-  try wp_auto
-  wp_if_destruct
-  · exfalso; contradiction
-  · wp_apply wp_constrain_snapshot_numeric_any receiver s state m key kind op changing active rv wf.unstable ht metadata hnil
-      $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-    · iframe Hsnapshot Hstate
-    cases rejected : active && constraintRejected kind changing key m op rv with
-    | false =>
-      simp only [rejected, Bool.false_eq_true, ite_false]
-      try wp_auto
-      wp_if_destruct
-      · exfalso; contradiction
-      · wp_apply wp_symbol_resolve receiver s sf right (W32 0) wf.symbols hrvalid hrsymbol
-          $$ [Hsnapshot] with Hsnapshot
-        · iframe Hsnapshot
-        try wp_auto
-        wp_end
-    | true =>
-      simp only [rejected, ite_true]
-      try wp_auto
-      wp_end
+  exact wp_comparison_left_numeric_true_queries receiver s state m ref left right key row kind op lv rv changing active
+    href hrow hleft hright hkey
+    (wp_value_resolve receiver s state m sf lf left lv wf hlvalid hparse hlvalue)
+    (wp_value_resolve receiver s state m sf rf right rv wf hrvalid hparse hrvalue)
+    (wp_symbol_resolve receiver s sf left key wf.symbols hlvalid hlsymbol)
+    (wp_symbol_resolve receiver s sf right (W32 0) wf.symbols hrvalid hrsymbol)
+    (wp_constrain_snapshot_numeric_any receiver s state m key kind op changing active rv wf.unstable ht metadata hnil)
 
 theorem wp_comparison_left_numeric_false (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
     (ref left right key : w32) (row : GoArray w32 2) (kind op : GoString) (lv rv : Value) (changing active : Bool)
@@ -123,58 +86,13 @@ theorem wp_comparison_left_numeric_false (receiver : Loc) (s : QuerySnapshot) (s
       (App (App (App (App (Val #(methods (go.PointerType graphView.ty) go!"comparison" #receiver)) (Val #ref)) (Val #op)) (Val #false)) (Val #state))
     {{ RET #(if active && constraintRejected kind changing key m normal rv then map.nil else state);
       globalAddr inverse ↦□ inverseLoc ∗ inverseLoc ↦${DFrac.discard} inverseTable ∗ querySnapshotOwn receiver s ∗ state ↦$ (constraintState active kind changing key m normal rv) }} := by
-  wp_start as ⟨#Hglobal, #Hoperators, #Hsnapshot, Hstate⟩
-  ihave %Hnonnull := ownMap_not_nil state m (DFrac.own 1) $$ Hstate
-  ihave #Hctx := Hsnapshot
-  iunfold querySnapshotOwn at Hctx
-  icases Hctx with ⟨Hview, _, _, Hrows, _, _, _, _, _, _, _, _, _, _, _, _, _⟩
-  try wp_auto
-  wp_apply wp_map_lookup1 go.string go.string inverseLoc inverseTable op DFrac.discard $$ [Hoperators] with Hoperators
-  · iframe Hoperators
-  rw [hlookup]
-  try wp_auto
-  wp_apply wp_operand_readonly receiver s.view s.operands ref (W64 0) row left href (by decide) hrow hleft DFrac.discard DFrac.discard
-    $$ [Hview Hrows] with ⟨Hview, Hrows⟩
-  · iframe Hview Hrows
-  try wp_auto
-  wp_apply wp_operand_readonly receiver s.view s.operands ref (W64 1) row right href (by decide) hrow hright DFrac.discard DFrac.discard
-    $$ [Hview Hrows] with ⟨Hview, Hrows⟩
-  · iframe Hview Hrows
-  try wp_auto
-  wp_apply wp_value_resolve receiver s state m sf lf left lv wf hlvalid hparse hlvalue
-    $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-  · iframe Hsnapshot Hstate
-  try wp_auto
-  wp_apply wp_value_resolve receiver s state m sf rf right rv wf hrvalid hparse hrvalue
-    $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-  · iframe Hsnapshot Hstate
-  try wp_auto
-  wp_apply wp_symbol_resolve receiver s sf left key wf.symbols hlvalid hlsymbol
-    $$ [Hsnapshot] with Hsnapshot
-  · iframe Hsnapshot
-  try wp_auto
-  wp_if_destruct
-  · exfalso; contradiction
-  · wp_apply wp_constrain_snapshot_numeric_any receiver s state m key kind normal changing active rv wf.unstable ht metadata hnil
-      $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-    · iframe Hsnapshot Hstate
-    cases rejected : active && constraintRejected kind changing key m normal rv with
-    | false =>
-      simp only [rejected, Bool.false_eq_true, ite_false]
-      try wp_auto
-      wp_if_destruct
-      · exfalso; contradiction
-      · wp_apply wp_symbol_resolve receiver s sf right (W32 0) wf.symbols hrvalid hrsymbol
-          $$ [Hsnapshot] with Hsnapshot
-        · iframe Hsnapshot
-        try wp_auto
-        wp_end
-        all_goals iframe Hglobal Hoperators Hsnapshot Hstate
-    | true =>
-      simp only [rejected, ite_true]
-      try wp_auto
-      wp_end
-      all_goals iframe Hglobal Hoperators Hsnapshot Hstate
+  exact wp_comparison_left_numeric_false_queries receiver s state m ref left right key row kind op lv rv changing active inverseLoc inverseTable normal
+    href hrow hleft hright hkey hlookup
+    (wp_value_resolve receiver s state m sf lf left lv wf hlvalid hparse hlvalue)
+    (wp_value_resolve receiver s state m sf rf right rv wf hrvalid hparse hrvalue)
+    (wp_symbol_resolve receiver s sf left key wf.symbols hlvalid hlsymbol)
+    (wp_symbol_resolve receiver s sf right (W32 0) wf.symbols hrvalid hrsymbol)
+    (wp_constrain_snapshot_numeric_any receiver s state m key kind normal changing active rv wf.unstable ht metadata hnil)
 
 theorem wp_comparison_right_numeric_true (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
     (ref left right key : w32) (row : GoArray w32 2) (kind op : GoString) (lv rv : Value) (changing active : Bool)
@@ -197,51 +115,13 @@ theorem wp_comparison_right_numeric_true (receiver : Loc) (s : QuerySnapshot) (s
       (App (App (App (App (Val #(methods (go.PointerType graphView.ty) go!"comparison" #receiver)) (Val #ref)) (Val #op)) (Val #true)) (Val #state))
     {{ RET #(if active && constraintRejected kind changing key m normal lv then map.nil else state);
       globalAddr reverse ↦□ reverseLoc ∗ reverseLoc ↦${DFrac.discard} reverseTable ∗ querySnapshotOwn receiver s ∗ state ↦$ (constraintState active kind changing key m normal lv) }} := by
-  wp_start as ⟨#Hglobal, #Hoperators, #Hsnapshot, Hstate⟩
-  ihave %Hnonnull := ownMap_not_nil state m (DFrac.own 1) $$ Hstate
-  ihave #Hctx := Hsnapshot
-  iunfold querySnapshotOwn at Hctx
-  icases Hctx with ⟨Hview, _, _, Hrows, _, _, _, _, _, _, _, _, _, _, _, _, _⟩
-  try wp_auto
-  wp_apply wp_operand_readonly receiver s.view s.operands ref (W64 0) row left href (by decide) hrow hleft DFrac.discard DFrac.discard
-    $$ [Hview Hrows] with ⟨Hview, Hrows⟩
-  · iframe Hview Hrows
-  try wp_auto
-  wp_apply wp_operand_readonly receiver s.view s.operands ref (W64 1) row right href (by decide) hrow hright DFrac.discard DFrac.discard
-    $$ [Hview Hrows] with ⟨Hview, Hrows⟩
-  · iframe Hview Hrows
-  try wp_auto
-  wp_apply wp_value_resolve receiver s state m sf lf left lv wf hlvalid hparse hlvalue
-    $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-  · iframe Hsnapshot Hstate
-  try wp_auto
-  wp_apply wp_value_resolve receiver s state m sf rf right rv wf hrvalid hparse hrvalue
-    $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-  · iframe Hsnapshot Hstate
-  try wp_auto
-  wp_apply wp_symbol_resolve receiver s sf left (W32 0) wf.symbols hlvalid hlsymbol
-    $$ [Hsnapshot] with Hsnapshot
-  · iframe Hsnapshot
-  try wp_auto
-  wp_if_destruct
-  · exfalso; contradiction
-  · wp_apply wp_symbol_resolve receiver s sf right key wf.symbols hrvalid hrsymbol
-      $$ [Hsnapshot] with Hsnapshot
-    · iframe Hsnapshot
-    try wp_auto
-    wp_if_destruct
-    · exfalso; contradiction
-    · try wp_auto
-      wp_apply wp_map_lookup1 go.string go.string reverseLoc reverseTable op DFrac.discard $$ [Hoperators] with Hoperators
-      · iframe Hoperators
-      rw [hlookup]
-      try wp_auto
-      wp_apply wp_constrain_snapshot_numeric_any receiver s state m key kind normal changing active lv wf.unstable ht metadata hnil
-        $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-      · iframe Hsnapshot Hstate
-      try wp_auto
-      wp_end
-      all_goals iframe Hglobal Hoperators Hsnapshot Hstate
+  exact wp_comparison_right_numeric_true_queries receiver s state m ref left right key row kind op lv rv changing active reverseLoc reverseTable normal
+    href hrow hleft hright hkey hlookup
+    (wp_value_resolve receiver s state m sf lf left lv wf hlvalid hparse hlvalue)
+    (wp_value_resolve receiver s state m sf rf right rv wf hrvalid hparse hrvalue)
+    (wp_symbol_resolve receiver s sf left (W32 0) wf.symbols hlvalid hlsymbol)
+    (wp_symbol_resolve receiver s sf right key wf.symbols hrvalid hrsymbol)
+    (wp_constrain_snapshot_numeric_any receiver s state m key kind normal changing active lv wf.unstable ht metadata hnil)
 
 theorem wp_comparison_right_numeric_false (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
     (ref left right key : w32) (row : GoArray w32 2) (kind op : GoString) (lv rv : Value) (changing active : Bool)
@@ -265,55 +145,14 @@ theorem wp_comparison_right_numeric_false (receiver : Loc) (s : QuerySnapshot) (
       (App (App (App (App (Val #(methods (go.PointerType graphView.ty) go!"comparison" #receiver)) (Val #ref)) (Val #op)) (Val #false)) (Val #state))
     {{ RET #(if active && constraintRejected kind changing key m normal lv then map.nil else state);
       globalAddr inverse ↦□ inverseLoc ∗ inverseLoc ↦${DFrac.discard} inverseTable ∗ globalAddr reverse ↦□ reverseLoc ∗ reverseLoc ↦${DFrac.discard} reverseTable ∗ querySnapshotOwn receiver s ∗ state ↦$ (constraintState active kind changing key m normal lv) }} := by
-  wp_start as ⟨#HinvGlobal, #HinvOperators, #Hglobal, #Hoperators, #Hsnapshot, Hstate⟩
-  ihave %Hnonnull := ownMap_not_nil state m (DFrac.own 1) $$ Hstate
-  ihave #Hctx := Hsnapshot
-  iunfold querySnapshotOwn at Hctx
-  icases Hctx with ⟨Hview, _, _, Hrows, _, _, _, _, _, _, _, _, _, _, _, _, _⟩
-  try wp_auto
-  wp_apply wp_map_lookup1 go.string go.string inverseLoc inverseTable op DFrac.discard $$ [HinvOperators] with HinvOperators
-  · iframe HinvOperators
-  rw [hnegate]
-  try wp_auto
-  wp_apply wp_operand_readonly receiver s.view s.operands ref (W64 0) row left href (by decide) hrow hleft DFrac.discard DFrac.discard
-    $$ [Hview Hrows] with ⟨Hview, Hrows⟩
-  · iframe Hview Hrows
-  try wp_auto
-  wp_apply wp_operand_readonly receiver s.view s.operands ref (W64 1) row right href (by decide) hrow hright DFrac.discard DFrac.discard
-    $$ [Hview Hrows] with ⟨Hview, Hrows⟩
-  · iframe Hview Hrows
-  try wp_auto
-  wp_apply wp_value_resolve receiver s state m sf lf left lv wf hlvalid hparse hlvalue
-    $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-  · iframe Hsnapshot Hstate
-  try wp_auto
-  wp_apply wp_value_resolve receiver s state m sf rf right rv wf hrvalid hparse hrvalue
-    $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-  · iframe Hsnapshot Hstate
-  try wp_auto
-  wp_apply wp_symbol_resolve receiver s sf left (W32 0) wf.symbols hlvalid hlsymbol
-    $$ [Hsnapshot] with Hsnapshot
-  · iframe Hsnapshot
-  try wp_auto
-  wp_if_destruct
-  · exfalso; contradiction
-  · wp_apply wp_symbol_resolve receiver s sf right key wf.symbols hrvalid hrsymbol
-      $$ [Hsnapshot] with Hsnapshot
-    · iframe Hsnapshot
-    try wp_auto
-    wp_if_destruct
-    · exfalso; contradiction
-    · try wp_auto
-      wp_apply wp_map_lookup1 go.string go.string reverseLoc reverseTable negated DFrac.discard $$ [Hoperators] with Hoperators
-      · iframe Hoperators
-      rw [hlookup]
-      try wp_auto
-      wp_apply wp_constrain_snapshot_numeric_any receiver s state m key kind normal changing active lv wf.unstable ht metadata hnil
-        $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-      · iframe Hsnapshot Hstate
-      try wp_auto
-      wp_end
-      all_goals iframe HinvGlobal HinvOperators Hglobal Hoperators Hsnapshot Hstate
+  exact wp_comparison_right_numeric_false_queries receiver s state m ref left right key row kind op lv rv changing active reverseLoc reverseTable normal negated inverseLoc inverseTable
+    href hrow hleft hright hkey hlookup hnegate
+    (wp_value_resolve receiver s state m sf lf left lv wf hlvalid hparse hlvalue)
+    (wp_value_resolve receiver s state m sf rf right rv wf hrvalid hparse hrvalue)
+    (wp_symbol_resolve receiver s sf left (W32 0) wf.symbols hlvalid hlsymbol)
+    (wp_symbol_resolve receiver s sf right key wf.symbols hrvalid hrsymbol)
+    (wp_constrain_snapshot_numeric_any receiver s state m key kind normal changing active lv wf.unstable ht metadata hnil)
+
 
 end proof
 end github_com.rstyled.gstyle.domain.runtimeguard

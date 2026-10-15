@@ -1,0 +1,282 @@
+[
+  {
+    "profile": "function-length",
+    "target": "verify-length",
+    "shard": "0/1",
+    "argument": "",
+    "cache-index": 0
+  },
+  {
+    "profile": "pdg-queries",
+    "target": "verify-pdg",
+    "shard": "0/1",
+    "argument": "--pdg",
+    "cache-index": 1
+  },
+  {
+    "profile": "unchecked-output",
+    "target": "verify-output",
+    "shard": "0/3",
+    "argument": "--output",
+    "cache-index": 2
+  },
+  {
+    "profile": "unchecked-output",
+    "target": "verify-output",
+    "shard": "1/3",
+    "argument": "--output",
+    "cache-index": 3
+  },
+  {
+    "profile": "unchecked-output",
+    "target": "verify-output",
+    "shard": "2/3",
+    "argument": "--output",
+    "cache-index": 4
+  },
+  {
+    "profile": "negative-index",
+    "target": "verify-negative-index",
+    "shard": "0/4",
+    "argument": "--interval",
+    "cache-index": 5
+  },
+  {
+    "profile": "negative-index",
+    "target": "verify-negative-index",
+    "shard": "1/4",
+    "argument": "--interval",
+    "cache-index": 6
+  },
+  {
+    "profile": "negative-index",
+    "target": "verify-negative-index",
+    "shard": "2/4",
+    "argument": "--interval",
+    "cache-index": 7
+  },
+  {
+    "profile": "negative-index",
+    "target": "verify-negative-index",
+    "shard": "3/4",
+    "argument": "--interval",
+    "cache-index": 8
+  },
+  {
+    "profile": "runtime-value",
+    "target": "verify-runtime-value",
+    "shard": "0/2",
+    "argument": "--runtime-value",
+    "cache-index": 9
+  },
+  {
+    "profile": "runtime-value",
+    "target": "verify-runtime-value",
+    "shard": "1/2",
+    "argument": "--runtime-value",
+    "cache-index": 10
+  },
+  {
+    "profile": "state-map",
+    "target": "verify-state-map",
+    "shard": "0/2",
+    "argument": "--state-map",
+    "cache-index": 11
+  },
+  {
+    "profile": "state-map",
+    "target": "verify-state-map",
+    "shard": "1/2",
+    "argument": "--state-map",
+    "cache-index": 12
+  },
+  {
+    "profile": "numeric-transfer",
+    "target": "verify-numeric-transfer",
+    "shard": "0/3",
+    "argument": "--numeric-transfer",
+    "cache-index": 13
+  },
+  {
+    "profile": "numeric-transfer",
+    "target": "verify-numeric-transfer",
+    "shard": "1/3",
+    "argument": "--numeric-transfer",
+    "cache-index": 14
+  },
+  {
+    "profile": "numeric-transfer",
+    "target": "verify-numeric-transfer",
+    "shard": "2/3",
+    "argument": "--numeric-transfer",
+    "cache-index": 15
+  },
+  {
+    "profile": "signed-step",
+    "target": "verify-signed-step",
+    "shard": "0/2",
+    "argument": "--signed-step",
+    "cache-index": 16
+  },
+  {
+    "profile": "signed-step",
+    "target": "verify-signed-step",
+    "shard": "1/2",
+    "argument": "--signed-step",
+    "cache-index": 17
+  },
+  {
+    "profile": "assignment",
+    "target": "verify-assignment",
+    "shard": "0/2",
+    "argument": "--assignment",
+    "cache-index": 18
+  },
+  {
+    "profile": "assignment",
+    "target": "verify-assignment",
+    "shard": "1/2",
+    "argument": "--assignment",
+    "cache-index": 19
+  },
+  {
+    "profile": "branch-composition",
+    "target": "verify-branch",
+    "shard": "0/2",
+    "argument": "--branch",
+    "cache-index": 20
+  },
+  {
+    "profile": "branch-composition",
+    "target": "verify-branch",
+    "shard": "1/2",
+    "argument": "--branch",
+    "cache-index": 21
+  },
+  {
+    "profile": "pdg-text",
+    "target": "verify-pdg-text",
+    "shard": "0/1",
+    "argument": "--pdg-text",
+    "cache-index": 22
+  },
+  {
+    "profile": "operator-availability",
+    "target": "verify-operator",
+    "shard": "0/1",
+    "argument": "--operator",
+    "cache-index": 23
+  },
+  {
+    "profile": "pdg-list",
+    "target": "verify-pdg-list",
+    "shard": "0/1",
+    "argument": "--pdg-list",
+    "cache-index": 24
+  },
+  {
+    "profile": "pdg-attributes",
+    "target": "verify-pdg-attributes",
+    "shard": "0/2",
+    "argument": "--pdg-attributes",
+    "cache-index": 25
+  },
+  {
+    "profile": "pdg-attributes",
+    "target": "verify-pdg-attributes",
+    "shard": "1/2",
+    "argument": "--pdg-attributes",
+    "cache-index": 26
+  },
+  {
+    "profile": "runtime-facts",
+    "target": "verify-runtime-facts",
+    "shard": "0/2",
+    "argument": "--runtime-facts",
+    "cache-index": 27
+  },
+  {
+    "profile": "runtime-facts",
+    "target": "verify-runtime-facts",
+    "shard": "1/2",
+    "argument": "--runtime-facts",
+    "cache-index": 28
+  },
+  {
+    "profile": "value-evaluation",
+    "target": "verify-value-evaluation",
+    "shard": "0/3",
+    "argument": "--value-evaluation",
+    "cache-index": 29
+  },
+  {
+    "profile": "value-evaluation",
+    "target": "verify-value-evaluation",
+    "shard": "1/3",
+    "argument": "--value-evaluation",
+    "cache-index": 30
+  },
+  {
+    "profile": "value-evaluation",
+    "target": "verify-value-evaluation",
+    "shard": "2/3",
+    "argument": "--value-evaluation",
+    "cache-index": 31
+  },
+  {
+    "profile": "comparison",
+    "target": "verify-comparison",
+    "shard": "0/4",
+    "argument": "--comparison",
+    "cache-index": 32
+  },
+  {
+    "profile": "comparison",
+    "target": "verify-comparison",
+    "shard": "1/4",
+    "argument": "--comparison",
+    "cache-index": 33
+  },
+  {
+    "profile": "comparison",
+    "target": "verify-comparison",
+    "shard": "2/4",
+    "argument": "--comparison",
+    "cache-index": 34
+  },
+  {
+    "profile": "comparison",
+    "target": "verify-comparison",
+    "shard": "3/4",
+    "argument": "--comparison",
+    "cache-index": 35
+  },
+  {
+    "profile": "one-sided",
+    "target": "verify-one-sided",
+    "shard": "0/1",
+    "argument": "--one-sided",
+    "cache-index": 36
+  },
+  {
+    "profile": "shared-flow",
+    "target": "verify-shared-flow",
+    "shard": "0/1",
+    "argument": "--shared-flow",
+    "cache-index": 37
+  },
+  {
+    "profile": "assume",
+    "target": "verify-assume",
+    "shard": "0/2",
+    "argument": "--assume",
+    "cache-index": 38
+  },
+  {
+    "profile": "assume",
+    "target": "verify-assume",
+    "shard": "1/2",
+    "argument": "--assume",
+    "cache-index": 39
+  }
+]

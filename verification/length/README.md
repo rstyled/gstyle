@@ -57,32 +57,60 @@ rejected only for a recognized proof failure in its expected proof module.
 Missing modules, syntax errors, unrelated diagnostics and mixed setup/proof
 failures abort verification. No unchanged build is added per mutation.
 
-Each mutant builds only its affected proof module. The full unchanged project is
-checked before mutation tests, so unrelated pattern proofs are not rebuilt for
-every mutant.
+Each mutant builds only its affected proof module. The unchanged audit imports
+and all mutation proof targets are built before mutation tests. Lake builds their dependency closure; unrelated
+profiles are not built in every CI job. The function-length profile also builds
+the `Gstyle` umbrella once, preserving the full project import check.
 
-Mutation checks run with two workers. Every worker uses a private Go/Lean
+Mutation checks default to two workers. `GSTYLE_MUTATION_WORKERS` accepts 1–4,
+capped by available CPUs. CI uses four on its four-CPU runners. Worker subprocesses
+default to one Lean thread and one Go processor; explicit environment overrides
+remain supported. The baseline build keeps its normal parallelism.
+Every worker uses a private Go/Lean
 workspace and a private copy of the successful preflight build artifacts.
 Lake checks input hashes and rebuilds changed modules and their dependents.
 Pinned dependency builds are shared. A worker failure aborts verification;
 result lists retain profile order even when progress messages finish out of order.
 
-Interval and unchecked-output proofs are split by operation. The public
-`Interval.lean` and `Output.lean` modules still export every original theorem.
+Interval, runtime-value, and unchecked-output proofs are split by operation.
+The public `Interval.lean`, `RuntimeValue.lean`, and `Output.lean` modules still
+export every original theorem.
 The baseline build and axiom audits remain complete; mutation builds target the
 specific operation contract listed in `verify.py`.
 
-CI caches the project's `.lake/build` as well as pinned dependency builds.
+CI caches the project's `.lake/build` per profile, as well as pinned dependency
+builds.
+An older shared cache is a fallback; Lake still checks every restored input.
 Lake invalidates changed inputs before reusing artifacts. Larger mutation suites
 run across separate runners with `GSTYLE_MUTATION_SHARD=INDEX/COUNT` (zero-based).
-Every shard checks the full baseline, source binding and axiom audit, then checks
-its assigned mutations. Results record the shard and total mutation count.
-The aggregate `verify-length` check requires every configured shard to pass.
-Local commands default to one shard and still run every mutation.
+CI first checks every baseline, source binding, and axiom audit in one preflight
+job. Shared generation configurations run once. It validates cached mutation
+evidence and starts the original shard jobs only for misses. Missing or invalid
+evidence executes the controls. Each fresh shard still checks its own baseline,
+source binding, and axioms. The aggregate `verify-length` check requires successful
+preflight plus every needed shard; a skipped shard matrix passes only when
+preflight reports no misses. A complete checked bundle is saved after aggregation.
+The matrix in `ci_profiles.json` covers all 432 controls exactly once. Runtime
+validation rejects omitted profiles, gaps, and duplicate controls.
+Local commands default to one shard and execute every mutation.
+
+`GSTYLE_MUTATION_CACHE` enables local reuse explicitly. The content key covers all
+project Lean/configuration files, bound Go sources, dependency contents, translator
+binaries, effective compiler settings, verifier code, and selected controls.
+Unused preinstalled Go paths from runner images do not affect the key; the actual
+selected Go configuration still does. Any project Lean edit invalidates all
+profiles. Cached diagnostics must pass the current strict rejection classifier.
+Inputs are hashed again before publishing results. `result.json` distinguishes
+`executed` and `reused` evidence and records its key; proof logs stay in artifacts.
+Clear the local cache directory to force fresh controls.
+
+Warm CI avoids separate runner setup for all 40 shards. Changed proof inputs still
+require fresh controls. The Go race-test job has a separate build cache so a
+non-race build cannot supply an incomplete warm cache for it.
 
 `make verify-value-evaluation` checks the production runtime value evaluator,
-49 theorem audits, and 37 Go/model mutations. CI uses three shards with the same
-two-worker limit. See [VALUE_EVALUATION.md](VALUE_EVALUATION.md) for the finite
+49 theorem audits, and 37 Go/model mutations. CI uses three shards with four CPU-capped
+workers. See [VALUE_EVALUATION.md](VALUE_EVALUATION.md) for the finite
 query contract, the explicit `ParseInt` premise, and remaining proof gaps.
 
 `make verify-comparison` checks production numeric comparisons, 34 theorem
@@ -104,3 +132,15 @@ child-execution obligations.
 contracts and ten production-Go mutation controls in one CI shard.
 See [ASSUME.md](ASSUME.md) for supported certificates, meaning assumptions,
 and the distinction between finite recursive expansion and total correctness.
+
+Comparison mutation checks use small orchestration contracts for value and symbol
+queries. The original comparison theorems discharge those contracts with the
+production value/symbol proofs; their statements and assumptions are unchanged.
+Pure numeric/comparison models do not import execution proofs. Nil-state controls
+retain their existing theorem statements in a separate module.
+
+Numeric constraint orchestration also uses an integer-transfer contract, which
+the original `wp_constrain_numeric` theorem discharges with `wp_integerConstraint`.
+Tracking proofs are separate so their controls do not rebuild numeric transfer
+proofs. Comparison transfer callbacks are discharged by the existing production
+query and constraint theorems; callback assumptions do not replace those proofs.

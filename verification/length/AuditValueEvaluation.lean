@@ -24,6 +24,7 @@ import Gstyle.Proof.Transfer.ValueResolution
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.decimalInt64_unicode
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.parseInt64Result_success
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.parseInt64Result_error
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_constantValue_contract
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_constantValue_snapshot
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_lengthValue_not_length
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_value_zero

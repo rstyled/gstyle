@@ -121,6 +121,9 @@ exact returned Value after copying all four bounds, and semantic preservation
 through the dispatcher. The exact result retains every non-interval field,
 including pointer identity and guard/length/extent metadata. Twenty-one mutation
 controls cover projected/copied fields, dispatcher inputs and the complete join.
+Each control builds the smallest matching projection, constraint, bounds-join,
+pointer-join, or full-join contract. `RuntimeValue.lean` re-exports all seven
+unchanged theorems; the complete baseline audit remains enabled.
 
 The actual `Value.merge` execution theorem composes both join helpers and the
 three metadata updates. It proves the entire returned Value: interval bounds

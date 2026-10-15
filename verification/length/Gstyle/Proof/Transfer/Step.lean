@@ -1,5 +1,5 @@
 module
-public import Gstyle.Proof.RuntimeValue
+public import Gstyle.Proof.RuntimeValueModel
 @[expose] public section
 noncomputable section
 namespace Perennial

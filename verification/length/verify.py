@@ -12,6 +12,8 @@ import shutil
 import subprocess
 import tempfile
 
+import mutation_cache
+
 PROJECT = Path(__file__).resolve().parent
 ROOT = PROJECT.parent.parent
 REPORT = ROOT / "dist/verification/function-length"
@@ -55,9 +57,9 @@ def proof_rejected(output, proof_file):
     return found
 
 
-def run(command, cwd, log, *, expect_failure=False, report=None, proof_file=None):
+def run(command, cwd, log, *, expect_failure=False, report=None, proof_file=None, environment=None):
     report = report or REPORT
-    result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, timeout=1800)
+    result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, timeout=1800, env=environment)
     output = result.stdout + result.stderr
     (report / log).write_text(output)
     if expect_failure:
@@ -97,12 +99,13 @@ class Profile:
     generated: tuple = ("Code", "GeneratedProof")
     bindings: tuple = ()
     mutation_modules: dict = field(default_factory=dict)
+    umbrella: bool = False
 
 
 def length_profile():
     return Profile(REPORT, PACKAGE, GO_PACKAGE, SOURCE, (SOURCE,), THEOREMS,
                    MUTATIONS, "Audit.lean", "Gstyle/Proof/Length.lean", "ordered token-span accumulator and strict threshold",
-                   ("Go scanner", "token-to-span extraction", "configuration and diagnostics"))
+                   ("Go scanner", "token-to-span extraction", "configuration and diagnostics"), umbrella=True)
 
 
 def pdg_profile():
@@ -274,7 +277,7 @@ def runtime_value_profile():
     sources = tuple(sorted(path for directory in ("domain/runtimeguard", "domain/runtimeguard/interval", "domain/pdg", "domain/pdg/query")
                            for path in (ROOT / directory).glob("*.go") if not path.name.endswith("_test.go")))
     prefix = "Perennial.github_com.rstyled.gstyle.domain.runtimeguard."
-    return Profile(
+    profile = Profile(
         ROOT / "dist/verification/runtime-value", "github_com/rstyled/gstyle/domain/runtimeguard.lean",
         "./domain/runtimeguard", source, sources,
         {prefix + name for name in ("wp_Bounds", "wp_integerConstraint", "wp_integerConstraintSound", "wp_mergeBounds", "wp_mergePointers", "wp_merge", "wp_mergeSound")},
@@ -308,6 +311,14 @@ def runtime_value_profile():
          ("github_com/rstyled/gstyle/domain/pdg/query.lean", "./domain/pdg/query")),
     )
 
+
+    targets = {
+        **{name: "Bounds" for name in profile.mutations if name.startswith("project-")},
+        **{name: "Constraint" for name in profile.mutations if name.startswith(("copy-", "wrong-"))},
+        **{name: "MergeBounds" for name in ("merge-drops-other-range", "merge-swaps-lower")},
+        **{name: "MergePointers" for name in ("merge-forges-non-nil", "merge-forges-nil", "merge-forges-guard", "merge-confuses-identity", "merge-drops-common-identity")},
+    }
+    return replace(profile, mutation_modules={name: "Gstyle/Proof/RuntimeValue/" + targets.get(name, "Merge") + ".lean" for name in profile.mutations})
 
 
 def state_map_profile():
@@ -390,12 +401,19 @@ def numeric_transfer_profile():
              "wp_impossibleSignedComparison", "wp_infeasibleConstraint", "wp_constrain_numeric",
              "length_bounds", "numeric_constraint_sound", "represented_not_empty", "represented_comparison_possible",
              "constraint_preserves_other_keys", "constraint_state_sound", "wp_constrain_numeric_sound")
-    return replace(runtime_value_profile(), report=ROOT / "dist/verification/numeric-transfer",
+    modules = {name: "Gstyle/Proof/Transfer/NumericPrimitives.lean" for name in mutations}
+    modules.update({name: "Gstyle/Proof/Transfer/NumericConstrainQueries.lean"
+                    for name in mutations if name.startswith("constrain-")})
+    modules["tracked-inverts-flag"] = "Gstyle/Proof/Transfer/Tracking.lean"
+    proof_sources = tuple(PROJECT / ("Gstyle/Proof/Transfer/" + name + ".lean") for name in
+                          ("Numeric", "NumericModel", "NumericPrimitives", "NumericConstrainQueries", "Tracking", "Sound"))
+    base = runtime_value_profile()
+    return replace(base, sources=base.sources + proof_sources, report=ROOT / "dist/verification/numeric-transfer",
                    theorems={prefix + name for name in names}, mutations=mutations,
                    audit="AuditNumericTransfer.lean", proof_file="Gstyle/Proof/Transfer/Numeric.lean",
                    verified="production numeric constraint transfer, exact state update, other-key preservation and conditional interval soundness",
                    unverified=("nil/pointer constraints and alias semantics", "invalid references and mismatched metadata slices", "PDG extraction and comparison fact soundness", "assignments, increments and branch composition", "fixpoint convergence", "package initialization"),
-                   mutation_modules={})
+                   mutation_modules=modules)
 
 
 def signed_step_profile():
@@ -526,7 +544,7 @@ def operator_profile():
                            for path in (ROOT / directory).glob("*.go") if not path.name.endswith("_test.go")))
     prefix = "Perennial.github_com.rstyled.gstyle.domain.runtimeguard."
     return Profile(
-        ROOT / "dist/verification/operator", "github_com/rstyled/gstyle/domain/runtimeguard.lean", "./domain/runtimeguard", source, sources,
+        ROOT / "dist/verification/operator-availability", "github_com/rstyled/gstyle/domain/runtimeguard.lean", "./domain/runtimeguard", source, sources,
         {prefix + name for name in ("wp_operatorText_known", "wp_operatorText_unavailable")},
         {
             "operator-inverted-status": ("if fact.Status != pdg.Known {", "if fact.Status == pdg.Known {"),
@@ -758,7 +776,7 @@ def runtime_facts_profile():
 def value_evaluation_profile():
     base = runtime_facts_profile()
     groups = {
-        "ConstantExecution": {
+        "ConstantDispatch": {
             "constant-wrong-non-nil": ('v.fact(ref, "non-nil")', 'v.fact(ref, "nil")'),
             "constant-wrong-nil": ('Nil: v.fact(ref, "nil")', 'Nil: v.fact(ref, "non-nil")'),
             "constant-integer-key": ('strconv.ParseInt(v.fact(ref, "integer"), 10, 64)', 'strconv.ParseInt(v.fact(ref, "other"), 10, 64)'),
@@ -803,6 +821,8 @@ def value_evaluation_profile():
     for module, entries in groups.items():
         mutations.update(entries)
         modules.update({name: f"Gstyle/Proof/Transfer/{module}.lean" for name in entries})
+    for name in ("value-ignores-binding", "value-wrong-binding"):
+        modules[name] = "Gstyle/Proof/Transfer/ValueBindingDispatch.lean"
     model_source = "verification/length/Gstyle/Proof/Transfer/ValueResolution.lean"
     model_mutations = {
         "value-model-empty-fuel": ('| 0, _ => none', '| 0, _ => some (zero_val Value)'),
@@ -818,12 +838,17 @@ def value_evaluation_profile():
         "Gstyle/Proof/Transfer/ValueModel.lean",
         "Gstyle/Proof/Transfer/ParseIntContract.lean",
         "Gstyle/Proof/Transfer/ConstantExecution.lean",
+        "Gstyle/Proof/Transfer/ConstantDispatch.lean",
+        "Gstyle/Proof/Transfer/ConstantModel.lean",
         "Gstyle/Proof/Transfer/LengthExecution.lean",
         "Gstyle/Proof/Transfer/ConversionExecution.lean",
         "Gstyle/Proof/Transfer/ValueDispatch.lean",
+        "Gstyle/Proof/Transfer/ValueBindingDispatch.lean",
         "Gstyle/Proof/Transfer/ValueEvaluation.lean",
         "Gstyle/Proof/Transfer/ValueResolution.lean",
         "Gstyle/Proof/StrconvPackage.lean", "Gstyle/Proof/RuntimeValue.lean",
+        "Gstyle/Proof/RuntimePackage.lean", "Gstyle/Proof/RuntimeValueModel.lean",
+        *tuple("Gstyle/Proof/RuntimeValue/" + name + ".lean" for name in ("Bounds", "Constraint", "MergeBounds", "MergePointers", "Merge")),
         "Gstyle/Proof/StateMap/Binding.lean", "Gstyle/Proof/Pdg/GraphLayout.lean",
     )
     names = (
@@ -851,6 +876,7 @@ def value_evaluation_profile():
         "decimalInt64_unicode",
         "parseInt64Result_success",
         "parseInt64Result_error",
+        "wp_constantValue_contract",
         "wp_constantValue_snapshot",
         "wp_lengthValue_not_length",
         "wp_value_zero",
@@ -930,6 +956,17 @@ def comparison_profile():
     for module, entries in groups.items():
         mutations.update(entries)
         expected.update({name: f"Gstyle/Proof/Transfer/{module}.lean" for name in entries})
+    expected.update({name: "Gstyle/Proof/Transfer/ComparisonQueries.lean"
+                     for name in groups["ComparisonExecution"]
+                     if name != "compare-continues-after-rejection"})
+    expected["compare-continues-after-rejection"] = "Gstyle/Proof/Transfer/ComparisonNil.lean"
+    expected.update({name: "Gstyle/Proof/Transfer/Tracking.lean"
+                     for name in groups["Numeric"] if name.startswith("constraint-track") or
+                     name in ("constraint-skips-limit", "constraint-wrong-tracked-index")})
+    expected.update({name: "Gstyle/Proof/Transfer/ComparisonTransferQueries.lean"
+                     for name in groups["ComparisonTransfers"]})
+    expected.update({name: "Gstyle/Proof/Transfer/NumericConstrainQueries.lean"
+                     for name in ("constraint-ignores-tracking", "constraint-drops-write", "constraint-keeps-infeasible")})
     model_source = "verification/length/Gstyle/Proof/Transfer/ComparisonModel.lean"
     model_mutations = {
         "compare-model-inverse-strict": ('if op = go!"<" then go!">=" else', 'if op = go!"<" then go!">" else'),
@@ -955,9 +992,16 @@ def comparison_profile():
     expected.update({name: "Gstyle/Proof/Transfer/ComparisonBoth.lean" for name in state_mutations})
     proof_sources = (
         "Gstyle/Proof/Transfer/ComparisonModel.lean",
+        "Gstyle/Proof/Transfer/NumericModel.lean",
+        "Gstyle/Proof/Transfer/Tracking.lean",
+        "Gstyle/Proof/Transfer/NumericPrimitives.lean",
+        "Gstyle/Proof/Transfer/NumericConstrainQueries.lean",
         "Gstyle/Proof/Transfer/ComparisonExecution.lean",
+        "Gstyle/Proof/Transfer/ComparisonQueries.lean",
+        "Gstyle/Proof/Transfer/ComparisonNil.lean",
         "Gstyle/Proof/Transfer/ComparisonConstraint.lean",
         "Gstyle/Proof/Transfer/ComparisonTransfers.lean",
+        "Gstyle/Proof/Transfer/ComparisonTransferQueries.lean",
         "Gstyle/Proof/Transfer/ComparisonBoth.lean",
         "Gstyle/Proof/Transfer/ComparisonSound.lean",
         "Gstyle/Proof/Transfer/Numeric.lean", "Gstyle/Proof/Transfer/Sound.lean",
@@ -972,6 +1016,8 @@ def comparison_profile():
         "unknownOperator_relation",
         "reversedNormalizedOperator_relation",
         "normalizedBranchRelations",
+        "wp_comparison_queries_true",
+        "wp_comparison_queries_false",
         "wp_comparison_unbound_true",
         "wp_comparison_unbound_false",
         "wp_comparison_nil_zero_operands_true",
@@ -979,6 +1025,10 @@ def comparison_profile():
         "wp_constrain_snapshot_numeric",
         "wp_constrain_snapshot_invalid",
         "wp_constrain_snapshot_numeric_any",
+        "wp_comparison_left_numeric_true_queries",
+        "wp_comparison_left_numeric_false_queries",
+        "wp_comparison_right_numeric_true_queries",
+        "wp_comparison_right_numeric_false_queries",
         "wp_comparison_left_numeric_true",
         "wp_comparison_left_numeric_false",
         "wp_comparison_right_numeric_true",
@@ -996,6 +1046,7 @@ def comparison_profile():
         "wp_trackedBinding_invalid",
         "wp_impossibleSignedComparison",
         "wp_infeasibleConstraint",
+        "wp_constrain_numeric_query",
         "wp_constrain_numeric",
     )
     return replace(base, report=ROOT / "dist/verification/comparison", source=ROOT / "domain/runtimeguard/condition.go",
@@ -1069,16 +1120,16 @@ def shared_flow_profile():
 def assume_profile():
     base = shared_flow_profile()
     proof = "Gstyle/Proof/Transfer/Assume.lean"
-    extra = ("Gstyle/Proof/Transfer/AssumeNumeric.lean", proof,
+    extra = ("Gstyle/Proof/Transfer/AssumeNumeric.lean", "Gstyle/Proof/Transfer/AssumeDispatch.lean", proof,
              "Gstyle/Proof/Transfer/Branch.lean", "Gstyle/Proof/Transfer/BranchModel.lean",
              "Gstyle/Proof/StateMap/Join.lean", "Gstyle/Proof/StateMap/Model.lean",
              "Gstyle/Proof/Transfer/QuerySnapshot.lean")
-    names = ('constraint_state_valid', 'comparison_result_valid', 'wp_comparison_neither', 'wp_numeric_execution', 'numeric_execution_valid', 'numeric_execution_sound', 'logicalStep_result', 'branchResult_unique', 'finiteAssume_positive', 'finiteAssume_self_cycle', 'logicalStep_valid', 'finiteAssume_valid', 'booleanConflict_sound', 'finiteAssume_sound', 'wp_finite_assume', 'wp_finite_assume_sound')
+    names = ('wp_assume_parentheses', 'wp_assume_negation', 'wp_assume_logical', 'wp_assume_comparison', 'constraint_state_valid', 'comparison_result_valid', 'wp_comparison_neither', 'wp_numeric_execution', 'numeric_execution_valid', 'numeric_execution_sound', 'logicalStep_result', 'branchResult_unique', 'finiteAssume_positive', 'finiteAssume_self_cycle', 'logicalStep_valid', 'finiteAssume_valid', 'booleanConflict_sound', 'finiteAssume_sound', 'wp_finite_assume', 'wp_finite_assume_sound')
     changes = {'assume-ignore-boolean-conflict': ('if value := v.fact(ref, "boolean"); booleanContradiction(value, truth) {', 'if value := v.fact(ref, "boolean"); booleanContradiction(value, truth) && false {', 'domain/runtimeguard/condition.go'), 'assume-wrong-guard-fact': ('if value := v.fact(ref, "boolean");', 'if value := v.fact(ref, "integer");', 'domain/runtimeguard/condition.go'), 'assume-guard-admits-conflict': ('if value := v.fact(ref, "boolean"); booleanContradiction(value, truth) {\n\t\treturn nil', 'if value := v.fact(ref, "boolean"); booleanContradiction(value, truth) {\n\t\treturn state', 'domain/runtimeguard/condition.go'), 'assume-parentheses-wrong-operand': ('return v.assume(v.operand(ref, 0), truth, state)', 'return v.assume(v.operand(ref, 1), truth, state)', 'domain/runtimeguard/condition.go'), 'assume-parentheses-inverts-truth': ('return v.assume(v.operand(ref, 0), truth, state)', 'return v.assume(v.operand(ref, 0), !truth, state)', 'domain/runtimeguard/condition.go'), 'assume-negation-loses-inversion': ('return v.assume(v.operand(ref, 0), !truth, state)', 'return v.assume(v.operand(ref, 0), truth, state)', 'domain/runtimeguard/condition.go'), 'assume-negation-wrong-operand': ('return v.assume(v.operand(ref, 0), !truth, state)', 'return v.assume(v.operand(ref, 1), !truth, state)', 'domain/runtimeguard/condition.go'), 'assume-misses-disjunction': ('case "&&", "||":', 'case "&&":', 'domain/runtimeguard/condition.go'), 'assume-logical-inverts-truth': ('return v.logical(ref, operator, truth, state)', 'return v.logical(ref, operator, !truth, state)', 'domain/runtimeguard/condition.go'), 'assume-comparison-inverts-truth': ('return v.comparison(ref, operator, truth, state)', 'return v.comparison(ref, operator, !truth, state)', 'domain/runtimeguard/condition.go')}
     return replace(base, report=ROOT / "dist/verification/assume",
                    sources=base.sources + tuple(PROJECT / name for name in extra),
                    theorems={"Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name for name in names},
-                   mutations=changes, mutation_modules={name: "Gstyle/Proof/Transfer/Boolean.lean" if name in {"assume-ignore-boolean-conflict", "assume-wrong-guard-fact", "assume-guard-admits-conflict"} else proof for name in changes},
+                   mutations=changes, mutation_modules={name: "Gstyle/Proof/Transfer/Boolean.lean" if name in {"assume-ignore-boolean-conflict", "assume-wrong-guard-fact", "assume-guard-admits-conflict"} else "Gstyle/Proof/Transfer/AssumeDispatch.lean" for name in changes},
                    audit="AuditAssume.lean", proof_file=proof,
                    verified="finite supported production assume derivations preserve snapshots, metadata validity, and represented intervals",
                    unverified=("operator table initialization", "ParseInt implementation and producer fact truth",
@@ -1088,14 +1139,14 @@ def assume_profile():
                                "Go operational total-correctness adequacy"))
 
 
-def generate(profile, goose, proofgen, source_root, output, log_prefix):
+def generate(profile, goose, proofgen, source_root, output, log_prefix, *, environment=None):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
             continue
         run([str(tool), "-out", str(output / directory),
              "-configdir", str(PROJECT / "Gstyle/Code"),
              "-lean-root", "github.com/rstyled/gstyle=Gstyle", "-dir", str(source_root), profile.go_package, *[package for _, package in profile.bindings]],
-            ROOT, f"{log_prefix}-{directory}.log", report=profile.report)
+            ROOT, f"{log_prefix}-{directory}.log", report=profile.report, environment=environment)
 
 
 def seed_build(lean):
@@ -1125,6 +1176,9 @@ def check_mutation(profile, goose, proofgen, item):
     name, mutation = item
     scratch = profile.report / ".scratch"
     before, after = mutation[:2]
+    environment = dict(os.environ)
+    environment.setdefault("LEAN_NUM_THREADS", "1")
+    environment.setdefault("GOMAXPROCS", "1")
     source = ROOT / mutation[2] if len(mutation) == 3 else profile.source
     if source not in profile.sources:
         raise RuntimeError(f"mutation source is not bound: {name}")
@@ -1149,10 +1203,10 @@ def check_mutation(profile, goose, proofgen, item):
         seed_build(lean)
         target.write_text(original.replace(before, after))
         if source.suffix == ".go":
-            generate(profile, goose, proofgen, work / "go", lean / "Gstyle", name)
+            generate(profile, goose, proofgen, work / "go", lean / "Gstyle", name, environment=environment)
         proof_file = profile.mutation_modules.get(name, profile.proof_file)
         module = proof_file.removesuffix(".lean").replace("/", ".")
-        run(["lake", "build", module], lean, f"{name}-proof.log", expect_failure=True, report=profile.report, proof_file=proof_file)
+        run(["lake", "build", module], lean, f"{name}-proof.log", expect_failure=True, report=profile.report, proof_file=proof_file, environment=environment)
     print(f"REJECTED {name}", flush=True)
     return name
 
@@ -1176,10 +1230,18 @@ def shard_mutations(mutations, shard):
             if position % count == index}
 
 
+def mutation_workers():
+    raw = os.environ.get("GSTYLE_MUTATION_WORKERS", "2")
+    if raw not in {"1", "2", "3", "4"}:
+        raise RuntimeError("GSTYLE_MUTATION_WORKERS must be between 1 and 4")
+    cpus = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else (os.cpu_count() or 1)
+    return min(int(raw), cpus)
+
+
 def check_mutations(profile, goose, proofgen):
     (profile.report / ".scratch").mkdir(exist_ok=True)
     # Each worker owns its Go sources and Lean build. Dependencies are prebuilt.
-    with ThreadPoolExecutor(max_workers=2) as pool:
+    with ThreadPoolExecutor(max_workers=mutation_workers()) as pool:
         return list(pool.map(lambda item: check_mutation(profile, goose, proofgen, item),
                              profile.mutations.items()))
 
@@ -1196,14 +1258,32 @@ def source_hashes(paths):
     return {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
 
 
-def main(profile=None):
-    profile = profile or length_profile()
-    report = profile.report
-    report.mkdir(parents=True, exist_ok=True)
-    success = report / "result.json"
-    success.unlink(missing_ok=True)
-    bound_sources = source_hashes(profile.sources)
-    run(["lake", "build"], PROJECT, "build.log", report=report)
+def baseline_modules(profile):
+    # Accept plain project imports and line comments in audit headers. Reject
+    # other header forms instead of silently missing an audited dependency.
+    modules = set()
+    for line in (PROJECT / profile.audit).read_text().splitlines():
+        line = line.split("--", 1)[0].strip()
+        if not line:
+            continue
+        if line.startswith("#print axioms "):
+            break
+        if not re.fullmatch(r"import(?:\s+Gstyle(?:\.[A-Za-z_][A-Za-z_0-9]*)+)+", line):
+            raise RuntimeError(f"unsupported audit import: {line}")
+        modules.update(line.split()[1:])
+    if not modules:
+        raise RuntimeError(f"audit has no project imports: {profile.audit}")
+    for proof in (profile.proof_file, *profile.mutation_modules.values()):
+        modules.add(proof.removesuffix(".lean").replace("/", "."))
+    for module in modules:
+        if not (PROJECT / (module.replace(".", "/") + ".lean")).is_file():
+            raise RuntimeError(f"missing baseline module: {module}")
+    if profile.umbrella:
+        modules.add("Gstyle")
+    return sorted(modules)
+
+
+def check_dependencies(report):
     perennial = PROJECT / ".lake/packages/perennial"
     manifest = json.loads((PROJECT / "lake-manifest.json").read_text())
     for package in manifest["packages"]:
@@ -1212,35 +1292,77 @@ def main(profile=None):
         if revision != package["rev"]:
             raise RuntimeError(f"dependency revision differs: {package['name']}")
         run(["git", "diff", "--exit-code", "HEAD"], path, f"{package['name']}-diff.log", report=report)
+    return perennial
+
+
+def build_generators(perennial, report):
     goose, proofgen = report / "goose", report / "proofgen"
     for tool in (goose, proofgen):
         run(["go", "build", "-buildvcs=false", "-o", str(tool), f"./goose/cmd/{tool.name}"],
             perennial, f"build-{tool.name}.log", report=report)
+    return goose, proofgen
+
+
+def write_result(profile, bound_sources, mutants, shard, reused, key):
+    (profile.report / "result.json").write_text(json.dumps({
+        "sources_sha256": bound_sources,
+        "verified": profile.verified, "unverified": profile.unverified,
+        "rejected_mutations": mutants,
+        "mutation_workers": mutation_workers(),
+        "mutation_evidence": "reused" if reused else "executed",
+        "mutation_cache_key": key,
+        "mutation_shard": {"index": shard[0], "count": shard[1], "total_mutations": len(profile.mutations)},
+    }, indent=2) + "\n")
+    print(f"Mutation evidence: {'reused' if reused else 'executed'}", flush=True)
+    print(f"PASS {profile.verified}; source binding, axiom audit, and {len(mutants)} mutations (shard {shard[0]}/{shard[1]})", flush=True)
+
+
+def main(profile=None):
+    profile = profile or length_profile()
+    report = profile.report
+    report.mkdir(parents=True, exist_ok=True)
+    success = report / "result.json"
+    success.unlink(missing_ok=True)
+    mutation_workers()
+    bound_sources = source_hashes(profile.sources)
+    run(["lake", "build", *baseline_modules(profile)], PROJECT, "build.log", report=report)
+    perennial = check_dependencies(report)
+    goose, proofgen = build_generators(perennial, report)
     generated = report / "regenerated/Gstyle"
     generate(profile, goose, proofgen, ROOT, generated, "source")
     check_generated(profile, generated)
     check_axioms(run(["lake", "env", "lean", profile.audit], PROJECT, "axioms.log", report=report), profile.theorems)
     shard = mutation_shard()
     mutations = shard_mutations(profile.mutations, shard)
-    mutants = check_mutations(replace(profile, mutations=mutations), goose, proofgen)
+    selected = replace(profile, mutations=mutations)
+    cache_path = os.environ.get("GSTYLE_MUTATION_CACHE")
+    cache = Path(cache_path) if cache_path else None
+    key = mutation_cache.fingerprint(PROJECT, ROOT, selected, (goose, proofgen)) if cache else None
+    reused = bool(cache and mutation_cache.restore(cache, key, selected, proof_rejected))
+    mutants = list(mutations) if reused else check_mutations(selected, goose, proofgen)
     if source_hashes(profile.sources) != bound_sources:
         raise RuntimeError("bound source changed during verification")
-    success.write_text(json.dumps({
-        "sources_sha256": bound_sources,
-        "verified": profile.verified, "unverified": profile.unverified,
-        "rejected_mutations": mutants,
-        "mutation_shard": {"index": shard[0], "count": shard[1], "total_mutations": len(profile.mutations)},
-    }, indent=2) + "\n")
-    print(f"PASS {profile.verified}; source binding, axiom audit, and {len(mutants)} mutations (shard {shard[0]}/{shard[1]})", flush=True)
+    if cache:
+        if mutation_cache.fingerprint(PROJECT, ROOT, selected, (goose, proofgen)) != key:
+            raise RuntimeError("verification inputs changed during mutation checks")
+        if not reused:
+            mutation_cache.save(cache, key, selected)
+    if cache:
+        shutil.copy2(cache / "evidence.json", report / "mutation-evidence.json")
+    write_result(profile, bound_sources, mutants, shard, reused, key)
+
+
+
+PROFILE_FACTORIES = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile, ("--shared-flow",): shared_flow_profile, ("--assume",): assume_profile}
 
 
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile, ("--shared-flow",): shared_flow_profile, ("--assume",): assume_profile}
+
         arguments = tuple(sys.argv[1:])
-        if arguments not in profiles:
+        if arguments not in PROFILE_FACTORIES:
             raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison | --one-sided | --shared-flow | --assume]")
-        main(profiles[arguments]())
+        main(PROFILE_FACTORIES[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

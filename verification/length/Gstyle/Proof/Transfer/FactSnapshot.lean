@@ -1,6 +1,7 @@
 module
 public import Gstyle.Proof.Transfer.QuerySnapshot
-public import Gstyle.Proof.Transfer.SymbolModel
+public import Gstyle.Proof.Transfer.Facts
+public import Gstyle.Proof.Transfer.Operator
 @[expose] public section
 noncomputable section
 namespace Perennial

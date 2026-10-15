@@ -1,5 +1,5 @@
 module
-public import Gstyle.Proof.RuntimeValue
+public import Gstyle.Proof.RuntimeValueModel
 public import Gstyle.GeneratedProof.github_com.rstyled.gstyle.domain.pdg.query
 @[expose] public section
 noncomputable section

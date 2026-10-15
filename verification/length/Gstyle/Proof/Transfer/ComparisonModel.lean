@@ -1,6 +1,6 @@
 module
-public import Gstyle.Proof.Transfer.ValueResolution
-public import Gstyle.Proof.Transfer.Numeric
+public import Gstyle.Proof.Transfer.QuerySnapshot
+public import Gstyle.Proof.Transfer.NumericModel
 @[expose] public section
 noncomputable section
 namespace Perennial

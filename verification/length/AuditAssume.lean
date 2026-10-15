@@ -16,3 +16,8 @@ import Gstyle.Proof.Transfer.Assume
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.finiteAssume_sound
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_finite_assume
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_finite_assume_sound
+
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_assume_parentheses
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_assume_negation
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_assume_logical
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_assume_comparison
