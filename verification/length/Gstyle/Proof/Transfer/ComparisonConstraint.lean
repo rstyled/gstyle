@@ -94,8 +94,11 @@ theorem wp_constrain_snapshot_numeric_any (receiver : Loc) (s : QuerySnapshot) (
   | absent hout ha =>
     subst active
     simp only [Bool.false_and, Bool.false_eq_true, ite_false, constraintState]
+    have htrackedOut : key = W32 0 ∨ s.tracked.length < uint.Z key := by
+      rw [ht]
+      try exact hout
     wp_start_folded as ⟨Hsnapshot, Hstate⟩
-    wp_apply wp_constrain_snapshot_invalid receiver s state key op bound (by rw [ht]; try exact hout)
+    wp_apply wp_constrain_snapshot_invalid receiver s state key op bound htrackedOut
       $$ [Hsnapshot] with Hsnapshot
     · iexact Hsnapshot
     wp_end

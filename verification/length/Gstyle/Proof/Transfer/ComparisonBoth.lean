@@ -76,11 +76,11 @@ theorem wp_comparison_both_numeric_true (receiver : Loc) (s : QuerySnapshot) (st
   try wp_auto
   wp_apply wp_value_resolve receiver s state m sf lf left c.leftValue wf hlvalid hparse hlvalue
     $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-  · iframe Hsnapshot Hstate
+  · try iframe Hsnapshot Hstate
   try wp_auto
   wp_apply wp_value_resolve receiver s state m sf rf right c.rightValue wf hrvalid hparse hrvalue
     $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-  · iframe Hsnapshot Hstate
+  · try iframe Hsnapshot Hstate
   try wp_auto
   wp_apply wp_symbol_resolve receiver s sf left c.leftKey wf.symbols hlvalid hlsymbol
     $$ [Hsnapshot] with Hsnapshot
@@ -90,13 +90,13 @@ theorem wp_comparison_both_numeric_true (receiver : Loc) (s : QuerySnapshot) (st
   · exfalso; contradiction
   · wp_apply wp_constrain_snapshot_numeric_any receiver s state m c.leftKey c.leftKind c.operator c.leftChanging c.leftActive c.rightValue
       wf.unstable ht hleftMetadata hnilr $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-    · iframe Hsnapshot Hstate
+    · try iframe Hsnapshot Hstate
     by_cases hlreject : (c.leftActive && constraintRejected c.leftKind c.leftChanging c.leftKey m c.operator c.rightValue) = true
     ·
       simp only [hlreject, Bool.true_or, ite_true]
       try wp_auto
       wp_end
-      all_goals iframe Hglobal Hoperators Hsnapshot Hstate
+      all_goals try iframe Hglobal Hoperators Hsnapshot Hstate
     · have hfalse : (c.leftActive && constraintRejected c.leftKind c.leftChanging c.leftKey m c.operator c.rightValue) = false := Bool.eq_false_iff.mpr hlreject
       simp only [hfalse, Bool.false_eq_true, Bool.false_or, ite_false, ite_true]
       try wp_auto
@@ -117,10 +117,10 @@ theorem wp_comparison_both_numeric_true (receiver : Loc) (s : QuerySnapshot) (st
             (constraintState c.leftActive c.leftKind c.leftChanging c.leftKey m c.operator c.rightValue)
             c.rightKey c.rightKind c.reversed c.rightChanging c.rightActive c.leftValue
             wf.unstable ht hrightMetadata hnill $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-          · iframe Hsnapshot Hstate
+          · try iframe Hsnapshot Hstate
           try wp_auto
           wp_end
-          all_goals iframe Hglobal Hoperators Hsnapshot Hstate
+          all_goals try iframe Hglobal Hoperators Hsnapshot Hstate
 
 theorem wp_comparison_both_numeric_false (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
     (ref left right : w32) (row : GoArray w32 2) (c : NumericComparison)
@@ -168,11 +168,11 @@ theorem wp_comparison_both_numeric_false (receiver : Loc) (s : QuerySnapshot) (s
   try wp_auto
   wp_apply wp_value_resolve receiver s state m sf lf left c.leftValue wf hlvalid hparse hlvalue
     $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-  · iframe Hsnapshot Hstate
+  · try iframe Hsnapshot Hstate
   try wp_auto
   wp_apply wp_value_resolve receiver s state m sf rf right c.rightValue wf hrvalid hparse hrvalue
     $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-  · iframe Hsnapshot Hstate
+  · try iframe Hsnapshot Hstate
   try wp_auto
   wp_apply wp_symbol_resolve receiver s sf left c.leftKey wf.symbols hlvalid hlsymbol
     $$ [Hsnapshot] with Hsnapshot
@@ -182,13 +182,13 @@ theorem wp_comparison_both_numeric_false (receiver : Loc) (s : QuerySnapshot) (s
   · exfalso; contradiction
   · wp_apply wp_constrain_snapshot_numeric_any receiver s state m c.leftKey c.leftKind c.operator c.leftChanging c.leftActive c.rightValue
       wf.unstable ht hleftMetadata hnilr $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-    · iframe Hsnapshot Hstate
+    · try iframe Hsnapshot Hstate
     by_cases hlreject : (c.leftActive && constraintRejected c.leftKind c.leftChanging c.leftKey m c.operator c.rightValue) = true
     ·
       simp only [hlreject, Bool.true_or, ite_true]
       try wp_auto
       wp_end
-      all_goals iframe HinvGlobal HinvOperators Hglobal Hoperators Hsnapshot Hstate
+      all_goals try iframe HinvGlobal HinvOperators Hglobal Hoperators Hsnapshot Hstate
     · have hfalse : (c.leftActive && constraintRejected c.leftKind c.leftChanging c.leftKey m c.operator c.rightValue) = false := Bool.eq_false_iff.mpr hlreject
       simp only [hfalse, Bool.false_eq_true, Bool.false_or, ite_false, ite_true]
       try wp_auto
@@ -209,10 +209,10 @@ theorem wp_comparison_both_numeric_false (receiver : Loc) (s : QuerySnapshot) (s
             (constraintState c.leftActive c.leftKind c.leftChanging c.leftKey m c.operator c.rightValue)
             c.rightKey c.rightKind c.reversed c.rightChanging c.rightActive c.leftValue
             wf.unstable ht hrightMetadata hnill $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-          · iframe Hsnapshot Hstate
+          · try iframe Hsnapshot Hstate
           try wp_auto
           wp_end
-          all_goals iframe HinvGlobal HinvOperators Hglobal Hoperators Hsnapshot Hstate
+          all_goals try iframe HinvGlobal HinvOperators Hglobal Hoperators Hsnapshot Hstate
 
 end proof
 end github_com.rstyled.gstyle.domain.runtimeguard
