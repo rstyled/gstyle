@@ -18,10 +18,10 @@ theorem wp_operand (receiver : Loc) (view : graphView) (rows : List (GoArray w32
     (href : 0 < uint.Z ref ∧ uint.Z ref ≤ rows.length)
     (hp : 0 ≤ sint.Z position ∧ sint.Z position < 2)
     (hrow : rows[(uint.Z ref - 1).toNat]? = some row)
-    (hvalue : row.arr[(sint.Z position).toNat]? = some value) :
-    {{ isPkgInit (PROP := IProp GF) pkg ∗ (receiver ↦ view ∗ view.operands' ↦* rows) }}
+    (hvalue : row.arr[(sint.Z position).toNat]? = some value) (dq : DFrac := DFrac.own 1) :
+    {{ isPkgInit (PROP := IProp GF) pkg ∗ (receiver ↦{dq} view ∗ view.operands' ↦*{dq} rows) }}
       (App (App (Val #(methods (go.PointerType graphView.ty) go!"operand" #receiver)) (Val #ref)) (Val #position))
-    {{ RET #value; receiver ↦ view ∗ view.operands' ↦* rows }} := by
+    {{ RET #value; receiver ↦{dq} view ∗ view.operands' ↦*{dq} rows }} := by
   wp_start as ⟨Hview, Hrows⟩
   ihave %Hlen := ownSlice_len $$ Hrows
   try wp_auto
@@ -29,10 +29,10 @@ theorem wp_operand (receiver : Loc) (view : graphView) (rows : List (GoArray w32
   have Hi : sint.Z (W64 (uint.Z (ref - W32 1))) = uint.Z ref - 1 := by obtain ⟨_, _⟩ := href; word
   rw [Hi]
   rw [ite_eq_left (by obtain ⟨_, _⟩ := href; constructor <;> word : 0 ≤ uint.Z ref - 1 ∧ uint.Z ref - 1 < sint.Z view.operands'.len)]
-  icases ownSlice_elem_acc (uint.Z ref - 1) row view.operands' (DFrac.own 1) rows (by omega) hrow $$ Hrows with ⟨Hrow, Hrows⟩
+  icases ownSlice_elem_acc (uint.Z ref - 1) row view.operands' dq rows (by omega) hrow $$ Hrows with ⟨Hrow, Hrows⟩
   try wp_auto
   rw [ite_eq_left hp]
-  icases array_acc (sliceIndexRef (GoArray w32 2) (uint.Z ref - 1) view.operands') (sint.Z position) (DFrac.own 1) 2 row value hp.1 hvalue $$ Hrow with ⟨Hvalue, Hrow⟩
+  icases array_acc (sliceIndexRef (GoArray w32 2) (uint.Z ref - 1) view.operands') (sint.Z position) dq 2 row value hp.1 hvalue $$ Hrow with ⟨Hvalue, Hrow⟩
   try wp_auto
   ihave Hrow := Hrow $$ %value [Hvalue]
   · iexact Hvalue
@@ -71,18 +71,18 @@ def ownsBranch (m : Option StateData) (l : Loc) : IProp GF :=
   | some m => iprop(l ↦$ m)
 
 def branchResources (receiver : Loc) (view : graphView) (rows : List (GoArray w32 2))
-    (kinds : List GoString) (unstable : List Bool) (extra : IProp GF) : IProp GF :=
-  iprop(receiver ↦ view ∗ view.operands' ↦* rows ∗ view.kinds' ↦* kinds ∗ view.unstable' ↦* unstable ∗ extra)
+    (kinds : List GoString) (unstable : List Bool) (extra : IProp GF) (dq : DFrac := DFrac.own 1) : IProp GF :=
+  iprop(receiver ↦{dq} view ∗ view.operands' ↦*{dq} rows ∗ view.kinds' ↦*{dq} kinds ∗ view.unstable' ↦*{dq} unstable ∗ extra)
 
 def branchChildContract (receiver : Loc) (view : graphView) (rows : List (GoArray w32 2))
     (kinds : List GoString) (unstable : List Bool) (kind : w32 → GoString) (changing : w32 → Bool)
-    (extra : IProp GF) (child : w32) (truth : Bool) (step : StateData → Option StateData) : Prop :=
+    (extra : IProp GF) (child : w32) (truth : Bool) (step : StateData → Option StateData) (dq : DFrac := DFrac.own 1) : Prop :=
   ∀ (state : Loc) (m : StateData), validBranchState kinds unstable kind changing m →
     {{ isPkgInit (PROP := IProp GF) pkg ∗ isPkgInit (PROP := IProp GF) pkg_id.github_com.rstyled.gstyle.domain.runtimeguard.interval ∗
-      (branchResources receiver view rows kinds unstable extra ∗ state ↦$ m) }}
+      (branchResources receiver view rows kinds unstable extra dq ∗ state ↦$ m) }}
       (App (App (App (Val #(methods (go.PointerType graphView.ty) go!"assume" #receiver)) (Val #child)) (Val #truth)) (Val #state))
     {{ (out : Loc), RET #out;
-      branchResources receiver view rows kinds unstable extra ∗ ownsBranch (step m) out ∗
+      branchResources receiver view rows kinds unstable extra dq ∗ ownsBranch (step m) out ∗
       ⌜validBranchOption kinds unstable kind changing (step m)⌝ }}
 
 variable [FuncUnfold copyState [] copyState.impl]
@@ -97,13 +97,14 @@ theorem wp_logical (receiver : Loc) (view : graphView) (rows : List (GoArray w32
     (hl : row.arr[0]? = some leftRef) (hr : row.arr[1]? = some rightRef)
     (hlen : unstable.length = kinds.length)
     (hm : validBranchState kinds unstable kind changing m)
-    (hleft : branchChildContract receiver view rows kinds unstable kind changing extra leftRef truth left)
-    (hright : branchChildContract receiver view rows kinds unstable kind changing extra rightRef truth right) :
+    {dq : DFrac}
+    (hleft : branchChildContract receiver view rows kinds unstable kind changing extra leftRef truth left dq)
+    (hright : branchChildContract receiver view rows kinds unstable kind changing extra rightRef truth right dq) :
     {{ isPkgInit (PROP := IProp GF) pkg ∗ isPkgInit (PROP := IProp GF) pkg_id.github_com.rstyled.gstyle.domain.runtimeguard.interval ∗
-      (branchResources receiver view rows kinds unstable extra ∗ state ↦$ m) }}
+      (branchResources receiver view rows kinds unstable extra dq ∗ state ↦$ m) }}
       (App (App (App (App (Val #(methods (go.PointerType graphView.ty) go!"logical" #receiver)) (Val #ref)) (Val #op)) (Val #truth)) (Val #state))
     {{ (out : Loc), RET #out; ∃ (result : Option StateData),
-      branchResources receiver view rows kinds unstable extra ∗ ownsBranch result out ∗
+      branchResources receiver view rows kinds unstable extra dq ∗ ownsBranch result out ∗
       (if sequentialBranch op truth then True else state ↦$ m) ∗
       ⌜branchResult kind changing op truth left right m result ∧ validBranchOption kinds unstable kind changing result⌝ }} := by
   wp_start as ⟨Hctx, Hstate⟩
@@ -115,7 +116,7 @@ theorem wp_logical (receiver : Loc) (view : graphView) (rows : List (GoArray w32
     unfold sequentialBranch at hcond
     rw [hcond]
     try wp_auto
-    wp_apply wp_operand receiver view rows ref (W64 0) row leftRef href (by decide) hrow hl $$ [Hview Hrows] with ⟨Hview, Hrows⟩
+    wp_apply wp_operand receiver view rows ref (W64 0) row leftRef href (by decide) hrow hl dq $$ [Hview Hrows] with ⟨Hview, Hrows⟩
     · iframe
     wp_apply wp_copyState state m $$ [Hstate] with %leftCopy ⟨Hstate, Hcopy⟩
     · iframe
@@ -123,7 +124,7 @@ theorem wp_logical (receiver : Loc) (view : graphView) (rows : List (GoArray w32
     · unfold branchResources; iframe
     iunfold branchResources at Hctx
     icases Hctx with ⟨Hview, Hrows, Hkinds, Hunstable, Hextra⟩
-    wp_apply wp_operand receiver view rows ref (W64 1) row rightRef href (by decide) hrow hr $$ [Hview Hrows] with ⟨Hview, Hrows⟩
+    wp_apply wp_operand receiver view rows ref (W64 1) row rightRef href (by decide) hrow hr dq $$ [Hview Hrows] with ⟨Hview, Hrows⟩
     · iframe
     wp_apply wp_copyState state m $$ [Hstate] with %rightCopy ⟨Hstate, Hcopy⟩
     · iframe
@@ -195,7 +196,7 @@ theorem wp_logical (receiver : Loc) (view : graphView) (rows : List (GoArray w32
           rcases hk with hk | hk
           · exact hp key hk
           · exact hn key hk
-        wp_apply wp_join receiver view kinds unstable kind changing leftLoc rightLoc p n hlen hmeta $$ [Hview Hkinds Hunstable Hleft Hright]
+        wp_apply wp_join receiver view kinds unstable kind changing leftLoc rightLoc p n hlen hmeta dq $$ [Hview Hkinds Hunstable Hleft Hright]
           with %out ⟨%om, Hview, Hkinds, Hunstable, Hleft, Hright, Hout, %Hlookup⟩
         · iframe
         wp_end
@@ -211,7 +212,7 @@ theorem wp_logical (receiver : Loc) (view : graphView) (rows : List (GoArray w32
     unfold sequentialBranch at hcond
     rw [hcond]
     try wp_auto
-    wp_apply wp_operand receiver view rows ref (W64 0) row leftRef href (by decide) hrow hl $$ [Hview Hrows] with ⟨Hview, Hrows⟩
+    wp_apply wp_operand receiver view rows ref (W64 0) row leftRef href (by decide) hrow hl dq $$ [Hview Hrows] with ⟨Hview, Hrows⟩
     · iframe
     wp_apply (hleft state m hm) $$ [Hview Hrows Hkinds Hunstable Hextra Hstate] with %leftLoc ⟨Hctx, Hleft, %HleftValid⟩
     · unfold branchResources; iframe
@@ -235,7 +236,7 @@ theorem wp_logical (receiver : Loc) (view : graphView) (rows : List (GoArray w32
       · contradiction
       · iunfold branchResources at Hctx
         icases Hctx with ⟨Hview, Hrows, Hkinds, Hunstable, Hextra⟩
-        wp_apply wp_operand receiver view rows ref (W64 1) row rightRef href (by decide) hrow hr $$ [Hview Hrows] with ⟨Hview, Hrows⟩
+        wp_apply wp_operand receiver view rows ref (W64 1) row rightRef href (by decide) hrow hr dq $$ [Hview Hrows] with ⟨Hview, Hrows⟩
         · iframe
         wp_apply (hright leftLoc n (by simpa [hleftResult, validBranchOption] using HleftValid)) $$ [Hview Hrows Hkinds Hunstable Hextra Hleft] with %rightLoc ⟨Hctx, Hright, %HrightValid⟩
         · unfold branchResources; iframe
@@ -255,8 +256,9 @@ theorem wp_logical_sound (receiver : Loc) (view : graphView) (rows : List (GoArr
     (hl : row.arr[0]? = some leftRef) (hr : row.arr[1]? = some rightRef)
     (hlen : unstable.length = kinds.length)
     (hm : validBranchState kinds unstable kind changing m)
-    (hleft : branchChildContract receiver view rows kinds unstable kind changing extra leftRef truth left)
-    (hright : branchChildContract receiver view rows kinds unstable kind changing extra rightRef truth right)
+    {dq : DFrac}
+    (hleft : branchChildContract receiver view rows kinds unstable kind changing extra leftRef truth left dq)
+    (hright : branchChildContract receiver view rows kinds unstable kind changing extra rightRef truth right dq)
     (env : w32 → Int) (lhs rhs : Bool)
     (hop : op = go!"&&" ∨ op = go!"||")
     (htruth : (if op = go!"&&" then lhs && rhs else lhs || rhs) = truth)
@@ -264,10 +266,10 @@ theorem wp_logical_sound (receiver : Loc) (view : graphView) (rows : List (GoArr
     (hleftSound : ∀ m, stateDenotes kind changing m env → lhs = truth → branchDenotes kind changing (left m) env)
     (hrightSound : ∀ m, stateDenotes kind changing m env → rhs = truth → branchDenotes kind changing (right m) env) :
     {{ isPkgInit (PROP := IProp GF) pkg ∗ isPkgInit (PROP := IProp GF) pkg_id.github_com.rstyled.gstyle.domain.runtimeguard.interval ∗
-      (branchResources receiver view rows kinds unstable extra ∗ state ↦$ m) }}
+      (branchResources receiver view rows kinds unstable extra dq ∗ state ↦$ m) }}
       (App (App (App (App (Val #(methods (go.PointerType graphView.ty) go!"logical" #receiver)) (Val #ref)) (Val #op)) (Val #truth)) (Val #state))
     {{ (out : Loc), RET #out; ∃ (result : Option StateData),
-      branchResources receiver view rows kinds unstable extra ∗ ownsBranch result out ∗
+      branchResources receiver view rows kinds unstable extra dq ∗ ownsBranch result out ∗
       (if sequentialBranch op truth then True else state ↦$ m) ∗
       ⌜branchDenotes kind changing result env ∧ validBranchOption kinds unstable kind changing result⌝ }} := by
   wp_start_folded as Hpre

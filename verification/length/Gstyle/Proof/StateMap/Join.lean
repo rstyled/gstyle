@@ -20,13 +20,13 @@ theorem wp_join (receiver : Loc) (view : graphView) (kinds : List GoString) (uns
     (hmeta : ∀ key, (p !! key).isSome ∨ (n !! key).isSome →
       (0 < uint.Z key ∧ uint.Z key ≤ kinds.length) ∧
       kinds[(uint.Z key - 1).toNat]? = some (kind key) ∧
-      unstable[(uint.Z key - 1).toNat]? = some (changing key)) :
+      unstable[(uint.Z key - 1).toNat]? = some (changing key)) (dq : DFrac := DFrac.own 1) :
     {{ isPkgInit (PROP := IProp GF) pkg_id.github_com.rstyled.gstyle.domain.runtimeguard ∗
       isPkgInit (PROP := IProp GF) pkg_id.github_com.rstyled.gstyle.domain.runtimeguard.interval ∗
-      (receiver ↦ view ∗ view.kinds' ↦* kinds ∗ view.unstable' ↦* unstable ∗ previous ↦$ p ∗ next ↦$ n) }}
+      (receiver ↦{dq} view ∗ view.kinds' ↦*{dq} kinds ∗ view.unstable' ↦*{dq} unstable ∗ previous ↦$ p ∗ next ↦$ n) }}
       (App (App (Val #(methods (go.PointerType graphView.ty) go!"join" #receiver)) (Val #previous)) (Val #next))
     {{ (out : Loc), RET #out; ∃ om : StateData,
-      receiver ↦ view ∗ view.kinds' ↦* kinds ∗ view.unstable' ↦* unstable ∗ previous ↦$ p ∗ next ↦$ n ∗
+      receiver ↦{dq} view ∗ view.kinds' ↦*{dq} kinds ∗ view.unstable' ↦*{dq} unstable ∗ previous ↦$ p ∗ next ↦$ n ∗
       out ↦$ om ∗ ⌜∀ key, om !! key = joinLookup kind changing p n key⌝ }} := by
   wp_start as ⟨Hview, Hkinds, Hunstable, Hprevious, Hnext⟩
   ihave %Hpnon := ownMap_not_nil previous p (DFrac.own 1) $$ Hprevious
@@ -39,7 +39,7 @@ theorem wp_join (receiver : Loc) (view : graphView) (kinds : List GoString) (uns
   wp_bind (App (App (Val (map.forRange _ _)) _) _)
   iapply (wp_map_for_range (fun keys i => iprop(∃ (sv : w32) (vv : Value) (om : StateData),
     symbol_ptr ↦ sv ∗ value_ptr ↦ vv ∗ v_ptr ↦ receiver ∗ previous_ptr ↦ previous ∗ next_ptr ↦ next ∗ out_ptr ↦ out ∗
-    receiver ↦ view ∗ view.kinds' ↦* kinds ∗ view.unstable' ↦* unstable ∗ next ↦$ n ∗ out ↦$ om ∗
+    receiver ↦{dq} view ∗ view.kinds' ↦*{dq} kinds ∗ view.unstable' ↦*{dq} unstable ∗ next ↦$ n ∗ out ↦$ om ∗
     ⌜0 ≤ i ∧ prefixMap keys i (leftLookup kind changing p n) om⌝))) $$ Hprevious
   iintro %keys %Hkeys
   isplitl [symbol value v previous next out Hview Hkinds Hunstable Hnext Hout]
@@ -53,7 +53,7 @@ theorem wp_join (receiver : Loc) (view : graphView) (kinds : List GoString) (uns
       ⟨%sv, %vv, %om, Hsymbol, Hvalue, Hvptr, Hpptr, Hnptr, Hoptr, Hview, Hkinds, Hunstable, Hnext, Hout, %Hi, %Hprefix⟩
     obtain ⟨Hvalid, Hkind, Hunst⟩ := hmeta key (Or.inl (by simp [Hlookup]))
     wp_auto
-    wp_apply wp_binding receiver view kinds unstable next n key (kind key) (changing key) Hvalid Hkind hlen Hunst
+    wp_apply wp_binding receiver view kinds unstable next n key (kind key) (changing key) Hvalid Hkind hlen Hunst dq
       $$ [Hview Hkinds Hunstable Hnext] with ⟨Hview, Hkinds, Hunstable, Hnext⟩
     · iframe
     wp_apply wp_merge value (bindingValue (kind key) (changing key) key n) $$ []
@@ -85,7 +85,7 @@ theorem wp_join (receiver : Loc) (view : graphView) (kinds : List GoString) (uns
   wp_bind (App (App (Val (map.forRange _ _)) _) _)
   iapply (wp_map_for_range (fun keys i => iprop(∃ (sv : w32) (vv : Value) (om : StateData),
     symbol_ptr ↦ sv ∗ value_ptr ↦ vv ∗ v_ptr ↦ receiver ∗ previous_ptr ↦ previous ∗ out_ptr ↦ out ∗
-    receiver ↦ view ∗ view.kinds' ↦* kinds ∗ view.unstable' ↦* unstable ∗ previous ↦$ p ∗ out ↦$ om ∗
+    receiver ↦{dq} view ∗ view.kinds' ↦*{dq} kinds ∗ view.unstable' ↦*{dq} unstable ∗ previous ↦$ p ∗ out ↦$ om ∗
     ⌜0 ≤ i ∧ overlayPrefix keys i (joinLookup kind changing p n) (leftLookup kind changing p n) om⌝))) $$ Hnext
   iintro %nkeys %Hnkeys
   isplitl [symbol value Hvptr Hpptr Hoptr Hview Hkinds Hunstable Hprevious Hout]
@@ -114,7 +114,7 @@ theorem wp_join (receiver : Loc) (view : graphView) (kinds : List GoString) (uns
       simp [Hp]
       wp_auto
       obtain ⟨Hvalid, Hkind, Hunst⟩ := hmeta key (Or.inr (by simp [Hlookup]))
-      wp_apply wp_binding receiver view kinds unstable previous p key (kind key) (changing key) Hvalid Hkind hlen Hunst
+      wp_apply wp_binding receiver view kinds unstable previous p key (kind key) (changing key) Hvalid Hkind hlen Hunst dq
         $$ [Hview Hkinds Hunstable Hprevious] with ⟨Hview, Hkinds, Hunstable, Hprevious⟩
       · iframe
       wp_apply wp_merge value (bindingValue (kind key) (changing key) key p) $$ []
@@ -150,19 +150,19 @@ theorem wp_join_sound (receiver : Loc) (view : graphView) (kinds : List GoString
     (hmeta : ∀ key, (p !! key).isSome ∨ (n !! key).isSome →
       (0 < uint.Z key ∧ uint.Z key ≤ kinds.length) ∧
       kinds[(uint.Z key - 1).toNat]? = some (kind key) ∧
-      unstable[(uint.Z key - 1).toNat]? = some (changing key)) :
+      unstable[(uint.Z key - 1).toNat]? = some (changing key)) (dq : DFrac := DFrac.own 1) :
     {{ isPkgInit (PROP := IProp GF) pkg_id.github_com.rstyled.gstyle.domain.runtimeguard ∗
       isPkgInit (PROP := IProp GF) pkg_id.github_com.rstyled.gstyle.domain.runtimeguard.interval ∗
-      (receiver ↦ view ∗ view.kinds' ↦* kinds ∗ view.unstable' ↦* unstable ∗ previous ↦$ p ∗ next ↦$ n) }}
+      (receiver ↦{dq} view ∗ view.kinds' ↦*{dq} kinds ∗ view.unstable' ↦*{dq} unstable ∗ previous ↦$ p ∗ next ↦$ n) }}
       (App (App (Val #(methods (go.PointerType graphView.ty) go!"join" #receiver)) (Val #previous)) (Val #next))
     {{ (out : Loc), RET #out; ∃ om : StateData,
-      receiver ↦ view ∗ view.kinds' ↦* kinds ∗ view.unstable' ↦* unstable ∗ previous ↦$ p ∗ next ↦$ n ∗ out ↦$ om ∗
+      receiver ↦{dq} view ∗ view.kinds' ↦*{dq} kinds ∗ view.unstable' ↦*{dq} unstable ∗ previous ↦$ p ∗ next ↦$ n ∗ out ↦$ om ∗
       ⌜(∀ key, (om !! key).isSome = ((p !! key).isSome || (n !! key).isSome)) ∧
         ∀ key x, (interval.contains (bounds (bindingValue (kind key) (changing key) key p)) x ∨
           interval.contains (bounds (bindingValue (kind key) (changing key) key n)) x) →
           interval.contains (bounds (bindingValue (kind key) (changing key) key om)) x⌝ }} := by
   wp_start_folded as Hinputs
-  wp_apply wp_join receiver view kinds unstable kind changing previous next p n hlen hmeta $$ [Hinputs]
+  wp_apply wp_join receiver view kinds unstable kind changing previous next p n hlen hmeta dq $$ [Hinputs]
     with %out ⟨%om, Hview, Hkinds, Hunstable, Hprevious, Hnext, Hout, %Hlookup⟩
   · iframe
   wp_end

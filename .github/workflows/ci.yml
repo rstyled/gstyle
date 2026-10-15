@@ -201,6 +201,9 @@ jobs:
           - profile: one-sided
             target: verify-one-sided
             shard: 0/1
+          - profile: shared-flow
+            target: verify-shared-flow
+            shard: 0/1
     steps:
       - name: Checkout
         uses: actions/checkout@v6

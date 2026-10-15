@@ -1041,6 +1041,31 @@ def one_sided_profile():
                    unverified=base.unverified + ("full condition/CFG and transfer composition",))
 
 
+def shared_flow_profile():
+    base = one_sided_profile()
+    proof = "Gstyle/Proof/Transfer/BranchSnapshot.lean"
+    branch = "Gstyle/Proof/Transfer/Branch.lean"
+    join = "Gstyle/Proof/StateMap/Join.lean"
+    changes = {
+        "shared-join-mutates-kinds": ("out[symbol] = value.merge(v.binding(symbol, next))", "out[symbol] = value.merge(v.binding(symbol, next)); v.kinds[symbol-1] = \"\"", "domain/runtimeguard/flow.go"),
+        "shared-join-mutates-instability": ("out[symbol] = value.merge(v.binding(symbol, next))", "out[symbol] = value.merge(v.binding(symbol, next)); v.unstable[symbol-1] = !v.unstable[symbol-1]", "domain/runtimeguard/flow.go"),
+        "shared-logical-mutates-operands": ("return v.assume(v.operand(ref, 1), truth, left)", "v.operands[ref-1][1] = 0; return v.assume(v.operand(ref, 1), truth, left)", "domain/runtimeguard/condition.go"),
+        "shared-logical-mutates-kinds": ("right := v.assume(v.operand(ref, 1), truth, copyState(state))", "right := v.assume(v.operand(ref, 1), truth, copyState(state)); v.kinds[0] = \"\"", "domain/runtimeguard/condition.go"),
+        "shared-logical-mutates-view": ("right := v.assume(v.operand(ref, 1), truth, copyState(state))", "right := v.assume(v.operand(ref, 1), truth, copyState(state)); v.operands = nil", "domain/runtimeguard/condition.go"),
+        "shared-operand-mutates-row": ("return v.operands[ref-1][position]", "v.operands[ref-1][position] = 0; return v.operands[ref-1][position]", "domain/runtimeguard/graph.go"),
+    }
+    names = ("wp_join", "wp_join_sound", "wp_operand", "wp_logical", "wp_logical_sound",
+             "querySnapshot_branchResources", "snapshot_child_to_branch", "wp_join_snapshot",
+             "wp_logical_snapshot", "wp_logical_snapshot_sound")
+    return replace(base, report=ROOT / "dist/verification/shared-flow",
+                   sources=base.sources + (PROJECT / proof,),
+                   theorems={"Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name for name in names},
+                   mutations=changes, mutation_modules={name: join if name.startswith("shared-join-") else branch for name in changes},
+                   audit="AuditSharedFlow.lean", proof_file=proof,
+                   verified="production join and logical composition preserve shared PDG snapshots with exclusive state maps",
+                   unverified=base.unverified + ("recursive child assume execution remains a contract premise", "aliased non-nil input maps to join"))
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -1190,10 +1215,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile}
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile, ("--shared-flow",): shared_flow_profile}
         arguments = tuple(sys.argv[1:])
         if arguments not in profiles:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison | --one-sided]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison | --one-sided | --shared-flow]")
         main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

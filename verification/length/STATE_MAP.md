@@ -38,6 +38,10 @@ bindings retain the lower bound zero. Missing pointer bindings receive the
 actual `uint64(symbol)*2` identity. Unstable bindings use the graph base value.
 Index checks and conversions are proved under the reference assumptions.
 
+The [shared metadata contracts](SHARED_FLOW.md) also support read-only graph
+metadata and a complete PDG snapshot. Input-map ownership remains exclusive and
+disjoint.
+
 ## Interval meaning
 
 `wp_join_sound` proves exact union of the stored key domains and interval

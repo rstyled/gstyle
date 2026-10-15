@@ -1,5 +1,9 @@
 # Logical branch composition
 
+[Shared snapshot contracts](SHARED_FLOW.md) now let the logical layer use the same
+read-only PDG snapshot as value and comparison queries. Child execution and truth
+premises remain explicit.
+
 `make verify-branch` checks the production `graphView.logical` and
 `graphView.operand` bodies. The logical execution theorem is modular: it assumes
 explicit execution contracts for the two child `assume` calls. The semantic

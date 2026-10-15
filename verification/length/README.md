@@ -94,3 +94,8 @@ soundness, explicit input assumptions, and remaining proof gaps.
 fourteen semantic mutations in one CI shard. The comparison profile retains its
 existing Go execution controls. See [ONE_SIDED.md](ONE_SIDED.md) for operand
 interpretation, input assumptions, and remaining integration obligations.
+
+`make verify-shared-flow` checks ten join/logical snapshot contracts and six
+production-Go mutation controls in one CI shard. See [SHARED_FLOW.md](SHARED_FLOW.md)
+for shared metadata permissions, exclusive map ownership, and the remaining
+child-execution obligations.
