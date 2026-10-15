@@ -3,39 +3,37 @@ package gopatterns
 import (
 	"go/ast"
 	"go/types"
-	"slices"
+
+	"github.com/rstyled/gstyle/domain/patterns/outputcheck"
 )
 
-// Restrict this rule to typed stdlib formatted writes with a syntactically
-// discarded error. It does not prove later uses of assigned error bindings.
 func (w *errorCheckWalker) discardsOutput(call *ast.CallExpr) bool {
-	input := outputDecision{Formatted: formattedOutputCall(call, w.info)}
-	if !input.Formatted {
-		return discardsOutputDecision(input)
+	callee := outputCalleeIdentity(call, w.info)
+	var writer outputcheck.Identity
+	if len(call.Args) > 0 {
+		writer = outputWriterIdentity(w.info.TypeOf(call.Args[0]))
 	}
-	input.Memory = memoryOutput(w.info.TypeOf(call.Args[0]))
-	return discardsOutputDecision(w.outputDecision(input))
+	return outputcheck.Classify(callee, writer, w.outputConsumption())
 }
 
-// This adapter remains outside the formal proof. It supplies syntactic counts
-// and blank-target identity to the verified, import-free decision function.
-func (w *errorCheckWalker) outputDecision(input outputDecision) outputDecision {
+func (w *errorCheckWalker) outputConsumption() outputcheck.Consumption {
 	switch parent := w.callParent().(type) {
 	case *ast.ExprStmt:
-		input.Standalone = true
+		return outputcheck.Consumption{Standalone: true}
 	case *ast.AssignStmt:
-		input.Values, input.Results = len(parent.Rhs), len(parent.Lhs)
-		input.ErrorBlank = blankOutputTarget(parent.Lhs)
+		return outputcheck.Consumption{Values: len(parent.Rhs), Results: len(parent.Lhs), ErrorName: outputErrorTarget(parent.Lhs)}
 	case *ast.ValueSpec:
-		input.Values, input.Results = len(parent.Values), len(parent.Names)
+		var name string
 		if len(parent.Names) == 2 {
-			input.ErrorBlank = parent.Names[1].Name == "_"
+			name = parent.Names[1].Name
 		}
+		return outputcheck.Consumption{Values: len(parent.Values), Results: len(parent.Names), ErrorName: name}
+	default:
+		return outputcheck.Consumption{}
 	}
-	return input
 }
 
-func formattedOutputCall(call *ast.CallExpr, info *types.Info) bool {
+func outputCalleeIdentity(call *ast.CallExpr, info *types.Info) outputcheck.Identity {
 	var object types.Object
 	switch fun := specUnwrapParens(call.Fun).(type) {
 	case *ast.Ident:
@@ -45,28 +43,30 @@ func formattedOutputCall(call *ast.CallExpr, info *types.Info) bool {
 	}
 	function, ok := object.(*types.Func)
 	if !ok || function.Pkg() == nil {
-		return false
+		return outputcheck.Identity{}
 	}
-	return function.Pkg().Path() == "fmt" && slices.Contains([]string{"Fprint", "Fprintf", "Fprintln"}, function.Name())
+	return outputcheck.Identity{Package: function.Pkg().Path(), Name: function.Name()}
 }
 
-func memoryOutput(typ types.Type) bool {
+func outputWriterIdentity(typ types.Type) outputcheck.Identity {
 	pointer, ok := types.Unalias(typ).(*types.Pointer)
 	if !ok {
-		return false
+		return outputcheck.Identity{}
 	}
 	named, ok := types.Unalias(pointer.Elem()).(*types.Named)
 	if !ok || named.Obj().Pkg() == nil {
-		return false
+		return outputcheck.Identity{}
 	}
-	key := named.Obj().Pkg().Path() + "." + named.Obj().Name()
-	return slices.Contains([]string{"bytes.Buffer", "strings.Builder"}, key)
+	return outputcheck.Identity{Package: named.Obj().Pkg().Path(), Name: named.Obj().Name()}
 }
 
-func blankOutputTarget(targets []ast.Expr) bool {
+func outputErrorTarget(targets []ast.Expr) string {
 	if len(targets) != 2 {
-		return false
+		return ""
 	}
-	id, ok := targets[1].(*ast.Ident)
-	return ok && id.Name == "_"
+	id, ok := specUnwrapParens(targets[1]).(*ast.Ident)
+	if !ok {
+		return ""
+	}
+	return id.Name
 }

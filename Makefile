@@ -52,10 +52,10 @@ test-race:
 
 .PHONY: verify-output
 
-# Partial formal proof: production decision logic, not the AST/type adapter.
+# Lean proof of the output decision and stable site selection.
 verify-output:
-	python3 -B -m unittest discover -s verification -p 'test_*.py'
-	python3 -B verification/unchecked_output.py
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --output
 
 .PHONY: verify-length
 
@@ -70,3 +70,14 @@ verify-length:
 verify-pdg:
 	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
 	python3 -B verification/length/verify.py --pdg
+
+.PHONY: verify-negative-index
+
+verify-negative-index:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --interval
+
+.PHONY: verify-runtime-value
+verify-runtime-value:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --runtime-value

@@ -206,23 +206,22 @@ make quality-gate
 The command lives in `cmd/gstyle`. Analysis and command implementations live in
 `domain`, `adapters`, and `application`.
 
-### Partial formal verification of unchecked output
+### Lean verification of unchecked output
 
-Run `make verify-output` with Python 3 and Docker. The script pulls an official
-Gobra container pinned by digest, then runs it without network access against
-`adapters/gopatterns/outputdecision.go`, the decision function used in production.
-Its contract specifies the exact result for all input values and requires
-termination. Overflow checking is enabled. Five deliberate logic mutations must
-fail their postcondition; a timeout, parsing error, or missing dependency does
-not count as a successful negative test. CI preserves the logs and source hash.
+Run `make verify-output` with Go, Python 3 and elan on `PATH`. The same pinned
+Goose/Perennial project as the length and PDG proofs translates the production
+`domain/patterns/outputcheck` package into Lean. The proofs cover exact function
+and writer identities, the composed site decision, suppression-name lookup and composed
+selection and advisory payload construction. The reporting loop preserves order,
+metadata and both inputs. Thirty-four deliberate Go mutations check these contracts. CI preserves
+logs and source hashes.
 
-This is a **partial proof**, not a formally verified detector. The Go AST/type
-adapter, source-to-fact correspondence, and candidate construction remain outside
-the proof. In particular, a proof over incorrect input facts can still produce
-an incorrect finding. The pinned container does not supply the `go/ast` and `go/types` verification
-headers needed to verify that adapter directly. The Go toolchain and Gobra/Viper/Z3 are
-also trusted components. Typed integration and edge-case tests still cover the
-unverified boundary. VeGo was investigated, but no runnable release was found.
+This remains a **partial detector proof**: AST/type extraction, corpus traversal and
+Candidate projection are checked by Go tests. Incorrect extracted facts can still produce
+incorrect findings. See [the output verification scope](verification/length/OUTPUT.md)
+for the contract
+and trust boundaries. The former Gobra-only decision pilot is replaced by this
+Lean pipeline; Docker is no longer needed.
 
 ### Lean verification of the function-length core
 
@@ -239,6 +238,17 @@ The scanner and analyzer integration remain outside the formal proof. See the
 
 Run `make verify-pdg` to verify actual reference/evidence queries and the composed
 semantic-pattern dependency and interface admission rules. The command audits
-twelve theorems, checks generated source, and rejects six deliberate Go bugs. See the
+fourteen theorems, checks generated source, and rejects nine deliberate Go bugs. See the
 [PDG proof scope](verification/length/PDG.md); complete graph traversals and
 pattern findings are not yet formally proved.
+
+### Lean verification of the negative-index core
+
+Run `make verify-negative-index` using the same pinned Lean project. The current
+stage proves that the production interval join preserves both input sets and
+that the risk decision reports represented negative values when its pattern
+triggers apply. The map-based selector keeps the first risky occurrence per
+binding in input order. Generic node lookup and advisory payload construction are
+also proved. `make verify-runtime-value` proves the actual Value projection and
+comparison copy-back, plus the complete Value join and its interval-set
+preservation contract. PDG transfer/traversal and outer projections remain outside the proof. See [the negative-index verification scope](verification/length/NEGATIVE_INDEX.md).

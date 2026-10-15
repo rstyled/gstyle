@@ -1,6 +1,9 @@
 package runtimeguard
 
-import "github.com/rstyled/gstyle/domain/pdg"
+import (
+	"github.com/rstyled/gstyle/domain/pdg"
+	"github.com/rstyled/gstyle/domain/runtimeguard/interval"
+)
 
 var inverse = map[string]string{"<": ">=", "<=": ">", ">": "<=", ">=": "<", "==": "!=", "!=": "=="}
 
@@ -112,35 +115,9 @@ func (v *graphView) impossibleSignedComparison(symbol pdg.Ref, operator string, 
 }
 
 func integerConstraint(value Value, operator string, bound int64) Value {
-	switch operator {
-	case ">=":
-		return lowerConstraint(value, bound)
-	case ">":
-		return strictLowerConstraint(value, bound)
-	case "<":
-		return strictUpperConstraint(value, bound)
-	case "<=":
-		return upperConstraint(value, bound)
-	case "==":
-		return upperConstraint(lowerConstraint(value, bound), bound)
-	default:
-		return value
-	}
-}
-
-func lowerConstraint(value Value, bound int64) Value {
-	if !value.HasLower || value.Lower < bound {
-		value.Lower = bound
-	}
-	value.HasLower = true
-	return value
-}
-
-func upperConstraint(value Value, bound int64) Value {
-	if !value.HasUpper || value.Upper > bound {
-		value.Upper = bound
-	}
-	value.HasUpper = true
+	r := interval.Constrain(value.Bounds(), operator, bound)
+	value.Lower, value.Upper = r.Lower, r.Upper
+	value.HasLower, value.HasUpper = r.HasLower, r.HasUpper
 	return value
 }
 
@@ -162,18 +139,4 @@ func exactInteger(value Value) bool {
 
 func emptyRange(value Value) bool {
 	return value.HasLower && value.HasUpper && value.Lower > value.Upper
-}
-
-func strictLowerConstraint(value Value, bound int64) Value {
-	if bound == int64(^uint64(0)>>1) {
-		return value
-	}
-	return lowerConstraint(value, bound+1)
-}
-
-func strictUpperConstraint(value Value, bound int64) Value {
-	if bound == -int64(^uint64(0)>>1)-1 {
-		return value
-	}
-	return upperConstraint(value, bound-1)
 }

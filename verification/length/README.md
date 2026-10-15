@@ -4,6 +4,11 @@ This project uses Lean 4, Iris and Goose/Perennial. The Go runtime has no new
 external dependencies. Lean dependencies are development-only and pinned in
 `lakefile.toml`, `lake-manifest.json` and `lean-toolchain`.
 
+This directory also hosts the [PDG query proofs](PDG.md) and the
+[unchecked-output proofs](OUTPUT.md), and [negative-index core](NEGATIVE_INDEX.md).
+Each has its own verification profile,
+axiom audit and mutation controls.
+
 The production metric counts physical lines containing Go tokens. Blank lines,
 comments and inserted semicolons do not count. The signature and braces count;
 every physical line inside a multiline string counts. `//line` directives do not
@@ -51,3 +56,26 @@ Dependencies are checked once before mutation tests. A mutation counts as
 rejected only for a recognized proof failure in its expected proof module.
 Missing modules, syntax errors, unrelated diagnostics and mixed setup/proof
 failures abort verification. No unchanged build is added per mutation.
+
+Each mutant builds only its affected proof module. The full unchanged project is
+checked before mutation tests, so unrelated pattern proofs are not rebuilt for
+every mutant.
+
+Mutation checks run with two workers. Every worker uses a private Go/Lean
+workspace and a private copy of the successful preflight build artifacts.
+Lake checks input hashes and rebuilds changed modules and their dependents.
+Pinned dependency builds are shared. A worker failure aborts verification;
+result lists retain profile order even when progress messages finish out of order.
+
+Interval and unchecked-output proofs are split by operation. The public
+`Interval.lean` and `Output.lean` modules still export every original theorem.
+The baseline build and axiom audits remain complete; mutation builds target the
+specific operation contract listed in `verify.py`.
+
+CI caches the project's `.lake/build` as well as pinned dependency builds.
+Lake invalidates changed inputs before reusing artifacts. Larger mutation suites
+run across separate runners with `GSTYLE_MUTATION_SHARD=INDEX/COUNT` (zero-based).
+Every shard checks the full baseline, source binding and axiom audit, then checks
+its assigned mutations. Results record the shard and total mutation count.
+The aggregate `verify-length` check requires every configured shard to pass.
+Local commands default to one shard and still run every mutation.

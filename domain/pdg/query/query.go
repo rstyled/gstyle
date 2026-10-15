@@ -46,3 +46,12 @@ func KnownFalse(fact BooleanFact) bool {
 	value, known := BooleanValue(fact)
 	return known && !value
 }
+
+func At[T any](table []T, ref Ref) (T, bool) {
+	index, ok := ReferenceIndex(ref, len(table))
+	if !ok {
+		var zero T
+		return zero, false
+	}
+	return table[index], true
+}

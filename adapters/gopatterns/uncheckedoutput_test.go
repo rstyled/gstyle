@@ -10,12 +10,20 @@ func TestUncheckedOutputEdges(t *testing.T) {
 		name, imports, decl, body string
 		want                      int
 	}{
+		{"parenthesized call", "io;fmt", "", `(fmt.Fprintln(w,"text"))`, 1},
+		{"if initializer", "io;fmt", "", `if n,_:=fmt.Fprintln(w,"text");n>0{}`, 1},
+		{"forwarded as arguments", "io;fmt", `func consume(int,error){}`, `consume(fmt.Fprintln(w,"text"))`, 0},
+		{"named but ignored error", "io;fmt", "", `_,err:=fmt.Fprintln(w,"text");_=err`, 0},
 		{"Fprint", "io;fmt", "", `fmt.Fprint(w,"text")`, 1},
 		{"Fprintf", "io;fmt", "", `fmt.Fprintf(w,"%s","text")`, 1},
 		{"Fprintln", "io;fmt", "", `fmt.Fprintln(w,"text")`, 1},
 		{"dot import", "io;.fmt", "", `Fprintln(w,"text")`, 1},
 		{"parenthesized function", "io;fmt", "", `(fmt.Fprintln)(w,"text")`, 1},
 		{"blank error", "io;fmt", "", `n,_:=fmt.Fprintln(w,"text");_=n`, 1},
+		{"parenthesized blank error", "io;fmt", "", `_,(_)=fmt.Fprintln(w,"text")`, 1},
+
+		{"nested parenthesized blank error", "io;fmt", "", `_,(((_)))=fmt.Fprintln(w,"text")`, 1},
+
 		{"both blank", "io;fmt", "", `_,_=fmt.Fprintln(w,"text")`, 1},
 		{"declared blank", "io;fmt", "", `var n,_=fmt.Fprintln(w,"text");_=n`, 1},
 		{"checked assignment", "io;fmt", "", `_,err:=fmt.Fprintln(w,"text");if err!=nil{return err}`, 0},
@@ -24,6 +32,8 @@ func TestUncheckedOutputEdges(t *testing.T) {
 		{"builder alias", "io;fmt;strings", `type Memory = strings.Builder`, `var b Memory;fmt.Fprintln(&b,"text")`, 0},
 		{"interface hides buffer", "io;fmt;bytes", "", `var b bytes.Buffer;var out io.Writer=&b;fmt.Fprintln(out,"text")`, 1},
 		{"custom buffer can fail", "io;fmt;bytes", `type Buffer struct{bytes.Buffer};func(*Buffer)Write([]byte)(int,error){return 0,io.ErrClosedPipe}`, `var b Buffer;fmt.Fprintln(&b,"text")`, 1},
+		{"custom builder can fail", "io;fmt;strings", `type Builder struct{strings.Builder};func(*Builder)Write([]byte)(int,error){return 0,io.ErrClosedPipe}`, `var b Builder;fmt.Fprintln(&b,"text")`, 1},
+
 		{"local function shadow", "io;fmt", `type Printer struct{Fprintln func(io.Writer,...any)(int,error)}`, `fmt:=Printer{Fprintln:fmt.Fprintln};fmt.Fprintln(w,"text")`, 0},
 		{"indirect call excluded", "io;fmt", "", `print:=fmt.Fprintln;print(w,"text")`, 0},
 		{"deferred call excluded", "io;fmt", "", `defer fmt.Fprintln(w,"text")`, 0},
@@ -80,6 +90,9 @@ func TestUncheckedOutputCombinations(t *testing.T) {
 	}{
 		{"standalone", "", ";return 0,nil", true},
 		{"blank assignment", "_,_=", ";return 0,nil", true},
+		{"parenthesized blank assignment", "_,(_)=", ";return 0,nil", true},
+		{"nested parenthesized blank assignment", "_,(((_)))=", ";return 0,nil", true},
+
 		{"count assignment", "n,_:=", ";return n,nil", true},
 		{"blank declaration", "var n,_=", ";return n,nil", true},
 		{"checked", "n,err:=", ";if err!=nil{return n,err};return n,nil", false},
@@ -107,5 +120,24 @@ func f(w io.Writer)(int,error){` + use.before + call + use.after + `}`
 				})
 			}
 		}
+	}
+}
+
+func TestUncheckedOutputRenamedImport(t *testing.T) {
+	source := `package p; import("io"; print "fmt")
+func f(w io.Writer)error{print.Fprintln(w,"text");return nil}`
+	file, fs, info, _ := typeCheck(t, source)
+	sites := findErrorCheckSites(findFunc(file, "f"), fs, info)
+	if len(sites) != 1 || !sites[0].DiscardedOutput || sites[0].Callee != "print.Fprintln" {
+		t.Fatalf("renamed stdlib import loses identity: %+v", sites)
+	}
+}
+
+func TestUncheckedOutputUsesPhysicalSourceLine(t *testing.T) {
+	source := "package p\nimport(\"fmt\";\"io\")\nfunc f(w io.Writer)error{\n//line virtual.go:900\nfmt.Fprintln(w,\"text\")\nreturn nil\n}\n"
+	file, fs, info, _ := typeCheck(t, source)
+	sites := findErrorCheckSites(findFunc(file, "f"), fs, info)
+	if len(sites) != 1 || !sites[0].DiscardedOutput || sites[0].Line != 5 {
+		t.Fatalf("finding does not point to physical source line 5: %+v", sites)
 	}
 }

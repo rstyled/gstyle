@@ -2,7 +2,10 @@
 // Its inputs contain only native nodes, operands, bindings and normal flow.
 package runtimeguard
 
-import "github.com/rstyled/gstyle/domain/pdg"
+import (
+	"github.com/rstyled/gstyle/domain/pdg"
+	"github.com/rstyled/gstyle/domain/runtimeguard/interval"
+)
 
 type Value struct {
 	Identity                           uint64
@@ -22,19 +25,13 @@ func (v Value) merge(other Value) Value {
 	return v.mergePointers(other, out)
 }
 
-func (v Value) mergeBounds(other Value) Value {
-	return Value{HasLower: v.HasLower && other.HasLower, HasUpper: v.HasUpper && other.HasUpper,
-		Lower: min(v.Lower, other.Lower), Upper: max(v.Upper, other.Upper)}.normalized()
+func (v Value) Bounds() interval.Range {
+	return interval.Range{Lower: v.Lower, Upper: v.Upper, HasLower: v.HasLower, HasUpper: v.HasUpper}
 }
 
-func (v Value) normalized() Value {
-	if !v.HasLower {
-		v.Lower = 0
-	}
-	if !v.HasUpper {
-		v.Upper = 0
-	}
-	return v
+func (v Value) mergeBounds(other Value) Value {
+	r := interval.Join(v.Bounds(), other.Bounds())
+	return Value{Lower: r.Lower, Upper: r.Upper, HasLower: r.HasLower, HasUpper: r.HasUpper}
 }
 
 func (v Value) mergePointers(other, out Value) Value {
