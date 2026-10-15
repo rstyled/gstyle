@@ -69,7 +69,10 @@ func run(args []string, output io.Writer) error {
 }
 
 func runCommand(args []string, output io.Writer) error {
-	if args[0] == "--skill" {
+	switch args[0] {
+	case "help":
+		return writeHelp(args[1:], output)
+	case "--skill":
 		return writeSkill(args, output)
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), reducerSignals()...)
@@ -111,6 +114,9 @@ func runSubcommandExtra(ctx context.Context, args []string, output io.Writer) er
 
 func runDefault(args []string, output io.Writer) error {
 	options, err := parseRunOptions(args)
+	if errors.Is(err, flag.ErrHelp) {
+		return writeHelp(nil, output)
+	}
 	if err != nil {
 		return err
 	}

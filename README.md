@@ -11,6 +11,8 @@ go install github.com/rstyled/gstyle@latest
 
 ## Start with your code
 
+Run `gstyle --help` (or `gstyle help`) for commands and options.
+
 Run these from your repository root:
 
 ```sh
