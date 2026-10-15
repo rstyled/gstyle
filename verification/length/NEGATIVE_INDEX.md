@@ -158,7 +158,7 @@ and retains its source hashes and proof logs.
 ## Remaining work and trust
 
 This does not establish that PDG extraction or transfer functions produce sound
-intervals for Go executions. Remaining state transfers, state-map joins, widening, convergence, graph traversal,
+intervals for Go executions. Remaining state transfers, widening, convergence, graph traversal,
 Access projection, query integration, corpus traversal and the common
 Candidate projection/presentation remain outside Lean. Generic table lookup and
 payload construction themselves are proved; the complete matcher wiring and
@@ -169,3 +169,6 @@ record-layout hypotheses, compiler and Lean kernel are trust boundaries. Global
 axioms are restricted to propext, Classical.choice and Quot.sound. There are no
 replacement implementations or sorry proofs. The execution theorems use Iris
 weakest preconditions, not a separate total-correctness logic.
+
+The production state-map join has a separate [proof contract](STATE_MAP.md),
+including its input assumptions and unsupported aliasing cases.

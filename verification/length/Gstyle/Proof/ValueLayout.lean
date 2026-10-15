@@ -1,5 +1,6 @@
 module
 public import Gstyle.Code.github_com.rstyled.gstyle.domain.runtimeguard
+public import Gstyle.Proof.PdgPackage
 public import Perennial.Proof.ProofPrelude
 public import Perennial.Golang.Theory
 @[expose] public section

@@ -81,3 +81,8 @@ verify-negative-index:
 verify-runtime-value:
 	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
 	python3 -B verification/length/verify.py --runtime-value
+
+.PHONY: verify-state-map
+verify-state-map:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --state-map

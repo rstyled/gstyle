@@ -83,7 +83,8 @@ class VerificationGuardTests(unittest.TestCase):
                                 (verify.pdg_profile, "Gstyle.Proof.Queries"),
                                 (verify.output_profile, "Gstyle.Proof.Output.Classify"),
                                 (verify.interval_profile, "Gstyle.Proof.Interval.Constrain"),
-                                (verify.runtime_value_profile, "Gstyle.Proof.RuntimeValue")):
+                                (verify.runtime_value_profile, "Gstyle.Proof.RuntimeValue"),
+                                (verify.state_map_profile, "Gstyle.Proof.StateMap.Join")):
             profile = factory()
             mutation = next(iter(profile.mutations.items()))
             with self.subTest(package=profile.package), tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
@@ -107,7 +108,8 @@ class VerificationGuardTests(unittest.TestCase):
 
     def test_shards_cover_every_mutation_once(self):
         for factory, count in ((verify.interval_profile, 4), (verify.output_profile, 3),
-                               (verify.runtime_value_profile, 2)):
+                               (verify.runtime_value_profile, 2),
+                               (verify.state_map_profile, 2)):
             mutations = factory().mutations
             selected = [name for index in range(count)
                         for name in verify.shard_mutations(mutations, (index, count))]
@@ -166,7 +168,7 @@ class VerificationGuardTests(unittest.TestCase):
         run.assert_called_once()
         self.assertEqual(run.call_args.args[0][0], "goose")
         self.assertEqual(profile.generated, ("Code",))
-        self.assertEqual(run.call_args.args[0][-2:], ["./domain/runtimeguard", "./domain/runtimeguard/interval"])
+        self.assertEqual(run.call_args.args[0][-4:], ["./domain/runtimeguard", "./domain/runtimeguard/interval", "./domain/pdg", "./domain/pdg/query"])
 
     def test_runtime_value_rejects_stale_imported_code(self):
         profile = verify.runtime_value_profile()
@@ -180,9 +182,13 @@ class VerificationGuardTests(unittest.TestCase):
                     target.write_text("same")
             with patch.object(verify, "PROJECT", root):
                 verify.check_generated(profile, generated)
-                (generated / "Code" / profile.bindings[0][0]).write_text("stale")
-                with self.assertRaisesRegex(RuntimeError, "stale generated source"):
-                    verify.check_generated(profile, generated)
+                for package, _ in profile.bindings:
+                    target = generated / "Code" / package
+                    target.write_text("stale")
+                    with self.assertRaisesRegex(RuntimeError, "stale generated source"):
+                        verify.check_generated(profile, generated)
+                    target.write_text("same")
+                verify.check_generated(profile, generated)
 
     def test_mutation_requires_a_bound_source(self):
         profile = replace(verify.runtime_value_profile(), mutations={"unbound": ("before", "after", "outside.go")})
