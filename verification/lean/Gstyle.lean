@@ -65,3 +65,5 @@ public import Gstyle.Proof.Transfer.ComparisonOneSidedSound
 public import Gstyle.Proof.Transfer.BranchSnapshot
 
 public import Gstyle.Proof.Transfer.Assume
+
+public import Gstyle.Proof.Transfer.LocalInvalidation

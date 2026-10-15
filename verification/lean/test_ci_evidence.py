@@ -52,4 +52,4 @@ class EvidenceBundleTests(unittest.TestCase):
         self.assertEqual(len(seen), len(verify.PROFILE_FACTORIES))
         for arguments, factory in verify.PROFILE_FACTORIES.items():
             self.assertEqual(seen[' '.join(arguments)], set(factory().mutations))
-        self.assertEqual(sum(map(len, seen.values())), 432)
+        self.assertEqual(sum(map(len, seen.values())), 437)

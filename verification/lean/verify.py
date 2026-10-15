@@ -467,17 +467,25 @@ def assignment_profile():
         "store-loses-value": (write, write.replace("= value", "= Value{}"), pointer),
         "store-drops-write": (write, write.replace("state[symbol] = value", "_, _ = state, value"), pointer),
         "store-skips-normalization": ("value = v.assignmentValue(symbol, value)", "_ = v.assignmentValue(symbol, value)", pointer),
+        "local-root-invalidates": ("if root == 0 {\n\t\treturn false", "if root == 0 {\n\t\treturn true", pointer),
+        "local-root-wrong-key": ("v.fieldRoots[symbol])", "v.fieldRoots[symbol+1])", pointer),
+        "local-identity-accepts-zero": ("identity != 0 && identity%2 == 0 && identity/2 > uint64(symbols)", "identity == 0 || (identity%2 == 0 && identity/2 > uint64(symbols))", pointer),
+        "local-identity-off-by-one": ("identity/2 > uint64(symbols)", "identity/2 >= uint64(symbols)", pointer),
+        "local-state-clobber": ("for symbol, value := range state {\n\t\tif v.invalidatesField", "for symbol, value := range state {\n\t\tstate[symbol] = Value{}\n\t\tif v.invalidatesField", pointer),
     }
     prefix = "Perennial.github_com.rstyled.gstyle.domain.runtimeguard."
     names = ("assignment_interval_sound", "compound_discards_rhs", "wp_singleValueWrite", "wp_assignmentValue",
-             "wp_assign_nonpointer", "wp_singleValueWrite_compound", "wp_assign_interval_sound", "wp_assign_unknown_signed")
-    return replace(runtime_value_profile(), report=ROOT / "dist/verification/assignment",
+             "wp_assign_nonpointer", "wp_singleValueWrite_compound", "wp_assign_interval_sound", "wp_assign_unknown_signed",
+             "wp_invalidatesField_local", "wp_fieldIdentity_local", "wp_localRoot_lookup", "wp_invalidateFields_local")
+    base = runtime_value_profile()
+    proof = "Gstyle/Proof/Transfer/LocalInvalidation.lean"
+    return replace(base, sources=base.sources + (PROJECT / proof,), report=ROOT / "dist/verification/assignment",
                    source=ROOT / "domain/runtimeguard/flow.go",
                    theorems={prefix + name for name in names}, mutations=mutations,
                    audit="AuditAssignment.lean", proof_file="Gstyle/Proof/Transfer/Assignment.lean",
-                   verified="production assignment eligibility and non-pointer state-map writes, conservative compound selection and conditional interval preservation",
+                   verified="production assignment eligibility and non-pointer state-map writes, conservative compound selection, conditional interval preservation and field-invalidation preservation for local-only states",
                    unverified=("RHS expression evaluation and PDG fact extraction", "full analysis.transfer composition, tracking, range writes and guard clearing", "pointer assignment and alias invalidation", "invalid references, nil maps and concurrent writes", "precise compound arithmetic", "branch composition and convergence", "package initialization"),
-                   mutation_modules={})
+                   mutation_modules={name: proof for name in mutations if name.startswith("local-")})
 
 
 def branch_profile():
