@@ -1066,6 +1066,28 @@ def shared_flow_profile():
                    unverified=base.unverified + ("recursive child assume execution remains a contract premise", "aliased non-nil input maps to join"))
 
 
+def assume_profile():
+    base = shared_flow_profile()
+    proof = "Gstyle/Proof/Transfer/Assume.lean"
+    extra = ("Gstyle/Proof/Transfer/AssumeNumeric.lean", proof,
+             "Gstyle/Proof/Transfer/Branch.lean", "Gstyle/Proof/Transfer/BranchModel.lean",
+             "Gstyle/Proof/StateMap/Join.lean", "Gstyle/Proof/StateMap/Model.lean",
+             "Gstyle/Proof/Transfer/QuerySnapshot.lean")
+    names = ('constraint_state_valid', 'comparison_result_valid', 'wp_comparison_neither', 'wp_numeric_execution', 'numeric_execution_valid', 'numeric_execution_sound', 'logicalStep_result', 'branchResult_unique', 'finiteAssume_positive', 'finiteAssume_self_cycle', 'logicalStep_valid', 'finiteAssume_valid', 'booleanConflict_sound', 'finiteAssume_sound', 'wp_finite_assume', 'wp_finite_assume_sound')
+    changes = {'assume-ignore-boolean-conflict': ('if value := v.fact(ref, "boolean"); booleanContradiction(value, truth) {', 'if value := v.fact(ref, "boolean"); booleanContradiction(value, truth) && false {', 'domain/runtimeguard/condition.go'), 'assume-wrong-guard-fact': ('if value := v.fact(ref, "boolean");', 'if value := v.fact(ref, "integer");', 'domain/runtimeguard/condition.go'), 'assume-guard-admits-conflict': ('if value := v.fact(ref, "boolean"); booleanContradiction(value, truth) {\n\t\treturn nil', 'if value := v.fact(ref, "boolean"); booleanContradiction(value, truth) {\n\t\treturn state', 'domain/runtimeguard/condition.go'), 'assume-parentheses-wrong-operand': ('return v.assume(v.operand(ref, 0), truth, state)', 'return v.assume(v.operand(ref, 1), truth, state)', 'domain/runtimeguard/condition.go'), 'assume-parentheses-inverts-truth': ('return v.assume(v.operand(ref, 0), truth, state)', 'return v.assume(v.operand(ref, 0), !truth, state)', 'domain/runtimeguard/condition.go'), 'assume-negation-loses-inversion': ('return v.assume(v.operand(ref, 0), !truth, state)', 'return v.assume(v.operand(ref, 0), truth, state)', 'domain/runtimeguard/condition.go'), 'assume-negation-wrong-operand': ('return v.assume(v.operand(ref, 0), !truth, state)', 'return v.assume(v.operand(ref, 1), !truth, state)', 'domain/runtimeguard/condition.go'), 'assume-misses-disjunction': ('case "&&", "||":', 'case "&&":', 'domain/runtimeguard/condition.go'), 'assume-logical-inverts-truth': ('return v.logical(ref, operator, truth, state)', 'return v.logical(ref, operator, !truth, state)', 'domain/runtimeguard/condition.go'), 'assume-comparison-inverts-truth': ('return v.comparison(ref, operator, truth, state)', 'return v.comparison(ref, operator, !truth, state)', 'domain/runtimeguard/condition.go')}
+    return replace(base, report=ROOT / "dist/verification/assume",
+                   sources=base.sources + tuple(PROJECT / name for name in extra),
+                   theorems={"Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name for name in names},
+                   mutations=changes, mutation_modules={name: "Gstyle/Proof/Transfer/Boolean.lean" if name in {"assume-ignore-boolean-conflict", "assume-wrong-guard-fact", "assume-guard-admits-conflict"} else proof for name in changes},
+                   audit="AuditAssume.lean", proof_file=proof,
+                   verified="finite supported production assume derivations preserve snapshots, metadata validity, and represented intervals",
+                   unverified=("operator table initialization", "ParseInt implementation and producer fact truth",
+                               "program pointer/nil and alias semantics", "32-bit Go execution",
+                               "query termination and worklist convergence", "general nil-state operand evaluation",
+                               "full CFG and transfer composition", "automatic finite-certificate synthesis",
+                               "Go operational total-correctness adequacy"))
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -1215,10 +1237,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile, ("--shared-flow",): shared_flow_profile}
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile, ("--shared-flow",): shared_flow_profile, ("--assume",): assume_profile}
         arguments = tuple(sys.argv[1:])
         if arguments not in profiles:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison | --one-sided | --shared-flow]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison | --one-sided | --shared-flow | --assume]")
         main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

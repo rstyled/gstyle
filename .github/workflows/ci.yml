@@ -204,6 +204,9 @@ jobs:
           - profile: shared-flow
             target: verify-shared-flow
             shard: 0/1
+          - profile: assume
+            target: verify-assume
+            shard: 0/1
     steps:
       - name: Checkout
         uses: actions/checkout@v6

@@ -226,7 +226,8 @@ class VerificationGuardTests(unittest.TestCase):
                                (verify.value_evaluation_profile, 3),
                                (verify.comparison_profile, 4),
                                (verify.one_sided_profile, 1),
-                               (verify.shared_flow_profile, 1)):
+                               (verify.shared_flow_profile, 1),
+                               (verify.assume_profile, 1)):
             mutations = factory().mutations
             selected = [name for index in range(count)
                         for name in verify.shard_mutations(mutations, (index, count))]
