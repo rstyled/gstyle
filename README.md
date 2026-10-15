@@ -288,3 +288,9 @@ Run `make verify-branch` to verify operand reads and production logical branch
 composition under explicit child contracts. It covers sequential refinement,
 independent forks and unreachable alternatives. See
 [the contract and unresolved child/PDG obligations](verification/length/BRANCH.md).
+
+### Lean verification of PDG text lookup
+
+Run `make verify-pdg-text` to verify the production string-table accessor for
+all references under shared read-only ownership. See
+[the lookup contract and remaining PDG boundaries](verification/length/PDG_TEXT.md).

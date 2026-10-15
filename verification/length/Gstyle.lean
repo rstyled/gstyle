@@ -18,3 +18,5 @@ public import Gstyle.Proof.Transfer.Step
 public import Gstyle.Proof.Transfer.Assignment
 
 public import Gstyle.Proof.Transfer.Branch
+
+public import Gstyle.Proof.Pdg.Text

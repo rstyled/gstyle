@@ -106,3 +106,8 @@ verify-assignment:
 verify-branch:
 	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
 	python3 -B verification/length/verify.py --branch
+
+.PHONY: verify-pdg-text
+verify-pdg-text:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --pdg-text

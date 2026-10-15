@@ -282,7 +282,8 @@ axiom NormalFlow.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom FlowBlock.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
-axiom Text [FfiSyntax] [GoGlobalContext] : go.GoType
+@[reducible] def Text.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text.ty
 
 @[reducible] def Ref.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
   _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref.ty
@@ -295,7 +296,8 @@ axiom BooleanFact [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Profile.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
-axiom Capability [FfiSyntax] [GoGlobalContext] : go.GoType
+@[reducible] def Capability.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Capability.ty
 
 axiom Span.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
@@ -372,8 +374,6 @@ axiom SourceReference.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 axiom SourceReceiver.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom SourceImport.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
-axiom Tables.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Builder.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
@@ -574,6 +574,38 @@ noncomputable def Validate [FfiSyntax] [GoGlobalContext] : GoString :=
 
 noncomputable def contains [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/pdg.contains"
+
+/-- go: tables.go:20:18 -/
+noncomputable def Tables.Text.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "t"
+  (Lam "id"
+  (App (Val exceptionDo)
+  (Let "t" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType Tables.ty)))) (Var "t"))
+  (Let "id" (App (Val (GoInstruction (GoAlloc Text.ty))) (Var "id"))
+  (Let "__p" (Let "$a0" (App (Val (GoInstruction (GoLoad Text.ty))) (Var "id"))
+  (Let "$a1" (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType go.string)))) (App (Val (GoInstruction (StructFieldRef Tables.ty go!"Strings"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType Tables.ty)))) (Var "t"))))
+  (App (App (Val (GoInstruction (FuncResolve go.len [(go.GoType.SliceType go.string)]))) (Val #())) (Var "$a0")))
+  (App (App (App (Val (GoInstruction (FuncResolve _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.ReferenceIndex []))) (Val #())) (Var "$a0")) (Var "$a1"))))
+  (Let "$ret0" (Fst (Var "__p"))
+  (Let "$ret1" (Snd (Var "__p"))
+  (Let "$r0" (Var "$ret0")
+  (Let "$r1" (Var "$ret1")
+  (Let "ok" (App (Val (GoInstruction (GoAlloc go.bool))) (App (Val (GoInstruction (GoZeroVal go.bool))) (Val #())))
+  (Let "index" (App (Val (GoInstruction (GoAlloc go.int))) (App (Val (GoInstruction (GoZeroVal go.int))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoLoad go.string))) (App (Val (GoInstruction (IndexRef (go.GoType.SliceType go.string)))) (Pair (App (Val (GoInstruction (GoLoad (go.GoType.SliceType go.string)))) (App (Val (GoInstruction (StructFieldRef Tables.ty go!"Strings"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType Tables.ty)))) (Var "t")))) (App (Val (GoInstruction (GoLoad go.int))) (Var "index"))))))))
+  (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoLoad go.bool))) (Var "ok")))
+  (App (Val doReturn)
+  (Val #(go!"")))
+  (App (Val doExecute)
+  (Val #()))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.bool))) (Pair (Var "ok") (Var "$r1")))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.int))) (Pair (Var "index") (Var "$r0")))))))))))))))))
 
 instance info' : PkgInfo pkg_id.github_com.rstyled.gstyle.domain.pdg where
   pkgImportedPkgs := [pkg_id.github_com.rstyled.gstyle.domain.pdg.query]
@@ -1188,18 +1220,70 @@ attribute [instance] SourceImport.TypeAssumptions.type_repr
   SourceImport.TypeAssumptions.underlying
   SourceImport.TypeAssumptions.isUnderlying
 
-axiom Tables : Type
-axiom Tables.zero_val : ZeroVal Tables
-attribute [instance] Tables.zero_val
+structure Tables [FfiSyntax] where
+  mk ::
+  Sources' : Loc
+  MatchLabels' : GoSlice
+  Strings' : GoSlice
+  Policies' : GoSlice
+  Evidence' : GoSlice
+  Provenance' : GoSlice
+
+instance Tables.zero_val [FfiSyntax] : ZeroVal Tables :=
+  ⟨Tables.mk zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def Tables.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"Sources" (go.GoType.PointerType SourceContext.ty)),
+(go.field_decl.FieldDecl go!"MatchLabels" (go.GoType.SliceType MatchLabel.ty)),
+(go.field_decl.FieldDecl go!"Strings" (go.GoType.SliceType go.string)),
+(go.field_decl.FieldDecl go!"Policies" (go.GoType.SliceType Profile.ty)),
+(go.field_decl.FieldDecl go!"Evidence" (go.GoType.SliceType Capability.ty)),
+(go.field_decl.FieldDecl go!"Provenance" (go.GoType.SliceType Provenance.ty))]
+
+@[irreducible] def Tables.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Tables.fieldsUnsealed
+
+instance equals_unfold_Tables [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Tables.fields Tables.fieldsUnsealed :=
+  ⟨by unfold Tables.fields; rfl⟩
+
+@[reducible] def Tables.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Tables.fields)
 
 class Tables.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying Tables.underlying Tables
   underlying : go.UnderlyingDirectedEq Tables.ty Tables.underlying
-  isUnderlying : go.IsUnderlying Tables.underlying Tables.underlying
+  layout : go.StructLayout Tables [(go!"Sources", typeSize Loc, typeAlign Loc), (go!"MatchLabels", typeSize GoSlice, typeAlign GoSlice), (go!"Strings", typeSize GoSlice, typeAlign GoSlice), (go!"Policies", typeSize GoSlice, typeAlign GoSlice), (go!"Evidence", typeSize GoSlice, typeAlign GoSlice), (go!"Provenance", typeSize GoSlice, typeAlign GoSlice)]
+  get_Sources : ∀ (x : Tables), go.IsGoStepPureDetTagged under (StructFieldGet Tables.underlying go!"Sources") #x (Val #(x.Sources'))
+  set_Sources : ∀ (x : Tables) (y : Loc), go.IsGoStepPureDetTagged under (StructFieldSet Tables.underlying go!"Sources") (PairV #x #y) (Val #(({ x with Sources' := y } : Tables)))
+  get_MatchLabels : ∀ (x : Tables), go.IsGoStepPureDetTagged under (StructFieldGet Tables.underlying go!"MatchLabels") #x (Val #(x.MatchLabels'))
+  set_MatchLabels : ∀ (x : Tables) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Tables.underlying go!"MatchLabels") (PairV #x #y) (Val #(({ x with MatchLabels' := y } : Tables)))
+  get_Strings : ∀ (x : Tables), go.IsGoStepPureDetTagged under (StructFieldGet Tables.underlying go!"Strings") #x (Val #(x.Strings'))
+  set_Strings : ∀ (x : Tables) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Tables.underlying go!"Strings") (PairV #x #y) (Val #(({ x with Strings' := y } : Tables)))
+  get_Policies : ∀ (x : Tables), go.IsGoStepPureDetTagged under (StructFieldGet Tables.underlying go!"Policies") #x (Val #(x.Policies'))
+  set_Policies : ∀ (x : Tables) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Tables.underlying go!"Policies") (PairV #x #y) (Val #(({ x with Policies' := y } : Tables)))
+  get_Evidence : ∀ (x : Tables), go.IsGoStepPureDetTagged under (StructFieldGet Tables.underlying go!"Evidence") #x (Val #(x.Evidence'))
+  set_Evidence : ∀ (x : Tables) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Tables.underlying go!"Evidence") (PairV #x #y) (Val #(({ x with Evidence' := y } : Tables)))
+  get_Provenance : ∀ (x : Tables), go.IsGoStepPureDetTagged under (StructFieldGet Tables.underlying go!"Provenance") #x (Val #(x.Provenance'))
+  set_Provenance : ∀ (x : Tables) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Tables.underlying go!"Provenance") (PairV #x #y) (Val #(({ x with Provenance' := y } : Tables)))
+  ptr_Text_unfold : MethodUnfold (go.GoType.PointerType Tables.ty) go!"Text" Tables.Text.impl
 
 attribute [instance] Tables.TypeAssumptions.type_repr
   Tables.TypeAssumptions.underlying
-  Tables.TypeAssumptions.isUnderlying
+  Tables.TypeAssumptions.layout
+  Tables.TypeAssumptions.get_Sources
+  Tables.TypeAssumptions.set_Sources
+  Tables.TypeAssumptions.get_MatchLabels
+  Tables.TypeAssumptions.set_MatchLabels
+  Tables.TypeAssumptions.get_Strings
+  Tables.TypeAssumptions.set_Strings
+  Tables.TypeAssumptions.get_Policies
+  Tables.TypeAssumptions.set_Policies
+  Tables.TypeAssumptions.get_Evidence
+  Tables.TypeAssumptions.set_Evidence
+  Tables.TypeAssumptions.get_Provenance
+  Tables.TypeAssumptions.set_Provenance
+  Tables.TypeAssumptions.ptr_Text_unfold
 
 axiom Builder : Type
 axiom Builder.zero_val : ZeroVal Builder

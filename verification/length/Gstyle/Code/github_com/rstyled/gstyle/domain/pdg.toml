@@ -1,2 +1,2 @@
-translate = ["Ref", "Category", "Declaration"]
+translate = ["Ref", "Text", "Category", "Declaration", "Capability", "Tables", "Tables.Text"]
 imports = ["github.com/rstyled/gstyle/domain/pdg/query"]

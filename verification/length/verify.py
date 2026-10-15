@@ -480,6 +480,32 @@ def branch_profile():
                    mutation_modules={})
 
 
+def pdg_text_profile():
+    source = ROOT / "domain/pdg/tables.go"
+    sources = tuple(sorted(path for directory in ("domain/pdg", "domain/pdg/query")
+                           for path in (ROOT / directory).glob("*.go") if not path.name.endswith("_test.go")))
+    prefix = "Perennial.github_com.rstyled.gstyle.domain.pdg."
+    return Profile(
+        ROOT / "dist/verification/pdg-text", "github_com/rstyled/gstyle/domain/pdg.lean", "./domain/pdg", source, sources,
+        {prefix + name for name in ("wp_Text_present", "wp_Text_absent", "wp_Text")},
+        {
+            "text-wrong-slot": ("return t.Strings[index]", "return t.Strings[index+1]"),
+            "text-first-slot": ("return t.Strings[index]", "_ = index; return t.Strings[0]"),
+            "text-wrong-count": ("Ref(id), len(t.Strings)", "Ref(id), len(t.Strings)-1"),
+            "text-uses-capacity": ("Ref(id), len(t.Strings)", "Ref(id), cap(t.Strings)"),
+            "text-wrong-reference": ("Ref(id), len(t.Strings)", "Ref(id+1), len(t.Strings)"),
+            "text-inverts-presence": ("if !ok {", "if ok {"),
+            "text-ignores-absence": ("if !ok {", "if false && !ok {"),
+            "text-forges-absence-value": ('return ""', 'return "unknown"'),
+            "text-mutates-strings": ("return t.Strings[index]", 't.Strings[index] = ""; return t.Strings[index]'),
+            "text-mutates-metadata": ("index, ok := query.ReferenceIndex", "t.Sources = nil; index, ok := query.ReferenceIndex"),
+        },
+        "AuditPdgText.lean", "Gstyle/Proof/Pdg/Text.lean", "production PDG string-table lookup and preservation under read-only ownership",
+        ("string interning and PDG extraction", "graph/attribute and extension lookup", "condition and transfer integration", "package initialization"),
+        ("Code",), (("github_com/rstyled/gstyle/domain/pdg/query.lean", "./domain/pdg/query"),),
+    )
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -602,10 +628,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile}
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile}
         arguments = tuple(sys.argv[1:])
         if arguments not in profiles:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text]")
         main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

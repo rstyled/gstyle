@@ -156,6 +156,9 @@ jobs:
           - profile: branch-composition
             target: verify-branch
             shard: 1/2
+          - profile: pdg-text
+            target: verify-pdg-text
+            shard: 0/1
     steps:
       - name: Checkout
         uses: actions/checkout@v6
