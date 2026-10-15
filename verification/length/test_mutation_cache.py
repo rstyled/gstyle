@@ -40,11 +40,11 @@ class MutationCacheTests(unittest.TestCase):
             dependency.mkdir(parents=True)
             paths = [project / 'Gstyle/Proof.lean', project / 'verify.py', project / 'mutation_cache.py',
                      project / 'Audit.lean', project / 'lakefile.toml', project / 'lean-toolchain',
-                     root / 'input.go', root / 'go.mod', root / 'goose', root / 'proofgen', dependency / 'Input.lean']
+                     root / 'input.go', root / 'second.go', root / 'go.mod', root / 'goose', root / 'proofgen', dependency / 'Input.lean']
             for path in paths:
                 path.write_text('original')
             (project / 'lake-manifest.json').write_text(json.dumps({'packages': [{'name': 'example'}]}))
-            profile = replace(verify.length_profile(), source=root / 'input.go', sources=(root / 'input.go',))
+            profile = replace(verify.length_profile(), source=root / 'input.go', sources=(root / 'input.go', root / 'second.go'))
 
             def command(arguments, **kwargs):
                 if arguments[:3] == ['git', 'ls-files', '-z']:
@@ -67,6 +67,7 @@ class MutationCacheTests(unittest.TestCase):
                         path.write_text('original')
                 self.assertNotEqual(key(replace(profile, mutations={'new': ('before', 'after')})), original)
                 self.assertNotEqual(key(replace(profile, proof_file='Different.lean')), original)
+                self.assertNotEqual(key(replace(profile, source=root / 'second.go')), original)
                 with patch.dict(mutation_cache.os.environ, {'LEAN_NUM_THREADS': '17'}):
                     self.assertNotEqual(key(), original)
             with patch.object(mutation_cache.subprocess, 'check_output', return_value=b'untracked.lean'):

@@ -58,6 +58,8 @@ def fingerprint(project, root, profile, tools):
                         if name.startswith(('LEAN_', 'LAKE_', 'GO', 'CGO_', 'CC', 'CXX'))},
         'profile': {
             'package': profile.package, 'go_package': profile.go_package,
+            'source': str(profile.source.relative_to(root)),
+            'sources': [str(path.relative_to(root)) for path in profile.sources],
             'generated': profile.generated, 'bindings': profile.bindings,
             'proof_file': profile.proof_file, 'audit': profile.audit,
             'mutations': profile.mutations, 'mutation_modules': profile.mutation_modules,
