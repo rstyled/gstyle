@@ -315,6 +315,62 @@ class VerificationGuardTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "source is not bound"):
                     verify.check_mutations(replace(profile, report=Path(directory)), Path("goose"), Path("proofgen"))
 
+    def test_baseline_covers_audit_and_mutation_targets(self):
+        profile = verify.runtime_facts_profile()
+        modules = verify.baseline_modules(profile)
+        self.assertIn("Gstyle.Proof.Transfer.Boolean", modules)
+        self.assertIn("Gstyle.Proof.Transfer.SymbolResolution", modules)
+        self.assertIn(profile.proof_file.removesuffix(".lean").replace("/", "."), modules)
+        for proof in profile.mutation_modules.values():
+            self.assertIn(proof.removesuffix(".lean").replace("/", "."), modules)
+        self.assertNotIn("Gstyle", modules)
+        self.assertNotIn("Gstyle.Proof.Transfer.BranchSnapshot", modules)
+
+    def test_only_length_profile_preserves_umbrella_build(self):
+        for name in dir(verify):
+            if not name.endswith("_profile"):
+                continue
+            with self.subTest(profile=name):
+                modules = verify.baseline_modules(getattr(verify, name)())
+                self.assertEqual("Gstyle" in modules, name == "length_profile")
+
+    def test_baseline_handles_line_comments_and_multiple_imports(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "Audit.lean").write_text(
+                "-- audit dependencies\n"
+                "import Gstyle.First Gstyle.Second -- both are required\n"
+                "#print axioms example\n")
+            for name in ("First", "Second"):
+                target = root / "Gstyle" / (name + ".lean")
+                target.parent.mkdir(exist_ok=True)
+                target.touch()
+            profile = replace(verify.length_profile(), proof_file="Gstyle/First.lean", umbrella=False)
+            with patch.object(verify, "PROJECT", root):
+                self.assertEqual(verify.baseline_modules(profile), ["Gstyle.First", "Gstyle.Second"])
+
+    def test_baseline_rejects_missing_or_unsupported_imports(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            audit = root / "Audit.lean"
+            profile = verify.length_profile()
+            for content, message in (
+                ("#print axioms example\n", "no project imports"),
+                ("public import Gstyle.Proof.Cardinality\n", "unsupported audit import"),
+                ("import Gstyle.Missing\n", "missing baseline module"),
+            ):
+                with self.subTest(content=content), patch.object(verify, "PROJECT", root):
+                    audit.write_text(content)
+                    with self.assertRaisesRegex(RuntimeError, message):
+                        verify.baseline_modules(profile)
+
+    def test_all_profile_audits_have_build_targets(self):
+        for name in dir(verify):
+            if not name.endswith("_profile"):
+                continue
+            with self.subTest(profile=name):
+                self.assertTrue(verify.baseline_modules(getattr(verify, name)()))
+
     def test_failed_run_clears_success(self):
         with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
             report = Path(directory)

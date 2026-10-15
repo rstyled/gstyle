@@ -57,9 +57,10 @@ rejected only for a recognized proof failure in its expected proof module.
 Missing modules, syntax errors, unrelated diagnostics and mixed setup/proof
 failures abort verification. No unchanged build is added per mutation.
 
-Each mutant builds only its affected proof module. The full unchanged project is
-checked before mutation tests, so unrelated pattern proofs are not rebuilt for
-every mutant.
+Each mutant builds only its affected proof module. The unchanged audit imports
+and all mutation proof targets are built before mutation tests. Lake builds their dependency closure; unrelated
+profiles are not built in every CI job. The function-length profile also builds
+the `Gstyle` umbrella once, preserving the full project import check.
 
 Mutation checks run with two workers. Every worker uses a private Go/Lean
 workspace and a private copy of the successful preflight build artifacts.
@@ -72,10 +73,12 @@ Interval and unchecked-output proofs are split by operation. The public
 The baseline build and axiom audits remain complete; mutation builds target the
 specific operation contract listed in `verify.py`.
 
-CI caches the project's `.lake/build` as well as pinned dependency builds.
+CI caches the project's `.lake/build` per profile, as well as pinned dependency
+builds.
+An older shared cache is a fallback; Lake still checks every restored input.
 Lake invalidates changed inputs before reusing artifacts. Larger mutation suites
 run across separate runners with `GSTYLE_MUTATION_SHARD=INDEX/COUNT` (zero-based).
-Every shard checks the full baseline, source binding and axiom audit, then checks
+Every shard checks its complete profile baseline, source binding and axiom audit, then checks
 its assigned mutations. Results record the shard and total mutation count.
 The aggregate `verify-length` check requires every configured shard to pass.
 Local commands default to one shard and still run every mutation.

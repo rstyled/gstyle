@@ -97,12 +97,13 @@ class Profile:
     generated: tuple = ("Code", "GeneratedProof")
     bindings: tuple = ()
     mutation_modules: dict = field(default_factory=dict)
+    umbrella: bool = False
 
 
 def length_profile():
     return Profile(REPORT, PACKAGE, GO_PACKAGE, SOURCE, (SOURCE,), THEOREMS,
                    MUTATIONS, "Audit.lean", "Gstyle/Proof/Length.lean", "ordered token-span accumulator and strict threshold",
-                   ("Go scanner", "token-to-span extraction", "configuration and diagnostics"))
+                   ("Go scanner", "token-to-span extraction", "configuration and diagnostics"), umbrella=True)
 
 
 def pdg_profile():
@@ -824,6 +825,7 @@ def value_evaluation_profile():
         "Gstyle/Proof/Transfer/ValueEvaluation.lean",
         "Gstyle/Proof/Transfer/ValueResolution.lean",
         "Gstyle/Proof/StrconvPackage.lean", "Gstyle/Proof/RuntimeValue.lean",
+        "Gstyle/Proof/RuntimePackage.lean", "Gstyle/Proof/RuntimeValueModel.lean",
         "Gstyle/Proof/StateMap/Binding.lean", "Gstyle/Proof/Pdg/GraphLayout.lean",
     )
     names = (
@@ -1196,6 +1198,31 @@ def source_hashes(paths):
     return {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
 
 
+def baseline_modules(profile):
+    # Accept plain project imports and line comments in audit headers. Reject
+    # other header forms instead of silently missing an audited dependency.
+    modules = set()
+    for line in (PROJECT / profile.audit).read_text().splitlines():
+        line = line.split("--", 1)[0].strip()
+        if not line:
+            continue
+        if line.startswith("#print axioms "):
+            break
+        if not re.fullmatch(r"import(?:\s+Gstyle(?:\.[A-Za-z_][A-Za-z_0-9]*)+)+", line):
+            raise RuntimeError(f"unsupported audit import: {line}")
+        modules.update(line.split()[1:])
+    if not modules:
+        raise RuntimeError(f"audit has no project imports: {profile.audit}")
+    for proof in (profile.proof_file, *profile.mutation_modules.values()):
+        modules.add(proof.removesuffix(".lean").replace("/", "."))
+    for module in modules:
+        if not (PROJECT / (module.replace(".", "/") + ".lean")).is_file():
+            raise RuntimeError(f"missing baseline module: {module}")
+    if profile.umbrella:
+        modules.add("Gstyle")
+    return sorted(modules)
+
+
 def main(profile=None):
     profile = profile or length_profile()
     report = profile.report
@@ -1203,7 +1230,7 @@ def main(profile=None):
     success = report / "result.json"
     success.unlink(missing_ok=True)
     bound_sources = source_hashes(profile.sources)
-    run(["lake", "build"], PROJECT, "build.log", report=report)
+    run(["lake", "build", *baseline_modules(profile)], PROJECT, "build.log", report=report)
     perennial = PROJECT / ".lake/packages/perennial"
     manifest = json.loads((PROJECT / "lake-manifest.json").read_text())
     for package in manifest["packages"]:

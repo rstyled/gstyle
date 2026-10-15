@@ -228,8 +228,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: verification/length/.lake/build
-          key: lean-project-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}-${{ hashFiles('verification/length/Gstyle.lean', 'verification/length/Gstyle/**/*.lean') }}
+          key: lean-profile-v2-${{ matrix.profile }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}-${{ hashFiles('verification/length/Gstyle.lean', 'verification/length/Gstyle/**/*.lean') }}
           restore-keys: |
+            lean-profile-v2-${{ matrix.profile }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}-
             lean-project-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/length/lean-toolchain', 'verification/length/lakefile.toml', 'verification/length/lake-manifest.json') }}-
 
       - name: Install pinned Lean toolchain manager
