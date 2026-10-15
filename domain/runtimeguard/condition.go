@@ -34,7 +34,12 @@ func (v *graphView) logical(ref pdg.Ref, operator string, truth bool, state Stat
 		}
 		return v.assume(v.operand(ref, 1), truth, left)
 	}
-	return v.join(v.assume(v.operand(ref, 0), truth, copyState(state)), v.assume(v.operand(ref, 1), truth, copyState(state)))
+	left := v.assume(v.operand(ref, 0), truth, copyState(state))
+	right := v.assume(v.operand(ref, 1), truth, copyState(state))
+	if left == nil && right == nil {
+		return nil
+	}
+	return v.join(left, right)
 }
 
 func (v *graphView) comparison(ref pdg.Ref, operator string, truth bool, state State) State {

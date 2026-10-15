@@ -101,3 +101,8 @@ verify-signed-step:
 verify-assignment:
 	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
 	python3 -B verification/length/verify.py --assignment
+
+.PHONY: verify-branch
+verify-branch:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --branch

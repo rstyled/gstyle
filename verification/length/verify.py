@@ -448,6 +448,38 @@ def assignment_profile():
                    mutation_modules={})
 
 
+def branch_profile():
+    graph = "domain/runtimeguard/graph.go"
+    left = "left := v.assume(v.operand(ref, 0), truth, copyState(state))"
+    right = "right := v.assume(v.operand(ref, 1), truth, copyState(state))"
+    mutations = {
+        "branch-inverts-composition": ('(operator == "&&") == truth', '(operator == "&&") != truth'),
+        "branch-skips-unreachable-left": ("if left == nil {", "if false && left == nil {"),
+        "branch-loses-sequential-refinement": ("return v.assume(v.operand(ref, 1), truth, left)", "return v.assume(v.operand(ref, 1), truth, state)"),
+        "branch-left-aliases-input": (left, left.replace("copyState(state)", "state")),
+        "branch-right-aliases-input": (right, right.replace("copyState(state)", "state")),
+        "branch-wrong-right-child": (right, right.replace("operand(ref, 1)", "operand(ref, 0)")),
+        "branch-inverts-right-truth": (right, right.replace(", truth,", ", !truth,")),
+        "branch-right-uses-left-state": (right, right.replace("copyState(state)", "copyState(left)")),
+        "branch-resurrects-both-unreachable": ("if left == nil && right == nil {", "if false && left == nil && right == nil {"),
+        "branch-drops-live-alternative": ("if left == nil && right == nil {", "if left == nil || right == nil {"),
+        "branch-skips-join": ("return v.join(left, right)", "return left"),
+        "operand-wrong-row": ("return v.operands[ref-1][position]", "return v.operands[ref][position]", graph),
+        "operand-wrong-position": ("return v.operands[ref-1][position]", "return v.operands[ref-1][1-position]", graph),
+        "operand-rejects-last-position": ("position >= len(v.operands[ref-1])", "position >= len(v.operands[ref-1])-1", graph),
+        "operand-ignores-zero-reference": ("if ref == 0 || position >= len(v.operands[ref-1]) {", "if false || position >= len(v.operands[ref-1]) {", graph),
+    }
+    prefix = "Perennial.github_com.rstyled.gstyle.domain.runtimeguard."
+    names = ("branch_join_sound", "logical_truth_cases", "branch_result_sound", "joined_branch_valid",
+             "wp_operand", "wp_operand_zero", "wp_operand_outside", "wp_logical", "wp_logical_sound")
+    return replace(runtime_value_profile(), report=ROOT / "dist/verification/branch-composition",
+                   theorems={prefix + name for name in names}, mutations=mutations,
+                   audit="AuditBranch.lean", proof_file="Gstyle/Proof/Transfer/Branch.lean",
+                   verified="production logical composition conditional on explicit child contracts, operand lookup and conditional interval-state composition",
+                   unverified=("child assume execution and semantic contracts", "PDG condition/operator facts and metadata validity", "condition evaluation effects", "full analysis.transfer and RHS evaluation", "fixpoint convergence", "pointer/alias semantics", "package initialization"),
+                   mutation_modules={})
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -570,10 +602,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile}
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile}
         arguments = tuple(sys.argv[1:])
         if arguments not in profiles:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch]")
         main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

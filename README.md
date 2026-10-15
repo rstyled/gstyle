@@ -281,3 +281,10 @@ wrapped results and metadata invalidation. See
 Run `make verify-assignment` to verify production RHS eligibility and non-pointer
 state-map writes, including unsigned defaults and conservative compound fallback.
 See [the contracts and remaining integration obligations](verification/length/ASSIGNMENT.md).
+
+### Lean verification of branch composition
+
+Run `make verify-branch` to verify operand reads and production logical branch
+composition under explicit child contracts. It covers sequential refinement,
+independent forks and unreachable alternatives. See
+[the contract and unresolved child/PDG obligations](verification/length/BRANCH.md).

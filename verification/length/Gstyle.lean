@@ -16,3 +16,5 @@ public import Gstyle.Proof.Transfer.Sound
 public import Gstyle.Proof.Transfer.Step
 
 public import Gstyle.Proof.Transfer.Assignment
+
+public import Gstyle.Proof.Transfer.Branch
