@@ -228,15 +228,24 @@ func mutableHits(hits []patterns.MutableIdentityHit) []patterns.MutableIdentityH
 	return out
 }
 
-func parseOptions(args []string) (options, error) {
+// Flags returns fresh flag definitions shared by command help and execution.
+func Flags() *flag.FlagSet { return flagsFor(&options{}) }
+
+func flagsFor(result *options) *flag.FlagSet {
 	flags := flag.NewFlagSet("patterns", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	format := flags.String("format", "text", "output format")
-	threshold := flags.Uint("threshold", 600, "minimum WL similarity (0-1000)")
-	useCache := flags.Bool("cache", false, "reuse WL refinements from .gstyle/patterns-cache.json")
+	flags.StringVar(&result.format, "format", "text", "output format")
+	flags.UintVar(&result.threshold, "threshold", 600, "minimum WL similarity (0-1000)")
+	flags.BoolVar(&result.useCache, "cache", false, "reuse WL refinements from .gstyle/patterns-cache.json")
+	return flags
+}
+
+func parseOptions(args []string) (options, error) {
+	result := options{}
+	flags := flagsFor(&result)
 	if err := flags.Parse(args); err != nil {
 		return options{}, err
 	}
-	result := options{format: *format, threshold: *threshold, useCache: *useCache, paths: flags.Args()}
+	result.paths = flags.Args()
 	return result, result.validate()
 }

@@ -388,17 +388,26 @@ func diffCommandOutput(cmd *exec.Cmd) (string, error) {
 	return "", fmt.Errorf("create fix diff: %w", err)
 }
 
-func parseOptions(args []string) (options, error) {
+// Flags returns fresh flag definitions shared by command help and execution.
+func Flags() *flag.FlagSet { return flagsFor(&options{}) }
+
+func flagsFor(result *options) *flag.FlagSet {
 	flags := flag.NewFlagSet("fix", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	kind := flags.String("kind", "all", "which fixes to apply")
-	apply := flags.Bool("apply", false, "write fixes to disk")
-	changed := flags.Bool("changed", false, "only fix candidates in diff-touched functions")
-	base := flags.String("base", "", "git base for --changed")
+	flags.StringVar(&result.kind, "kind", "all", "which fixes to apply")
+	flags.BoolVar(&result.apply, "apply", false, "write fixes to disk")
+	flags.BoolVar(&result.changed, "changed", false, "only fix candidates in diff-touched functions")
+	flags.StringVar(&result.base, "base", "", "git base for --changed")
+	return flags
+}
+
+func parseOptions(args []string) (options, error) {
+	result := options{}
+	flags := flagsFor(&result)
 	if err := flags.Parse(args); err != nil {
 		return options{}, err
 	}
-	result := options{kind: *kind, apply: *apply, changed: *changed, base: *base, paths: flags.Args()}
+	result.paths = flags.Args()
 	return result, result.validate()
 }
 

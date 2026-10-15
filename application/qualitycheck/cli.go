@@ -131,8 +131,10 @@ func writeReport(output io.Writer, report quality.Report, format string) error {
 	return writeText(output, report)
 }
 
-func parseOptions(args []string) (options, error) {
-	result := options{}
+// Flags returns fresh flag definitions shared by command help and execution.
+func Flags() *flag.FlagSet { return flagsFor(&options{}) }
+
+func flagsFor(result *options) *flag.FlagSet {
 	flags := flag.NewFlagSet("check", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	flags.StringVar(&result.config, "config", "", "TOML config")
@@ -142,6 +144,12 @@ func parseOptions(args []string) (options, error) {
 	flags.BoolVar(&result.tests, "tests", false, "include tests")
 	flags.BoolVar(&result.changed, "changed", false, "only findings in diff-touched functions")
 	flags.StringVar(&result.base, "base", "", "git base for --changed")
+	return flags
+}
+
+func parseOptions(args []string) (options, error) {
+	result := options{}
+	flags := flagsFor(&result)
 	if err := flags.Parse(args); err != nil {
 		return result, err
 	}

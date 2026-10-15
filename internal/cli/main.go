@@ -1,24 +1,17 @@
 package cli
 
 import (
-	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"os/signal"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/rstyled/gstyle/adapters/gocyclo"
 	"github.com/rstyled/gstyle/adapters/goquality"
 	"github.com/rstyled/gstyle/adapters/sqlite"
 	"github.com/rstyled/gstyle/application"
-	"github.com/rstyled/gstyle/application/bugreducer"
-	"github.com/rstyled/gstyle/application/graphmatch"
-	"github.com/rstyled/gstyle/application/nextscore"
-	"github.com/rstyled/gstyle/application/patterncheck"
-	"github.com/rstyled/gstyle/application/patternfix"
 	"github.com/rstyled/gstyle/application/qualitycheck"
 )
 
@@ -28,6 +21,7 @@ type runOptions struct {
 	controlPort int
 	paths       []string
 	config      string
+	skill       bool
 }
 
 // Main runs the CLI and exits with the command status on failure.
@@ -59,68 +53,6 @@ func commandExitCode(args []string, err error) int {
 	default:
 		return 1
 	}
-}
-
-func run(args []string, output io.Writer) error {
-	if len(args) == 0 {
-		return runDefault(args, output)
-	}
-	return runCommand(args, output)
-}
-
-func runCommand(args []string, output io.Writer) error {
-	switch args[0] {
-	case "help":
-		return writeHelp(args[1:], output)
-	case "--skill":
-		return writeSkill(args, output)
-	}
-	ctx, cancel := signal.NotifyContext(context.Background(), reducerSignals()...)
-	defer cancel()
-	return runSubcommand(ctx, args, output)
-}
-
-// runSubcommand dispatches the headless subcommands; anything else runs
-// the default TUI.
-func runSubcommand(ctx context.Context, args []string, output io.Writer) error {
-	switch args[0] {
-	case "check":
-		return qualitycheck.Run(ctx, args[1:], output)
-	case "bug-reducer":
-		return bugreducer.Run(ctx, args[1:], output)
-	case "patterns":
-		return patterncheck.Run(ctx, args[1:], output)
-	case "fix":
-		return patternfix.Run(ctx, args[1:], output)
-	default:
-		return runSubcommandExtra(ctx, args, output)
-	}
-}
-
-// runSubcommandExtra handles the remaining subcommands to keep
-// runSubcommand under the complexity ceiling.
-func runSubcommandExtra(ctx context.Context, args []string, output io.Writer) error {
-	switch args[0] {
-	case "match-graphs":
-		return graphmatch.Run(ctx, args[1:], output)
-	case "next":
-		return nextscore.Run(ctx, args[1:], output)
-	case "score":
-		return nextscore.Score(ctx, args[1:], output)
-	default:
-		return runDefault(args, output)
-	}
-}
-
-func runDefault(args []string, output io.Writer) error {
-	options, err := parseRunOptions(args)
-	if errors.Is(err, flag.ErrHelp) {
-		return writeHelp(nil, output)
-	}
-	if err != nil {
-		return err
-	}
-	return runTUI(options, output)
 }
 
 func runTUI(options runOptions, output io.Writer) (result error) {
@@ -156,19 +88,27 @@ func runTUI(options runOptions, output io.Writer) (result error) {
 	return errors.Join(programErr, closeErr)
 }
 
-func parseRunOptions(args []string) (runOptions, error) {
+func runFlags(result *runOptions) *flag.FlagSet {
 	flags := flag.NewFlagSet("gstyle", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	controlPort := flags.Int("control-port", defaultControlPort, "localhost JSON-RPC control port")
-	config := flags.String("config", "", "quality TOML policy")
+	flags.IntVar(&result.controlPort, "control-port", defaultControlPort, "localhost JSON-RPC port; 0 selects a free port")
+	flags.StringVar(&result.config, "config", "", "quality TOML policy")
+	flags.BoolVar(&result.skill, "skill", false, "print agent instructions")
+	return flags
+}
+
+func parseRunOptions(args []string) (runOptions, error) {
+	result := runOptions{}
+	flags := runFlags(&result)
 	if err := flags.Parse(args); err != nil {
 		return runOptions{}, err
 	}
-	if *controlPort < 0 || *controlPort > 65535 {
+	if result.controlPort < 0 || result.controlPort > 65535 {
 		return runOptions{}, errors.New("control port must be between 0 and 65535")
 	}
 
-	return runOptions{controlPort: *controlPort, paths: flags.Args(), config: *config}, nil
+	result.paths = flags.Args()
+	return result, nil
 }
 
 func writeSkill(args []string, output io.Writer) error {
