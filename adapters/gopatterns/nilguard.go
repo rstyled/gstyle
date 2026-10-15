@@ -32,7 +32,7 @@ func nilGuardCandidates(function FuncPdg, report runtimeguard.Report) []patterns
 	var out []patterns.Candidate
 	seen := make(map[pdg.Ref]bool)
 	for _, site := range report.Accesses {
-		if site.Index || site.Value.NonNil || len(site.Guards) == 0 || seen[site.Symbol] {
+		if seen[site.Symbol] || !nilGuardRisk(&function.Pdg, site) {
 			continue
 		}
 		seen[site.Symbol] = true
@@ -48,19 +48,36 @@ func buildNilGuardCandidate(function FuncPdg, site runtimeguard.Access) patterns
 	}
 	name := runtimeSymbolName(&function.Pdg, site.Symbol)
 	line := int(function.Pdg.Nodes[site.Node-1].Line)
-	candidate := patterns.Candidate{
+	return patterns.Candidate{
 		Kind: patterns.NilGuard, ScoreMilli: 800,
 		Observation:     "nil guard checks " + strings.Join(names, ", ") + " while " + name + " is dereferenced without a guard",
 		Inference:       "verify the guard targets the dereferenced pointer; the checked variable may be the wrong one",
 		CounterEvidence: []string{"intent unknown; no automatic fix — verify against the contract"},
 		Sites:           []patterns.Site{{Path: function.Path, Line: line, EndLine: line, ID: function.Name, Name: function.Name}},
 	}
-	if !site.Value.Nil && receiverSymbol(&function.Pdg, site.Symbol) {
-		candidate.Observation = "receiver " + name + " is dereferenced without a local non-nil guarantee"
-		candidate.Inference = "review the method's receiver contract; a guard on another value does not establish that the receiver is non-nil"
-		candidate.CounterEvidence = []string{"the caller may guarantee a non-nil receiver; no automatic fix"}
+}
+
+// An unchanged entry receiver is a method-contract input, not a competing
+// argument guard. Do not extend this exception to nil or replaced values.
+func nilGuardRisk(graph *pdg.Graph, site runtimeguard.Access) bool {
+	if site.Index || site.Value.NonNil || len(site.Guards) == 0 {
+		return false
 	}
-	return candidate
+	return !entryReceiverAccess(graph, site)
+}
+
+// runtimeguard.binding gives a stable entry pointer identity symbol*2. Writes
+// preserve it only when the original value is copied back; joins, unknown call
+// results and escaped bindings cannot establish this identity. Nil path facts
+// still take precedence over identity.
+func entryReceiverAccess(graph *pdg.Graph, site runtimeguard.Access) bool {
+	if site.Value.Nil || site.Symbol == 0 {
+		return false
+	}
+	if site.Value.Identity != uint64(site.Symbol)*2 {
+		return false
+	}
+	return receiverSymbol(graph, site.Symbol)
 }
 
 // Normal-flow lowering can store receivers as parameter symbols. The function
