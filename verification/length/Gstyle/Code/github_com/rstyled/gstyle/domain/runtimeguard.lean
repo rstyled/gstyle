@@ -1063,6 +1063,55 @@ noncomputable def copyState.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore State.ty))) (Pair (Var "out") (Var "$r0"))))))))))
 
+/-- go: value.go:65:6 -/
+noncomputable def equalState.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "a"
+  (Lam "b"
+  (App (Val exceptionDo)
+  (Let "b" (App (Val (GoInstruction (GoAlloc State.ty))) (Var "b"))
+  (Let "a" (App (Val (GoInstruction (GoAlloc State.ty))) (Var "a"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Val #true))))
+  (Let "$range" (App (Val (GoInstruction (GoLoad State.ty))) (Var "a"))
+  (Let "value" (App (Val (GoInstruction (GoAlloc Value.ty))) (App (Val (GoInstruction (GoZeroVal Value.ty))) (Val #())))
+  (Let "symbol" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (App (Val (GoInstruction (GoZeroVal _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Val #())))
+  (App (App (Val (map.forRange _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty Value.ty)) (Var "$range"))
+  (Lam "$key"
+  (Lam "$value"
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "__p" (App (App (Val (map.lookup2 _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty Value.ty)) (App (Val (GoInstruction (GoLoad State.ty))) (Var "b"))) (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol")))
+  (Let "$ret0" (Fst (Var "__p"))
+  (Let "$ret1" (Snd (Var "__p"))
+  (Let "$r0" (Var "$ret0")
+  (Let "$r1" (Var "$ret1")
+  (Let "ok" (App (Val (GoInstruction (GoAlloc go.bool))) (App (Val (GoInstruction (GoZeroVal go.bool))) (Val #())))
+  (Let "other" (App (Val (GoInstruction (GoAlloc Value.ty))) (App (Val (GoInstruction (GoZeroVal Value.ty))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (If (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoLoad go.bool))) (Var "ok"))) (Val #true) (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoOp GoEquals Value.ty))) (Pair (App (Val (GoInstruction (GoLoad Value.ty))) (Var "other")) (App (Val (GoInstruction (GoLoad Value.ty))) (Var "value"))))))
+  (App (Val doReturn)
+  (Val #false))
+  (App (Val doExecute)
+  (Val #())))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.bool))) (Pair (Var "ok") (Var "$r1")))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore Value.ty))) (Pair (Var "other") (Var "$r0"))))))))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Pair (Var "symbol") (Var "$key")))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore Value.ty))) (Pair (Var "value") (Var "$value"))))))))))))))
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoOp GoEquals go.int))) (Pair (Let "$a0" (App (Val (GoInstruction (GoLoad State.ty))) (Var "a"))
+  (App (App (Val (GoInstruction (FuncResolve go.len [State.ty]))) (Val #())) (Var "$a0"))) (Let "$a0" (App (Val (GoInstruction (GoLoad State.ty))) (Var "b"))
+  (App (App (Val (GoInstruction (FuncResolve go.len [State.ty]))) (Val #())) (Var "$a0")))))))
+  (App (Val doReturn)
+  (Val #false))
+  (App (Val doExecute)
+  (Val #())))))))))
+
 instance info' : PkgInfo pkg_id.github_com.rstyled.gstyle.domain.runtimeguard where
   pkgImportedPkgs := [pkg_id.github_com.rstyled.gstyle.domain.pdg, pkg_id.github_com.rstyled.gstyle.domain.runtimeguard.interval]
 
@@ -1392,6 +1441,7 @@ class Assumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFun
   incrementInteger_unfold : FuncUnfold incrementInteger [] incrementInteger.impl
   decrementInteger_unfold : FuncUnfold decrementInteger [] decrementInteger.impl
   copyState_unfold : FuncUnfold copyState [] copyState.impl
+  equalState_unfold : FuncUnfold equalState [] equalState.impl
   import_pdg_Assumption : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Assumptions
   import_interval_Assumption : _root_.Perennial.github_com.rstyled.gstyle.domain.runtimeguard.interval.Assumptions
 
@@ -1413,6 +1463,7 @@ attribute [instance] Assumptions.analysis_instance
   Assumptions.incrementInteger_unfold
   Assumptions.decrementInteger_unfold
   Assumptions.copyState_unfold
+  Assumptions.equalState_unfold
   Assumptions.import_pdg_Assumption
   Assumptions.import_interval_Assumption
 

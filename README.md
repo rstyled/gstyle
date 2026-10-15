@@ -254,9 +254,9 @@ comparison copy-back, plus the complete Value join and its interval-set
 preservation contract. Numeric state constraints are covered separately below.
 Remaining transfers, traversal and outer projections remain outside the proof. See [the negative-index verification scope](verification/length/NEGATIVE_INDEX.md).
 
-### Lean verification of state-map joins
+### Lean verification of state-map joins and equality
 
-Run `make verify-state-map` to verify the production join and its binding/copy
+Run `make verify-state-map` to verify production content equality, the join and its binding/copy
 helpers. The contract covers both/missing keys, nil branches, input preservation
 and conditional interval soundness using the existing Value merge proof. See
 [the explicit assumptions and unsupported cases](verification/length/STATE_MAP.md).

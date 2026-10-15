@@ -67,7 +67,7 @@ func equalState(a, b State) bool {
 		return false
 	}
 	for symbol, value := range a {
-		if b[symbol] != value {
+		if other, ok := b[symbol]; !ok || other != value {
 			return false
 		}
 	}

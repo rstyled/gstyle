@@ -332,17 +332,31 @@ def state_map_profile():
         "binding-forges-unsigned-bound": ("return Value{Lower: 0, HasLower: true}", "return Value{Lower: 1, HasLower: true}", graph),
         "binding-wrong-identity": ("uint64(symbol) * 2", "uint64(symbol) * 3", graph),
     }
+    equality = 'if other, ok := b[symbol]; !ok || other != value {'
+    mutations.update({
+        "equality-drops-presence": (equality, 'if other := b[symbol]; other != value {', value),
+        "equality-inverts-presence": (equality, 'if other, ok := b[symbol]; ok || other != value {', value),
+        "equality-wrong-key": (equality, 'if other, ok := b[symbol+1]; !ok || other != value {', value),
+        "equality-ignores-values": (equality, '_ = value; if _, ok := b[symbol]; !ok {', value),
+        "equality-identity-only": (equality, 'if other, ok := b[symbol]; !ok || other.Identity != value.Identity {', value),
+        "equality-needs-both": (equality, 'if other, ok := b[symbol]; !ok && other != value {', value),
+        "equality-inverts-values": (equality, 'if other, ok := b[symbol]; !ok || other == value {', value),
+        "equality-skips-size": ('if len(a) != len(b) {', 'if false {', value),
+        "equality-mutates-left": (equality, 'delete(a, symbol); '+equality, value),
+        "equality-mutates-right": (equality, 'delete(b, symbol); '+equality, value),
+    })
     modules = {name: "Gstyle/Proof/StateMap/" +
-               ("Copy" if name.startswith("copy-") else "Binding" if name.startswith("binding-") else "Join") + ".lean"
+               ("Equality" if name.startswith("equality-") else "Copy" if name.startswith("copy-") else "Binding" if name.startswith("binding-") else "Join") + ".lean"
                for name in mutations}
     prefix = "Perennial.github_com.rstyled.gstyle.domain.runtimeguard."
     names = ("wp_base", "wp_binding", "wp_copyState", "wp_copyState_nil", "wp_join", "wp_join_sound",
-             "wp_join_left_nil", "wp_join_right_nil", "wp_join_both_nil", "joinLookup_domain", "state_join_sound")
+             "wp_join_left_nil", "wp_join_right_nil", "wp_join_both_nil", "joinLookup_domain", "state_join_sound", "state_equal_of_size_and_entries", "wp_equalState",
+             "wp_equalState_left_nil", "wp_equalState_right_nil", "wp_equalState_both_nil")
     return replace(runtime_value_profile(), report=ROOT / "dist/verification/state-map", source=ROOT / "domain/runtimeguard/flow.go",
                    theorems={prefix + name for name in names}, mutations=mutations,
                    audit="AuditStateMap.lean", proof_file="Gstyle/Proof/StateMap/Join.lean",
-                   verified="production state-map join, exact key coverage, input preservation and conditional interval soundness",
-                   unverified=("aliased non-nil input maps", "invalid cached binding references", "concurrent mutation", "Go-to-PDG facts and concrete execution semantics", "fixpoint convergence and other transfers", "package initialization"),
+                   verified="production state-map join and exact content equality, input preservation and conditional interval soundness",
+                   unverified=("aliased non-nil join input maps", "invalid cached binding references", "concurrent mutation", "Go-to-PDG facts and concrete execution semantics", "fixpoint convergence and other transfers", "package initialization"),
                    mutation_modules=modules)
 
 

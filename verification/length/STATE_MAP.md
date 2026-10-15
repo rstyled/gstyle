@@ -1,8 +1,8 @@
-# Production state-map join
+# Production state-map join and equality
 
 Run `make verify-state-map` with the existing pinned Lean project. This verifies
 actual Go bodies in `domain/runtimeguard`, including `graphView.join`,
-`graphView.binding`, `graphView.base` and `copyState`. No production Go body is
+`graphView.binding`, `graphView.base`, `copyState` and `equalState`. No production Go body is
 replaced by a model. The join calls the existing proved `Value.merge` contract.
 
 ## Contracts and assumptions
@@ -70,9 +70,30 @@ Treating a nil input as an unreachable incoming state is a caller convention,
 not proved here. Exact copying preserves the other side's abstract meaning;
 with two unreachable inputs, interval preservation is vacuous.
 
+## Exact content equality
+
+`wp_equalState` proves the actual production size check and map loop return true
+exactly when the two maps have identical keys and complete Value records. Each
+visited key must exist on the right; a missing key is distinct from a present
+zero Value. This fixes the production bug where `{1: Value{}}` and
+`{2: Value{}}` compared equal. The loop covers arbitrary iteration order,
+unequal values, missing keys and early returns. No input assumptions about
+interval validity or metadata consistency are needed for content equality.
+
+Both maps retain their exact contents. The contract takes independent read
+shares, so it also covers aliased maps when compatible shares establish the
+same contents. This does not extend the exclusive-input join contract to
+aliased maps. Concurrent writes are unsupported.
+
+Separate contracts cover nil on either side and both nil. Nil and allocated
+empty maps compare equal by content. This function does not decide reachability;
+the flow caller separately tests whether the previous input map is nil. The
+length proof uses the size bound supplied by the owned-map Go semantics; it
+does not assume arbitrary integer-to-word conversions are injective.
+
 ## Safeguards and CI
 
-Eleven named theorems are audited against the existing standard-axiom allowlist.
+Sixteen named theorems are audited against the existing standard-axiom allowlist.
 The audit includes actual execution contracts and the semantic/domain lemmas.
 Explicit graph-view layout instances avoid importing unfinished instances for
 unrelated opaque PDG types. The resulting proofs may not depend on those opaque
@@ -81,15 +102,17 @@ Package initialization itself remains unproved.
 
 The new profile regenerates and byte-compares runtimeguard, interval, PDG type
 and query code. The runtime Value profile also binds its newly explicit PDG
-imports. Seventeen source mutations cover wrong-side lookups, missing or
+imports. Twenty-seven source mutations cover wrong-side lookups, missing or
 overwritten keys, nil branch errors, copy aliasing/value loss, unstable lookup,
-unsigned defaults and pointer identity. Mutation failures must still occur in
-the expected proof file with a recognized proof diagnostic. The diagnostic
+unsigned defaults and pointer identity. Ten equality controls cover missing-key
+checks, wrong keys, ignored/inverted values, omitted length checks and forbidden
+input writes. All fourteen Value fields have independent Go regression cases.
+Mutation failures must still occur in the expected proof file with a recognized proof diagnostic. The diagnostic
 filter and setup-error rejection rules are unchanged.
 
 Private incremental build copies, pinned dependency checks, two mutation
-workers, targeted proof modules and shard validation remain in use. The new CI
-profile uses two shards; existing profile shard counts and cache paths stay the
+workers, targeted proof modules and shard validation remain in use. The CI
+profile keeps two shards; existing profile shard counts and cache paths stay the
 same. Go tests cover exact key cases, nil versus allocated-empty inputs, raw
 metadata copying, input/metadata preservation and interval membership.
 
@@ -102,5 +125,5 @@ is not formally proved. The nil cases are covered separately.
 
 PDG extraction, remaining transfers, fixpoint convergence, traversal,
 Access/query/Candidate integration, pointer/alias semantics and package
-initialization remain outside this stage. No further proof stage is part of
-this PR.
+initialization remain outside this stage. The equality contracts do not prove
+the actual successor/worklist composition.
