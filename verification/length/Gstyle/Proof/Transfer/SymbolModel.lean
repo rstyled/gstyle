@@ -1,5 +1,6 @@
 module
 public import Gstyle.Proof.Transfer.QuerySnapshot
+public import Gstyle.Proof.Transfer.SymbolRead
 @[expose] public section
 noncomputable section
 namespace Perennial
@@ -76,9 +77,6 @@ theorem symbolRecordStep_parentheses (s : QuerySnapshot) (ref child : w32) (node
     (hrow : s.operands[(uint.Z ref - 1).toNat]? = some row) (hchild : row.arr[0]? = some child) :
     symbolRecordStep s ref node a = .inr child := by
   simp only [symbolRecordStep, hr, Bool.false_eq_true, ite_false, hs, ite_true, hop, hrow, Option.getD_some, hchild]
-
-def validSymbolRef (s : QuerySnapshot) (ref : w32) : Prop :=
-  ref = W32 0 ∨ (0 < uint.Z ref ∧ uint.Z ref ≤ s.nodes.length)
 
 structure SymbolSnapshotValid (s : QuerySnapshot) : Prop where
   fields : s.fields.length = s.nodes.length

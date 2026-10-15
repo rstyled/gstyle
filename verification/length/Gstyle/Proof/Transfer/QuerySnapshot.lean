@@ -1,6 +1,6 @@
 module
 public import Gstyle.Proof.Pdg.ReadonlyRows
-public import Gstyle.Proof.Transfer.SymbolRead
+public import Gstyle.Proof.Transfer.BindingRead
 @[expose] public section
 noncomputable section
 namespace Perennial
@@ -25,6 +25,10 @@ structure QuerySnapshot [FfiSyntax] where
   accessRows : List (List pdg.Access)
   extensionRows : List (List pdg.Extension)
   strings : List GoString
+
+def validSymbolRef [FfiSyntax] (s : QuerySnapshot) (ref : w32) : Prop :=
+  ref = W32 0 ∨ (0 < uint.Z ref ∧ uint.Z ref ≤ s.nodes.length)
+
 
 section proof
 variable [ext : FfiSyntax] [ffi : FfiModel] [FfiInterp ffi] [FfiSemantics ext ffi]

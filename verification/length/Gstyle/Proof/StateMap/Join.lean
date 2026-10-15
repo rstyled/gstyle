@@ -1,4 +1,5 @@
 module
+public import Gstyle.Proof.RuntimeValue.Merge
 public import Gstyle.Proof.StateMap.Binding
 public import Gstyle.Proof.StateMap.Copy
 @[expose] public section

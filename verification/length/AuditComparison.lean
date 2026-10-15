@@ -35,3 +35,13 @@ import Gstyle.Proof.Transfer.ComparisonExecution
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_impossibleSignedComparison
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_infeasibleConstraint
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_constrain_numeric
+
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_comparison_queries_true
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_comparison_queries_false
+
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_comparison_left_numeric_true_queries
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_comparison_left_numeric_false_queries
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_comparison_right_numeric_true_queries
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_comparison_right_numeric_false_queries
+
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_constrain_numeric_query

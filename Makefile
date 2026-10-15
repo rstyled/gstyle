@@ -159,3 +159,9 @@ verify-one-sided:
 verify-shared-flow:
 	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
 	python3 -B verification/length/verify.py --shared-flow
+
+.PHONY: verify-assume
+
+verify-assume:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --assume
