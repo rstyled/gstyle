@@ -310,8 +310,6 @@ axiom Definition.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Location.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
-axiom Access.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
 axiom EdgeKind.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Edge.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
@@ -394,7 +392,8 @@ axiom ReturnRole [FfiSyntax] [GoGlobalContext] : val
 @[reducible] noncomputable def Declaration [FfiSyntax] [GoGlobalContext] : val :=
   #(W8 0)
 
-axiom Read [FfiSyntax] [GoGlobalContext] : val
+@[reducible] noncomputable def Read [FfiSyntax] [GoGlobalContext] : val :=
+  #(W8 1)
 
 axiom Assignment [FfiSyntax] [GoGlobalContext] : val
 
@@ -1393,18 +1392,56 @@ class Category.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [G
 
 attribute [instance] Category.TypeAssumptions.underlying
 
-axiom Access : Type
-axiom Access.zero_val : ZeroVal Access
-attribute [instance] Access.zero_val
+structure Access [FfiSyntax] where
+  mk ::
+  Symbol' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Location' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  UnresolvedReason' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  Position' : Position
+
+instance Access.zero_val [FfiSyntax] : ZeroVal Access :=
+  ⟨Access.mk zeroValDef zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def Access.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"Symbol" Ref.ty),
+(go.field_decl.FieldDecl go!"Location" Ref.ty),
+(go.field_decl.FieldDecl go!"UnresolvedReason" Text.ty),
+(go.field_decl.FieldDecl go!"Position" Position.ty)]
+
+@[irreducible] def Access.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Access.fieldsUnsealed
+
+instance equals_unfold_Access [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Access.fields Access.fieldsUnsealed :=
+  ⟨by unfold Access.fields; rfl⟩
+
+@[reducible] def Access.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Access.fields)
 
 class Access.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying Access.underlying Access
   underlying : go.UnderlyingDirectedEq Access.ty Access.underlying
-  isUnderlying : go.IsUnderlying Access.underlying Access.underlying
+  layout : go.StructLayout Access [(go!"Symbol", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Location", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"UnresolvedReason", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Position", typeSize Position, typeAlign Position)]
+  get_Symbol : ∀ (x : Access), go.IsGoStepPureDetTagged under (StructFieldGet Access.underlying go!"Symbol") #x (Val #(x.Symbol'))
+  set_Symbol : ∀ (x : Access) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Access.underlying go!"Symbol") (PairV #x #y) (Val #(({ x with Symbol' := y } : Access)))
+  get_Location : ∀ (x : Access), go.IsGoStepPureDetTagged under (StructFieldGet Access.underlying go!"Location") #x (Val #(x.Location'))
+  set_Location : ∀ (x : Access) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Access.underlying go!"Location") (PairV #x #y) (Val #(({ x with Location' := y } : Access)))
+  get_UnresolvedReason : ∀ (x : Access), go.IsGoStepPureDetTagged under (StructFieldGet Access.underlying go!"UnresolvedReason") #x (Val #(x.UnresolvedReason'))
+  set_UnresolvedReason : ∀ (x : Access) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Access.underlying go!"UnresolvedReason") (PairV #x #y) (Val #(({ x with UnresolvedReason' := y } : Access)))
+  get_Position : ∀ (x : Access), go.IsGoStepPureDetTagged under (StructFieldGet Access.underlying go!"Position") #x (Val #(x.Position'))
+  set_Position : ∀ (x : Access) (y : Position), go.IsGoStepPureDetTagged under (StructFieldSet Access.underlying go!"Position") (PairV #x #y) (Val #(({ x with Position' := y } : Access)))
 
 attribute [instance] Access.TypeAssumptions.type_repr
   Access.TypeAssumptions.underlying
-  Access.TypeAssumptions.isUnderlying
+  Access.TypeAssumptions.layout
+  Access.TypeAssumptions.get_Symbol
+  Access.TypeAssumptions.set_Symbol
+  Access.TypeAssumptions.get_Location
+  Access.TypeAssumptions.set_Location
+  Access.TypeAssumptions.get_UnresolvedReason
+  Access.TypeAssumptions.set_UnresolvedReason
+  Access.TypeAssumptions.get_Position
+  Access.TypeAssumptions.set_Position
 
 structure Attributes [FfiSyntax] where
   mk ::

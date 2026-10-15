@@ -79,9 +79,9 @@ this contract. Zero and absent attribute paths need no allocation bound.
 
 ## Validation and remaining integration
 
-Ten execution contracts and four model policy theorems have an exact
+Twenty-four execution contracts and four model policy theorems have an exact
 standard-axiom audit. Source regeneration byte-compares runtimeguard, interval,
-PDG and query code. Thirty-nine valid source mutants fail their expected Lean
+PDG and query code. Fifty-seven valid source mutants fail their expected Lean
 module and independently fail the Go regressions. Controls cover namespace,
 key/value fields and IDs, match direction, first/late/absent behavior, forbidden
 writes, node selection, discarded metadata and fact dispatch.
@@ -90,7 +90,7 @@ Go regressions include duplicate keys (including different IDs with equal decode
 maximum IDs, missing/empty tables, byte/empty names, namespace/case distinctions,
 reordered node records, zero and absent paths, shared views and input preservation.
 The existing two profile shards also cover twelve Boolean controls; no CI job
-is added by Boolean admission. Dependency pins, private incremental copies,
+is added by Boolean admission or binding-symbol lookup. Dependency pins, private incremental copies,
 targeted mutation builds, two workers, existing shards, setup-error rejection
 and the strict diagnostic filter remain unchanged.
 
@@ -102,3 +102,7 @@ soundness remain open. Precise compound arithmetic remains outside the existing
 conservative fallback proof. Go semantics, named-type/layout and source-bound
 registration hypotheses are explicit; package initialization is not proved.
 Convergence and program pointer/alias analysis remain separate stages.
+
+The profile also covers production binding-symbol queries; see
+[BINDING_READS.md](BINDING_READS.md) for contracts, explicit recursive-child
+obligations and the additional controls.

@@ -309,3 +309,7 @@ Run `make verify-runtime-facts` for the [production node-to-fact query
 contracts](verification/length/RUNTIME_FACTS.md), including first-match
 extensions, actual node indirection, explicit absence behavior and literal
 Boolean admission.
+
+The runtime-facts verification stage also covers [production binding-symbol
+lookup](verification/length/BINDING_READS.md), including borrowed Access records,
+cache/direct-read paths and explicit recursive-child contracts.

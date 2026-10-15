@@ -664,17 +664,43 @@ def runtime_facts_profile():
         "boolean-bypasses-check": ('booleanContradiction(value, truth) {', 'false && booleanContradiction(value, truth) {', boolean_source),
         "boolean-keeps-rejected-state": ('if value := v.fact(ref, "boolean"); booleanContradiction(value, truth) {\n\t\treturn nil', 'if value := v.fact(ref, "boolean"); booleanContradiction(value, truth) {\n\t\treturn state', boolean_source),
     })
+    direct = 'return node.Category == pdg.Read && len(attrs.Reads) == 1 && attrs.Reads[0].Location == 0'
+    parens = 'if operator == "parentheses" {\n\t\treturn v.symbol(v.operand(ref, 0))'
+    operator = 'operator := operatorText(v.graph.Tables, attrs.Operator)\n\t'+parens
+    mutations.update({
+        "read-wrong-category": (direct, direct.replace('== pdg.Read', '!= pdg.Read')),
+        "read-broad-arity": (direct, direct.replace('== 1', '> 0')),
+        "read-empty-arity": (direct, direct.replace('== 1', '== 0')),
+        "read-inverts-location": (direct, direct.replace('Location == 0', 'Location != 0')),
+        "read-uses-symbol": (direct, direct.replace('.Location', '.Symbol')),
+        "read-uses-writes": (direct, direct.replace('attrs.Reads', 'attrs.Writes')),
+        "symbol-zero-wrong": ('func (v *graphView) symbol(ref pdg.Ref) pdg.Ref {\n\tif ref == 0 {\n\t\treturn 0', 'func (v *graphView) symbol(ref pdg.Ref) pdg.Ref {\n\tif ref == 0 {\n\t\treturn 1'),
+        "symbol-cache-dropped": ('return v.fields[ref-1]', 'return 0'),
+        "symbol-cache-index": ('if v.fields[ref-1] != 0 {', 'if v.fields[ref] != 0 {'),
+        "symbol-cache-inverted": ('if v.fields[ref-1] != 0 {', 'if v.fields[ref-1] == 0 {'),
+        "symbol-limit-inclusive": ('if int(symbol) > len(v.kinds) {', 'if int(symbol) >= len(v.kinds) {'),
+        "symbol-limit-skipped": ('if int(symbol) > len(v.kinds) {', 'if false {'),
+        "symbol-read-location": ('symbol := attrs.Reads[0].Symbol', 'symbol := attrs.Reads[0].Location'),
+        "symbol-ignores-status": (operator, operator.replace('operatorText(v.graph.Tables, attrs.Operator)', 'v.graph.Tables.Text(attrs.Operator.Value)')),
+        "symbol-wrong-operator": (parens, parens.replace('"parentheses"', '"conversion"')),
+        "symbol-wrong-child": (parens, parens.replace('v.operand(ref, 0)', 'v.operand(ref, 1)')),
+        "symbol-skips-recursion": (parens, parens.replace('v.symbol(v.operand(ref, 0))', 'v.operand(ref, 0)')),
+        "symbol-mutates-reads": ('symbol := attrs.Reads[0].Symbol', 'attrs.Reads[0].Location = 1; symbol := attrs.Reads[0].Symbol'),
+    })
+    modules = {name: ("Gstyle/Proof/Transfer/Extension.lean" if name.startswith("extension-") else "Gstyle/Proof/Transfer/Boolean.lean")
+               for name in mutations if name.startswith(("extension-", "boolean-"))}
+    modules.update({name: ("Gstyle/Proof/Transfer/BindingRead.lean" if name.startswith(("read-", "symbol-zero-", "symbol-cache-")) else "Gstyle/Proof/Transfer/SymbolRead.lean")
+                    for name in mutations if name.startswith(("read-", "symbol-"))})
     return Profile(
         ROOT / "dist/verification/runtime-facts", "github_com/rstyled/gstyle/domain/runtimeguard.lean", "./domain/runtimeguard", source, sources,
-        {prefix + name for name in ("extensionValue_first", "extensionValue_missing", "wp_extension", "wp_extension_empty", "wp_attrs_zero", "wp_attrs_absent", "wp_attrs_present", "wp_fact_zero", "wp_fact_absent", "wp_fact_present", "booleanConflict_unknown", "booleanConflict_literals", "wp_booleanContradiction", "wp_assume_boolean_reject")},
+        {prefix + name for name in ("extensionValue_first", "extensionValue_missing", "wp_extension", "wp_extension_empty", "wp_attrs_zero", "wp_attrs_absent", "wp_attrs_present", "wp_fact_zero", "wp_fact_absent", "wp_fact_present", "booleanConflict_unknown", "booleanConflict_literals", "wp_booleanContradiction", "wp_assume_boolean_reject", "wp_directBindingRead_other", "wp_directBindingRead_arity", "wp_directBindingRead_single", "wp_directBindingRead", "wp_operand_readonly", "wp_symbol_zero", "wp_symbol_cached", "wp_symbol_direct", "wp_symbol_unavailable_operator", "wp_symbol_known_other", "wp_symbol_absent_attributes", "wp_symbol_parentheses", "wp_symbol_parentheses_cached_child", "wp_symbol_parentheses_zero_child")},
         mutations, "AuditRuntimeFacts.lean", "Gstyle/Proof/Transfer/Facts.lean",
-        "production node-to-fact lookup, literal Boolean admission and rejecting guard with preserved inputs",
-        ("producer and semantic fact provenance", "metadata cache agreement and RHS evaluation", "actual condition and whole state-transfer semantics", "package initialization"),
+        "production fact and binding-symbol lookup, Boolean admission and rejecting guard with preserved inputs",
+        ("unrestricted recursive symbol chains", "producer and semantic fact provenance", "metadata cache agreement and RHS evaluation", "actual condition and whole state-transfer semantics", "package initialization"),
         ("Code",), (("github_com/rstyled/gstyle/domain/pdg.lean", "./domain/pdg"),
                     ("github_com/rstyled/gstyle/domain/pdg/query.lean", "./domain/pdg/query"),
                     ("github_com/rstyled/gstyle/domain/runtimeguard/interval.lean", "./domain/runtimeguard/interval")),
-        mutation_modules={name: ("Gstyle/Proof/Transfer/Extension.lean" if name.startswith("extension-") else "Gstyle/Proof/Transfer/Boolean.lean")
-                          for name in mutations if name.startswith(("extension-", "boolean-"))},
+        mutation_modules=modules,
     )
 
 

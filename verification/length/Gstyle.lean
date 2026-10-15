@@ -33,3 +33,5 @@ public import Gstyle.Proof.Transfer.Extension
 public import Gstyle.Proof.Transfer.Facts
 
 public import Gstyle.Proof.Transfer.Boolean
+public import Gstyle.Proof.Transfer.BindingRead
+public import Gstyle.Proof.Transfer.SymbolRead

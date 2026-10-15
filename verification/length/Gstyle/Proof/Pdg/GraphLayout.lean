@@ -384,6 +384,20 @@ instance Attributes_into_val_typed :
     IntoValTypedUnderlying (GF := GF) github_com.rstyled.gstyle.domain.pdg.Attributes github_com.rstyled.gstyle.domain.pdg.Attributes.underlying := by
   solve_into_val_typed_struct
 
+instance Attributes_access_load_Reads (l : Loc) (v : github_com.rstyled.gstyle.domain.pdg.Attributes) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"Reads" l) v.Reads' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"Reads" l) v.Reads' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) := by
+  solve_pointsto_access_struct
+
+instance Attributes_access_load_Operator (l : Loc) (v : github_com.rstyled.gstyle.domain.pdg.Attributes) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"Operator" l) v.Operator' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"Operator" l) v.Operator' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) := by
+  solve_pointsto_access_struct
+
 end def_
 end Attributes
 
@@ -424,6 +438,13 @@ instance Node_access_load_Attributes (l : Loc) (v : github_com.rstyled.gstyle.do
       (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Node go!"Attributes" l) v.Attributes' dq)
       (typedPointsto l v dq) (typedPointsto l v dq) :=
  by
+  solve_pointsto_access_struct
+
+instance Node_access_load_Category (l : Loc) (v : github_com.rstyled.gstyle.domain.pdg.Node) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Node go!"Category" l) v.Category' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Node go!"Category" l) v.Category' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) := by
   solve_pointsto_access_struct
 
 end def_
