@@ -86,7 +86,7 @@ class VerificationGuardTests(unittest.TestCase):
                                 (verify.interval_profile, "Gstyle.Proof.Interval.Constrain"),
                                 (verify.runtime_value_profile, "Gstyle.Proof.RuntimeValue.MergeBounds"),
                                 (verify.state_map_profile, "Gstyle.Proof.StateMap.Join"),
-                                (verify.numeric_transfer_profile, "Gstyle.Proof.Transfer.Numeric"),
+                                (verify.numeric_transfer_profile, "Gstyle.Proof.Transfer.NumericPrimitives"),
                                 (verify.signed_step_profile, "Gstyle.Proof.Transfer.Step"),
                                 (verify.assignment_profile, "Gstyle.Proof.Transfer.Assignment"),
                                 (verify.branch_profile, "Gstyle.Proof.Transfer.Branch"),
@@ -314,6 +314,15 @@ class VerificationGuardTests(unittest.TestCase):
             with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
                 with self.assertRaisesRegex(RuntimeError, "source is not bound"):
                     verify.check_mutations(replace(profile, report=Path(directory)), Path("goose"), Path("proofgen"))
+
+    def test_numeric_controls_follow_moved_contracts(self):
+        profile = verify.numeric_transfer_profile()
+        self.assertEqual(set(profile.mutation_modules), set(profile.mutations))
+        for proof in profile.mutation_modules.values():
+            self.assertIn(verify.PROJECT / proof, profile.sources)
+        self.assertTrue(profile.mutation_modules["exact-ignores-lower"].endswith("NumericPrimitives.lean"))
+        self.assertTrue(profile.mutation_modules["tracked-inverts-flag"].endswith("Tracking.lean"))
+        self.assertTrue(profile.mutation_modules["constrain-wrong-bound"].endswith("NumericConstrainQueries.lean"))
 
     def test_comparison_contracts_are_bound_and_audited(self):
         profile = verify.comparison_profile()

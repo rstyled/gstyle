@@ -399,12 +399,19 @@ def numeric_transfer_profile():
              "wp_impossibleSignedComparison", "wp_infeasibleConstraint", "wp_constrain_numeric",
              "length_bounds", "numeric_constraint_sound", "represented_not_empty", "represented_comparison_possible",
              "constraint_preserves_other_keys", "constraint_state_sound", "wp_constrain_numeric_sound")
-    return replace(runtime_value_profile(), report=ROOT / "dist/verification/numeric-transfer",
+    modules = {name: "Gstyle/Proof/Transfer/NumericPrimitives.lean" for name in mutations}
+    modules.update({name: "Gstyle/Proof/Transfer/NumericConstrainQueries.lean"
+                    for name in mutations if name.startswith("constrain-")})
+    modules["tracked-inverts-flag"] = "Gstyle/Proof/Transfer/Tracking.lean"
+    proof_sources = tuple(PROJECT / ("Gstyle/Proof/Transfer/" + name + ".lean") for name in
+                          ("Numeric", "NumericModel", "NumericPrimitives", "NumericConstrainQueries", "Tracking", "Sound"))
+    base = runtime_value_profile()
+    return replace(base, sources=base.sources + proof_sources, report=ROOT / "dist/verification/numeric-transfer",
                    theorems={prefix + name for name in names}, mutations=mutations,
                    audit="AuditNumericTransfer.lean", proof_file="Gstyle/Proof/Transfer/Numeric.lean",
                    verified="production numeric constraint transfer, exact state update, other-key preservation and conditional interval soundness",
                    unverified=("nil/pointer constraints and alias semantics", "invalid references and mismatched metadata slices", "PDG extraction and comparison fact soundness", "assignments, increments and branch composition", "fixpoint convergence", "package initialization"),
-                   mutation_modules={})
+                   mutation_modules=modules)
 
 
 def signed_step_profile():
