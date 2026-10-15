@@ -86,3 +86,8 @@ verify-runtime-value:
 verify-state-map:
 	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
 	python3 -B verification/length/verify.py --state-map
+
+.PHONY: verify-numeric-transfer
+verify-numeric-transfer:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --numeric-transfer

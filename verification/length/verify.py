@@ -346,6 +346,44 @@ def state_map_profile():
                    mutation_modules=modules)
 
 
+def numeric_transfer_profile():
+    track = "domain/runtimeguard/track.go"
+    mutations = {
+        "exact-ignores-lower": ("value.HasLower && value.HasUpper && value.Lower == value.Upper", "value.HasUpper && value.Lower == value.Upper"),
+        "exact-ignores-upper": ("value.HasLower && value.HasUpper && value.Lower == value.Upper", "value.HasLower && value.Lower == value.Upper"),
+        "exact-inverts-equality": ("value.Lower == value.Upper", "value.Lower != value.Upper"),
+        "empty-rejects-singleton": ("value.Lower > value.Upper", "value.Lower >= value.Upper"),
+        "empty-ignores-lower": ("value.HasLower && value.HasUpper && value.Lower > value.Upper", "value.HasUpper && value.Lower > value.Upper"),
+        "empty-ignores-upper": ("value.HasLower && value.HasUpper && value.Lower > value.Upper", "value.HasLower && value.Lower > value.Upper"),
+        "length-inverts-kind": ("if !bound.Length {", "if bound.Length {"),
+        "length-wrong-operator": ('operator != "<" && operator != "<="', 'operator != "<" && operator != ">="'),
+        "length-loses-check": ("value.UpperChecked = true", "value.UpperChecked = false"),
+        "length-loses-strict": ('value.BelowLength || operator == "<"', 'value.BelowLength || operator == "<="'),
+        "length-clears-existing": ('value.BelowLength || operator == "<"', 'operator == "<"'),
+        "impossible-wrong-kind": ('v.kinds[symbol-1] != `"signed"`', 'v.kinds[symbol-1] == `"signed"`'),
+        "impossible-wrong-min": ("bound.Lower == -int64(^uint64(0)>>1)-1", "bound.Lower == -int64(^uint64(0)>>1)"),
+        "impossible-wrong-max": ("bound.Lower == int64(^uint64(0)>>1)", "bound.Lower == int64(^uint64(0)>>1)-1"),
+        "infeasible-needs-both": ("emptyRange(value) || v.impossibleSignedComparison", "emptyRange(value) && v.impossibleSignedComparison"),
+        "tracked-inverts-flag": ("&& v.tracked[symbol-1]", "&& !v.tracked[symbol-1]", track),
+        "constrain-inverts-tracked": ("if !v.trackedBinding(symbol) {", "if v.trackedBinding(symbol) {"),
+        "constrain-skips-integer": ("if exactInteger(bound) {", "if false && exactInteger(bound) {"),
+        "constrain-wrong-bound": ("integerConstraint(value, operator, bound.Lower)", "integerConstraint(value, operator, bound.Lower+1)"),
+        "constrain-wrong-key": ("state[symbol] = value", "state[symbol+1] = value"),
+        "constrain-skips-rejection": ("if v.infeasibleConstraint(symbol, operator, bound, value) {", "if false && v.infeasibleConstraint(symbol, operator, bound, value) {"),
+    }
+    prefix = "Perennial.github_com.rstyled.gstyle.domain.runtimeguard."
+    names = ("wp_exactInteger", "wp_emptyRange", "wp_lengthConstraint", "wp_trackedBinding",
+             "wp_impossibleSignedComparison", "wp_infeasibleConstraint", "wp_constrain_numeric",
+             "length_bounds", "numeric_constraint_sound", "represented_not_empty", "represented_comparison_possible",
+             "constraint_preserves_other_keys", "constraint_state_sound", "wp_constrain_numeric_sound")
+    return replace(runtime_value_profile(), report=ROOT / "dist/verification/numeric-transfer",
+                   theorems={prefix + name for name in names}, mutations=mutations,
+                   audit="AuditNumericTransfer.lean", proof_file="Gstyle/Proof/Transfer/Numeric.lean",
+                   verified="production numeric constraint transfer, exact state update, other-key preservation and conditional interval soundness",
+                   unverified=("nil/pointer constraints and alias semantics", "invalid references and mismatched metadata slices", "PDG extraction and comparison fact soundness", "assignments, increments and branch composition", "fixpoint convergence", "package initialization"),
+                   mutation_modules={})
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -468,10 +506,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile}
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile}
         arguments = tuple(sys.argv[1:])
         if arguments not in profiles:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer]")
         main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

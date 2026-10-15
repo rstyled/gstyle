@@ -251,7 +251,8 @@ triggers apply. The map-based selector keeps the first risky occurrence per
 binding in input order. Generic node lookup and advisory payload construction are
 also proved. `make verify-runtime-value` proves the actual Value projection and
 comparison copy-back, plus the complete Value join and its interval-set
-preservation contract. PDG transfer/traversal and outer projections remain outside the proof. See [the negative-index verification scope](verification/length/NEGATIVE_INDEX.md).
+preservation contract. Numeric state constraints are covered separately below.
+Remaining transfers, traversal and outer projections remain outside the proof. See [the negative-index verification scope](verification/length/NEGATIVE_INDEX.md).
 
 ### Lean verification of state-map joins
 
@@ -259,3 +260,11 @@ Run `make verify-state-map` to verify the production join and its binding/copy
 helpers. The contract covers both/missing keys, nil branches, input preservation
 and conditional interval soundness using the existing Value merge proof. See
 [the explicit assumptions and unsupported cases](verification/length/STATE_MAP.md).
+
+### Lean verification of numeric state constraints
+
+Run `make verify-numeric-transfer` to verify the production numeric constraint
+path: tracking, integer and length constraints, impossible branches and exact
+map updates. The soundness contract retains represented integers that satisfy
+the branch comparison under explicit assumptions. See
+[the contract and remaining stages](verification/length/NUMERIC_TRANSFER.md).
