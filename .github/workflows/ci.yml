@@ -206,7 +206,10 @@ jobs:
             shard: 0/1
           - profile: assume
             target: verify-assume
-            shard: 0/1
+            shard: 0/2
+          - profile: assume
+            target: verify-assume
+            shard: 1/2
     steps:
       - name: Checkout
         uses: actions/checkout@v6
