@@ -22,8 +22,32 @@ Pointer/nil constraints, general nil input states, and 32-bit execution remain u
 
 ## Verification
 
-The profile audits sixteen named theorems and rejects ten mutations of the actual Go dispatcher. Controls cover bypassed or incorrect Boolean guards, wrong unary operands or truth values, missing disjunction dispatch, and inverted logical or comparison truth. Rejection must be a logical failure in the designated `Assume.lean` or existing `Boolean.lean` module; setup and type errors do not count. All existing comparison, branch, and metadata controls remain in CI.
+The profile audits twenty named theorems and rejects ten mutations of the actual Go dispatcher. Controls cover bypassed or incorrect Boolean guards, wrong unary operands or truth values, missing disjunction dispatch, and inverted logical or comparison truth. Rejection must be a logical failure in the designated `AssumeDispatch.lean` or existing `Boolean.lean` module; setup and type errors do not count. All existing comparison, branch, and metadata controls remain in CI.
 
 Go regressions compose parentheses, negation, conjunction, disjunction, and numeric bounds. They check represented values across signed endpoints, unknown and one-sided bounds, unrelated state records, fork input preservation, and Boolean rejection before a self-reference. No production behavior changes or demonstrated production bug fixes are part of this stage.
 
-CI adds one shard. Pinned dependencies, canonical translation comparisons for all four packages, exact axiom audits, before/after source hashes, private build copies, strict error classification, and the two-worker verifier limit remain enabled.
+CI uses the configured mutation shards. Pinned dependencies, canonical translation comparisons for all four packages, exact axiom audits, before/after source hashes, private build copies, strict error classification, and the two-worker verifier limit remain enabled.
+
+## Dispatch contracts and mutation cost
+
+`AssumeDispatch.lean` proves the production `assume` body routes parentheses,
+negation, logical operators, and comparisons to the specified child call with
+its original reference, operator, truth value, and state. Each routing lemma
+accepts a Hoare contract for that next call and preserves its postcondition.
+`wp_finite_assume` supplies these contracts from its induction hypothesis or
+from the existing logical and numeric execution proofs. Its statement and the
+statement of `wp_finite_assume_sound` remain unchanged. The routing contracts
+add no axioms and do not replace the concrete child execution proofs.
+
+The seven routing mutation controls target this smaller execution module.
+They still regenerate the complete production translation and must fail with
+recognized proof diagnostics in `AssumeDispatch.lean`. The three boolean
+controls retain their existing `Boolean.lean` target. The ordinary baseline
+build and axiom audit still check the full composed theorem. This prevents a
+mutation to dispatch alone from repeatedly rebuilding unchanged value parsing
+and numeric execution proofs. All ten mutation controls remain enabled.
+
+`validSymbolRef` lives with the snapshot definition. Snapshot ownership and
+fact reading do not import recursive symbol execution proofs; modules that
+need symbol execution import them explicitly. The reference predicate retains
+its original definition.

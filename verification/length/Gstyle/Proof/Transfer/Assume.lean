@@ -1,5 +1,6 @@
 module
 public import Gstyle.Proof.Transfer.AssumeNumeric
+public import Gstyle.Proof.Transfer.AssumeDispatch
 public import Gstyle.Proof.Transfer.Boolean
 @[expose] public section
 noncomputable section
@@ -318,68 +319,20 @@ theorem wp_finite_assume (receiver : Loc) (s : QuerySnapshot) (o : AssumeOperato
       all_goals ipureintro; simp [validBranchOption]
     case parentheses =>
       rename_i child row hc hvalid hop href hrow hguard childExecution
-      wp_start as ⟨#Hsnapshot, #Hoperators, Hstate⟩
-      try wp_auto
-      wp_apply wp_fact_snapshot receiver s ref (go!"boolean") hvalid wf.symbols.allocation $$ [Hsnapshot] with Hsnapshot
-      · iframe Hsnapshot
-      try wp_auto
-      wp_apply wp_booleanContradiction (snapshotFact s ref (go!"boolean")) truth
-      try wp_auto
-      rw [hguard]
-      try wp_auto
-      ihave #Hctx := Hsnapshot
-      iunfold querySnapshotOwn at Hctx
-      icases Hctx with ⟨Hview, Hgraph, _, Hrows, _, _, _, _, _, _, _, _, _, _, _, _, _⟩
-      try wp_auto
-      wp_apply wp_attrs_snapshot receiver s ref hvalid wf.symbols.allocation $$ [Hsnapshot] with %attrs ⟨Hsnapshot, %hattrs⟩
-      · iframe Hsnapshot
-      try wp_auto
-      rw [hattrs.1]
-      wp_apply wp_operatorText_snapshot receiver s (snapshotRecord s ref).Operator' $$ [Hsnapshot] with Hsnapshot
-      · iframe Hsnapshot
-      rw [hop]
-      try wp_auto
-      wp_apply wp_operand_readonly receiver s.view s.operands ref (W64 0) row child href (by decide) hrow hc DFrac.discard DFrac.discard
-        $$ [Hview Hrows] with ⟨Hview, Hrows⟩
-      · iframe Hview Hrows
-      try wp_auto
-      wp_apply ih child truth step childExecution state m hm $$ [Hsnapshot Hstate] with %out Hresult
-      · iframe Hsnapshot Hoperators Hstate
-      try wp_auto
-      wp_end
-      all_goals iexact Hresult
+      exact wp_assume_parentheses receiver s ref child truth state
+        (iprop(assumeOperatorsOwn o ∗ state ↦$ m))
+        (fun out => iprop(querySnapshotOwn receiver s ∗ assumeOperatorsOwn o ∗ ownsBranch (step m) out ∗
+          ⌜validBranchOption s.kinds s.unstable kind changing (step m)⌝))
+        hvalid wf.symbols.allocation hguard hop row href hrow hc
+        (ih child truth step childExecution state m hm)
     case negation =>
       rename_i child row hc hvalid hop href hrow hguard childExecution
-      wp_start as ⟨#Hsnapshot, #Hoperators, Hstate⟩
-      try wp_auto
-      wp_apply wp_fact_snapshot receiver s ref (go!"boolean") hvalid wf.symbols.allocation $$ [Hsnapshot] with Hsnapshot
-      · iframe Hsnapshot
-      try wp_auto
-      wp_apply wp_booleanContradiction (snapshotFact s ref (go!"boolean")) truth
-      try wp_auto
-      rw [hguard]
-      try wp_auto
-      ihave #Hctx := Hsnapshot
-      iunfold querySnapshotOwn at Hctx
-      icases Hctx with ⟨Hview, Hgraph, _, Hrows, _, _, _, _, _, _, _, _, _, _, _, _, _⟩
-      try wp_auto
-      wp_apply wp_attrs_snapshot receiver s ref hvalid wf.symbols.allocation $$ [Hsnapshot] with %attrs ⟨Hsnapshot, %hattrs⟩
-      · iframe Hsnapshot
-      try wp_auto
-      rw [hattrs.1]
-      wp_apply wp_operatorText_snapshot receiver s (snapshotRecord s ref).Operator' $$ [Hsnapshot] with Hsnapshot
-      · iframe Hsnapshot
-      rw [hop]
-      try wp_auto
-      wp_apply wp_operand_readonly receiver s.view s.operands ref (W64 0) row child href (by decide) hrow hc DFrac.discard DFrac.discard
-        $$ [Hview Hrows] with ⟨Hview, Hrows⟩
-      · iframe Hview Hrows
-      try wp_auto
-      wp_apply ih child (!truth) step childExecution state m hm $$ [Hsnapshot Hstate] with %out Hresult
-      · iframe Hsnapshot Hoperators Hstate
-      try wp_auto
-      wp_end
-      all_goals iexact Hresult
+      exact wp_assume_negation receiver s ref child truth state
+        (iprop(assumeOperatorsOwn o ∗ state ↦$ m))
+        (fun out => iprop(querySnapshotOwn receiver s ∗ assumeOperatorsOwn o ∗ ownsBranch (step m) out ∗
+          ⌜validBranchOption s.kinds s.unstable kind changing (step m)⌝))
+        hvalid wf.symbols.allocation hguard hop row href hrow hc
+        (ih child (!truth) step childExecution state m hm)
     case logical =>
       rename_i leftRef rightRef op left right hlogical row hl hr hvalid hop href hrow leftExecution rightExecution hguard
       have leftContract : branchChildContract (GF := GF) receiver s.view s.operands s.kinds s.unstable kind changing
@@ -406,79 +359,37 @@ theorem wp_finite_assume (receiver : Loc) (s : QuerySnapshot) (o : AssumeOperato
         unfold branchResources
         iframe Hview Hrows Hkinds Hunstable Hsnapshot Hoperators Hresult
         ipureintro; exact Hvalid
-      wp_start as ⟨#Hsnapshot, #Hoperators, Hstate⟩
-      try wp_auto
-      wp_apply wp_fact_snapshot receiver s ref (go!"boolean") hvalid wf.symbols.allocation $$ [Hsnapshot] with Hsnapshot
-      · iframe Hsnapshot
-      try wp_auto
-      wp_apply wp_booleanContradiction (snapshotFact s ref (go!"boolean")) truth
-      try wp_auto
-      rw [hguard]
-      try wp_auto
-      ihave #Hctx := Hsnapshot
-      iunfold querySnapshotOwn at Hctx
-      icases Hctx with ⟨Hview, Hgraph, _, Hrows, _, _, _, _, _, _, _, _, _, _, _, _, _⟩
-      try wp_auto
-      wp_apply wp_attrs_snapshot receiver s ref hvalid wf.symbols.allocation $$ [Hsnapshot] with %attrs ⟨Hsnapshot, %hattrs⟩
-      · iframe Hsnapshot
-      try wp_auto
-      rw [hattrs.1]
-      wp_apply wp_operatorText_snapshot receiver s (snapshotRecord s ref).Operator' $$ [Hsnapshot] with Hsnapshot
-      · iframe Hsnapshot
-      rw [hop]
-      try wp_auto
-      have hparentheses : op ≠ go!"parentheses" := by rcases hlogical with rfl | rfl <;> decide
-      have hnot : op ≠ go!"!" := by rcases hlogical with rfl | rfl <;> decide
+      apply wp_assume_logical receiver s ref truth state op
+        (iprop(assumeOperatorsOwn o ∗ state ↦$ m))
+        (fun out => iprop(querySnapshotOwn receiver s ∗ assumeOperatorsOwn o ∗ ownsBranch (logicalStep kind changing op truth left right m) out ∗
+          ⌜validBranchOption s.kinds s.unstable kind changing (logicalStep kind changing op truth left right m)⌝))
+        hvalid wf.symbols.allocation hguard hop hlogical
+      wp_start_folded as ⟨#Hsnapshot, #Hoperators, Hstate⟩
       have Hlogical := wp_logical (GF := GF) receiver s.view s.operands s.kinds s.unstable kind changing
           (iprop(querySnapshotOwn receiver s ∗ assumeOperatorsOwn o)) state m ref op truth row leftRef rightRef left right
           href hrow hl hr wf.unstable hm leftContract rightContract
       have Hunique := branchResult_unique kind changing op truth left right m
-      rcases hlogical with rfl | rfl
-      all_goals try wp_auto
-      all_goals
-        ihave #Hctx := Hsnapshot
-        iunfold querySnapshotOwn at Hctx
-        icases Hctx with ⟨Hview, _, _, Hrows, Hkinds, Hunstable, _, _, _, _, _, _, _, _, _, _, _⟩
-        wp_apply Hlogical $$ [Hstate]
-          with %out ⟨%result, Hresources, Hresult, Hsource, %Hspec⟩
-        · unfold branchResources; iframe Hview Hrows Hkinds Hunstable Hsnapshot Hoperators Hstate
-        have heq := Hunique result Hspec.1
-        subst result
-        wp_end
-        iunfold branchResources at Hresources
-        icases Hresources with ⟨_, _, _, _, Hsnapshot, Hoperators⟩
-        iframe Hsnapshot Hoperators Hresult
-        ipureintro; exact Hspec.2
-    case comparison =>
-      rename_i op hparentheses hnot hand hor hvalid hop hguard leaf
-      wp_start as ⟨#Hsnapshot, #Hoperators, Hstate⟩
-      try wp_auto
-      wp_apply wp_fact_snapshot receiver s ref (go!"boolean") hvalid wf.symbols.allocation $$ [Hsnapshot] with Hsnapshot
-      · iframe Hsnapshot
-      try wp_auto
-      wp_apply wp_booleanContradiction (snapshotFact s ref (go!"boolean")) truth
-      try wp_auto
-      rw [hguard]
-      try wp_auto
       ihave #Hctx := Hsnapshot
       iunfold querySnapshotOwn at Hctx
-      icases Hctx with ⟨Hview, Hgraph, _, Hrows, _, _, _, _, _, _, _, _, _, _, _, _, _⟩
-      try wp_auto
-      wp_apply wp_attrs_snapshot receiver s ref hvalid wf.symbols.allocation $$ [Hsnapshot] with %attrs ⟨Hsnapshot, %hattrs⟩
-      · iframe Hsnapshot
-      try wp_auto
-      rw [hattrs.1]
-      wp_apply wp_operatorText_snapshot receiver s (snapshotRecord s ref).Operator' $$ [Hsnapshot] with Hsnapshot
-      · iframe Hsnapshot
-      rw [hop]
-      try wp_auto
-      iterate 5 (try simp only [hparentheses, hnot, hand, hor, decide_false, ite_false]; try wp_auto)
-      wp_apply wp_numeric_execution receiver s o kind changing state m ref op truth (step m) hm (leaf m hm) hparse
-        $$ [Hsnapshot Hstate] with %out Hresult
-      · iframe Hsnapshot Hoperators Hstate
-      try wp_auto
+      icases Hctx with ⟨Hview, _, _, Hrows, Hkinds, Hunstable, _, _, _, _, _, _, _, _, _, _, _⟩
+      wp_apply Hlogical $$ [Hstate]
+        with %out ⟨%result, Hresources, Hresult, Hsource, %Hspec⟩
+      · unfold branchResources; iframe Hview Hrows Hkinds Hunstable Hsnapshot Hoperators Hstate
+      have heq := Hunique result Hspec.1
+      subst result
       wp_end
-      all_goals iexact Hresult
+      iunfold branchResources at Hresources
+      icases Hresources with ⟨_, _, _, _, Hsnapshot, Hoperators⟩
+      iframe Hsnapshot Hoperators Hresult
+      ipureintro; exact Hspec.2
+    case comparison =>
+      rename_i op hparentheses hnot hand hor hvalid hop hguard leaf
+      exact wp_assume_comparison receiver s ref truth state op
+        (iprop(assumeOperatorsOwn o ∗ state ↦$ m))
+        (fun out => iprop(querySnapshotOwn receiver s ∗ assumeOperatorsOwn o ∗ ownsBranch (step m) out ∗
+          ⌜validBranchOption s.kinds s.unstable kind changing (step m)⌝))
+        hvalid wf.symbols.allocation hguard hop hparentheses hnot hand hor
+        (wp_numeric_execution receiver s o kind changing state m ref op truth (step m) hm (leaf m hm) hparse)
 
 theorem wp_finite_assume_sound (receiver : Loc) (s : QuerySnapshot) (o : AssumeOperators)
     (kind : w32 → GoString) (changing : w32 → Bool) (fuel : Nat) (ref : w32) (truth : Bool)
