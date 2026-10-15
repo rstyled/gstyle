@@ -175,6 +175,7 @@ func funcFactsOf(fp gopatterns.FuncPdg) *patterns.FuncFacts {
 		ForceTypeAssertHits: fp.ForceTypeAssertHits,
 		TypedNilHits:        fp.TypedNilHits,
 		ErrorCheckSites:     fp.ErrorCheckSites,
+		ReleasedFileLines:   fp.ReleasedFileLines,
 		SuppressedKinds:     fp.SuppressedKinds,
 		Params:              fp.Params,
 	}

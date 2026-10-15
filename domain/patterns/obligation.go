@@ -2,6 +2,7 @@ package patterns
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -17,10 +18,10 @@ import (
 // with no `defer release()` is the highest-value signal — it catches the
 // most common bug pattern (a forgotten Close/Unlock before an early return).
 //
-// For gstyle: v1 checks "acquired without deferred release". The LLM judges
-// whether a flagged site is a real bug — e.g., a resource whose ownership
-// is transferred to the caller (a factory returning an open file) is a
-// false positive, but a file opened and never closed is not.
+// Local deferred releases are linked through the PDG. The typed Go extractor
+// also records bounded normal-path cleanup for os file acquisitions, including
+// local single-argument helpers that close their parameter on every path.
+// Missing evidence remains advisory; it does not prove a leak.
 
 // obligationRule pairs a resource-acquiring callee with its release method.
 type obligationRule struct {
@@ -101,8 +102,8 @@ func (n PdgNode) isReleaseCall(release string) bool {
 	return n.Kind == Call && strings.HasSuffix(n.CalleeID, "."+release)
 }
 
-// FindObligationViolations finds resources acquired without a deferred
-// release. Each violation is a candidate bug for the LLM to judge.
+// FindObligationViolations finds acquisitions without recognized cleanup.
+// Each violation is an advisory candidate, not proof of a leak.
 func FindObligationViolations(facts []*MiningFacts) []ObligationViolation {
 	var out []ObligationViolation
 	for _, f := range facts {
@@ -120,7 +121,11 @@ func violationsInFunc(f *MiningFacts) []ObligationViolation {
 	deferred := deferredCallNodes(pdg)
 	fwd := forwardDataAdj(pdg)
 	var out []ObligationViolation
-	for _, acq := range findAcquisitions(pdg, f.ID) {
+	acquisitions := findAcquisitions(pdg, f.ID)
+	for _, acq := range acquisitions {
+		if dischargedFile(f.ReleasedFileLines, acquisitions, acq) {
+			continue
+		}
 		if hasDeferredRelease(pdg, acq, deferred, fwd) {
 			continue
 		}
@@ -134,6 +139,20 @@ func violationsInFunc(f *MiningFacts) []ObligationViolation {
 		})
 	}
 	return out
+}
+
+// Line-only evidence must never discharge a second acquisition on the same line.
+func dischargedFile(lines []int, acquisitions []acquisition, target acquisition) bool {
+	if target.Resource != "file" || !slices.Contains(lines, target.Line) {
+		return false
+	}
+	count := 0
+	for _, acq := range acquisitions {
+		if acq.Line == target.Line {
+			count++
+		}
+	}
+	return count == 1
 }
 
 // findAcquisitions returns all resource acquisitions in a PDG.

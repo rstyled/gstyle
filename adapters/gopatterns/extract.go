@@ -24,9 +24,11 @@ import (
 
 // FuncPdg is the dependence graph of one function.
 type FuncPdg struct {
-	Name string
-	Path string
-	Line int
+	// ReleasedFileLines are typed file acquisitions discharged on every normal success path.
+	ReleasedFileLines []int
+	Name              string
+	Path              string
+	Line              int
 	// EndLine is the function's closing line.
 	EndLine int
 	// SuppressedKinds are pattern kinds suppressed via //lint:ignore or
@@ -105,6 +107,7 @@ type Extraction struct {
 
 // extractCtx carries per-package maps for entity pairing.
 type extractCtx struct {
+	helpers          map[types.Object]bool
 	sourceIdentities map[string]string
 	pool             *pdg.Builder
 	structLocs       map[string]structLoc
@@ -121,6 +124,7 @@ func newExtractCtx(pkg *packages.Package, root string) extractCtx {
 		}
 	}
 	return extractCtx{
+		helpers:    helperReleases(pkg),
 		structLocs: structLocs,
 		mutated:    collectMutatedStructs(pkg),
 	}
@@ -533,7 +537,8 @@ func extractFunc(pkg *packages.Package, fn *ast.FuncDecl, path string, ctx extra
 		// TypedNilHits are typed-nil comparisons (gostaticanalysis).
 		TypedNilHits: nil,
 		// ErrorCheckSites tracks per-call error checking for deviant_behavior.
-		ErrorCheckSites: findErrorCheckSites(fn, pkg.Fset, pkg.TypesInfo),
+		ErrorCheckSites:   findErrorCheckSites(fn, pkg.Fset, pkg.TypesInfo),
+		ReleasedFileLines: helperReleasedLines(pkg, fn, ctx.helpers),
 	}, nil
 }
 
