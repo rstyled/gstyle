@@ -55,9 +55,9 @@ def proof_rejected(output, proof_file):
     return found
 
 
-def run(command, cwd, log, *, expect_failure=False, report=None, proof_file=None):
+def run(command, cwd, log, *, expect_failure=False, report=None, proof_file=None, environment=None):
     report = report or REPORT
-    result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, timeout=1800)
+    result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, timeout=1800, env=environment)
     output = result.stdout + result.stderr
     (report / log).write_text(output)
     if expect_failure:
@@ -1137,14 +1137,14 @@ def assume_profile():
                                "Go operational total-correctness adequacy"))
 
 
-def generate(profile, goose, proofgen, source_root, output, log_prefix):
+def generate(profile, goose, proofgen, source_root, output, log_prefix, *, environment=None):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
             continue
         run([str(tool), "-out", str(output / directory),
              "-configdir", str(PROJECT / "Gstyle/Code"),
              "-lean-root", "github.com/rstyled/gstyle=Gstyle", "-dir", str(source_root), profile.go_package, *[package for _, package in profile.bindings]],
-            ROOT, f"{log_prefix}-{directory}.log", report=profile.report)
+            ROOT, f"{log_prefix}-{directory}.log", report=profile.report, environment=environment)
 
 
 def seed_build(lean):
@@ -1174,6 +1174,9 @@ def check_mutation(profile, goose, proofgen, item):
     name, mutation = item
     scratch = profile.report / ".scratch"
     before, after = mutation[:2]
+    environment = dict(os.environ)
+    environment.setdefault("LEAN_NUM_THREADS", "1")
+    environment.setdefault("GOMAXPROCS", "1")
     source = ROOT / mutation[2] if len(mutation) == 3 else profile.source
     if source not in profile.sources:
         raise RuntimeError(f"mutation source is not bound: {name}")
@@ -1198,10 +1201,10 @@ def check_mutation(profile, goose, proofgen, item):
         seed_build(lean)
         target.write_text(original.replace(before, after))
         if source.suffix == ".go":
-            generate(profile, goose, proofgen, work / "go", lean / "Gstyle", name)
+            generate(profile, goose, proofgen, work / "go", lean / "Gstyle", name, environment=environment)
         proof_file = profile.mutation_modules.get(name, profile.proof_file)
         module = proof_file.removesuffix(".lean").replace("/", ".")
-        run(["lake", "build", module], lean, f"{name}-proof.log", expect_failure=True, report=profile.report, proof_file=proof_file)
+        run(["lake", "build", module], lean, f"{name}-proof.log", expect_failure=True, report=profile.report, proof_file=proof_file, environment=environment)
     print(f"REJECTED {name}", flush=True)
     return name
 
@@ -1225,10 +1228,18 @@ def shard_mutations(mutations, shard):
             if position % count == index}
 
 
+def mutation_workers():
+    raw = os.environ.get("GSTYLE_MUTATION_WORKERS", "2")
+    if raw not in {"1", "2", "3", "4"}:
+        raise RuntimeError("GSTYLE_MUTATION_WORKERS must be between 1 and 4")
+    cpus = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else (os.cpu_count() or 1)
+    return min(int(raw), cpus)
+
+
 def check_mutations(profile, goose, proofgen):
     (profile.report / ".scratch").mkdir(exist_ok=True)
     # Each worker owns its Go sources and Lean build. Dependencies are prebuilt.
-    with ThreadPoolExecutor(max_workers=2) as pool:
+    with ThreadPoolExecutor(max_workers=mutation_workers()) as pool:
         return list(pool.map(lambda item: check_mutation(profile, goose, proofgen, item),
                              profile.mutations.items()))
 
@@ -1276,6 +1287,7 @@ def main(profile=None):
     report.mkdir(parents=True, exist_ok=True)
     success = report / "result.json"
     success.unlink(missing_ok=True)
+    mutation_workers()
     bound_sources = source_hashes(profile.sources)
     run(["lake", "build", *baseline_modules(profile)], PROJECT, "build.log", report=report)
     perennial = PROJECT / ".lake/packages/perennial"
@@ -1303,6 +1315,7 @@ def main(profile=None):
         "sources_sha256": bound_sources,
         "verified": profile.verified, "unverified": profile.unverified,
         "rejected_mutations": mutants,
+        "mutation_workers": mutation_workers(),
         "mutation_shard": {"index": shard[0], "count": shard[1], "total_mutations": len(profile.mutations)},
     }, indent=2) + "\n")
     print(f"PASS {profile.verified}; source binding, axiom audit, and {len(mutants)} mutations (shard {shard[0]}/{shard[1]})", flush=True)

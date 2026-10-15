@@ -168,11 +168,15 @@ class VerificationGuardTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
             profile = replace(profile, report=Path(directory), mutations={name: mutation})
 
-            def inspect(selected, goose, proofgen, source_root, output, label):
+            def inspect(selected, goose, proofgen, source_root, output, label, **kwargs):
                 self.assertEqual((source_root / source.relative_to(verify.ROOT)).read_text(), baseline.replace(before, after))
                 self.assertNotEqual(source_root.resolve(), verify.ROOT.resolve())
                 self.assertEqual(source.read_text(), baseline)
                 self.assertEqual(label, name)
+                environment = kwargs["environment"]
+                self.assertEqual(environment["LEAN_NUM_THREADS"], os.environ.get("LEAN_NUM_THREADS", "1"))
+                self.assertEqual(environment["GOMAXPROCS"], os.environ.get("GOMAXPROCS", "1"))
+                self.assertIsNot(environment, os.environ)
 
             with patch.object(verify, "seed_build"), patch.object(verify, "generate", side_effect=inspect) as generate, patch.object(verify, "run"), patch.object(verify, "print", create=True):
                 verify.check_mutations(profile, Path("goose"), Path("proofgen"))
@@ -389,6 +393,21 @@ class VerificationGuardTests(unittest.TestCase):
                     audit.write_text(content)
                     with self.assertRaisesRegex(RuntimeError, message):
                         verify.baseline_modules(profile)
+
+    def test_worker_limit_respects_cpu_affinity_and_rejects_invalid_config(self):
+        with patch.object(verify.os, "sched_getaffinity", return_value={0, 1, 2, 3}, create=True):
+            with patch.dict(os.environ, {}, clear=True):
+                self.assertEqual(verify.mutation_workers(), 2)
+            for raw, expected in (("1", 1), ("4", 4)):
+                with self.subTest(raw=raw), patch.dict(os.environ, {"GSTYLE_MUTATION_WORKERS": raw}):
+                    self.assertEqual(verify.mutation_workers(), expected)
+            for raw in ("0", "5", "-1", "auto"):
+                with self.subTest(raw=raw), patch.dict(os.environ, {"GSTYLE_MUTATION_WORKERS": raw}):
+                    with self.assertRaisesRegex(RuntimeError, "GSTYLE_MUTATION_WORKERS"):
+                        verify.mutation_workers()
+        with patch.object(verify.os, "sched_getaffinity", return_value={0, 1}, create=True):
+            with patch.dict(os.environ, {"GSTYLE_MUTATION_WORKERS": "4"}):
+                self.assertEqual(verify.mutation_workers(), 2)
 
     def test_all_mutations_have_unique_bound_targets(self):
         for factory in (getattr(verify, name) for name in dir(verify) if name.endswith("_profile")):

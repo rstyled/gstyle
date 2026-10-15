@@ -62,7 +62,11 @@ and all mutation proof targets are built before mutation tests. Lake builds thei
 profiles are not built in every CI job. The function-length profile also builds
 the `Gstyle` umbrella once, preserving the full project import check.
 
-Mutation checks run with two workers. Every worker uses a private Go/Lean
+Mutation checks default to two workers. `GSTYLE_MUTATION_WORKERS` accepts 1–4,
+capped by available CPUs. CI uses four on its four-CPU runners. Worker subprocesses
+default to one Lean thread and one Go processor; explicit environment overrides
+remain supported. The baseline build keeps its normal parallelism.
+Every worker uses a private Go/Lean
 workspace and a private copy of the successful preflight build artifacts.
 Lake checks input hashes and rebuilds changed modules and their dependents.
 Pinned dependency builds are shared. A worker failure aborts verification;

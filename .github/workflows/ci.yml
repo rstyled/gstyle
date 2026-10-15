@@ -245,6 +245,7 @@ jobs:
       - name: Verify ${{ matrix.profile }} source, proofs, axioms and mutations
         env:
           GSTYLE_MUTATION_SHARD: ${{ matrix.shard }}
+          GSTYLE_MUTATION_WORKERS: '4'
         run: make ${{ matrix.target }}
 
       - name: Preserve proof evidence
