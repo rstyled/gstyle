@@ -144,6 +144,12 @@ jobs:
           - profile: signed-step
             target: verify-signed-step
             shard: 1/2
+          - profile: assignment
+            target: verify-assignment
+            shard: 0/2
+          - profile: assignment
+            target: verify-assignment
+            shard: 1/2
     steps:
       - name: Checkout
         uses: actions/checkout@v6

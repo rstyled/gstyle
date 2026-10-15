@@ -323,8 +323,6 @@ axiom Definition.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Location.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
-axiom Category.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
 axiom Position.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom CallForm.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
@@ -423,7 +421,8 @@ axiom OtherRole [FfiSyntax] [GoGlobalContext] : val
 
 axiom ReturnRole [FfiSyntax] [GoGlobalContext] : val
 
-axiom Declaration [FfiSyntax] [GoGlobalContext] : val
+@[reducible] noncomputable def Declaration [FfiSyntax] [GoGlobalContext] : val :=
+  #(W8 0)
 
 axiom Read [FfiSyntax] [GoGlobalContext] : val
 
@@ -854,18 +853,15 @@ attribute [instance] Location.TypeAssumptions.type_repr
   Location.TypeAssumptions.underlying
   Location.TypeAssumptions.isUnderlying
 
-axiom Category : Type
-axiom Category.zero_val : ZeroVal Category
-attribute [instance] Category.zero_val
+abbrev Category [FfiSyntax] : Type := w8
+
+@[reducible] def Category.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  go.uint8
 
 class Category.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
-  type_repr : go.TypeReprUnderlying Category.underlying Category
   underlying : go.UnderlyingDirectedEq Category.ty Category.underlying
-  isUnderlying : go.IsUnderlying Category.underlying Category.underlying
 
-attribute [instance] Category.TypeAssumptions.type_repr
-  Category.TypeAssumptions.underlying
-  Category.TypeAssumptions.isUnderlying
+attribute [instance] Category.TypeAssumptions.underlying
 
 axiom Position : Type
 axiom Position.zero_val : ZeroVal Position

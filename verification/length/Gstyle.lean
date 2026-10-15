@@ -14,3 +14,5 @@ public import Gstyle.Proof.StateMap.Join
 public import Gstyle.Proof.Transfer.Sound
 
 public import Gstyle.Proof.Transfer.Step
+
+public import Gstyle.Proof.Transfer.Assignment

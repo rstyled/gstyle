@@ -1,2 +1,2 @@
-translate = ["Ref"]
+translate = ["Ref", "Category", "Declaration"]
 imports = ["github.com/rstyled/gstyle/domain/pdg/query"]
