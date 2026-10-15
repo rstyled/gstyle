@@ -886,6 +886,127 @@ def value_evaluation_profile():
                    unverified=("standard-library ParseInt implementation", "witness existence and termination", "snapshot construction and producer fact truth", "whole state-transfer and program interval soundness", "program pointer/alias semantics and package initialization"))
 
 
+def comparison_profile():
+    base = value_evaluation_profile()
+    groups = {
+        "ComparisonExecution": {
+            "compare-inverts-truth": ('if !truth {\n\t\toperator = inverse[operator]', 'if truth {\n\t\toperator = inverse[operator]'),
+            "compare-wrong-inverse-table": ('operator = inverse[operator]', 'operator = reverse[operator]'),
+            "compare-wrong-inverse-key": ('operator = inverse[operator]', 'operator = inverse["=="]'),
+            "compare-wrong-left-position": ('left, right := v.operand(ref, 0), v.operand(ref, 1)', 'left, right := v.operand(ref, 1), v.operand(ref, 1)'),
+            "compare-wrong-right-position": ('left, right := v.operand(ref, 0), v.operand(ref, 1)', 'left, right := v.operand(ref, 0), v.operand(ref, 0)'),
+            "compare-swaps-values": ('leftValue, rightValue := v.value(left, state), v.value(right, state)', 'leftValue, rightValue := v.value(right, state), v.value(left, state)'),
+            "compare-drops-right-state": ('leftValue, rightValue := v.value(left, state), v.value(right, state)', 'leftValue, rightValue := v.value(left, state), v.value(right, nil)'),
+            "compare-wrong-left-symbol": ('if symbol := v.symbol(left); symbol != 0 {', 'if symbol := v.symbol(right); symbol != 0 {'),
+            "compare-wrong-right-symbol": ('if symbol := v.symbol(right); symbol != 0 {', 'if symbol := v.symbol(left); symbol != 0 {'),
+            "compare-rejects-live-state": ('if state == nil {', 'if state != nil {'),
+            "compare-continues-after-rejection": ('if state == nil {', 'if false && state == nil {'),
+            "compare-discards-final-state": ('return state\n}\n\nfunc (v *graphView) constrain', 'return nil\n}\n\nfunc (v *graphView) constrain'),
+            "compare-mutates-operands": ('left, right := v.operand(ref, 0), v.operand(ref, 1)', 'v.operands[ref-1][0] = 0; left, right := v.operand(ref, 0), v.operand(ref, 1)'),
+            "compare-mutates-inverse": ('operator = inverse[operator]', 'inverse[operator] = ""; operator = inverse[operator]'),
+        },
+        "ComparisonTransfers": {
+            "compare-ignores-left-binding": ('if symbol := v.symbol(left); symbol != 0 {', 'if symbol := v.symbol(left); false && symbol != 0 {'),
+            "compare-ignores-right-binding": ('if symbol := v.symbol(right); symbol != 0 {', 'if symbol := v.symbol(right); false && symbol != 0 {'),
+            "compare-wrong-left-bound": ('state = v.constrain(symbol, operator, rightValue, state)', '_ = rightValue; state = v.constrain(symbol, operator, leftValue, state)'),
+            "compare-drops-left-rejection": ('state = v.constrain(symbol, operator, rightValue, state)', 'v.constrain(symbol, operator, rightValue, state)'),
+            "compare-wrong-reverse-table": ('reverse[operator]', 'inverse[operator]'),
+            "compare-wrong-reverse-key": ('reverse[operator]', 'reverse["=="]'),
+            "compare-wrong-right-bound": ('state = v.constrain(symbol, reverse[operator], leftValue, state)', '_ = leftValue; state = v.constrain(symbol, reverse[operator], rightValue, state)'),
+            "compare-drops-right-rejection": ('state = v.constrain(symbol, reverse[operator], leftValue, state)', 'v.constrain(symbol, reverse[operator], leftValue, state)'),
+            "compare-mutates-reverse": ('state = v.constrain(symbol, reverse[operator], leftValue, state)', 'reverse[operator] = ""; state = v.constrain(symbol, reverse[operator], leftValue, state)'),
+        },
+        "Numeric": {
+            "constraint-tracked-off-by-one": ('int(symbol) <= len(v.tracked)', 'int(symbol) < len(v.tracked)', 'domain/runtimeguard/track.go'),
+            "constraint-tracks-zero": ('return symbol != 0 && int(symbol) <= len(v.tracked)', 'return int(symbol) <= len(v.tracked)', 'domain/runtimeguard/track.go'),
+            "constraint-skips-limit": ('return symbol != 0 && int(symbol) <= len(v.tracked) &&', 'return symbol != 0 &&', 'domain/runtimeguard/track.go'),
+            "constraint-wrong-tracked-index": ('return symbol != 0 && int(symbol) <= len(v.tracked) && v.tracked[symbol-1]', 'return symbol != 0 && int(symbol) <= len(v.tracked) && v.tracked[symbol]', 'domain/runtimeguard/track.go'),
+            "constraint-ignores-tracking": ('if !v.trackedBinding(symbol) {', 'if false && !v.trackedBinding(symbol) {'),
+            "constraint-drops-write": ('state[symbol] = value', 'state[symbol] = bound'),
+            "constraint-keeps-infeasible": ('if v.infeasibleConstraint(symbol, operator, bound, value) {\n\t\treturn nil', 'if v.infeasibleConstraint(symbol, operator, bound, value) {\n\t\treturn state'),
+        },
+    }
+    mutations, expected = {}, {}
+    for module, entries in groups.items():
+        mutations.update(entries)
+        expected.update({name: f"Gstyle/Proof/Transfer/{module}.lean" for name in entries})
+    model_source = "verification/length/Gstyle/Proof/Transfer/ComparisonModel.lean"
+    model_mutations = {
+        "compare-model-inverse-strict": ('if op = go!"<" then go!">=" else', 'if op = go!"<" then go!">" else'),
+        "compare-model-reverse-equality": ('if op = go!"==" then go!"==" else', 'if op = go!"==" then go!"!=" else'),
+        "compare-model-normalization": ('if truth then op else inverseOperator op', 'if truth then inverseOperator op else op'),
+        "compare-model-unknown-relation": ('if op = go!"!=" then left ≠ right else True', 'if op = go!"!=" then left ≠ right else False'),
+    }
+    mutations.update({name: (*change, model_source) for name, change in model_mutations.items()})
+    expected.update({name: "Gstyle/Proof/Transfer/ComparisonModel.lean" for name in model_mutations})
+    metadata_mutations = {
+        "compare-model-absent-tracked": ('(ha : active = false)', '(ha : active = true)'),
+        "compare-model-absent-last-key": ('(hout : key = W32 0 ∨ s.kinds.length < uint.Z key)', '(hout : key = W32 0 ∨ s.kinds.length ≤ uint.Z key)'),
+    }
+    mutations.update({name: (*change, model_source) for name, change in metadata_mutations.items()})
+    expected.update({name: "Gstyle/Proof/Transfer/ComparisonConstraint.lean" for name in metadata_mutations})
+    state_mutations = {
+        "compare-model-first-bound": ('constraintState c.leftActive c.leftKind c.leftChanging c.leftKey m c.operator c.rightValue', 'constraintState c.leftActive c.leftKind c.leftChanging c.leftKey m c.operator c.leftValue'),
+        "compare-model-restarts-right": ('constraintState c.rightActive c.rightKind c.rightChanging c.rightKey (comparisonLeftMap c m) c.reversed c.leftValue', 'constraintState c.rightActive c.rightKind c.rightChanging c.rightKey m c.reversed c.leftValue'),
+        "compare-model-skips-right-map": ('if comparisonLeftRejected c m then comparisonLeftMap c m else comparisonRightMap c m', 'if comparisonLeftRejected c m then comparisonLeftMap c m else comparisonLeftMap c m'),
+        "compare-model-requires-both-rejections": ('comparisonLeftRejected c m || comparisonRightRejected c m', 'comparisonLeftRejected c m && comparisonRightRejected c m'),
+    }
+    mutations.update({name: (*change, model_source) for name, change in state_mutations.items()})
+    expected.update({name: "Gstyle/Proof/Transfer/ComparisonBoth.lean" for name in state_mutations})
+    proof_sources = (
+        "Gstyle/Proof/Transfer/ComparisonModel.lean",
+        "Gstyle/Proof/Transfer/ComparisonExecution.lean",
+        "Gstyle/Proof/Transfer/ComparisonConstraint.lean",
+        "Gstyle/Proof/Transfer/ComparisonTransfers.lean",
+        "Gstyle/Proof/Transfer/ComparisonBoth.lean",
+        "Gstyle/Proof/Transfer/ComparisonSound.lean",
+        "Gstyle/Proof/Transfer/Numeric.lean", "Gstyle/Proof/Transfer/Sound.lean",
+    )
+    names = (
+        "inverseOperator_relation",
+        "reverseOperator_relation",
+        "inverseOperator_involution",
+        "reverseOperator_involution",
+        "normalizedOperator_relation",
+        "inverse_reverse_commute",
+        "unknownOperator_relation",
+        "reversedNormalizedOperator_relation",
+        "normalizedBranchRelations",
+        "wp_comparison_unbound_true",
+        "wp_comparison_unbound_false",
+        "wp_comparison_nil_zero_operands_true",
+        "wp_comparison_nil_zero_operands_false",
+        "wp_constrain_snapshot_numeric",
+        "wp_constrain_snapshot_invalid",
+        "wp_constrain_snapshot_numeric_any",
+        "wp_comparison_left_numeric_true",
+        "wp_comparison_left_numeric_false",
+        "wp_comparison_right_numeric_true",
+        "wp_comparison_right_numeric_false",
+        "wp_comparison_both_numeric_true",
+        "wp_comparison_both_numeric_false",
+        "exact_value_contains",
+        "integerRelation_satisfies",
+        "numeric_state_step_sound",
+        "comparison_numeric_state_sound",
+        "comparison_branch_state_sound",
+        "wp_comparison_both_numeric_true_sound",
+        "wp_comparison_both_numeric_false_sound",
+        "wp_trackedBinding",
+        "wp_trackedBinding_invalid",
+        "wp_impossibleSignedComparison",
+        "wp_infeasibleConstraint",
+        "wp_constrain_numeric",
+    )
+    return replace(base, report=ROOT / "dist/verification/comparison", source=ROOT / "domain/runtimeguard/condition.go",
+                   sources=base.sources + tuple(PROJECT / path for path in proof_sources),
+                   theorems={"Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name for name in names},
+                   mutations=mutations, mutation_modules=expected, audit="AuditComparison.lean",
+                   proof_file="Gstyle/Proof/Transfer/ComparisonExecution.lean",
+                   verified="production numeric comparisons with exact state updates and all-key interval preservation under explicit input assumptions",
+                   unverified=("operator table initialization", "ParseInt implementation and producer fact truth", "program pointer/nil and alias semantics", "32-bit Go execution", "query termination and worklist convergence", "general nil-state operand evaluation"))
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -1035,10 +1156,10 @@ def main(profile=None):
 if __name__ == "__main__":
     try:
         import sys
-        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile}
+        profiles = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile}
         arguments = tuple(sys.argv[1:])
         if arguments not in profiles:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison]")
         main(profiles[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

@@ -141,3 +141,9 @@ verify-runtime-facts:
 verify-value-evaluation:
 	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
 	python3 -B verification/length/verify.py --value-evaluation
+
+.PHONY: verify-comparison
+
+verify-comparison:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --comparison

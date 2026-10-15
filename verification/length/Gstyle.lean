@@ -49,3 +49,13 @@ public import Gstyle.Proof.Transfer.ValueDispatch
 public import Gstyle.Proof.Transfer.ValueEvaluation
 
 public import Gstyle.Proof.Transfer.ValueResolution
+
+public import Gstyle.Proof.Transfer.ComparisonExecution
+
+public import Gstyle.Proof.Transfer.ComparisonConstraint
+
+public import Gstyle.Proof.Transfer.ComparisonTransfers
+
+public import Gstyle.Proof.Transfer.ComparisonBoth
+
+public import Gstyle.Proof.Transfer.ComparisonSound

@@ -186,6 +186,18 @@ jobs:
           - profile: value-evaluation
             target: verify-value-evaluation
             shard: 2/3
+          - profile: comparison
+            target: verify-comparison
+            shard: 0/4
+          - profile: comparison
+            target: verify-comparison
+            shard: 1/4
+          - profile: comparison
+            target: verify-comparison
+            shard: 2/4
+          - profile: comparison
+            target: verify-comparison
+            shard: 3/4
     steps:
       - name: Checkout
         uses: actions/checkout@v6

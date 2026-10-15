@@ -84,3 +84,8 @@ Local commands default to one shard and still run every mutation.
 49 theorem audits, and 37 Go/model mutations. CI uses three shards with the same
 two-worker limit. See [VALUE_EVALUATION.md](VALUE_EVALUATION.md) for the finite
 query contract, the explicit `ParseInt` premise, and remaining proof gaps.
+
+`make verify-comparison` checks production numeric comparisons, 34 theorem
+audits, and 40 Go/model mutations. CI uses four shards with the same two-worker
+limit. See [COMPARISON.md](COMPARISON.md) for map preservation, numeric interval
+soundness, explicit input assumptions, and remaining proof gaps.

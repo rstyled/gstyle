@@ -223,7 +223,8 @@ class VerificationGuardTests(unittest.TestCase):
                                (verify.pdg_list_profile, 1),
                                (verify.pdg_attributes_profile, 2),
                                (verify.runtime_facts_profile, 2),
-                               (verify.value_evaluation_profile, 3)):
+                               (verify.value_evaluation_profile, 3),
+                               (verify.comparison_profile, 4)):
             mutations = factory().mutations
             selected = [name for index in range(count)
                         for name in verify.shard_mutations(mutations, (index, count))]

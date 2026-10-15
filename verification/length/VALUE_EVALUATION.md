@@ -12,7 +12,7 @@ Input assumptions:
 
 - `SymbolSnapshotValid` supplies table lengths, two-element operand rows, valid symbol-recursion references, and the existing allocation bound for copied outcome rows.
 - The unstable and kind tables have equal lengths.
-- Snapshot ownership describes the actual graph, table, and row contents; state ownership describes the actual map.
+- Snapshot ownership describes the actual graph, table, and row contents; state ownership describes an allocated, non-nil map. Nil states need separate contracts; an owned-map premise cannot establish nil-map behavior.
 - Each nonzero evaluated reference is in the node table. Each recursive value call has its own witness. Symbol calls have a finite `symbolResolve` witness at the supplied common fuel.
 - `parseInt64Contract` specifies the actual `strconv.ParseInt` call with base 10 and width 64. This execution contract is a theorem premise, not an added axiom or a proof of the standard-library implementation.
 
