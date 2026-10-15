@@ -4,7 +4,7 @@ project_name: gstyle
 
 builds:
   - id: gstyle
-    main: ./cmd/gstyle
+    main: .
     binary: gstyle
     env:
       - CGO_ENABLED=0
