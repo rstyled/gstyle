@@ -1,5 +1,6 @@
 module
-public import Gstyle.Proof.Transfer.ParseIntContract
+public import Gstyle.Proof.Transfer.ConstantDispatch
+public import Gstyle.Proof.Transfer.ValueModel
 @[expose] public section
 noncomputable section
 namespace Perennial
@@ -39,70 +40,8 @@ theorem wp_constantValue_snapshot (receiver : Loc) (s : QuerySnapshot) (ref : w3
     {{ isPkgInit (PROP := IProp GF) pkg ∗ querySnapshotOwn receiver s }}
       (App (Val #(methods (go.PointerType graphView.ty) go!"constantValue" #receiver)) (Val #ref))
     {{ RET #(snapshotConstant s ref); querySnapshotOwn receiver s }} := by
-  wp_start as #Hsnapshot
-  try wp_auto
-  wp_apply wp_fact_snapshot receiver s ref (go!"non-nil") hvalid halloc $$ [Hsnapshot] with Hsnapshot
-  · iframe Hsnapshot
-  try wp_auto
-  wp_apply wp_fact_snapshot receiver s ref (go!"nil") hvalid halloc $$ [Hsnapshot] with Hsnapshot
-  · iframe Hsnapshot
-  try wp_auto
-  wp_apply wp_fact_snapshot receiver s ref (go!"integer") hvalid halloc $$ [Hsnapshot] with Hsnapshot
-  · iframe Hsnapshot
-  try wp_auto
-  wp_apply hparse (snapshotFact s ref (go!"integer")) with %integer %err %hresult
-  try wp_auto
-  cases err with
-  | nil =>
-    obtain ⟨z, hz, hv, _⟩ := parseInt64Result_success _ _ hresult
-    try wp_auto
-    wp_apply wp_fact_snapshot receiver s ref (go!"literal-extent") hvalid halloc $$ [Hsnapshot] with Hsnapshot
-    · iframe Hsnapshot
-    try wp_auto
-    wp_apply hparse (snapshotFact s ref (go!"literal-extent")) with %extent %extentErr %hextent
-    cases extentErr with
-    | nil =>
-      obtain ⟨ez, hez, hev, _⟩ := parseInt64Result_success (snapshotFact s ref (go!"literal-extent")) extent hextent
-      simp only [snapshotConstant, constantRecord, hz, hez]
-      try simp only [← hv]
-      try simp only [← hev]
-      try wp_auto
-      wp_end
-      all_goals iexact Hsnapshot
-    | ok extentErr =>
-      have hez := parseInt64Result_error _ _ _ hextent (by intro h; cases h)
-      simp only [snapshotConstant, constantRecord, hz, hez]
-      try simp only [← hv]
-      try simp only [← hev]
-      try wp_auto
-      wp_end
-      all_goals iexact Hsnapshot
-
-  | ok err =>
-    have hz := parseInt64Result_error _ _ _ hresult (by intro h; cases h)
-    try wp_auto
-    wp_apply wp_fact_snapshot receiver s ref (go!"literal-extent") hvalid halloc $$ [Hsnapshot] with Hsnapshot
-    · iframe Hsnapshot
-    try wp_auto
-    wp_apply hparse (snapshotFact s ref (go!"literal-extent")) with %extent %extentErr %hextent
-    cases extentErr with
-    | nil =>
-      obtain ⟨ez, hez, hev, _⟩ := parseInt64Result_success (snapshotFact s ref (go!"literal-extent")) extent hextent
-      simp only [snapshotConstant, constantRecord, hz, hez]
-      try simp only [← hv]
-      try simp only [← hev]
-      try wp_auto
-      wp_end
-      all_goals iexact Hsnapshot
-    | ok extentErr =>
-      have hez := parseInt64Result_error _ _ _ hextent (by intro h; cases h)
-      simp only [snapshotConstant, constantRecord, hz, hez]
-      try simp only [← hv]
-      try simp only [← hev]
-      try wp_auto
-      wp_end
-      all_goals iexact Hsnapshot
-
+  simpa only [snapshotConstant, constantResult] using wp_constantValue_contract receiver ref (snapshotFact s ref) (querySnapshotOwn receiver s) hparse
+    (fun key => wp_fact_snapshot receiver s ref key hvalid halloc)
 
 end proof
 end github_com.rstyled.gstyle.domain.runtimeguard

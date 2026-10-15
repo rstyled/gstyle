@@ -774,7 +774,7 @@ def runtime_facts_profile():
 def value_evaluation_profile():
     base = runtime_facts_profile()
     groups = {
-        "ConstantExecution": {
+        "ConstantDispatch": {
             "constant-wrong-non-nil": ('v.fact(ref, "non-nil")', 'v.fact(ref, "nil")'),
             "constant-wrong-nil": ('Nil: v.fact(ref, "nil")', 'Nil: v.fact(ref, "non-nil")'),
             "constant-integer-key": ('strconv.ParseInt(v.fact(ref, "integer"), 10, 64)', 'strconv.ParseInt(v.fact(ref, "other"), 10, 64)'),
@@ -836,6 +836,8 @@ def value_evaluation_profile():
         "Gstyle/Proof/Transfer/ValueModel.lean",
         "Gstyle/Proof/Transfer/ParseIntContract.lean",
         "Gstyle/Proof/Transfer/ConstantExecution.lean",
+        "Gstyle/Proof/Transfer/ConstantDispatch.lean",
+        "Gstyle/Proof/Transfer/ConstantModel.lean",
         "Gstyle/Proof/Transfer/LengthExecution.lean",
         "Gstyle/Proof/Transfer/ConversionExecution.lean",
         "Gstyle/Proof/Transfer/ValueDispatch.lean",
@@ -872,6 +874,7 @@ def value_evaluation_profile():
         "decimalInt64_unicode",
         "parseInt64Result_success",
         "parseInt64Result_error",
+        "wp_constantValue_contract",
         "wp_constantValue_snapshot",
         "wp_lengthValue_not_length",
         "wp_value_zero",

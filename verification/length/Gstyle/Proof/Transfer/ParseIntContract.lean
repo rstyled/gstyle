@@ -1,5 +1,5 @@
 module
-public import Gstyle.Proof.Transfer.ValueModel
+public import Gstyle.Proof.Transfer.ConstantModel
 public import Gstyle.Proof.StrconvPackage
 @[expose] public section
 noncomputable section
