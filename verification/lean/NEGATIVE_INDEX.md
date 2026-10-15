@@ -1,5 +1,8 @@
 # Negative-index verification
 
+See the [source-to-diagnostic proof map](NEGATIVE_INDEX_MAP.md) for the intended
+guarantee, current boundaries and recommended next step.
+
 Run `make verify-negative-index verify-runtime-value` with the shared pinned Lean/Goose project.
 This stage covers intervals, the risk decision and stable per-binding selection.
 Advisory payload construction and generic node lookup are also proved. PDG
