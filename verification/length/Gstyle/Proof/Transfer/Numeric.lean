@@ -1,6 +1,6 @@
 module
 public import Gstyle.Proof.Transfer.Tracking
-public import Gstyle.Proof.RuntimeValue
+public import Gstyle.Proof.RuntimeValue.Constraint
 public import Gstyle.Proof.Transfer.NumericConstrainQueries
 public import Gstyle.Proof.StateMap.Binding
 @[expose] public section

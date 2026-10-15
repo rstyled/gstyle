@@ -381,6 +381,15 @@ class VerificationGuardTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, message):
                         verify.baseline_modules(profile)
 
+    def test_all_mutations_have_unique_bound_targets(self):
+        for factory in (getattr(verify, name) for name in dir(verify) if name.endswith("_profile")):
+            profile = factory()
+            for name, mutation in profile.mutations.items():
+                with self.subTest(profile=profile.report.name, mutation=name):
+                    source = verify.ROOT / mutation[2] if len(mutation) == 3 else profile.source
+                    self.assertIn(source, profile.sources)
+                    self.assertEqual(source.read_text().count(mutation[0]), 1)
+
     def test_all_profile_audits_have_build_targets(self):
         for name in dir(verify):
             if not name.endswith("_profile"):
