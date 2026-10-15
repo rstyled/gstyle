@@ -72,7 +72,7 @@ fallback path. Production Go behavior does not change in this stage.
 
 ## Remaining work
 
-Branch composition is next. PDG extraction, RHS evaluation and the full transfer
+Branch composition now has a separate [modular contract](BRANCH.md). PDG extraction, RHS evaluation and the full transfer
 integration still need contracts and proofs. The earlier length-flag provenance
 and type/operator dispatch gaps remain. Convergence, pointer/alias semantics
 and package initialization retain separate contracts and stages.

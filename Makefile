@@ -101,3 +101,61 @@ verify-signed-step:
 verify-assignment:
 	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
 	python3 -B verification/length/verify.py --assignment
+
+.PHONY: verify-branch
+verify-branch:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --branch
+
+.PHONY: verify-pdg-text
+verify-pdg-text:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --pdg-text
+
+.PHONY: verify-operator
+
+verify-operator:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --operator
+
+.PHONY: verify-pdg-list
+
+verify-pdg-list:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --pdg-list
+
+.PHONY: verify-pdg-attributes
+
+verify-pdg-attributes:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --pdg-attributes
+
+.PHONY: verify-runtime-facts
+
+verify-runtime-facts:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --runtime-facts
+
+.PHONY: verify-value-evaluation
+
+verify-value-evaluation:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --value-evaluation
+
+.PHONY: verify-comparison
+
+verify-comparison:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --comparison
+
+.PHONY: verify-one-sided
+
+verify-one-sided:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --one-sided
+
+.PHONY: verify-shared-flow
+
+verify-shared-flow:
+	python3 -B -m unittest discover -s verification/length -p 'test_*.py'
+	python3 -B verification/length/verify.py --shared-flow

@@ -254,9 +254,9 @@ comparison copy-back, plus the complete Value join and its interval-set
 preservation contract. Numeric state constraints are covered separately below.
 Remaining transfers, traversal and outer projections remain outside the proof. See [the negative-index verification scope](verification/length/NEGATIVE_INDEX.md).
 
-### Lean verification of state-map joins
+### Lean verification of state-map joins and equality
 
-Run `make verify-state-map` to verify the production join and its binding/copy
+Run `make verify-state-map` to verify production content equality, the join and its binding/copy
 helpers. The contract covers both/missing keys, nil branches, input preservation
 and conditional interval soundness using the existing Value merge proof. See
 [the explicit assumptions and unsupported cases](verification/length/STATE_MAP.md).
@@ -281,3 +281,39 @@ wrapped results and metadata invalidation. See
 Run `make verify-assignment` to verify production RHS eligibility and non-pointer
 state-map writes, including unsigned defaults and conservative compound fallback.
 See [the contracts and remaining integration obligations](verification/length/ASSIGNMENT.md).
+
+### Lean verification of branch composition
+
+Run `make verify-branch` to verify operand reads and production logical branch
+composition under explicit child contracts. It covers sequential refinement,
+independent forks and unreachable alternatives. See
+[the contract and unresolved child/PDG obligations](verification/length/BRANCH.md).
+
+### Lean verification of PDG text lookup
+
+Run `make verify-pdg-text` to verify the production string-table accessor for
+all references under shared read-only ownership. See
+[the lookup contract and remaining PDG boundaries](verification/length/PDG_TEXT.md).
+
+The [operator availability proof](verification/length/OPERATOR.md) checks the
+production reader that separates known operators from unavailable reason text.
+
+The [generic PDG list proof](verification/length/PDG_LIST.md) preserves exact
+row descriptors and absence across production attribute-list lookups.
+
+Run `make verify-pdg-attributes` for the [graph attribute and outcomes
+contracts](verification/length/PDG_ATTRIBUTES.md), including real record
+selection, metadata preservation and the complete copying loop.
+
+Run `make verify-runtime-facts` for the [production node-to-fact query
+contracts](verification/length/RUNTIME_FACTS.md), including first-match
+extensions, actual node indirection, explicit absence behavior and literal
+Boolean admission.
+
+The runtime-facts verification stage also covers [production binding-symbol
+lookup](verification/length/BINDING_READS.md), including borrowed Access records,
+cache/direct-read paths and explicit recursive-child contracts.
+
+[Recursive symbol resolution](verification/length/SYMBOL_RESOLUTION.md) uses a
+shared read-only snapshot and finite-chain induction, with no assumed child
+execution contract.

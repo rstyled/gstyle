@@ -56,6 +56,13 @@ func (v *graphView) attrs(ref pdg.Ref) pdg.Attributes {
 	return v.graph.NodeAttributes(v.graph.Nodes[ref-1])
 }
 
+func operatorText(tables *pdg.Tables, fact pdg.Fact) string {
+	if fact.Status != pdg.Known {
+		return ""
+	}
+	return tables.Text(fact.Value)
+}
+
 func (v *graphView) fact(ref pdg.Ref, name string) string {
 	return extension(v.graph, v.attrs(ref).Extensions, name)
 }
@@ -75,7 +82,7 @@ func (v *graphView) symbol(ref pdg.Ref) pdg.Ref {
 		}
 		return symbol
 	}
-	operator := v.graph.Tables.Text(attrs.Operator.Value)
+	operator := operatorText(v.graph.Tables, attrs.Operator)
 	if operator == "parentheses" {
 		return v.symbol(v.operand(ref, 0))
 	}
@@ -118,7 +125,7 @@ func (v *graphView) value(ref pdg.Ref, state State) Value {
 	if symbol := v.symbol(ref); symbol != 0 {
 		return v.binding(symbol, state)
 	}
-	operator := v.graph.Tables.Text(attrs.Operator.Value)
+	operator := operatorText(v.graph.Tables, attrs.Operator)
 	if operator == "parentheses" {
 		return v.value(v.operand(ref, 0), state)
 	}

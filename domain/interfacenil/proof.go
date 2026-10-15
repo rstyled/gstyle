@@ -174,6 +174,9 @@ func transfer(category pdg.Category, attrs pdg.Attributes, graph *pdg.Graph) boo
 	case pdg.Assignment, pdg.Declaration, pdg.Return, pdg.FormalOutput, pdg.Merge:
 		return true
 	case pdg.Computation:
+		if attrs.Operator.Status != pdg.Known {
+			return false
+		}
 		operator := graph.Tables.Text(attrs.Operator.Value)
 		return operator == "conversion" || operator == "parentheses"
 	default:

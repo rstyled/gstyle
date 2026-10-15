@@ -62,7 +62,7 @@ func (v *graphView) trackedBinding(symbol pdg.Ref) bool {
 }
 
 func (v *graphView) predicateDefinitions(ref pdg.Ref, definitions [][]pdg.Ref) {
-	operator := v.graph.Tables.Text(v.attrs(ref).Operator.Value)
+	operator := operatorText(v.graph.Tables, v.attrs(ref).Operator)
 	if _, comparison := inverse[operator]; !comparison {
 		return
 	}
