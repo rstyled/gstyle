@@ -66,3 +66,16 @@ workspace and a private copy of the successful preflight build artifacts.
 Lake checks input hashes and rebuilds changed modules and their dependents.
 Pinned dependency builds are shared. A worker failure aborts verification;
 result lists retain profile order even when progress messages finish out of order.
+
+Interval and unchecked-output proofs are split by operation. The public
+`Interval.lean` and `Output.lean` modules still export every original theorem.
+The baseline build and axiom audits remain complete; mutation builds target the
+specific operation contract listed in `verify.py`.
+
+CI caches the project's `.lake/build` as well as pinned dependency builds.
+Lake invalidates changed inputs before reusing artifacts. Larger mutation suites
+run across separate runners with `GSTYLE_MUTATION_SHARD=INDEX/COUNT` (zero-based).
+Every shard checks the full baseline, source binding and axiom audit, then checks
+its assigned mutations. Results record the shard and total mutation count.
+The aggregate `verify-length` check requires every configured shard to pass.
+Local commands default to one shard and still run every mutation.

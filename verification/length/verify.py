@@ -2,9 +2,10 @@
 """Check source binding, Lean proofs, axioms, and deliberate Go mutations."""
 
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -95,6 +96,7 @@ class Profile:
     unverified: tuple
     generated: tuple = ("Code", "GeneratedProof")
     bindings: tuple = ()
+    mutation_modules: dict = field(default_factory=dict)
 
 
 def length_profile():
@@ -128,6 +130,19 @@ def pdg_profile():
         ("Go-to-PDG extraction", "graph snapshot provenance", "name-to-capability lookup",
          "whole-graph traversal", "pattern findings and rewrite semantics"),
     )
+
+
+def output_mutation_modules():
+    groups = {
+        "Classify": "cross-classifier-callee cross-classifier-writer invert-blank-target ignore-consumption-form swap-consumption-counts forge-blank-target wrong-function-package miss-fprintln wrong-writer-package cross-writer-identity unrecognized-function memory-writer wrong-result-count handled-error wrong-value-count missed-standalone",
+        "Describe": "wrong-finding-path wrong-finding-owner wrong-finding-name wrong-finding-line wrong-finding-end-line wrong-finding-kind wrong-finding-score drop-callee-name",
+        "Report": "skip-last-report duplicate-report",
+        "Suppression": "wrong-suppression-name inverted-suppression-match skip-last-suppression",
+        "Find": "bypass-suppression-lookup",
+        "Select": "ignore-suppression invert-selection skip-last-site duplicate-site",
+    }
+    return {name: f"Gstyle/Proof/Output/{module}.lean"
+            for module, names in groups.items() for name in names.split()}
 
 
 def output_profile():
@@ -175,7 +190,22 @@ def output_profile():
         },
         "AuditOutput.lean", "Gstyle/Proof/Output.lean", "unchecked-output composed classification, suppression, selection and advisory payloads",
         ("AST/type fact extraction", "corpus traversal, input/Candidate projection and presentation", "Go compiler and stdlib behavior"),
+        mutation_modules=output_mutation_modules(),
     )
+
+
+def interval_mutation_modules():
+    groups = {
+        "Constrain": "dispatch-lower-as-upper dispatch-strict-lower-as-upper dispatch-strict-upper-as-lower dispatch-upper-as-lower dispatch-equality-misses-upper dispatch-default-narrows",
+        "Strict": "strict-lower-overflow strict-upper-overflow strict-lower-includes-boundary strict-upper-includes-boundary strict-lower-wrong-transfer strict-upper-wrong-transfer",
+        "Bounds": "lower-forgets-knowledge lower-trusts-unknown lower-wrong-direction lower-excludes-boundary upper-forgets-knowledge upper-trusts-unknown upper-wrong-direction upper-excludes-boundary",
+        "Advisory": "wrong-advisory-path wrong-advisory-owner wrong-advisory-line wrong-advisory-kind wrong-advisory-score drop-index-name",
+        "Select": "omit-deduplication deduplicate-by-node forget-seen-binding ignore-access-risk mark-safe-binding skip-last-access duplicate-access forge-source-node",
+        "Join": "narrow-lower-bound narrow-upper-bound forge-known-lower forge-known-upper stale-unknown-lower stale-unknown-upper",
+        "Risk": "warn-without-index warn-without-upper-check treat-zero-as-negative trust-unknown-lower",
+    }
+    return {name: f"Gstyle/Proof/Interval/{module}.lean"
+            for module, names in groups.items() for name in names.split()}
 
 
 def interval_profile():
@@ -233,6 +263,7 @@ def interval_profile():
         },
         "AuditInterval.lean", "Gstyle/Proof/Interval.lean", "sound interval join, negative-index decision and stable binding selection",
         ("PDG extraction", "state transfer and fixpoint traversal", "Value-to-Range projection", "Access projection, source-node resolution and candidate rendering"),
+        mutation_modules=interval_mutation_modules(),
     )
 
 
@@ -318,10 +349,30 @@ def check_mutation(profile, goose, proofgen, item):
         (lean / ".lake/packages").symlink_to(PROJECT / ".lake/packages", target_is_directory=True)
         seed_build(lean)
         generate(profile, goose, proofgen, work / "go", lean / "Gstyle", name)
-        module = profile.proof_file.removesuffix(".lean").replace("/", ".")
-        run(["lake", "build", module], lean, f"{name}-proof.log", expect_failure=True, report=profile.report, proof_file=profile.proof_file)
+        proof_file = profile.mutation_modules.get(name, profile.proof_file)
+        module = proof_file.removesuffix(".lean").replace("/", ".")
+        run(["lake", "build", module], lean, f"{name}-proof.log", expect_failure=True, report=profile.report, proof_file=proof_file)
     print(f"REJECTED {name}", flush=True)
     return name
+
+
+def mutation_shard():
+    raw = os.environ.get("GSTYLE_MUTATION_SHARD", "0/1")
+    parts = raw.split("/")
+    if len(parts) != 2 or not all(part.isdecimal() for part in parts):
+        raise RuntimeError("GSTYLE_MUTATION_SHARD must be INDEX/COUNT")
+    index, count = map(int, parts)
+    if count < 1 or index >= count:
+        raise RuntimeError("mutation shard requires 0 <= INDEX < COUNT")
+    return index, count
+
+
+def shard_mutations(mutations, shard):
+    index, count = shard
+    if count > len(mutations):
+        raise RuntimeError("mutation shard count exceeds mutation count")
+    return {name: mutation for position, (name, mutation) in enumerate(mutations.items())
+            if position % count == index}
 
 
 def check_mutations(profile, goose, proofgen):
@@ -363,13 +414,16 @@ def main(profile=None):
     generate(profile, goose, proofgen, ROOT, generated, "source")
     check_generated(profile, generated)
     check_axioms(run(["lake", "env", "lean", profile.audit], PROJECT, "axioms.log", report=report), profile.theorems)
-    mutants = check_mutations(profile, goose, proofgen)
+    shard = mutation_shard()
+    mutations = shard_mutations(profile.mutations, shard)
+    mutants = check_mutations(replace(profile, mutations=mutations), goose, proofgen)
     success.write_text(json.dumps({
         "sources_sha256": {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in profile.sources},
         "verified": profile.verified, "unverified": profile.unverified,
         "rejected_mutations": mutants,
+        "mutation_shard": {"index": shard[0], "count": shard[1], "total_mutations": len(profile.mutations)},
     }, indent=2) + "\n")
-    print(f"PASS {profile.verified}; source binding, axiom audit, and {len(mutants)} mutations", flush=True)
+    print(f"PASS {profile.verified}; source binding, axiom audit, and {len(mutants)} mutations (shard {shard[0]}/{shard[1]})", flush=True)
 
 
 if __name__ == "__main__":

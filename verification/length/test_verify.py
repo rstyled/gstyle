@@ -1,4 +1,5 @@
 from dataclasses import replace
+import os
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -80,8 +81,8 @@ class VerificationGuardTests(unittest.TestCase):
     def test_each_mutation_builds_only_its_profile_proof(self):
         for factory, module in ((verify.length_profile, "Gstyle.Proof.Length"),
                                 (verify.pdg_profile, "Gstyle.Proof.Queries"),
-                                (verify.output_profile, "Gstyle.Proof.Output"),
-                                (verify.interval_profile, "Gstyle.Proof.Interval"),
+                                (verify.output_profile, "Gstyle.Proof.Output.Classify"),
+                                (verify.interval_profile, "Gstyle.Proof.Interval.Constrain"),
                                 (verify.runtime_value_profile, "Gstyle.Proof.RuntimeValue")):
             profile = factory()
             mutation = next(iter(profile.mutations.items()))
@@ -93,7 +94,35 @@ class VerificationGuardTests(unittest.TestCase):
                 run.assert_called_once()
                 self.assertEqual(run.call_args.args[0], ["lake", "build", module])
                 self.assertTrue(run.call_args.kwargs["expect_failure"])
-                self.assertEqual(run.call_args.kwargs["proof_file"], profile.proof_file)
+                self.assertEqual(run.call_args.kwargs["proof_file"], profile.mutation_modules.get(mutation[0], profile.proof_file))
+
+    def test_split_mutations_have_explicit_existing_contracts(self):
+        for factory in (verify.interval_profile, verify.output_profile):
+            profile = factory()
+            self.assertEqual(set(profile.mutation_modules), set(profile.mutations))
+            for name, proof in profile.mutation_modules.items():
+                with self.subTest(mutation=name):
+                    self.assertTrue((verify.PROJECT / proof).is_file())
+                    self.assertNotEqual(proof, profile.proof_file)
+
+    def test_shards_cover_every_mutation_once(self):
+        for factory, count in ((verify.interval_profile, 4), (verify.output_profile, 3),
+                               (verify.runtime_value_profile, 2)):
+            mutations = factory().mutations
+            selected = [name for index in range(count)
+                        for name in verify.shard_mutations(mutations, (index, count))]
+            self.assertCountEqual(selected, mutations)
+            self.assertEqual(len(set(selected)), len(selected))
+
+    def test_invalid_shards_fail_closed(self):
+        for raw in ("", "0", "-1/2", "0/0", "2/2", "0/2/3", "x/2"):
+            with self.subTest(value=raw), patch.dict(os.environ, {"GSTYLE_MUTATION_SHARD": raw}):
+                with self.assertRaises(RuntimeError):
+                    verify.mutation_shard()
+        with patch.dict(os.environ, {"GSTYLE_MUTATION_SHARD": "1/4"}):
+            self.assertEqual(verify.mutation_shard(), (1, 4))
+        with self.assertRaises(RuntimeError):
+            verify.shard_mutations({"one": ()}, (0, 2))
 
     def test_parallel_mutation_failure_aborts_verification(self):
         profile = verify.length_profile()
