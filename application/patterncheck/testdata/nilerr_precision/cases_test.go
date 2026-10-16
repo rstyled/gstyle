@@ -40,3 +40,48 @@ func TestNilReturnBehavior(t *testing.T) {
 		t.Fatalf("unexpected failure swallowed: %v", err)
 	}
 }
+
+func TestRegressionBehavior(t *testing.T) {
+	cause := errors.New("failed")
+	value, err := ZeroAggregateBad(cause)
+	if value != (Data{}) || err != nil {
+		t.Fatalf("zero result=%v,error=%v", value, err)
+	}
+	for _, call := range []func(error) error{NamedNilBad, LocalNilBad, RedundantCheckBad, InverseBad} {
+		if err := call(cause); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, call := range []func(error) error{DeferredSafe, UnreachableSafe} {
+		if !errors.Is(call(cause), cause) {
+			t.Fatal("failure was not propagated")
+		}
+	}
+	for _, b := range []bool{true, false} {
+		if !errors.Is(CorrelatedSafe(cause, b), cause) {
+			t.Fatal("branch lost failure")
+		}
+	}
+	p := &Result{Err: cause}
+	if err := ReceiverRepairUnknown(p); err != nil || p.Err != nil {
+		t.Fatal("repair did not complete")
+	}
+}
+
+func TestNilnessBoundaries(t *testing.T) {
+	cause := errors.New("failed")
+	if TypedNilSafe(cause) == nil {
+		t.Fatal("typed nil pointer became nil error")
+	}
+	var boxed error = GenericZeroUnknown[*pointerError](cause)
+	if boxed == nil {
+		t.Fatal("generic pointer zero became nil interface")
+	}
+	if GenericZeroUnknown[error](cause) != nil {
+		t.Fatal("generic interface zero is not nil")
+	}
+	value, err := BoxedFallbackUnknown(cause)
+	if err != nil || value.V == nil {
+		t.Fatalf("boxed fallback=%v,error=%v", value, err)
+	}
+}

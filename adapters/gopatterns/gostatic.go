@@ -22,25 +22,16 @@ type nilErrCheck struct {
 // findNilErrHits finds `if err != nil { return nil }` and
 // the equivalent `if err == nil { ... } else { return nil }` pattern.
 func findNilErrHits(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info) []patterns.NilErrHit {
-	var out []patterns.NilErrHit
 	if fn.Body == nil {
-		return out
+		return nil
 	}
-	errPositions := errorResultPositions(fn, info)
-	ast.Inspect(fn.Body, func(n ast.Node) bool {
-		if _, ok := n.(*ast.FuncLit); ok {
-			return false
-		}
-		ifStmt, ok := n.(*ast.IfStmt)
-		if !ok {
-			return true
-		}
-		if hit := checkNilErrIf(ifStmt, fset, info, errPositions); hit != nil {
-			out = append(out, *hit)
-		}
-		return true
-	})
-	return out
+	positions := errorResultPositions(fn, info)
+	if len(positions) == 0 {
+		return nil
+	}
+	collector := nilErrCollector{fn: fn, fset: fset, info: info, positions: positions, scope: nilErrEvidence{info: info, values: map[types.Object]nilErrValue{}, truths: map[types.Object]bool{}}, remaining: nilErrPathBudget, seen: map[token.Pos]bool{}}
+	collector.sequence(fn.Body.List)
+	return collector.hits
 }
 
 // errorResultPositions returns every error result, including named results.
@@ -86,6 +77,9 @@ func isNilErrErrorType(t types.Type) bool {
 	if t == nil {
 		return false
 	}
+	if _, generic := types.Unalias(t).(*types.TypeParam); generic {
+		return false
+	}
 	iface, ok := t.Underlying().(*types.Interface)
 	if !ok {
 		return false
@@ -100,22 +94,23 @@ func isErrorASTType(e ast.Expr) bool {
 	return ok && ident.Name == "error"
 }
 
-// checkNilErrIf checks one if statement for the nilerr pattern.
-func checkNilErrIf(ifStmt *ast.IfStmt, fset *token.FileSet, info *types.Info, errPositions []int) *patterns.NilErrHit {
-	check := parseNilErrCond(ifStmt.Cond, info)
+// finding checks one if statement using the current predecessor facts.
+func (c *nilErrCollector) finding(ifStmt *ast.IfStmt, rest []ast.Stmt, context nilErrEvidence) *patterns.NilErrHit {
+	check := parseNilErrCond(ifStmt.Cond, c.info)
 	if check == nil {
 		return nil
 	}
 	branch := nilErrBranch(ifStmt, check.isNotNil)
+	statements := nilErrStatements(branch)
 	if branch == nil {
-		return nil
+		statements = rest
 	}
-	if !nilErrLostPath(branch, check.errVal, errPositions, info) {
+	if !c.lostPath(statements, check.errVal, context) {
 		return nil
 	}
 	return &patterns.NilErrHit{
-		Line:     fset.Position(ifStmt.Pos()).Line,
-		CondText: condText(fset, ifStmt.Cond),
+		Line:     c.fset.Position(ifStmt.Pos()).Line,
+		CondText: condText(c.fset, ifStmt.Cond),
 		Kind:     "returns nil when err != nil",
 	}
 }

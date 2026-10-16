@@ -111,11 +111,12 @@ calls, assignments, and declarations that discard the error with `_`. Known
 review; this pattern has no automatic fix. It does not track indirect function
 calls, deferred writes, or later uses of assigned errors.
 
-The `nilerr` rule looks for a checked failure followed by empty results and nil
-errors on the same path. Logging does not count as recovery. Returned fallback
-values, error classification, and checked alternative operations stay quiet when
-their contracts are unknown. This is a source-local check, not proof that every
-returned nil error is correct.
+The `nilerr` rule checks bounded local paths from a non-nil error guard to an
+empty result and a nil error return. It keeps boolean branch facts and compiler
+field identities. Logging alone is not recovery. Deferred or concurrent code,
+opaque calls, escaped storage, unsupported control flow, and exhausted path
+budgets stay quiet. Generic zero values and boxed nil pointers do not establish
+a nil error. This is not an interprocedural proof of correct error handling.
 
 Coverage can be partial; no finding does not establish that a dependency or bug
 is absent.

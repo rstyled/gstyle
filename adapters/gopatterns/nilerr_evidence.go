@@ -6,79 +6,12 @@ import (
 	"go/types"
 )
 
-// live means a path still has the checked failure with no unknown handling.
-// Unknown paths are omitted; they are not claimed to handle the error safely.
-type nilErrFlow struct{ lost, live bool }
-type nilErrEvidence struct {
-	checked   ast.Expr
-	positions []int
-	info      *types.Info
-}
-
-func nilErrLostPath(branch ast.Stmt, checked ast.Expr, positions []int, info *types.Info) bool {
-	// Only stable name/field identities are tracked by this source-local pass.
-	if !sameNilErrValue(checked, checked, info) {
-		return false
-	}
-	evidence := nilErrEvidence{checked: checked, positions: positions, info: info}
-	return evidence.statement(branch).lost
-}
-
-func (e nilErrEvidence) block(statements []ast.Stmt) nilErrFlow {
-	out := nilErrFlow{live: true}
-	for _, statement := range statements {
-		if !out.live {
-			break
-		}
-		step := e.statement(statement)
-		out.lost = out.lost || step.lost
-		out.live = step.live
-	}
-	return out
-}
-
-func (e nilErrEvidence) statement(statement ast.Stmt) nilErrFlow {
-	switch statement := statement.(type) {
-	case *ast.BlockStmt:
-		return e.block(statement.List)
-	case *ast.ReturnStmt:
-		return nilErrFlow{lost: nilErrorResults(statement, e.positions, e.info) && emptyNilErrResults(statement, e.info)}
-	case *ast.IfStmt:
-		return e.conditional(statement)
-	case *ast.ExprStmt, *ast.AssignStmt, *ast.DeclStmt, *ast.EmptyStmt:
-		return nilErrFlow{live: !e.unknownHandling(statement)}
-	default:
-		return nilErrFlow{}
-	}
-}
-
-func (e nilErrEvidence) conditional(statement *ast.IfStmt) nilErrFlow {
-	if e.checkedOperation(statement.Init) || e.unknownHandling(statement.Init) || e.mentions(statement.Cond) {
-		return nilErrFlow{}
-	}
-	then := e.statement(statement.Body)
-	other := nilErrFlow{live: true}
-	if statement.Else != nil {
-		other = e.statement(statement.Else)
-	}
-	return then.merge(other)
-}
-
-func emptyNilErrResults(statement *ast.ReturnStmt, info *types.Info) bool {
-	for _, result := range statement.Results {
-		if !emptyNilErrResult(ast.Unparen(result), info) {
-			return false
-		}
-	}
-	return true
-}
-
 func emptyNilErrResult(expr ast.Expr, info *types.Info) bool {
 	if info.Types[expr].IsNil() {
 		return true
 	}
 	if literal, ok := expr.(*ast.CompositeLit); ok {
-		return len(literal.Elts) == 0
+		return emptyNilErrLiteral(literal, info)
 	}
 	value := info.Types[expr].Value
 	if value == nil {
@@ -108,20 +41,6 @@ func (e nilErrEvidence) mentions(node ast.Node) bool {
 	return found
 }
 
-func sameNilErrValue(left, right ast.Expr, info *types.Info) bool {
-	left, right = ast.Unparen(left), ast.Unparen(right)
-	switch left := left.(type) {
-	case *ast.Ident:
-		other, ok := right.(*ast.Ident)
-		return ok && sameNilErrObject(info.ObjectOf(left), info.ObjectOf(other))
-	case *ast.SelectorExpr:
-		other, ok := right.(*ast.SelectorExpr)
-		return ok && sameNilErrSelector(left, other, info)
-	default:
-		return false
-	}
-}
-
 func (e nilErrEvidence) unknownHandling(node ast.Node) bool {
 	if node == nil {
 		return false
@@ -140,9 +59,9 @@ func (e nilErrEvidence) unknownHandling(node ast.Node) bool {
 func (e nilErrEvidence) unknownOperation(node ast.Node) bool {
 	switch node := node.(type) {
 	case *ast.CallExpr:
-		return !nilErrLoggingCall(node, e.info) && e.mentions(node)
+		return !nilErrLoggingCall(node, e.info) && !e.info.Types[node.Fun].IsType()
 	case *ast.AssignStmt:
-		return e.replacesCheckedValue(node.Lhs) || e.copiesCheckedValue(node)
+		return e.unknownAssignment(node)
 	case *ast.ValueSpec:
 		return e.mentions(node)
 	default:
@@ -206,45 +125,60 @@ func (e nilErrEvidence) copiesCheckedValue(assign *ast.AssignStmt) bool {
 	return false
 }
 
-func sameNilErrObject(left, right types.Object) bool {
-	return left != nil && left == right
-}
-
-func sameNilErrSelector(left, right *ast.SelectorExpr, info *types.Info) bool {
-	return sameNilErrObject(info.ObjectOf(left.Sel), info.ObjectOf(right.Sel)) && sameNilErrValue(left.X, right.X, info)
-}
-
 func nilErrFmtPrintName(name string) bool {
 	return name == "Print" || name == "Printf" || name == "Println" || name == "Fprint" || name == "Fprintf" || name == "Fprintln"
 }
 
-func replacesNilErrValue(target, checked ast.Expr, info *types.Info) bool {
-	if sameNilErrValue(target, checked, info) {
-		return true
-	}
-	selector, ok := ast.Unparen(checked).(*ast.SelectorExpr)
-	return ok && replacesNilErrValue(target, selector.X, info)
-}
-
-// A checked alternative operation may recover without consuming the original
-// error. Its recovery contract is unknown, so do not carry failure evidence on.
-func (e nilErrEvidence) checkedOperation(node ast.Node) bool {
-	if node == nil {
-		return false
-	}
-	found := false
-	ast.Inspect(node, func(node ast.Node) bool {
-		if _, closure := node.(*ast.FuncLit); closure {
+func nilErrNamedTargets(targets []ast.Expr) bool {
+	for _, target := range targets {
+		if _, ok := ast.Unparen(target).(*ast.Ident); !ok {
 			return false
 		}
-		if call, ok := node.(*ast.CallExpr); ok {
-			found = returnsError(call, e.info)
-		}
-		return !found
-	})
-	return found
+	}
+	return true
 }
 
-func (flow nilErrFlow) merge(other nilErrFlow) nilErrFlow {
-	return nilErrFlow{lost: flow.lost || other.lost, live: flow.live || other.live}
+func emptyNilErrLiteral(literal *ast.CompositeLit, info *types.Info) bool {
+	if len(literal.Elts) == 0 {
+		return true
+	}
+	switch info.TypeOf(literal).Underlying().(type) {
+	case *types.Array, *types.Struct:
+		return emptyNilErrElements(literal, info)
+	default:
+		return false
+	}
+}
+
+func emptyNilErrElements(literal *ast.CompositeLit, info *types.Info) bool {
+	for i, element := range literal.Elts {
+		typ := nilErrElementType(literal, element, i, info)
+		if pair, ok := element.(*ast.KeyValueExpr); ok {
+			element = pair.Value
+		}
+		value := nilErrValue{empty: emptyNilErrResult(ast.Unparen(element), info), nilValue: info.Types[ast.Unparen(element)].IsNil()}
+		if !nilErrAssignableZero(value, typ) {
+			return false
+		}
+	}
+	return true
+}
+
+func nilErrElementType(literal *ast.CompositeLit, element ast.Expr, index int, info *types.Info) types.Type {
+	switch typ := info.TypeOf(literal).Underlying().(type) {
+	case *types.Array:
+		return typ.Elem()
+	case *types.Struct:
+		if pair, ok := element.(*ast.KeyValueExpr); ok {
+			key := pair.Key.(*ast.Ident)
+			return info.ObjectOf(key).Type()
+		}
+		return typ.Field(index).Type()
+	default:
+		return info.TypeOf(element)
+	}
+}
+
+func (e nilErrEvidence) unknownAssignment(statement *ast.AssignStmt) bool {
+	return !nilErrNamedTargets(statement.Lhs) || e.replacesCheckedValue(statement.Lhs) || e.copiesCheckedValue(statement)
 }

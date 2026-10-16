@@ -26,7 +26,7 @@ func TestExecutableNilErrPrecisionCorpus(t *testing.T) {
 			counts[site.Name[strings.LastIndex(site.Name, ".")+1:]]++
 		}
 	}
-	for _, name := range []string{"MobyBad", "LoggedBad", "FieldBad", "SiblingBad"} {
+	for _, name := range []string{"MobyBad", "LoggedBad", "FieldBad", "SiblingBad", "ZeroAggregateBad", "NamedNilBad", "LocalNilBad", "RedundantCheckBad", "InverseBad"} {
 		if counts[name] != 1 {
 			t.Errorf("%s findings=%d,want one", name, counts[name])
 		}
