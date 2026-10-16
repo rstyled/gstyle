@@ -6,7 +6,6 @@ import (
 	"github.com/rstyled/gstyle/domain/pdg"
 	"github.com/rstyled/gstyle/domain/runtimeguard"
 	"path/filepath"
-	"strings"
 )
 
 // Derive findings only after the canonical graphs are built. Cached package
@@ -32,7 +31,7 @@ func nilGuardCandidates(function FuncPdg, report runtimeguard.Report) []patterns
 	var out []patterns.Candidate
 	seen := make(map[pdg.Ref]bool)
 	for _, site := range report.Accesses {
-		if site.Index || site.Value.NonNil || len(site.Guards) == 0 || seen[site.Symbol] {
+		if site.Index || !site.Value.Nil || site.Value.NonNil || seen[site.Symbol] {
 			continue
 		}
 		seen[site.Symbol] = true
@@ -42,17 +41,13 @@ func nilGuardCandidates(function FuncPdg, report runtimeguard.Report) []patterns
 }
 
 func buildNilGuardCandidate(function FuncPdg, site runtimeguard.Access) patterns.Candidate {
-	var names []string
-	for _, symbol := range site.Guards {
-		names = append(names, runtimeSymbolName(&function.Pdg, symbol))
-	}
 	name := runtimeSymbolName(&function.Pdg, site.Symbol)
 	line := int(function.Pdg.Nodes[site.Node-1].Line)
 	return patterns.Candidate{
 		Kind: patterns.NilGuard, ScoreMilli: 800,
-		Observation:     "nil guard checks " + strings.Join(names, ", ") + " while " + name + " is dereferenced without a guard",
-		Inference:       "verify the guard targets the dereferenced pointer; the checked variable may be the wrong one",
-		CounterEvidence: []string{"intent unknown; no automatic fix — verify against the contract"},
+		Observation:     name + " is nil at this dereference",
+		Inference:       "prevent this nil value from reaching the access",
+		CounterEvidence: []string{"based on recorded nil facts; no automatic fix"},
 		Sites:           []patterns.Site{{Path: function.Path, Line: line, EndLine: line, ID: function.Name, Name: function.Name}},
 	}
 }

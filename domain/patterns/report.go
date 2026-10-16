@@ -32,11 +32,11 @@ type Options struct {
 	DeclarationOrders []Candidate
 	// OffsetFallbacks are guarded suffix-slice findings from typed source analysis.
 	OffsetFallbacks []Candidate
-	// NilGuards are nil-guard-on-wrong-variable findings from typed source analysis.
+	// NilGuards are known-nil dereference findings from typed source analysis.
 	NilGuards []Candidate
-	// NegativeIndices are missing-lower-bound index findings from typed source analysis.
+	// NegativeIndices are known-negative index findings from typed source analysis.
 	NegativeIndices []Candidate
-	// LiteralIndices are unchecked composite-literal index findings.
+	// LiteralIndices are known-out-of-range collection index findings.
 	LiteralIndices []Candidate
 	// MinScoreMilli drops groups and candidates scoring below this.
 	MinScoreMilli uint32
@@ -100,7 +100,6 @@ var singleFunctionBuilders = []singleFunctionBuilder{
 	{MutableIdentity, func(prepared []*MiningFacts, options Options) []Candidate { return mutableIdentityCandidates(prepared) }},
 	{Aggregate, func(prepared []*MiningFacts, options Options) []Candidate { return aggregateCandidates(prepared) }},
 	{Repository, func(prepared []*MiningFacts, options Options) []Candidate { return repositoryCandidates(prepared) }},
-	{UncheckedOutput, func(prepared []*MiningFacts, _ Options) []Candidate { return uncheckedOutputCandidates(prepared) }},
 	{NilErr, func(prepared []*MiningFacts, options Options) []Candidate { return nilErrCandidates(prepared) }},
 	{ForceTypeAssert, func(prepared []*MiningFacts, options Options) []Candidate { return forceTypeAssertCandidates(prepared) }},
 	{TypedNil, func(prepared []*MiningFacts, options Options) []Candidate { return typedNilCandidates(prepared) }},

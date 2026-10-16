@@ -1,36 +1,48 @@
 package gopatterns
 
 import (
+	"fmt"
+
 	"github.com/rstyled/gstyle/domain/patterns"
 	"github.com/rstyled/gstyle/domain/pdg"
 	"github.com/rstyled/gstyle/domain/pdg/query"
 	"github.com/rstyled/gstyle/domain/runtimeguard"
-	"github.com/rstyled/gstyle/domain/runtimeguard/interval"
 )
 
+// A missing lower bound is not evidence that a negative value reaches the access.
 func negativeIndexCandidates(function FuncPdg, report runtimeguard.Report) []patterns.Candidate {
 	var out []patterns.Candidate
-	var accesses []interval.Access
+	seen := make(map[pdg.Ref]bool)
 	for _, site := range report.Accesses {
-		if _, valid := query.ReferenceIndex(site.Node, len(function.Pdg.Nodes)); !valid {
+		if !uncoveredNegativeIndex(site) || seen[site.Symbol] {
 			continue
 		}
-		accesses = append(accesses, interval.Access{Node: uint32(site.Node), Symbol: uint32(site.Symbol), Index: site.Index, UpperChecked: site.Value.UpperChecked, Bounds: site.Value.Bounds()})
-	}
-	for _, site := range interval.Select(accesses) {
-		node, present := query.At(function.Pdg.Nodes, pdg.Ref(site.Node))
+		node, present := query.At(function.Pdg.Nodes, site.Node)
 		if !present {
 			continue
 		}
-		name := runtimeSymbolName(&function.Pdg, pdg.Ref(site.Symbol))
-		finding := interval.Describe(function.Path, function.Name, name, node.Line)
-		out = append(out, patterns.Candidate{
-			Kind: patterns.CandidateKind(finding.Kind), ScoreMilli: finding.ScoreMilli,
-			Observation:     finding.Observation,
-			Inference:       finding.Inference,
-			CounterEvidence: []string{finding.CounterEvidence},
-			Sites:           []patterns.Site{{Path: finding.Path, Line: finding.Line, EndLine: finding.EndLine, ID: finding.ID, Name: finding.Name}},
-		})
+		seen[site.Symbol] = true
+		out = append(out, negativeIndexCandidate(function, site, node.Line))
 	}
 	return out
+}
+
+func knownNegativeIndex(site runtimeguard.Access) bool {
+	return site.Index && site.Value.HasUpper && site.Value.Upper < 0
+}
+
+func negativeIndexCandidate(function FuncPdg, site runtimeguard.Access, line uint32) patterns.Candidate {
+	name := runtimeSymbolName(&function.Pdg, site.Symbol)
+	return patterns.Candidate{
+		Kind: patterns.NegativeIndex, ScoreMilli: 800,
+		Observation:     fmt.Sprintf("%s is negative at this index (recorded upper bound %d)", name, site.Value.Upper),
+		Inference:       "prevent negative values from reaching this index",
+		CounterEvidence: []string{"based on recorded index bounds; no automatic fix"},
+		Sites:           []patterns.Site{{Path: function.Path, Line: int(line), EndLine: int(line), ID: function.Name, Name: function.Name}},
+	}
+}
+
+// A known-extent finding already explains this access. Report it once.
+func uncoveredNegativeIndex(site runtimeguard.Access) bool {
+	return knownNegativeIndex(site) && !literalIndexRisk(site)
 }

@@ -47,7 +47,7 @@ func TestRuntimeGuardCachedExtraction(t *testing.T) {
 	root := t.TempDir()
 	for name, content := range map[string]string{
 		"go.mod":    "module example\n\ngo 1.26\n",
-		"sample.go": `package example; func Get(p,q *int) int { if q == nil { return 0 }; return *p }`,
+		"sample.go": `package example; func Get(p *int) int { if p != nil { return 0 }; return *p }`,
 	} {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0600); err != nil {
 			t.Fatal(err)

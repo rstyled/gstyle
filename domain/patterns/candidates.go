@@ -124,17 +124,14 @@ const (
 	// an error interface holding (*T)(nil) compared to nil — always false.
 	// Ported from gostaticanalysis/typednil. Detection-only.
 	TypedNil CandidateKind = "typednil"
-	// NilGuard flags functions where a nil guard checks one pointer while a
-	// different pointer is dereferenced without a guard of its own.
-	// Detection-only: which variable was meant to be guarded is intent.
+	// NilGuard flags dereferences whose incoming flow state records a nil value.
+	// Unknown values are not findings. Detection-only: no automatic fix.
 	NilGuard CandidateKind = "nil_guard"
-	// NegativeIndex flags an upper-bound index check with no lower-bound
-	// check while the index is used. Detection-only: whether negative
-	// indices can arrive is a contract question.
+	// NegativeIndex flags accesses with a recorded index range below zero.
+	// Unknown and partly valid ranges are not findings.
 	NegativeIndex CandidateKind = "negative_index"
-	// LiteralIndex flags indexing an array/slice composite literal with an
-	// unchecked variable. Detection-only: whether out-of-range values can
-	// arrive is a contract question.
+	// LiteralIndex flags an index range entirely outside a known collection extent.
+	// Unknown and partly valid ranges are not findings.
 	LiteralIndex CandidateKind = "literal_index"
 	// DependenceCluster flags functions whose PDG contains a large
 	// strongly-connected region — "everything affects everything"
@@ -150,7 +147,8 @@ const (
 	// own beliefs about error handling (Engler et al., SOSP 2001). If 95%
 	// of callers check an error, the 5% that don't are bugs. Detection-only.
 	DeviantBehavior CandidateKind = "deviant_behavior"
-	// UncheckedOutput flags discarded fmt.Fprint* errors to fallible writers.
+	// UncheckedOutput is retained for serialized report compatibility.
+	// Default mining requires contract evidence that is not currently extracted.
 	UncheckedOutput CandidateKind = "unchecked_output"
 	// CCGraphClone finds function-level clones via CCGraph (Zou et al.,
 	// ASE 2020): two-stage filtering (characteristic vectors + Jaro-Winkler
