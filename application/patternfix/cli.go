@@ -279,15 +279,24 @@ func mineCandidates(ctx context.Context, opts options) ([]patterns.Candidate, er
 func fixableCandidates(report patterns.PatternsReport, kind string) []patterns.Candidate {
 	var candidates []patterns.Candidate
 	for _, c := range report.Candidates {
-		if c.FixSpec == nil {
-			continue
-		}
-		if kind != "all" && string(c.Kind) != kind {
+		if !requestedFix(c, kind) {
 			continue
 		}
 		candidates = append(candidates, c)
 	}
 	return candidates
+}
+
+// Explicit kind selection requests a preview of that transformation. Default
+// fixing uses the same abstraction evidence requirement as the findings report.
+func requestedFix(candidate patterns.Candidate, kind string) bool {
+	if candidate.FixSpec == nil {
+		return false
+	}
+	if kind == "all" {
+		return !patterns.UnsupportedAbstraction(candidate)
+	}
+	return string(candidate.Kind) == kind
 }
 
 // candidateSpecs extracts FixSpecs from filtered candidates.

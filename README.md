@@ -109,6 +109,13 @@ Discarded output errors are retained as analysis facts. They do not produce
 establish that output delivery is required. Status messages can fail after the
 requested operation succeeds.
 
+Size thresholds, signature/clone similarity and mined usage deviations do not produce
+findings. Parameterization requires a complete supported source match with
+compatible callable types; an aligned graph region alone is not enough.
+Signature groups remain internal matching inputs. Default fixing also skips
+unverified interface and generic proposals. Explicit fix kinds still preview
+those transformations for manual review.
+
 Coverage can be partial; no finding does not establish that a dependency or bug
 is absent.
 
