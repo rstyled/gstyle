@@ -51,3 +51,20 @@ and numeric execution proofs. All ten mutation controls remain enabled.
 fact reading do not import recursive symbol execution proofs; modules that
 need symbol execution import them explicitly. The reference predicate retains
 its original definition.
+
+### Index finding policy
+
+The typed-source adapter requires a recorded upper bound below zero for
+`negative_index`, or a recorded range entirely below zero or at/above a known collection
+extent for `literal_index`. Unknown and partly valid ranges stay quiet. Source
+extraction and this stricter finding policy are outside Lean. The existing
+interval kernel and its proofs still describe the raw missing-lower-bound query;
+that query alone no longer produces a source finding. This trades recall for
+fewer unsupported findings and adds no reachability proof for concrete inputs.
+
+The index corpus executes panicking and safe functions before checking findings
+on the same source. Known extents apply to locals and constant indices as well
+as direct literals. Empty extents are invalid for every index. Exact evaluated
+comparisons prune infeasible normal-flow edges, including len(empty) == 0 and
+short-circuit conditions. This worklist wrapper is tested in Go and does not
+extend the existing Lean kernel claims.

@@ -127,13 +127,11 @@ const (
 	// NilGuard flags dereferences whose incoming flow state records a nil value.
 	// Unknown values are not findings. Detection-only: no automatic fix.
 	NilGuard CandidateKind = "nil_guard"
-	// NegativeIndex flags an upper-bound index check with no lower-bound
-	// check while the index is used. Detection-only: whether negative
-	// indices can arrive is a contract question.
+	// NegativeIndex flags accesses with a recorded index range below zero.
+	// Unknown and partly valid ranges are not findings.
 	NegativeIndex CandidateKind = "negative_index"
-	// LiteralIndex flags indexing an array/slice composite literal with an
-	// unchecked variable. Detection-only: whether out-of-range values can
-	// arrive is a contract question.
+	// LiteralIndex flags an index range entirely outside a known collection extent.
+	// Unknown and partly valid ranges are not findings.
 	LiteralIndex CandidateKind = "literal_index"
 	// DependenceCluster flags functions whose PDG contains a large
 	// strongly-connected region — "everything affects everything"

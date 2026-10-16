@@ -25,9 +25,7 @@ func (a *analysis) successors(ref pdg.Ref, state State) {
 	block := a.view.graph.ValueFlow.Blocks[ref-1]
 	for outcome, next := range block.Successors {
 		branch := copyState(state)
-		if block.Condition != 0 {
-			branch = a.view.assume(block.Condition, outcome == 0, branch)
-		}
+		branch = a.view.successorState(block.Condition, outcome == 0, branch)
 		if branch == nil {
 			continue
 		}
