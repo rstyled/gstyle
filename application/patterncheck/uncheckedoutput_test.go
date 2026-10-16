@@ -13,6 +13,8 @@ func TestPatternsUncheckedOutput(t *testing.T) {
 	root := t.TempDir()
 	source := `package example
 import("io";f "fmt";"bytes";"strings")
+func Failure(w io.Writer, err error) error {if err != nil {f.Fprintln(w,err);return err};return nil}
+func NestedFailure(w io.Writer, err error) (any,error) {if err != nil {if w != nil {f.Fprintln(w,err)};return nil,err};return nil,nil}
 func Dropped(w io.Writer){f.Fprintln(w,"lost")}
 func Blank(w io.Writer){_,_=f.Fprintf(w,"lost")}
 func CountOnly(w io.Writer)int{n,_:=f.Fprint(w,"lost");return n}

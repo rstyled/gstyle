@@ -9,11 +9,13 @@ import (
 )
 
 type errorCheckWalker struct {
-	fset  *token.FileSet
-	info  *types.Info
-	sites *[]patterns.ErrorCheckSite
-	stack []ast.Node // Parent stack
-	body  ast.Node
+	function         *ast.FuncDecl
+	failureOnlySites []int
+	fset             *token.FileSet
+	info             *types.Info
+	sites            *[]patterns.ErrorCheckSite
+	stack            []ast.Node // Parent stack
+	body             ast.Node
 }
 
 func (w *errorCheckWalker) Visit(n ast.Node) ast.Visitor {
@@ -44,13 +46,17 @@ func (w *errorCheckWalker) visitCall(call *ast.CallExpr) {
 	}
 	checked := w.isChecked(call)
 	line := w.fset.PositionFor(call.Pos(), false).Line
+	discarded := w.discardsOutput(call)
 	*w.sites = append(*w.sites, patterns.ErrorCheckSite{
 		Line:            line,
 		Callee:          callee,
 		Checked:         checked,
-		DiscardedOutput: w.discardsOutput(call),
+		DiscardedOutput: discarded,
 		// FuncID is set by the caller (needs the full ID).
 	})
+	if discarded && w.failureOnlyOutput(call) {
+		w.failureOnlySites = append(w.failureOnlySites, len(*w.sites)-1)
+	}
 }
 
 // isChecked determines if the error from a call was checked.
@@ -148,19 +154,25 @@ func errorUseOperands(n ast.Node) []ast.Expr {
 // findErrorCheckSites finds call sites and tracks whether the error was checked.
 // Used for deviant_behavior mining (Engler et al., SOSP 2001).
 func findErrorCheckSites(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info) []patterns.ErrorCheckSite {
+	sites, _ := findErrorCheckFacts(fn, fset, info)
+	return sites
+}
+
+func findErrorCheckFacts(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info) ([]patterns.ErrorCheckSite, []int) {
 	if fn.Body == nil {
-		return nil
+		return nil, nil
 	}
 	var sites []patterns.ErrorCheckSite
 	// Use a custom walker that tracks parents.
 	w := &errorCheckWalker{
-		fset:  fset,
-		info:  info,
-		sites: &sites,
-		body:  fn.Body,
+		function: fn,
+		fset:     fset,
+		info:     info,
+		sites:    &sites,
+		body:     fn.Body,
 	}
 	ast.Walk(w, fn.Body)
-	return sites
+	return sites, w.failureOnlySites
 }
 
 // calleeName extracts the called function name from a call expression.

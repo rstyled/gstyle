@@ -52,6 +52,8 @@ func miningFacts(f *FuncFacts) *MiningFacts {
 		ReleasedFileLines:   f.ReleasedFileLines,
 		Params:              f.Params,
 		Pdg:                 MiningView(f.Pdg),
+
+		FailureOnlyOutputSites: f.FailureOnlyOutputSites,
 	}
 }
 

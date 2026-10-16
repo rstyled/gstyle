@@ -110,3 +110,9 @@ follows from its increment and bounds, but no total-correctness claim is made.
 Each mutant builds only its affected proof module. The full unchanged project is
 checked before mutation tests, so unrelated pattern proofs are not rebuilt for
 every mutant.
+
+The outer input projection excludes output occurrences with source evidence that
+an enclosing `err != nil` branch returns that same local error on every normal
+path. It rejects reassignment, escaping bindings, branch exits and deferred named
+result replacement. Raw discard facts remain available. This source filter and
+its occurrence-index metadata are tested in Go; they are outside the Lean proof.

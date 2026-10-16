@@ -80,3 +80,25 @@ func TestUncheckedOutputCandidateProjection(t *testing.T) {
 		t.Fatalf("advisory invents an action or analysis: %+v", got)
 	}
 }
+
+func TestFailureOnlyOutputExcludesOccurrenceWithoutErasingFacts(t *testing.T) {
+	original := MiningFacts{ID: "f", FailureOnlyOutputSites: []int{0}, ErrorCheckSites: []ErrorCheckSite{
+		{Line: 3, Callee: "fmt.Fprint", DiscardedOutput: true},
+		{Line: 3, Callee: "fmt.Fprintln", DiscardedOutput: true},
+	}}
+	encoded, err := json.Marshal(original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var facts MiningFacts
+	if err := json.Unmarshal(encoded, &facts); err != nil {
+		t.Fatal(err)
+	}
+	got := uncheckedOutputCandidates([]*MiningFacts{&facts})
+	if len(got) != 1 || got[0].Observation != "formatted output error is discarded: fmt.Fprintln" {
+		t.Fatalf("remaining finding: %+v", got)
+	}
+	if len(facts.ErrorCheckSites) != 2 || !facts.ErrorCheckSites[0].DiscardedOutput {
+		t.Fatalf("raw discard fact erased: %+v", facts)
+	}
+}
