@@ -89,7 +89,7 @@ type Extraction struct {
 	PackageNames      map[string][]string
 	DeclarationOrders []patterns.Candidate
 	OffsetFallbacks   []patterns.Candidate
-	// NilGuards are nil-guard-on-wrong-variable findings (detection-only).
+	// NilGuards are known-nil dereference findings (detection-only).
 	NilGuards       []patterns.Candidate
 	NegativeIndices []patterns.Candidate
 	LiteralIndices  []patterns.Candidate
