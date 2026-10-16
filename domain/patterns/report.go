@@ -101,7 +101,6 @@ var singleFunctionBuilders = []singleFunctionBuilder{
 	{MutableIdentity, func(prepared []*MiningFacts, options Options) []Candidate { return mutableIdentityCandidates(prepared) }},
 	{Aggregate, func(prepared []*MiningFacts, options Options) []Candidate { return aggregateCandidates(prepared) }},
 	{Repository, func(prepared []*MiningFacts, options Options) []Candidate { return repositoryCandidates(prepared) }},
-	{UncheckedOutput, func(prepared []*MiningFacts, _ Options) []Candidate { return uncheckedOutputCandidates(prepared) }},
 	{NilErr, func(prepared []*MiningFacts, options Options) []Candidate { return nilErrCandidates(prepared) }},
 	{ForceTypeAssert, func(prepared []*MiningFacts, options Options) []Candidate { return forceTypeAssertCandidates(prepared) }},
 	{TypedNil, func(prepared []*MiningFacts, options Options) []Candidate { return typedNilCandidates(prepared) }},

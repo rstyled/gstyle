@@ -80,7 +80,7 @@ func (v *graphView) constrain(symbol pdg.Ref, operator string, bound Value, stat
 }
 
 func (v *graphView) nilConstraint(symbol pdg.Ref, operator string, value Value, state State) State {
-	if v.kinds[symbol-1] != `"pointer"` {
+	if !nilableKind(v.kinds[symbol-1]) {
 		return state
 	}
 	switch operator {
@@ -93,7 +93,7 @@ func (v *graphView) nilConstraint(symbol pdg.Ref, operator string, value Value, 
 		if value.Nil {
 			return nil
 		}
-		value.NonNil, value.Nil, value.Guarded = true, false, true
+		value.NonNil, value.Nil, value.Guarded = true, false, v.kinds[symbol-1] == `"pointer"`
 	default:
 		return state
 	}
