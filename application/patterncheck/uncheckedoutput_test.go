@@ -13,12 +13,14 @@ func TestPatternsUncheckedOutput(t *testing.T) {
 	root := t.TempDir()
 	source := `package example
 import("io";f "fmt";"bytes";"strings")
+func Callback(w io.Writer,err error,exit func(int)){if err!=nil{f.Fprintln(w,err);exit(1)}}
+func BestEffort(w io.Writer){f.Fprintln(w,"best effort")}
 func Failure(w io.Writer, err error) error {if err != nil {f.Fprintln(w,err);return err};return nil}
 func NestedFailure(w io.Writer, err error) (any,error) {if err != nil {if w != nil {f.Fprintln(w,err)};return nil,err};return nil,nil}
-func Dropped(w io.Writer){f.Fprintln(w,"lost")}
-func Blank(w io.Writer){_,_=f.Fprintf(w,"lost")}
-func CountOnly(w io.Writer)int{n,_:=f.Fprint(w,"lost");return n}
-func Generic[W io.Writer](w W){f.Fprintln(w,"generic")}
+func Dropped(w io.Writer)error{f.Fprintln(w,"lost");return nil}
+func Blank(w io.Writer)error{_,_=f.Fprintf(w,"lost");return nil}
+func CountOnly(w io.Writer)(int,error){n,_:=f.Fprint(w,"lost");return n,nil}
+func Generic[W io.Writer](w W)error{f.Fprintln(w,"generic");return nil}
 func Checked(w io.Writer)error{_,err:=f.Fprintln(w,"ok");return err}
 func Buffer(w *bytes.Buffer){f.Fprintln(w,"ok")}
 func Builder(w *strings.Builder){f.Fprintln(w,"ok")}

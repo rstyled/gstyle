@@ -9,13 +9,13 @@ import (
 )
 
 type errorCheckWalker struct {
-	function         *ast.FuncDecl
-	failureOnlySites []int
-	fset             *token.FileSet
-	info             *types.Info
-	sites            *[]patterns.ErrorCheckSite
-	stack            []ast.Node // Parent stack
-	body             ast.Node
+	function           *ast.FuncDecl
+	successReturnSites []int
+	fset               *token.FileSet
+	info               *types.Info
+	sites              *[]patterns.ErrorCheckSite
+	stack              []ast.Node // Parent stack
+	body               ast.Node
 }
 
 func (w *errorCheckWalker) Visit(n ast.Node) ast.Visitor {
@@ -54,8 +54,8 @@ func (w *errorCheckWalker) visitCall(call *ast.CallExpr) {
 		DiscardedOutput: discarded,
 		// FuncID is set by the caller (needs the full ID).
 	})
-	if discarded && w.failureOnlyOutput(call) {
-		w.failureOnlySites = append(w.failureOnlySites, len(*w.sites)-1)
+	if discarded && w.successReturnOutput(call) {
+		w.successReturnSites = append(w.successReturnSites, len(*w.sites)-1)
 	}
 }
 
@@ -172,7 +172,7 @@ func findErrorCheckFacts(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info
 		body:     fn.Body,
 	}
 	ast.Walk(w, fn.Body)
-	return sites, w.failureOnlySites
+	return sites, w.successReturnSites
 }
 
 // calleeName extracts the called function name from a call expression.

@@ -179,7 +179,7 @@ func funcFactsOf(fp gopatterns.FuncPdg) *patterns.FuncFacts {
 		SuppressedKinds:     fp.SuppressedKinds,
 		Params:              fp.Params,
 
-		FailureOnlyOutputSites: fp.FailureOnlyOutputSites,
+		SuccessReturnOutputSites: fp.SuccessReturnOutputSites,
 	}
 }
 

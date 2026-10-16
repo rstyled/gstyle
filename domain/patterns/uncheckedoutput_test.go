@@ -8,7 +8,7 @@ import (
 )
 
 func TestUncheckedOutputFactsRoundTripAndSuppression(t *testing.T) {
-	original := MiningFacts{ID: "p.Report", Name: "Report", Path: "report.go", ErrorCheckSites: []ErrorCheckSite{
+	original := MiningFacts{SuccessReturnOutputSites: []int{0}, ID: "p.Report", Name: "Report", Path: "report.go", ErrorCheckSites: []ErrorCheckSite{
 		{Callee: "fmt.Fprintf", Line: 7, DiscardedOutput: true},
 		{Callee: "fmt.Fprintf", Line: 8, Checked: true},
 	}}
@@ -32,13 +32,13 @@ func TestUncheckedOutputFactsRoundTripAndSuppression(t *testing.T) {
 
 func TestUncheckedOutputSelectionPreservesOccurrences(t *testing.T) {
 	facts := []*MiningFacts{
-		{ID: "p.First", Name: "First", Path: "a.go", ErrorCheckSites: []ErrorCheckSite{
+		{SuccessReturnOutputSites: []int{0, 2}, ID: "p.First", Name: "First", Path: "a.go", ErrorCheckSites: []ErrorCheckSite{
 			{Line: 3, Callee: "fmt.Fprint", DiscardedOutput: true},
 			{Line: 4, Callee: "fmt.Fprint", Checked: true},
 			{Line: 3, Callee: "fmt.Fprint", DiscardedOutput: true},
 		}},
 		{ID: "p.Hidden", SuppressedKinds: []string{"unchecked_output"}, ErrorCheckSites: []ErrorCheckSite{{Line: 8, DiscardedOutput: true}}},
-		{ID: "p.Last", Name: "Last", Path: "b.go", ErrorCheckSites: []ErrorCheckSite{{Line: 9, Callee: "fmt.Fprintln", DiscardedOutput: true}}},
+		{SuccessReturnOutputSites: []int{0}, ID: "p.Last", Name: "Last", Path: "b.go", ErrorCheckSites: []ErrorCheckSite{{Line: 9, Callee: "fmt.Fprintln", DiscardedOutput: true}}},
 	}
 	got := uncheckedOutputCandidates(facts)
 	if len(got) != 3 {
@@ -56,7 +56,7 @@ func TestUncheckedOutputSelectionPreservesOccurrences(t *testing.T) {
 }
 
 func TestUncheckedOutputCandidateProjection(t *testing.T) {
-	facts := MiningFacts{ID: "p.Report", Name: "Report", Path: "a.go", ErrorCheckSites: []ErrorCheckSite{
+	facts := MiningFacts{SuccessReturnOutputSites: []int{0}, ID: "p.Report", Name: "Report", Path: "a.go", ErrorCheckSites: []ErrorCheckSite{
 		{FuncID: "different-owner", Line: 5, Callee: "alias.Fprintln", DiscardedOutput: true},
 		{Line: 6, Callee: "alias.Fprintln", Checked: true},
 	}}
@@ -81,8 +81,8 @@ func TestUncheckedOutputCandidateProjection(t *testing.T) {
 	}
 }
 
-func TestFailureOnlyOutputExcludesOccurrenceWithoutErasingFacts(t *testing.T) {
-	original := MiningFacts{ID: "f", FailureOnlyOutputSites: []int{0}, ErrorCheckSites: []ErrorCheckSite{
+func TestOutputSuccessEvidenceSelectsOccurrenceWithoutErasingFacts(t *testing.T) {
+	original := MiningFacts{ID: "f", SuccessReturnOutputSites: []int{1}, ErrorCheckSites: []ErrorCheckSite{
 		{Line: 3, Callee: "fmt.Fprint", DiscardedOutput: true},
 		{Line: 3, Callee: "fmt.Fprintln", DiscardedOutput: true},
 	}}

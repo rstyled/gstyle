@@ -53,7 +53,7 @@ func miningFacts(f *FuncFacts) *MiningFacts {
 		Params:              f.Params,
 		Pdg:                 MiningView(f.Pdg),
 
-		FailureOnlyOutputSites: f.FailureOnlyOutputSites,
+		SuccessReturnOutputSites: f.SuccessReturnOutputSites,
 	}
 }
 

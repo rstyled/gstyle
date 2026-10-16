@@ -24,8 +24,8 @@ import (
 
 // FuncPdg is the dependence graph of one function.
 type FuncPdg struct {
-	// FailureOnlyOutputSites are zero-based ErrorCheckSites indices proven to return a non-nil error.
-	FailureOnlyOutputSites []int
+	// SuccessReturnOutputSites are zero-based ErrorCheckSites indices followed directly by a nil error return.
+	SuccessReturnOutputSites []int
 	// ReleasedFileLines are typed file acquisitions discharged on every normal success path.
 	ReleasedFileLines []int
 	Name              string
@@ -498,7 +498,7 @@ func extractFunc(pkg *packages.Package, fn *ast.FuncDecl, path string, ctx extra
 	if err != nil {
 		return FuncPdg{}, err
 	}
-	sites, failureOnlySites := findErrorCheckFacts(fn, pkg.Fset, pkg.TypesInfo)
+	sites, successReturnSites := findErrorCheckFacts(fn, pkg.Fset, pkg.TypesInfo)
 	return FuncPdg{
 		Name:            name,
 		Path:            path,
@@ -543,7 +543,7 @@ func extractFunc(pkg *packages.Package, fn *ast.FuncDecl, path string, ctx extra
 		ErrorCheckSites:   sites,
 		ReleasedFileLines: helperReleasedLines(pkg, fn, ctx.helpers),
 
-		FailureOnlyOutputSites: failureOnlySites,
+		SuccessReturnOutputSites: successReturnSites,
 	}, nil
 }
 

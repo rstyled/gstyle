@@ -111,8 +111,9 @@ Each mutant builds only its affected proof module. The full unchanged project is
 checked before mutation tests, so unrelated pattern proofs are not rebuilt for
 every mutant.
 
-The outer input projection excludes output occurrences with source evidence that
-an enclosing `err != nil` branch returns that same local error on every normal
-path. It rejects reassignment, escaping bindings, branch exits and deferred named
-result replacement. Raw discard facts remain available. This source filter and
-its occurrence-index metadata are tested in Go; they are outside the Lean proof.
+The outer input projection matches a two-statement function body: a discarded
+output call followed directly by a return of the universe nil in the function's error result. Unknown callback
+outcomes and functions without an error result stay quiet. Named results with
+deferred calls are excluded because a defer can replace nil. Raw discard facts
+remain available. This source filter and its occurrence-index metadata are tested
+in Go; they are outside the Lean proof.

@@ -27,7 +27,7 @@ func uncheckedOutputCandidates(facts []*MiningFacts) []Candidate {
 func actionableOutputSites(function *MiningFacts) []ErrorCheckSite {
 	var sites []ErrorCheckSite
 	for index, site := range function.ErrorCheckSites {
-		if slices.Contains(function.FailureOnlyOutputSites, index) {
+		if !slices.Contains(function.SuccessReturnOutputSites, index) {
 			continue
 		}
 		sites = append(sites, site)
