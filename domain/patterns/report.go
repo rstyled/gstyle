@@ -32,7 +32,7 @@ type Options struct {
 	DeclarationOrders []Candidate
 	// OffsetFallbacks are guarded suffix-slice findings from typed source analysis.
 	OffsetFallbacks []Candidate
-	// NilGuards are nil-guard-on-wrong-variable findings from typed source analysis.
+	// NilGuards are known-nil dereference findings from typed source analysis.
 	NilGuards []Candidate
 	// NegativeIndices are missing-lower-bound index findings from typed source analysis.
 	NegativeIndices []Candidate
