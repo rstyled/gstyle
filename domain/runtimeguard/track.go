@@ -11,6 +11,7 @@ func (v *graphView) trackBindings() {
 	for i, node := range v.graph.Nodes {
 		ref := pdg.Ref(i + 1)
 		v.trackRoots(ref, visited, &queue)
+		v.trackCall(ref, visited, &queue)
 		v.predicateDefinitions(ref, definitions)
 		for _, write := range v.graph.NodeAttributes(node).Writes {
 			if write.Symbol != 0 {
@@ -76,5 +77,11 @@ func (v *graphView) predicateDefinitions(ref pdg.Ref, definitions [][]pdg.Ref) {
 func (v *graphView) trackDefinitionValues(ref pdg.Ref, visited []bool, queue *[]pdg.Ref) {
 	for _, operand := range v.operands[ref-1] {
 		v.trackValue(operand, visited, queue)
+	}
+}
+
+func (v *graphView) trackCall(ref pdg.Ref, visited []bool, queue *[]pdg.Ref) {
+	if v.graph.Nodes[ref-1].Category == pdg.Call {
+		v.trackValue(v.operand(ref, 0), visited, queue)
 	}
 }

@@ -1,3 +1,10 @@
+> Default mining does not emit `unchecked_output`. The retained classifier and
+> proofs establish structural discard facts, not an obligation to deliver output.
+> Runtime tests show both requested-output loss and failed status messages after
+> successful database changes. Neither a nil return nor a failed write supplies
+> the missing output contract. The candidate projection is removed. No replacement
+> findings mode or new semantic proof claim is added.
+
 # Unchecked-output proof
 
 Run `make verify-output`. Go, Python 3 and elan are required. It uses the same
@@ -110,3 +117,21 @@ follows from its increment and bounds, but no total-correctness claim is made.
 Each mutant builds only its affected proof module. The full unchanged project is
 checked before mutation tests, so unrelated pattern proofs are not rebuilt for
 every mutant.
+
+The outer input projection requires a discarded output call followed directly
+by a nil error return in the same block. It uses the runtime flow solver to
+exclude infeasible branches, rather than limiting functions by statement count.
+Opaque argument calls, unknown callback outcomes and deferred named-result
+replacement stay quiet. Interface constraints track the whole interface value;
+a boxed nil pointer is non-nil. Raw discard facts remain available.
+
+The executable output corpus runs the source with a failing writer, then checks
+findings on that same source. It covers locals, branches, pre-write panics,
+contradictory guards, reassignment and boxed nil pointers. Reachability, interface
+normalization and finding projection remain outside the Lean proof. The source
+binding is regenerated; the existing kernel contracts do not change.
+
+Output call facts now include the first argument at the call. These facts use the
+existing flow solver; they do not prove call completion. The source adapter
+excludes known nil interface writers and requires operands without unmodeled
+evaluation. No interprocedural completion theorem is added.

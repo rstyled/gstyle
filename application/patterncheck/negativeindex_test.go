@@ -14,7 +14,8 @@ func TestPatternsNegativeIndexRegression(t *testing.T) {
 	files := map[string]string{
 		"go.mod": "module example\n\ngo 1.26\n",
 		"sample.go": `package example
-func Unsafe(s []int, i int) int { if i >= len(s) { return -1 }; return s[i] }
+func Unsafe(s []int, i int) int { i = -1; return s[i] }
+func Unknown(s []int, i int) int { if i >= len(s) { return -1 }; return s[i] }
 func Complete(s []int, i int) int { if i < 0 || i >= len(s) { return -1 }; return s[i] }
 func Unsigned(s [2]int, i uint) int { if i < uint(len(s)) { return s[i] }; return -1 }
 `,

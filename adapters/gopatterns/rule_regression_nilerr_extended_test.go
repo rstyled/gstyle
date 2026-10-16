@@ -9,7 +9,7 @@ func TestAuditNilErrExtended(t *testing.T) {
 	}{
 		{"simple swallowed", `if err!=nil{return nil};return nil`, 1},
 		{"propagated", `if err!=nil{return err};return nil`, 0},
-		{"handled", `if err!=nil{println(err);return nil};return nil`, 0},
+		{"logging is not recovery", `if err!=nil{println(err);return nil};return nil`, 1},
 		{"parenthesized", `if (err!=nil){return nil};return nil`, 1},
 		{"negated", `if !(err==nil){return nil};return nil`, 1},
 		{"shadow nil is error value", `nil:=err;if err!=nil{return nil};return nil`, 0},

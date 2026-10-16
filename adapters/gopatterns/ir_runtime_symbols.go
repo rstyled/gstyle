@@ -63,18 +63,27 @@ func (b *irBuilder) runtimeEscape(node ast.Node, unstable map[pdg.Ref]bool) bool
 }
 
 func runtimeTypeKind(typ types.Type) string {
+	if _, generic := types.Unalias(typ).(*types.TypeParam); generic {
+		return ""
+	}
 	switch typ := typ.Underlying().(type) {
 	case *types.Pointer:
 		return "pointer"
+	case *types.Interface:
+		return "interface"
 	case *types.Basic:
-		if typ.Info()&types.IsInteger == 0 {
-			return ""
-		}
-		if typ.Info()&types.IsUnsigned != 0 {
-			return "unsigned"
-		}
-		return "signed"
+		return runtimeIntegerKind(typ)
 	default:
 		return ""
 	}
+}
+
+func runtimeIntegerKind(typ *types.Basic) string {
+	if typ.Info()&types.IsInteger == 0 {
+		return ""
+	}
+	if typ.Info()&types.IsUnsigned != 0 {
+		return "unsigned"
+	}
+	return "signed"
 }

@@ -53,7 +53,7 @@ func TestSignedStepNegativeIndexIntegration(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := negativeIndexTestCandidates(t, "package p; "+tc.source)
+			got := potentialNegativeAccesses(t, "package p; "+tc.source)
 			if (len(got) > 0) != tc.warning {
 				t.Fatalf("findings=%+v want warning=%v", got, tc.warning)
 			}

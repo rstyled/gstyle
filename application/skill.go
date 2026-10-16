@@ -98,7 +98,7 @@ Use ` + "`setDetailsView`" + ` with ` + "`{\"view\":\"quality\"}`" + ` or ` + "`
 
 ## Fix patterns automatically
 
-Run ` + "`gstyle patterns [paths...]`" + ` to find refactoring proposals and bug patterns: guard clauses, value objects, parameterize candidates, anemic models, primitive obsession, type switches, enum dispatch, trait methods, capability sets, generic functions, entity identity, missing identity, factories, specifications, and domain services (detection-only). Supported fixes use deterministic source edits backed by extraction evidence. Identity and domain-design findings need review.
+Run ` + "`gstyle patterns [paths...]`" + ` to find refactoring proposals and bug patterns: guard clauses, value objects, verified parameterizations, anemic models, primitive obsession, type switches, enum dispatch, entity identity, missing identity, factories, specifications, and domain services (detection-only). Supported fixes use deterministic source edits backed by extraction evidence. Identity and domain-design findings need review.
 
 Run ` + "`gstyle fix --kind all [paths...]`" + ` to auto-fix them. Dry-run by default (shows a diff); add ` + "`--apply`" + ` to write. No LLM, no tokens — pure static analysis. Use ` + "`--kind guard_clause|value_object|parameterize|anemic_model|primitive_obsession|type_switch|enum_dispatch|trait_method|capability_set|generic_fn|factory|specification`" + ` to fix one kind.
 
@@ -122,13 +122,16 @@ must return a local named type as their first result. Use
 with Go directives, cgo imports, or same-line declarations. Its candidate spans
 the file, so ` + "`--changed`" + ` can reorder unchanged functions in that file.
 
-Parameterization findings describe aligned graph regions, not proven whole-function
-clones. Auto-fixes require compatible canonical PDG interfaces and callable types,
+Parameterization findings require compatible canonical PDG interfaces and callable types,
 a full supported AST match, a source snapshot proof, and compatible PDG binding
 identities. Auto-fixes substitute matched call occurrences without reordering the
 body. Missing whole-function effect/order coverage alone does not block them.
 Fresh names prevent capture; builtin substitutions and direct recover/stack
-inspection stay advisory. A proof targets only its selected pair; after source edits,
+inspection do not produce findings. Graph similarity alone stays internal.
+Size thresholds, signature/clone similarity and mined usage deviations do not produce findings.
+Default fixing also skips unverified interface and generic proposals. Explicit
+fix kinds remain available for manual review.
+A proof targets only its selected pair; after source edits,
 re-mine with phased fixing before parameterization.
 
 **Workflow:** Run ` + "`gstyle patterns`" + ` first, then ` + "`gstyle fix --apply`" + ` to clear the mechanical issues. This saves tokens — don't hand-rewrite what the fixer handles. In an agent loop, use ` + "`gstyle fix --changed --apply`" + ` to fix only candidates in functions your diff touched (against ` + "`--base REF`" + `, defaulting to the merge-base with main/master).

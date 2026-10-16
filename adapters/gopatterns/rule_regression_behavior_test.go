@@ -36,9 +36,9 @@ func TestAuditDeviantChecks(t *testing.T) {
 }
 func TestAuditGuardSuppression(t *testing.T) {
 	cases := []struct{ kind, source string }{
-		{"nil_guard", `func f(p,q *int)int{if q==nil{return 0};return *p}`},
-		{"negative_index", `func f(s []int,i int)int{if i>=len(s){return 0};return s[i]}`},
-		{"literal_index", `func f(i int)int{return []int{1,2}[i]}`},
+		{"nil_guard", `func f(p *int)int{if p!=nil{return 0};return *p}`},
+		{"negative_index", `func f(s []int,i int)int{i=-1;return s[i]}`},
+		{"literal_index", `func f(i int)int{i=2;return []int{1,2}[i]}`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.kind, func(t *testing.T) {

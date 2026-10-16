@@ -14,6 +14,8 @@ type ParamInfo struct {
 // miner: a function's identity, its PDG, and the effect summary used for the
 // effect-mismatch check. The extractor (adapters/gopatterns) builds these.
 type FunctionFacts[G any] struct {
+	// SuccessReturnOutputSites are zero-based ErrorCheckSites indices followed directly by a nil error return.
+	SuccessReturnOutputSites []int
 	// ReleasedFileLines are typed file acquisitions discharged on every normal success path.
 	ReleasedFileLines []int
 	// Canonical is borrowed by temporary mining facts for semantic analyses.

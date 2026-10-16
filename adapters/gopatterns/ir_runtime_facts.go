@@ -20,6 +20,7 @@ func (b *irBuilder) runtimeValueFacts(fn *ast.FuncDecl) {
 			return false
 		}
 		b.runtimeExpression(node)
+		b.runtimeZeroDeclaration(node)
 		b.runtimeRangeFacts(node)
 		b.runtimeIncrementFacts(node)
 		if _, spawn := node.(*ast.GoStmt); spawn {
@@ -48,6 +49,7 @@ func (b *irBuilder) runtimeExpression(node ast.Node) {
 	}
 	attrs := &b.attributes[b.graph.Nodes[ref-1].Attributes-1]
 	b.runtimeConstant(expr, attrs)
+	b.runtimeInterfaceValue(expr, attrs)
 	b.runtimeConversionType(expr, attrs)
 	b.runtimeAccessFacts(expr, attrs)
 	if runtimeNonNil(expr, b.info) {
@@ -186,6 +188,8 @@ func runtimeRelevant(fn *ast.FuncDecl, info *types.Info) bool {
 
 func runtimeAccess(node ast.Node, info *types.Info) bool {
 	switch node := node.(type) {
+	case *ast.CallExpr:
+		return runtimeOutputCall(node, info)
 	case *ast.StarExpr:
 		return !info.Types[node].IsType()
 	case *ast.SelectorExpr:
@@ -340,4 +344,20 @@ func (b *irBuilder) signedStep64Type(basic *types.Basic) bool {
 		return false
 	}
 	return b.sizes.Sizeof(basic) == 8
+}
+
+func (b *irBuilder) runtimeZeroDeclaration(node ast.Node) {
+	spec, ok := node.(*ast.ValueSpec)
+	if !ok || len(spec.Values) != 0 {
+		return
+	}
+	if ref := b.nodes[node]; ref != 0 {
+		b.runtimeExtension(&b.attributes[b.graph.Nodes[ref-1].Attributes-1], "zero-initialized", "true")
+	}
+}
+
+func (b *irBuilder) runtimeInterfaceValue(expr ast.Expr, attrs *pdg.Attributes) {
+	if kind := interfaceValueKind(expr, b.info); kind != "" {
+		b.runtimeExtension(attrs, "interface-value", `"`+kind+`"`)
+	}
 }

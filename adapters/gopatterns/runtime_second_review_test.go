@@ -8,13 +8,13 @@ import (
 func TestSecondReview(t *testing.T) {
 	t.Run("guarded promoted field", func(t *testing.T) {
 		src := `package p; type Inner struct{Value int};type Outer struct{*Inner};func f(p Outer,q *int)int{if q==nil || p.Inner==nil{return 0};return p.Value}`
-		if got := nilGuardTestCandidates(t, src); len(got) != 0 {
+		if got := unprovenPointerAccesses(t, src); len(got) != 0 {
 			t.Fatalf("safe promoted access: %d findings", len(got))
 		}
 	})
 	t.Run("copied nil guard", func(t *testing.T) {
 		src := `package p;func f(p,q *int)int{r:=p;if q==nil || r==nil{return 0};return *p}`
-		if got := nilGuardTestCandidates(t, src); len(got) != 0 {
+		if got := unprovenPointerAccesses(t, src); len(got) != 0 {
 			t.Fatalf("safe aliased pointer: %d findings", len(got))
 		}
 	})
@@ -79,7 +79,7 @@ func TestRuntimePointerProofInvalidation(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			src := `package p;func f(p,q *int,choose bool)int{if q==nil{return 0};` + tc.body + `}`
-			if got := nilGuardTestCandidates(t, src); len(got) != tc.want {
+			if got := unprovenPointerAccesses(t, src); len(got) != tc.want {
 				t.Fatalf("got %d findings,want %d", len(got), tc.want)
 			}
 		})
@@ -100,7 +100,7 @@ func TestRuntimeFieldProofInvalidation(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			src := `package p;type Inner struct{Value int};type Middle struct{*Inner};type Outer struct{Middle};func mutate(p *Outer){p.Inner=nil};func f(p *Outer,q *int,choose bool)int{if p==nil || q==nil{return 0};` + tc.body + `}`
-			if got := nilGuardTestCandidates(t, src); len(got) != tc.want {
+			if got := unprovenPointerAccesses(t, src); len(got) != tc.want {
 				t.Fatalf("got %d findings,want %d", len(got), tc.want)
 			}
 		})
@@ -109,7 +109,7 @@ func TestRuntimeFieldProofInvalidation(t *testing.T) {
 
 func TestRuntimeConcurrentFieldProofStaysUnknown(t *testing.T) {
 	src := `package p;type Inner struct{Value int};type Outer struct{*Inner};func mutate(p *Outer){p.Inner=nil};func f(p *Outer,q *int)int{if p==nil || q==nil{return 0};go mutate(p);if p.Inner==nil{return 0};return p.Value}`
-	if got := nilGuardTestCandidates(t, src); len(got) != 1 {
+	if got := unprovenPointerAccesses(t, src); len(got) != 1 {
 		t.Fatalf("concurrent field: got %d findings,want 1", len(got))
 	}
 }
@@ -117,7 +117,7 @@ func TestRuntimeConcurrentFieldProofStaysUnknown(t *testing.T) {
 func TestRuntimeFieldGuardIndependentOperations(t *testing.T) {
 	for _, body := range []string{`x:=1;return p.Value+x`, `x:=len(s);return p.Value+x`, `x:=cap(s);return p.Value+x`} {
 		src := `package p;type Inner struct{Value int};type Outer struct{*Inner};func f(p Outer,q *int,s []int)int{if q==nil || p.Inner==nil{return 0};` + body + `}`
-		if got := nilGuardTestCandidates(t, src); len(got) != 0 {
+		if got := unprovenPointerAccesses(t, src); len(got) != 0 {
 			t.Fatalf("%s: %d false findings", body, len(got))
 		}
 	}
@@ -126,12 +126,12 @@ func TestRuntimeFieldGuardIndependentOperations(t *testing.T) {
 func TestRuntimePointerArrayNilGuard(t *testing.T) {
 	for _, body := range []string{`if q==nil{return 0};return s[0]`, `if q==nil{return 0};s[0]=1;return 0`} {
 		src := `package p;func f(s *[3]int,q *int)int{` + body + `}`
-		if got := nilGuardTestCandidates(t, src); len(got) != 1 {
+		if got := unprovenPointerAccesses(t, src); len(got) != 1 {
 			t.Fatalf("%s: got %d findings,want 1", body, len(got))
 		}
 	}
 	src := `package p;func f(s *[3]int,q *int)int{if s==nil || q==nil{return 0};return s[0]}`
-	if got := nilGuardTestCandidates(t, src); len(got) != 0 {
+	if got := unprovenPointerAccesses(t, src); len(got) != 0 {
 		t.Fatalf("safe pointer array: %d findings", len(got))
 	}
 }

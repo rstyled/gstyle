@@ -52,7 +52,15 @@ type Access struct {
 	Guards                   []pdg.Ref
 }
 
-type Report struct{ Accesses []Access }
+type Call struct {
+	Node          pdg.Ref
+	FirstArgument Value
+}
+
+type Report struct {
+	Accesses []Access
+	Calls    []Call
+}
 
 func copyState(state State) State {
 	out := make(State, len(state))

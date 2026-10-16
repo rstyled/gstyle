@@ -24,6 +24,8 @@ import (
 
 // FuncPdg is the dependence graph of one function.
 type FuncPdg struct {
+	// SuccessReturnOutputSites are zero-based ErrorCheckSites indices followed directly by a nil error return.
+	SuccessReturnOutputSites []int
 	// ReleasedFileLines are typed file acquisitions discharged on every normal success path.
 	ReleasedFileLines []int
 	Name              string
@@ -89,7 +91,7 @@ type Extraction struct {
 	PackageNames      map[string][]string
 	DeclarationOrders []patterns.Candidate
 	OffsetFallbacks   []patterns.Candidate
-	// NilGuards are nil-guard-on-wrong-variable findings (detection-only).
+	// NilGuards are known-nil dereference findings (detection-only).
 	NilGuards       []patterns.Candidate
 	NegativeIndices []patterns.Candidate
 	LiteralIndices  []patterns.Candidate
@@ -496,6 +498,10 @@ func extractFunc(pkg *packages.Package, fn *ast.FuncDecl, path string, ctx extra
 	if err != nil {
 		return FuncPdg{}, err
 	}
+	sites, successReturnSites, err := reachableErrorCheckFacts(fn, pkg.Fset, pkg.TypesInfo, &graph)
+	if err != nil {
+		return FuncPdg{}, err
+	}
 	return FuncPdg{
 		Name:            name,
 		Path:            path,
@@ -537,8 +543,10 @@ func extractFunc(pkg *packages.Package, fn *ast.FuncDecl, path string, ctx extra
 		// TypedNilHits are typed-nil comparisons (gostaticanalysis).
 		TypedNilHits: nil,
 		// ErrorCheckSites tracks per-call error checking for deviant_behavior.
-		ErrorCheckSites:   findErrorCheckSites(fn, pkg.Fset, pkg.TypesInfo),
+		ErrorCheckSites:   sites,
 		ReleasedFileLines: helperReleasedLines(pkg, fn, ctx.helpers),
+
+		SuccessReturnOutputSites: successReturnSites,
 	}, nil
 }
 
