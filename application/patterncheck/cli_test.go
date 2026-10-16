@@ -14,7 +14,7 @@ import (
 // structurally parallel function pairs.
 const shapesFixture = "../../adapters/gopatterns/testdata/shapes"
 
-func TestPatternsFindsCandidatesAndExitsZero(t *testing.T) {
+func TestPatternsExitsZeroOnSimilarityFixture(t *testing.T) {
 	t.Chdir(shapesFixture)
 	var output strings.Builder
 	if err := Run(context.Background(), []string{"."}, &output); err != nil {
@@ -23,9 +23,6 @@ func TestPatternsFindsCandidatesAndExitsZero(t *testing.T) {
 	text := output.String()
 	if !strings.Contains(text, "candidates") {
 		t.Fatalf("expected candidates section, got:\n%s", text)
-	}
-	if !strings.Contains(text, "CreateUser") || !strings.Contains(text, "CreateOrder") {
-		t.Fatalf("expected the CreateUser/CreateOrder parallel pair, got:\n%s", text)
 	}
 }
 
@@ -97,19 +94,17 @@ func TestPatternsReportsGuardClauses(t *testing.T) {
 	}
 }
 
-func TestPatternsFindsTraitMethod(t *testing.T) {
+func TestParallelMethodsDoNotEstablishAnInterfaceNeed(t *testing.T) {
 	t.Chdir("testdata/traitmethod")
 	var output strings.Builder
 	if err := Run(context.Background(), []string{"."}, &output); err != nil {
 		t.Fatalf("patterns must exit 0, got error: %v", err)
 	}
 	text := output.String()
-	if !strings.Contains(text, "trait_method") {
-		t.Fatalf("expected a trait_method candidate from the parallel Dog/Cat methods, got:\n%s", text)
+	if strings.Contains(text, "trait_method") || strings.Contains(text, "capability_set") {
+		t.Fatalf("parallel methods became an interface recommendation: %s", text)
 	}
-	if !strings.Contains(text, "sound") {
-		t.Fatalf("expected the sound method hole in the candidate, got:\n%s", text)
-	}
+
 }
 
 func TestPatternsReportsDeclarationOrder(t *testing.T) {

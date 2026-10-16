@@ -22,6 +22,7 @@ const usage = `Usage: gstyle patterns [OPTIONS] [DIRECTORIES OR GO FILES...]
 Mine the codebase for latent shared abstractions: structurally parallel
 functions that suggest interfaces, params structs, or generics, plus
 inverted conditionals that want to be guard clauses.
+Similarity, size and usage statistics alone do not produce findings.
 Informational only: always exits 0, never a quality gate.
   --format FORMAT   text (default), json report, or pdg-json graph export
   --threshold N     minimum WL similarity (0-1000) for clustering [default 600]
@@ -120,6 +121,7 @@ func GetReport(ctx context.Context, args []string) (*patterns.PatternsReport, er
 	if err := gopatterns.VerifyParameterizations(&report, pdgs); err != nil {
 		return nil, fmt.Errorf("verify parameterization: %w", err)
 	}
+	publishFindings(&report)
 	return &report, nil
 }
 

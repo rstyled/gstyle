@@ -116,6 +116,13 @@ opaque calls, escaped storage, unsupported control flow, and exhausted path
 budgets stay quiet. Generic zero values and boxed nil pointers do not establish
 a nil error. This is not an interprocedural proof of correct error handling.
 
+Size thresholds, signature/clone similarity and mined usage deviations do not produce
+findings. Parameterization requires a complete supported source match with
+compatible callable types; an aligned graph region alone is not enough.
+Signature groups remain internal matching inputs. Default fixing also skips
+unverified interface and generic proposals. Explicit fix kinds still preview
+those transformations for manual review.
+
 Coverage can be partial; no finding does not establish that a dependency or bug
 is absent.
 

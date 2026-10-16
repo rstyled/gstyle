@@ -64,8 +64,7 @@ type Options struct {
 	DomainServices []DomainServiceHit
 	// WlCache memoizes WL refinements across runs for incremental mining.
 	// Nil computes every refinement fresh.
-	WlCache     *WlCache
-	cloneGroups [][]string
+	WlCache *WlCache
 }
 
 // singleFunctionBuilder pairs a pattern kind with its candidate builder.
@@ -107,79 +106,12 @@ var singleFunctionBuilders = []singleFunctionBuilder{
 	{NilGuard, func(_ []*MiningFacts, options Options) []Candidate { return options.NilGuards }},
 	{NegativeIndex, func(_ []*MiningFacts, options Options) []Candidate { return options.NegativeIndices }},
 	{LiteralIndex, func(_ []*MiningFacts, options Options) []Candidate { return options.LiteralIndices }},
-	{DependenceCluster, func(prepared []*MiningFacts, options Options) []Candidate {
-		clusters := FindDepClusters(prepared)
-		return DepClusterCandidates(clusters, prepared)
-	}},
-	{MinedRule, func(prepared []*MiningFacts, options Options) []Candidate {
-		sets := BuildCallSets(prepared)
-		rules := MineRules(sets)
-		violations := FindViolations(sets, rules)
-		return MinedRuleCandidates(violations, prepared)
-	}},
-	{DeviantBehavior, func(prepared []*MiningFacts, options Options) []Candidate {
-		// Collect all error check sites across functions.
-		var allSites []ErrorCheckSite
-		for _, f := range prepared {
-			// Fix up FuncID (extractor uses simple name; we need the full ID).
-			for _, s := range f.ErrorCheckSites {
-				s.FuncID = f.ID
-				allSites = append(allSites, s)
-			}
-		}
-		beliefs := MineErrorBeliefs(allSites)
-		violations := FindBeliefViolations(allSites, beliefs)
-		return DeviantBehaviorCandidates(violations, prepared)
-	}},
-	{CCGraphClone, func(prepared []*MiningFacts, options Options) []Candidate {
-		groups := options.cloneGroups
-		out := CCGraphCloneCandidates(groups, prepared)
-		// Bridge clone detection to abstraction proposing: run the
-		// parameterize proposer (Bulychev & Minea anti-unification via PDG
-		// alignment) on each clone group. Groups that do not yield an
-		// abstraction are skipped.
-		params := defaultParams(options.Params)
-		out = append(out, CloneGroupParameterizeCandidates(prepared, groups, params)...)
-		return out
-	}},
-	{InconsistentClone, func(prepared []*MiningFacts, options Options) []Candidate {
-		pdgs, _, _ := ccGraphInputs(prepared)
-		divergent := FindInconsistentClones(options.cloneGroups, pdgs)
-		return InconsistentCloneCandidates(divergent, prepared)
-	}},
 	{TaintFlowKind, func(prepared []*MiningFacts, options Options) []Candidate {
 		if options.semantic != nil {
 			return options.semantic.candidates(TaintFlowKind)
 		}
 		flows := FindTaintFlows(prepared)
 		return TaintFlowCandidates(flows, prepared)
-	}},
-	{BarrierSliceKind, func(prepared []*MiningFacts, options Options) []Candidate {
-		if options.semantic != nil {
-			return options.semantic.candidates(BarrierSliceKind)
-		}
-		findings := FindBarrierSlices(prepared)
-		return BarrierSliceCandidates(findings, prepared)
-	}},
-	{ThinSliceKind, func(prepared []*MiningFacts, options Options) []Candidate {
-		if options.semantic != nil {
-			return options.semantic.candidates(ThinSliceKind)
-		}
-		findings := FindThinSlices(prepared)
-		return ThinSliceCandidates(findings, prepared)
-	}},
-	{ChopKind, func(prepared []*MiningFacts, options Options) []Candidate {
-		if options.semantic != nil {
-			return options.semantic.candidates(ChopKind)
-		}
-		findings := FindChops(prepared)
-		return ChopCandidates(findings, prepared)
-	}},
-	{AlattinRule, func(prepared []*MiningFacts, options Options) []Candidate {
-		sets := BuildCallSets(prepared)
-		rules := MineDisjunctiveRules(sets)
-		violations := FindAlternativeViolations(sets, rules)
-		return AlattinRuleCandidates(violations, prepared)
 	}},
 	{Obligation, func(prepared []*MiningFacts, options Options) []Candidate {
 		violations := FindObligationViolations(prepared)
@@ -231,7 +163,6 @@ func RunMining(facts []*MiningFacts, options Options) PatternsReport {
 // clustering. Builders run in FixKindOrder (see singleFunctionBuilders)
 // so detection respects pattern dependencies.
 func addSingleFunctionCandidates(mined *Mined, prepared []*MiningFacts, options Options) {
-	options.cloneGroups = defaultCloneGroups(prepared)
 	for _, b := range singleFunctionBuilders {
 		if cands := b.build(prepared, options); len(cands) > 0 {
 			mined.Candidates = append(mined.Candidates, cands...)
