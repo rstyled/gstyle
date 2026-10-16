@@ -222,3 +222,9 @@ make quality-gate
 The root command and the compatible `cmd/gstyle` entry point share `internal/cli`.
 Analysis and command implementations live in
 `domain`, `adapters`, and `application`.
+
+File obligation checks follow returned files through resolvable forwarding functions
+in the same package (up to eight summary passes), plus the standard `io/fs.FS.Open`
+contract. Callers must close the handle or return it again on supported normal
+paths. Unresolved consumers, aliases and asynchronous handoffs stay unknown.
+External wrapper bodies and arbitrary interface implementations are not inferred.

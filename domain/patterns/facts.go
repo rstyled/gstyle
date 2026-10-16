@@ -16,8 +16,10 @@ type ParamInfo struct {
 type FunctionFacts[G any] struct {
 	// SuccessReturnOutputSites are zero-based ErrorCheckSites indices followed directly by a nil error return.
 	SuccessReturnOutputSites []int
-	// ReleasedFileLines are typed file acquisitions discharged on every normal success path.
+	// ReleasedFileLines are typed file acquisitions closed or returned on every normal success path.
 	ReleasedFileLines []int
+	// FileObligationSites are resolved returned-file calls without recognized local cleanup or transfer.
+	FileObligationSites []ResourceAcquisition
 	// Canonical is borrowed by temporary mining facts for semantic analyses.
 	Canonical *pdg.Graph `json:"-"`
 	// ID is the stable function id (package path + name, like FuncID).

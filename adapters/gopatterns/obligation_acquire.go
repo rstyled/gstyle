@@ -2,23 +2,8 @@ package gopatterns
 
 import (
 	"go/ast"
-	"go/token"
 	"go/types"
 )
-
-func fileAcquisition(info *types.Info, assign *ast.AssignStmt) bool {
-	if assign.Tok != token.DEFINE || len(assign.Lhs) != 2 || len(assign.Rhs) != 1 {
-		return false
-	}
-	if !newResourceBindings(info, assign.Lhs) {
-		return false
-	}
-	call, ok := assign.Rhs[0].(*ast.CallExpr)
-	if !ok {
-		return false
-	}
-	return osFileCall(info, call)
-}
 
 func newResourceBindings(info *types.Info, expressions []ast.Expr) bool {
 	for _, expr := range expressions {

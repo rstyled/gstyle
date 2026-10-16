@@ -5,6 +5,7 @@ import (
 	"go/token"
 	"go/types"
 
+	"github.com/rstyled/gstyle/domain/patterns"
 	"golang.org/x/tools/go/cfg"
 	"golang.org/x/tools/go/packages"
 )
@@ -15,6 +16,7 @@ type releaseProof struct {
 	info         *types.Info
 	resource     types.Object
 	acquireError types.Object
+	allowReturn  bool
 	helpers      map[types.Object]bool
 	states       map[*cfg.Block]uint8
 }
@@ -85,13 +87,37 @@ func (p *releaseProof) nodes(nodes []ast.Node) int {
 		if p.invalidates(node) {
 			return -1
 		}
-		for _, expr := range releaseExpressions(node) {
-			if p.expression(expr) {
-				return 1
-			}
+		if p.discharges(node) {
+			return 1
 		}
 	}
 	return 0
+}
+
+func (p *releaseProof) discharges(node ast.Node) bool {
+	if returned, ok := node.(*ast.ReturnStmt); ok && p.returnsResource(returned) {
+		return true
+	}
+	for _, expr := range releaseExpressions(node) {
+		if p.expression(expr) {
+			return true
+		}
+	}
+	return false
+}
+
+// Returning the acquired handle transfers its close obligation to the caller.
+// Helper summaries must still prove Close; returning a parameter is not cleanup.
+func (p *releaseProof) returnsResource(statement *ast.ReturnStmt) bool {
+	if !p.allowReturn {
+		return false
+	}
+	for _, result := range statement.Results {
+		if p.isResource(result) {
+			return true
+		}
+	}
+	return false
 }
 
 func releaseExpressions(node ast.Node) []ast.Expr {
@@ -191,14 +217,28 @@ func (p *releaseProof) trackedBinding(expr ast.Expr) bool {
 }
 
 func (p *releaseProof) failedAcquisitionArm(block *cfg.Block, arm int) bool {
-	if arm != 0 || len(block.Nodes) == 0 {
+	if len(block.Nodes) == 0 {
 		return false
 	}
 	expr, ok := block.Nodes[len(block.Nodes)-1].(*ast.BinaryExpr)
-	if !ok || expr.Op != token.NEQ {
+	if !ok {
 		return false
 	}
-	return p.isAcquisitionError(expr.X) && typedNil(p.info, expr.Y)
+	if p.isAcquisitionError(expr.X) && typedNil(p.info, expr.Y) {
+		return failedFileErrorArm(expr.Op, arm)
+	}
+	return false
+}
+
+func failedFileErrorArm(operator token.Token, arm int) bool {
+	switch operator {
+	case token.NEQ:
+		return arm == 0
+	case token.EQL:
+		return arm == 1
+	default:
+		return false
+	}
 }
 
 func (p *releaseProof) isAcquisitionError(expr ast.Expr) bool {
@@ -211,28 +251,51 @@ func typedNil(info *types.Info, expr ast.Expr) bool {
 	return ok && info.Uses[ident] == types.Universe.Lookup("nil")
 }
 
-// helperReleasedLines records only unambiguous, typed os file acquisitions.
-func helperReleasedLines(pkg *packages.Package, fn *ast.FuncDecl, helpers map[types.Object]bool) []int {
+// Compute cleanup and caller obligations together, using one CFG per function.
+func fileObligationFacts(pkg *packages.Package, fn *ast.FuncDecl, ctx extractCtx) (released []int, sites []patterns.ResourceAcquisition) {
 	flow := cfg.New(fn.Body, func(*ast.CallExpr) bool { return true })
-	var released []int
 	for _, block := range flow.Blocks {
-		released = append(released, releasedInBlock(pkg, block, helpers)...)
+		for i := range block.Nodes {
+			line, site := fileNodeFacts(pkg, fn, &cfg.Block{Nodes: block.Nodes[i:], Succs: block.Succs}, ctx)
+			if line != 0 {
+				released = append(released, line)
+			}
+			if site != nil {
+				sites = append(sites, *site)
+			}
+		}
 	}
-	return released
+	return released, sites
 }
 
-func releasedInBlock(pkg *packages.Package, block *cfg.Block, helpers map[types.Object]bool) []int {
-	var released []int
-	for i, node := range block.Nodes {
-		assign, ok := node.(*ast.AssignStmt)
-		if !ok || !fileAcquisition(pkg.TypesInfo, assign) {
-			continue
-		}
-		proof := releaseProof{info: pkg.TypesInfo, resource: pkg.TypesInfo.ObjectOf(assign.Lhs[0].(*ast.Ident)), acquireError: pkg.TypesInfo.ObjectOf(assign.Lhs[1].(*ast.Ident)), helpers: helpers, states: make(map[*cfg.Block]uint8)}
-		tail := &cfg.Block{Nodes: block.Nodes[i+1:], Succs: block.Succs}
-		if proof.block(tail) {
-			released = append(released, pkg.Fset.PositionFor(assign.Pos(), false).Line)
-		}
+func fileNodeFacts(pkg *packages.Package, fn *ast.FuncDecl, tail *cfg.Block, ctx extractCtx) (int, *patterns.ResourceAcquisition) {
+	assign, ok := tail.Nodes[0].(*ast.AssignStmt)
+	if !ok {
+		return returnedFileLine(pkg, tail.Nodes[0]), nil
 	}
-	return released
+	call := sourceAssignment(pkg.TypesInfo, assign, ctx.fileSources)
+	if call == nil {
+		return 0, nil
+	}
+	proof := releaseProof{info: pkg.TypesInfo, resource: pkg.TypesInfo.ObjectOf(assign.Lhs[0].(*ast.Ident)), acquireError: pkg.TypesInfo.ObjectOf(assign.Lhs[1].(*ast.Ident)), allowReturn: true, helpers: ctx.helpers, states: map[*cfg.Block]uint8{}}
+	if proof.block(&cfg.Block{Nodes: tail.Nodes[1:], Succs: tail.Succs}) {
+		return pkg.Fset.PositionFor(assign.Pos(), false).Line, nil
+	}
+	if osFileCall(pkg.TypesInfo, call) || proof.ownershipEscapes(fn) {
+		return 0, nil
+	}
+	return 0, &patterns.ResourceAcquisition{Line: pkg.Fset.PositionFor(call.Pos(), false).Line, Resource: "file", AcquireCall: fileCallObject(pkg.TypesInfo, call).FullName()}
+}
+
+// A direct multi-result return forwards the os file and its error unchanged.
+func returnedFileLine(pkg *packages.Package, node ast.Node) int {
+	statement, ok := node.(*ast.ReturnStmt)
+	if !ok || len(statement.Results) != 1 {
+		return 0
+	}
+	call, ok := ast.Unparen(statement.Results[0]).(*ast.CallExpr)
+	if !ok || !osFileCall(pkg.TypesInfo, call) {
+		return 0
+	}
+	return pkg.Fset.PositionFor(call.Pos(), false).Line
 }
