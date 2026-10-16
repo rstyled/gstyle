@@ -21,6 +21,7 @@ import (
 // Local deferred releases are linked through the PDG. The typed Go extractor
 // also records bounded normal-path cleanup for os file acquisitions, including
 // local single-argument helpers that close their parameter on every path.
+// Returning the acquired file transfers its close obligation to the caller.
 // Missing evidence remains advisory; it does not prove a leak.
 
 // obligationRule pairs a resource-acquiring callee with its release method.
@@ -111,6 +112,15 @@ func FindObligationViolations(facts []*MiningFacts) []ObligationViolation {
 			continue
 		}
 		out = append(out, violationsInFunc(f)...)
+		out = append(out, returnedFileViolations(f)...)
+	}
+	return out
+}
+
+func returnedFileViolations(f *MiningFacts) []ObligationViolation {
+	var out []ObligationViolation
+	for _, site := range f.FileObligationSites {
+		out = append(out, ObligationViolation{FuncID: f.ID, Line: site.Line, Resource: site.Resource, AcquireCall: site.AcquireCall, Reason: "returned file has no recognized close or further ownership transfer"})
 	}
 	return out
 }

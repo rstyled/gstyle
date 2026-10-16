@@ -26,11 +26,12 @@ import (
 type FuncPdg struct {
 	// SuccessReturnOutputSites are zero-based ErrorCheckSites indices followed directly by a nil error return.
 	SuccessReturnOutputSites []int
-	// ReleasedFileLines are typed file acquisitions discharged on every normal success path.
-	ReleasedFileLines []int
-	Name              string
-	Path              string
-	Line              int
+	// ReleasedFileLines are typed file acquisitions closed or returned on every normal success path.
+	ReleasedFileLines   []int
+	FileObligationSites []patterns.ResourceAcquisition
+	Name                string
+	Path                string
+	Line                int
 	// EndLine is the function's closing line.
 	EndLine int
 	// SuppressedKinds are pattern kinds suppressed via //lint:ignore or
@@ -109,6 +110,7 @@ type Extraction struct {
 
 // extractCtx carries per-package maps for entity pairing.
 type extractCtx struct {
+	fileSources      map[types.Object]bool
 	helpers          map[types.Object]bool
 	sourceIdentities map[string]string
 	pool             *pdg.Builder
@@ -126,9 +128,10 @@ func newExtractCtx(pkg *packages.Package, root string) extractCtx {
 		}
 	}
 	return extractCtx{
-		helpers:    helperReleases(pkg),
-		structLocs: structLocs,
-		mutated:    collectMutatedStructs(pkg),
+		fileSources: returnedFileSources(pkg),
+		helpers:     helperReleases(pkg),
+		structLocs:  structLocs,
+		mutated:     collectMutatedStructs(pkg),
 	}
 }
 
@@ -502,6 +505,7 @@ func extractFunc(pkg *packages.Package, fn *ast.FuncDecl, path string, ctx extra
 	if err != nil {
 		return FuncPdg{}, err
 	}
+	releasedFiles, fileSites := fileObligationFacts(pkg, fn, ctx)
 	return FuncPdg{
 		Name:            name,
 		Path:            path,
@@ -543,8 +547,9 @@ func extractFunc(pkg *packages.Package, fn *ast.FuncDecl, path string, ctx extra
 		// TypedNilHits are typed-nil comparisons (gostaticanalysis).
 		TypedNilHits: nil,
 		// ErrorCheckSites tracks per-call error checking for deviant_behavior.
-		ErrorCheckSites:   sites,
-		ReleasedFileLines: helperReleasedLines(pkg, fn, ctx.helpers),
+		ErrorCheckSites:     sites,
+		ReleasedFileLines:   releasedFiles,
+		FileObligationSites: fileSites,
 
 		SuccessReturnOutputSites: successReturnSites,
 	}, nil

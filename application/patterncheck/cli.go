@@ -178,6 +178,7 @@ func funcFactsOf(fp gopatterns.FuncPdg) *patterns.FuncFacts {
 		TypedNilHits:        fp.TypedNilHits,
 		ErrorCheckSites:     fp.ErrorCheckSites,
 		ReleasedFileLines:   fp.ReleasedFileLines,
+		FileObligationSites: fp.FileObligationSites,
 		SuppressedKinds:     fp.SuppressedKinds,
 		Params:              fp.Params,
 
