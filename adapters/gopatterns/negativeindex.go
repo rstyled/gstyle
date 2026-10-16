@@ -14,7 +14,7 @@ func negativeIndexCandidates(function FuncPdg, report runtimeguard.Report) []pat
 	var out []patterns.Candidate
 	seen := make(map[pdg.Ref]bool)
 	for _, site := range report.Accesses {
-		if !knownNegativeIndex(site) || seen[site.Symbol] {
+		if !uncoveredNegativeIndex(site) || seen[site.Symbol] {
 			continue
 		}
 		node, present := query.At(function.Pdg.Nodes, site.Node)
@@ -40,4 +40,9 @@ func negativeIndexCandidate(function FuncPdg, site runtimeguard.Access, line uin
 		CounterEvidence: []string{"based on recorded index bounds; no automatic fix"},
 		Sites:           []patterns.Site{{Path: function.Path, Line: int(line), EndLine: int(line), ID: function.Name, Name: function.Name}},
 	}
+}
+
+// A known-extent finding already explains this access. Report it once.
+func uncoveredNegativeIndex(site runtimeguard.Access) bool {
+	return knownNegativeIndex(site) && !literalIndexRisk(site)
 }

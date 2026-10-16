@@ -133,6 +133,18 @@ noncomputable def incrementInteger [FfiSyntax] [GoGlobalContext] : GoString :=
 noncomputable def decrementInteger [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard.decrementInteger"
 
+noncomputable def logicalBoolean [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard.logicalBoolean"
+
+noncomputable def shortCircuitBoolean [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard.shortCircuitBoolean"
+
+noncomputable def compareExactIntegers [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard.compareExactIntegers"
+
+noncomputable def compareExactOrder [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard.compareExactOrder"
+
 noncomputable def invalidatesRoot [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard.invalidatesRoot"
 
@@ -606,7 +618,7 @@ noncomputable def booleanContradiction.impl [FfiSyntax] [GoGlobalContext] : val 
   (App (Val doExecute)
   (Val #())))))))))
 
-/-- go: flow.go:127:21 -/
+/-- go: flow.go:125:21 -/
 noncomputable def graphView.join.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "previous"
@@ -690,7 +702,7 @@ noncomputable def graphView.join.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (Val #())))))))))))
 
-/-- go: flow.go:146:21 -/
+/-- go: flow.go:144:21 -/
 noncomputable def graphView.assignmentValue.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "symbol"
@@ -721,7 +733,7 @@ noncomputable def graphView.assignmentValue.impl [FfiSyntax] [GoGlobalContext] :
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore Value.ty))) (Pair (Var "base") (Var "$r0"))))))))))))))
 
-/-- go: flow.go:184:6 -/
+/-- go: flow.go:182:6 -/
 noncomputable def singleValueWrite.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "category"
   (Lam "form"

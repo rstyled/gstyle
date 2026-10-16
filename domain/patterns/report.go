@@ -36,7 +36,7 @@ type Options struct {
 	NilGuards []Candidate
 	// NegativeIndices are known-negative index findings from typed source analysis.
 	NegativeIndices []Candidate
-	// LiteralIndices are known-out-of-range composite-literal index findings.
+	// LiteralIndices are known-out-of-range collection index findings.
 	LiteralIndices []Candidate
 	// MinScoreMilli drops groups and candidates scoring below this.
 	MinScoreMilli uint32

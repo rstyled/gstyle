@@ -131,7 +131,7 @@ const (
 	// NegativeIndex flags accesses with a recorded index range below zero.
 	// Unknown and partly valid ranges are not findings.
 	NegativeIndex CandidateKind = "negative_index"
-	// LiteralIndex flags an index range entirely outside a literal's extent.
+	// LiteralIndex flags an index range entirely outside a known collection extent.
 	// Unknown and partly valid ranges are not findings.
 	LiteralIndex CandidateKind = "literal_index"
 	// DependenceCluster flags functions whose PDG contains a large

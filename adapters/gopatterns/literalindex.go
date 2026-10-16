@@ -15,9 +15,9 @@ func literalIndexCandidates(function FuncPdg, report runtimeguard.Report) []patt
 		line := int(function.Pdg.Nodes[site.Node-1].Line)
 		out = append(out, patterns.Candidate{
 			Kind: patterns.LiteralIndex, ScoreMilli: 800,
-			Observation:     "composite literal indexed out of bounds by " + name,
+			Observation:     "collection indexed out of bounds by " + name,
 			Inference:       "prevent this out-of-range value from reaching the index",
-			CounterEvidence: []string{"based on recorded index bounds and literal extent; no automatic fix"},
+			CounterEvidence: []string{"based on recorded index bounds and collection extent; no automatic fix"},
 			Sites:           []patterns.Site{{Path: function.Path, Line: line, EndLine: line, ID: function.Name, Name: function.Name}},
 		})
 	}
@@ -25,12 +25,15 @@ func literalIndexCandidates(function FuncPdg, report runtimeguard.Report) []patt
 }
 
 // Unknown bounds do not establish an out-of-range access. Require the entire
-// recorded range to lie below zero or at/above the literal extent.
+// recorded range to lie below zero or at/above the collection extent.
 func literalIndexRisk(site runtimeguard.Access) bool {
-	if !site.Literal || site.Constant || !site.Value.HasExtent {
+	if !site.Index || !site.Value.HasExtent {
 		return false
 	}
 	value := site.Value
+	if value.Extent == 0 {
+		return true
+	}
 	if knownNegativeIndex(site) {
 		return true
 	}
