@@ -16,7 +16,8 @@ func TestPatternsLiteralIndexRegression(t *testing.T) {
 		"sample.go": `package example
 const slot = 1
 func Constant() string { return [...]string{"a", "b"}[slot] }
-func Unsafe(i int) string { if i < 0 { return "" }; return [...]string{"a", "b"}[i] }
+func Unsafe(i int) string { i = 2; return [...]string{"a", "b"}[i] }
+func Unknown(i int) string { return [...]string{"a", "b"}[i] }
 func Complete(i int) string { if i < 0 || i >= 2 { return "" }; return [...]string{"a", "b"}[i] }
 `,
 	}

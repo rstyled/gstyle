@@ -34,9 +34,9 @@ type Options struct {
 	OffsetFallbacks []Candidate
 	// NilGuards are nil-guard-on-wrong-variable findings from typed source analysis.
 	NilGuards []Candidate
-	// NegativeIndices are missing-lower-bound index findings from typed source analysis.
+	// NegativeIndices are known-negative index findings from typed source analysis.
 	NegativeIndices []Candidate
-	// LiteralIndices are unchecked composite-literal index findings.
+	// LiteralIndices are known-out-of-range composite-literal index findings.
 	LiteralIndices []Candidate
 	// MinScoreMilli drops groups and candidates scoring below this.
 	MinScoreMilli uint32

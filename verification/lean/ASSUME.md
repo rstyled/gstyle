@@ -51,3 +51,13 @@ and numeric execution proofs. All ten mutation controls remain enabled.
 fact reading do not import recursive symbol execution proofs; modules that
 need symbol execution import them explicitly. The reference predicate retains
 its original definition.
+
+### Index finding policy
+
+The typed-source adapter requires a recorded upper bound below zero for
+`negative_index`, or a recorded range entirely below zero or at/above the literal
+extent for `literal_index`. Unknown and partly valid ranges stay quiet. Source
+extraction and this stricter finding policy are outside Lean. The existing
+interval kernel and its proofs still describe the raw missing-lower-bound query;
+that query alone no longer produces a source finding. This trades recall for
+fewer unsupported findings and adds no reachability proof for concrete inputs.
