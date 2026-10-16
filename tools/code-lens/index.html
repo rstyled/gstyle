@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>gstyle · Finding investigation</title>
+<style>
+:root{color-scheme:light;--bg:#f4f5f1;--panel:#fcfcfa;--ink:#29332e;--muted:#778178;--line:#dce2d9;--accent:#377e69;--soft:#e8f0e9;--control:#b38656;--execution:#8782a9;--selected:#dcecdf;--code:#f3f5ef}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.5 system-ui,sans-serif}button,select,input{font:inherit;color:inherit}button,select{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px}button{cursor:pointer}button:hover{border-color:var(--accent)}button:disabled{opacity:.35;cursor:default}button[aria-pressed=true]{background:var(--soft);border-color:var(--accent);color:var(--accent)}button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.mono{font:10px/1.6 ui-monospace,monospace;letter-spacing:.7px}.muted{color:var(--muted)}.top{height:62px;display:flex;justify-content:space-between;align-items:center;padding:0 25px;border-bottom:1px solid var(--line);background:var(--panel)}.brand{display:flex;align-items:center;gap:12px}.logo{display:grid;place-items:center;width:27px;height:27px;border-radius:7px;background:var(--ink);color:var(--panel);font:19px monospace}.brand strong{font-size:14px}.top-right{display:flex;gap:15px;align-items:center}main{padding:22px 24px;max-width:1800px;margin:auto}.intro{display:flex;justify-content:space-between;align-items:end;margin-bottom:18px;gap:20px}h1{font-size:27px;font-weight:480;letter-spacing:-.8px;margin:3px 0 5px}.intro p{margin:0;color:var(--muted)}.scope{text-align:right}.bench{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:var(--panel)}.finding-bar{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:13px 17px;border-bottom:1px solid var(--line)}.finding-bar>div{display:flex;gap:10px;align-items:center}.finding-bar strong{font-weight:550}.finding-bar .tag{font:10px monospace;padding:3px 7px;border:1px solid #ccdacb;border-radius:4px;color:var(--accent)}.toolbar{padding:10px 15px;display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--line)}.toolbar .filters,.camera-controls{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.filters label{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)}.filters input{accent-color:var(--accent)}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 410px;min-height:670px}.graph-pane{position:relative;min-width:0;display:flex;flex-direction:column;background-image:radial-gradient(#b9c6b340 .7px,transparent .7px);background-size:17px 17px}.graph-head{display:flex;justify-content:space-between;padding:14px 17px;gap:14px;background:var(--panel)}#graph{width:100%;height:620px;display:block;touch-action:none;cursor:grab}#graph:active{cursor:grabbing}.graph-foot{display:flex;justify-content:space-between;gap:15px;padding:12px 17px;border-top:1px solid var(--line);margin-top:auto;font-size:10px;color:var(--muted);background:var(--panel)}.map{position:absolute;bottom:65px;left:15px;width:142px;padding:7px;background:var(--panel);border:1px solid var(--line);border-radius:7px;box-shadow:0 4px 16px #263a2810}#minimap{width:126px;height:90px;display:block;cursor:crosshair}.map .mono{font-size:8px}.inspector{min-width:0;border-left:1px solid var(--line);background:var(--panel)}.pane-heading{display:flex;justify-content:space-between;align-items:center;padding:14px 17px;border-bottom:1px solid var(--line)}.source-header{padding:13px 17px 0;color:var(--muted);font:10px monospace;overflow-wrap:anywhere}#source{padding:12px 0 15px;overflow:auto;background:var(--panel);tab-size:4}.source-row{display:flex;min-width:100%;width:max-content;cursor:pointer;font:12px/2 ui-monospace,monospace;padding:0 15px;white-space:pre}.source-row:hover{background:var(--soft)}.source-row.active{background:var(--selected)}.source-row.proof{box-shadow:inset 3px 0 var(--accent)}.source-row .ln{width:32px;flex:none;color:#9ba69b;user-select:none}.source-row mark{color:inherit;background:#b8d8bd88;border-radius:2px}.detail{padding:16px 17px;border-top:1px solid var(--line)}.detail h2{font-size:17px;font-weight:500;margin:7px 0 9px}.badge{font:9px monospace;color:var(--muted);border:1px solid var(--line);padding:3px 6px;border-radius:4px}.snippet{background:var(--code);border:1px solid var(--line);border-radius:6px;padding:10px;font:12px/1.7 monospace;white-space:pre-wrap;overflow-wrap:anywhere}.detail p{font-size:12px;color:var(--muted);margin:10px 0}.detail h3{font-size:11px;font-weight:500;margin:15px 0 8px}#connections{display:grid;gap:5px}.connection{text-align:left;padding:7px 8px;line-height:1.5}.connection b{font:10px monospace;font-weight:400}.connection small{display:block;color:var(--muted);font-size:10px}.connection.active{border-color:var(--accent);background:var(--soft)}#node-select{width:100%;font:10px monospace;padding:7px;margin-top:12px}.tabs{display:flex;border-bottom:1px solid var(--line);padding:7px 12px;gap:5px}.tabs button{font-size:11px;border-color:transparent}.tabs button[aria-pressed=true]{border-color:var(--line)}.evidence-panel{border-top:1px solid var(--line);padding:18px;display:none}.evidence-panel.visible{display:block}.proof-layout{display:grid;grid-template-columns:1fr 1fr;gap:25px}.proof-layout p{font-size:12px;color:var(--muted);margin:6px 0 12px}.proof-steps{display:flex;flex-wrap:wrap;gap:6px}.proof-steps button{font-size:11px;text-align:left}.proof-steps small{display:block;font:9px monospace;color:var(--muted)}.proof-note{padding:11px;border-left:2px solid var(--accent);background:var(--soft);font-size:12px}.detector-code{font:10px/1.7 monospace;white-space:pre-wrap;background:var(--code);padding:11px;border-radius:6px;max-height:170px;overflow:auto}#proof-step-status{font-size:12px}.experiment{display:grid;grid-template-columns:1fr 1fr;gap:22px}.experiment h3{font-size:13px;font-weight:500;margin:0 0 8px}.experiment p{font-size:12px;color:var(--muted)}.runs{display:grid;grid-template-columns:1fr 1fr;gap:8px}.run{padding:10px;border:1px solid var(--line);border-radius:6px}.run strong{font-size:18px;font-weight:450;display:block}.run small{font-size:10px;color:var(--muted)}.proof-node rect{stroke:var(--accent)!important;stroke-width:2!important}.graph-node{cursor:pointer;outline:none}.graph-node rect{fill:var(--panel);stroke:#a9b7a5;stroke-width:1.2}.graph-node.control-node rect{fill:#fbf4e9;stroke:var(--control)}.graph-node.synthetic-node rect{stroke-dasharray:4 3}.graph-node.active rect{fill:var(--selected);stroke:var(--accent);stroke-width:2.5}.graph-node .node-label{font:13px ui-monospace,monospace;fill:var(--ink)}.graph-node .node-meta{font:10px monospace;fill:var(--muted)}.graph-node .node-id{font:10px monospace;fill:var(--accent)}.graph-node.context{opacity:.37}.graph-node:focus rect{stroke:var(--accent);stroke-width:3}.edge{fill:none;stroke:var(--accent);stroke-width:1.5;opacity:.5;pointer-events:stroke;cursor:pointer}.edge.control{stroke:var(--control);stroke-dasharray:5 4}.edge.execution{stroke:var(--execution);stroke-dasharray:2 3}.edge.context{opacity:.12}.edge.active{stroke-width:3;opacity:1}.edge.proof{stroke-width:2.4;opacity:.95}.edge-hit{fill:none;stroke:transparent;stroke-width:13;pointer-events:stroke;cursor:pointer}.edge-label{font:9px monospace;fill:var(--muted);paint-order:stroke;stroke:var(--panel);stroke-width:4px;pointer-events:none}.overview .edge-label{display:block;font-size:11px;fill:var(--accent)}.overview .node-label{font-size:16px}.overview .node-meta{font-size:14px}.overview .node-id{font-size:15px}.map-node{fill:#b3c3ac}.map-node.selected{fill:var(--accent)}.map-edge{stroke:#a2b49b;stroke-width:3;opacity:.35}.map-window{fill:#80b79520;stroke:var(--accent);stroke-width:7;pointer-events:none}.placeholder{padding:20px;color:var(--muted)}details{margin-top:12px}summary{font-size:10px;color:var(--muted);cursor:pointer}pre{font:10px/1.6 monospace;overflow:auto;max-height:220px}footer{display:flex;justify-content:space-between;gap:16px;padding-top:13px;font-size:10px;color:var(--muted);overflow-wrap:anywhere}.dark{color-scheme:dark;--bg:#1c241f;--panel:#242e27;--ink:#e1e9df;--muted:#9baa9b;--line:#3f5042;--accent:#a0c9ab;--soft:#314737;--control:#d2ab79;--execution:#b0a5cc;--selected:#3d5943;--code:#202a23}.dark .graph-node.control-node rect{fill:#40382a}.dark .graph-node rect{stroke:#758b70}@media(min-width:1550px){.workspace{grid-template-columns:minmax(0,1fr) 460px}#graph{height:690px}}@media(max-width:1050px){.workspace{grid-template-columns:minmax(0,1fr) 350px}main{padding:18px 13px}.source-row{font-size:11px}.scope{display:none}.camera-controls button{font-size:11px}#graph{height:580px}.finding-bar{align-items:start}.finding-bar>div{flex-wrap:wrap}}@media(max-width:760px){main{padding:14px 8px}.top{padding:0 14px;height:52px}.top-right .mono{display:none}h1{font-size:23px}.intro p{font-size:12px}.workspace{grid-template-columns:1fr}.inspector{border-left:0;border-top:1px solid var(--line)}.finding-bar{flex-direction:column;padding:11px}.finding-bar>div{gap:6px}.finding-bar strong{font-size:12px}.toolbar{flex-direction:column;align-items:stretch}.filters{justify-content:space-between}.camera-controls{justify-content:space-between}#graph{height:480px}.workspace{min-height:0}.map{width:110px;bottom:70px;left:8px}#minimap{width:94px;height:70px}.graph-head{font-size:9px;padding:12px}.graph-foot{padding:10px;font-size:9px}.source-row{font-size:12px}.proof-layout,.experiment{grid-template-columns:1fr}.evidence-panel{padding:13px}.scope{display:none}footer{flex-direction:column;gap:4px}.detail{padding:14px}.intro{margin-bottom:13px}.finding-bar .muted{font-size:11px}}
+.graph-node .node-role{font:15px system-ui,sans-serif;font-weight:550;fill:var(--ink)}.graph-node .node-label{font-size:12px}.layout-guides{pointer-events:none}.layout-guides rect{fill:var(--code);stroke:var(--line)}.layout-guides text{font:10px monospace;fill:var(--muted);letter-spacing:1px}.edge{stroke-linejoin:round;stroke-linecap:round}.edge-label{display:block;font-size:11px;fill:var(--accent)}.edge.supporting-edge{opacity:.19}.edge.active{opacity:1}.edge.proof{stroke-width:2;opacity:.85}.graph-node.context{opacity:.6}.edge.context{opacity:.17}.overview .node-role{font-size:18px}.overview .node-meta{font-size:11px}.overview .node-id{font-size:11px}.overview .node-label{font-size:13px}
+g[data-kind="control"] .edge-label{fill:var(--control)}
+.explanation-guide{padding:19px 22px;border-bottom:1px solid var(--line);background:var(--soft);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:28px;align-items:center}.guide-copy{max-width:730px}.guide-copy h2{font-size:21px;font-weight:550;margin:4px 0 7px;letter-spacing:-.4px}.guide-copy p{font-size:14px;line-height:1.6;margin:0;color:var(--ink)}#guide-steps{display:flex;gap:6px;flex-wrap:wrap}#guide-steps button{font-size:12px;padding:8px 11px}.guide-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.guide-actions span{font-size:10px;margin-left:5px}.graph-node.context{opacity:.23}.edge.context{opacity:.05}.graph-node.active{opacity:1}.graph-node .node-role{font-size:17px}.graph-node .node-label{font-size:13px}@media(max-width:1100px){.explanation-guide{grid-template-columns:1fr;gap:12px}}@media(max-width:760px){.explanation-guide{padding:15px}.guide-copy h2{font-size:19px}.guide-copy p{font-size:13px}#guide-steps button{font-size:11px;padding:7px}}
+.guided #connections-title,.guided #connections,.guided #edge-evidence,.guided #node-select,.guided .detail details,.guided #snippet{display:none}.guided .detail h2{font-size:19px}.guided .detail p{font-size:14px;line-height:1.7;color:var(--ink)}
+.guided .context-edge .edge-label{opacity:0}
+</style></head><body>
+<div class="top"><div class="brand"><span class="logo">g</span><strong>gstyle</strong><span class="muted">/</span><span>Finding investigation</span></div><div class="top-right"><span class="mono muted">GRAPH ↔ SOURCE ↔ EVIDENCE</span><button id="theme" aria-label="Switch color theme">◐</button></div></div>
+<main><div class="intro"><div><div class="mono muted">ONE FINDING / FULL EXPORTED FUNCTION PDG</div><h1>Why this nil check is always false.</h1><p>Follow the branches and the matching code, one step at a time.</p></div><div class="scope mono muted">SCOPE: branchAssignments(bool)<br>Go regression fixture · not a whole-program graph</div></div>
+<section class="bench"><div class="finding-bar"><div><span class="tag">TYPEDNIL</span><strong>Both branches give boxed a value, so this nil check is always false.</strong><span class="muted" id="finding-location"></span></div><button id="finding">Walk through this finding →</button></div>
+<div class="toolbar"><div class="filters"><label><input type="checkbox" data-kind="data" checked>Values</label><label><input type="checkbox" data-kind="control" checked>Control</label><label><input type="checkbox" data-kind="execution" checked>Order</label><span class="mono muted" id="counts"></span></div><div class="camera-controls"><button id="zoom-out" aria-label="Zoom out">−</button><span id="zoom-label" class="mono">100%</span><button id="zoom-in" aria-label="Zoom in">＋</button><button id="focus">Zoom to selection</button><button id="slice">Trace inputs</button><button id="fit">Whole function</button></div></div>
+<div class="explanation-guide" aria-label="Finding walkthrough"><div class="guide-copy"><div class="mono muted">START WITH THE QUESTION</div><h2 id="guide-title"></h2><p id="guide-body" aria-live="polite"></p></div><div class="guide-nav"><div id="guide-steps" role="group" aria-label="Explanation steps"></div><div class="guide-actions"><button id="guide-prev">← Previous</button><button id="guide-next">Start →</button><span class="muted">Arrows follow values, not elapsed time.</span></div></div></div><div class="workspace"><div class="graph-pane"><div class="graph-head mono"><span id="graph-state">FULL EXPORT / ALL CONNECTIONS</span><span class="muted">Read input → branches → join → check</span></div><svg id="graph" tabindex="0" role="group" aria-label="Complete function program dependence graph. Drag to pan, wheel to zoom, arrow keys to select nodes."></svg><div class="map"><div class="mono muted">WHOLE FUNCTION</div><svg id="minimap" role="img" aria-label="Whole graph overview with current viewport"></svg></div><div class="graph-foot"><span>Drag to pan · wheel to zoom · click nodes or edges</span><span id="selection-readout"></span></div></div>
+<aside class="inspector"><div class="pane-heading"><span class="mono">LINKED SOURCE</span><span class="mono muted" id="source-status"></span></div><div id="source-path" class="source-header"></div><div id="source" role="group" aria-label="Function source. Select a line to reveal its graph operations."></div><div class="detail"><div class="mono muted" id="detail-label">SELECTED OPERATION</div><h2 id="title"></h2><span id="badge" class="badge"></span><pre id="snippet" class="snippet"></pre><p id="explanation"></p><h3 id="connections-title"></h3><div id="connections"></div><p id="edge-evidence"></p><select id="node-select" aria-label="Select a graph operation"></select><details><summary>Exact exported evidence</summary><pre id="raw"></pre></details><details><summary>Analysis scope and limits</summary><p>Every exported node and edge is loaded. Filters change visibility, not graph data. The finding proof uses supported interface value flow. Control and order links are approximate. Missing dependencies do not prove independence. Synthetic merge nodes share the read’s source span.</p><pre id="coverage"></pre></details></div></aside></div>
+<div class="tabs" role="group" aria-label="Investigation evidence"><button data-panel="proof" aria-pressed="false">Detector proof</button><button data-panel="runs" aria-pressed="false">Go executions & repair experiment</button></div>
+<section id="proof-panel" class="evidence-panel"><div class="proof-layout"><div><div class="mono muted">ACTUAL SOLVER WITNESS</div><p>The steps below come from gstyle’s non-nil solver. Select a step to reveal its graph region and source. Context stays on the canvas.</p><div id="proof-steps" class="proof-steps"></div><p id="proof-step-status"></p><div class="proof-note">Concrete values establish non-nil. Assignments preserve it. The join requires every recorded reaching definition. The final read supplies the comparison. Control edges are context, not proof inputs.</div></div><div><div class="mono muted" id="detector-path"></div><p id="detector-explanation"></p><pre id="detector-code" class="detector-code"></pre><span class="mono muted" id="detector-hash"></span></div></div></section>
+<section id="runs-panel" class="evidence-panel"><div class="experiment"><div><h3>Observed behavior · original Go source</h3><p>The original statements run in Go with observations inserted. Both boolean inputs are tested; the displayed values are recorded outputs.</p><div class="runs" id="original-runs"></div><p>The original fixture demonstrates an impossible nil check. It does not define what “disabled” should mean in a product.</p></div><div><h3>Repair experiment · an explicit contract</h3><p id="repair-contract"></p><pre class="snippet">− boxed = "queued"
++ boxed = nil</pre><div class="runs" id="repair-runs"></div><p id="repair-result"></p><details><summary>Exact experimental source change</summary><pre id="repair-source"></pre></details></div></div></section></section>
+<footer><span id="provenance"></span><span id="integrity"></span></footer></main>
+<script id="evidence" type="application/json">{"revision":"9ec8c822bfe46120388c3cc4967547425c72cdb7","path":"adapters/gopatterns/testdata/interface-nil/sample.go","source":"// Original gstyle synthetic cases. A non-nil dynamic type makes an interface\n// non-nil, even when its contained pointer, slice, or map is nil.\npackage interfacenilfixture\n\ntype Parcel struct{ Code int }\ntype Trouble struct{}\n\nfunc (*Trouble) Error() string { return \"delivery stopped\" }\n\nfunc parcelBox(parcel *Parcel) any { return parcel }\nfunc relayBox(parcel *Parcel) any  { return parcelBox(parcel) }\nfunc parcelValue() any             { return Parcel{Code: 81} }\nfunc emptyTrouble() error          { return (*Trouble)(nil) }\nfunc optionalBox(enabled bool) any {\n\tif enabled {\n\t\treturn Parcel{Code: 82}\n\t}\n\treturn nil\n}\nfunc variedBox(enabled bool) any {\n\tif enabled {\n\t\treturn Parcel{Code: 83}\n\t}\n\treturn \"deferred\"\n}\nfunc recursiveBox() any         { return recursiveBox() }\nfunc (parcel *Parcel) box() any { return parcel }\nfunc namedBox() (result any) {\n\tresult = Parcel{Code: 84}\n\treturn\n}\nfunc genericBox[T any](value T) any { return value }\n\nfunc localPointer() {\n\tvar parcel *Parcel\n\tvar boxed any = parcel\n\t_ = boxed == nil // want-nonnil: a nil pointer still has a dynamic type\n}\nfunc concreteRecord() {\n\tvar boxed any = Parcel{Code: 85}\n\t_ = boxed != nil // want-nonnil: the interface contains a concrete record\n}\nfunc concreteNumber() {\n\tvar boxed any = 0\n\t_ = nil == boxed // want-nonnil: numeric zero is not an empty interface\n}\nfunc typedReturn(parcel *Parcel) {\n\t_ = parcelBox(parcel) == nil // want-nonnil: every return boxes a pointer\n}\nfunc forwardedReturn(parcel *Parcel) {\n\t_ = relayBox(parcel) != nil // want-nonnil: a direct forwarding call preserves the proof\n}\nfunc concreteReturn() {\n\t_ = parcelValue() == nil // want-nonnil: a concrete record is returned through any\n}\nfunc errorReturn() {\n\t_ = emptyTrouble() == nil // want-nonnil: the error has a concrete pointer type\n}\nfunc branchReturns(enabled bool) {\n\t_ = variedBox(enabled) == nil // want-nonnil: both return paths supply concrete values\n}\nfunc assignedCall(parcel *Parcel) {\n\tboxed := relayBox(parcel)\n\talias := boxed\n\t_ = alias == nil // want-nonnil: the call result reaches the alias read\n}\nfunc overwrittenBox() {\n\tvar boxed any = nil\n\tboxed = Parcel{Code: 86}\n\t_ = boxed == nil // want-nonnil: the later definition kills the empty interface\n}\nfunc branchAssignments(enabled bool) {\n\tvar boxed any\n\tif enabled {\n\t\tboxed = Parcel{Code: 87}\n\t} else {\n\t\tboxed = \"queued\"\n\t}\n\t_ = boxed == nil // want-nonnil: every reaching definition is non-nil\n}\nfunc namedReturn() {\n\t_ = namedBox() == nil // want-nonnil: the named result reads its assigned value\n}\nfunc methodReturn(parcel *Parcel) {\n\t_ = parcel.box() == nil // want-nonnil: this statically resolved method boxes its receiver\n}\nfunc boxedSlice() {\n\tvar parcels []Parcel\n\tvar boxed any = parcels\n\t_ = boxed == nil // want-nonnil: a nil slice is boxed into an interface\n}\nfunc boxedMap() {\n\tvar parcels map[string]Parcel\n\tvar boxed any = parcels\n\t_ = boxed == nil // want-nonnil: a nil map is boxed into an interface\n}\n\n// Valid or unresolved checks must remain unflagged.\nfunc pointerGuard(parcel *Parcel)      { _ = parcel == nil }\nfunc emptyInterface()                  { var boxed any; _ = boxed == nil }\nfunc mixedReturn(enabled bool)         { _ = optionalBox(enabled) == nil }\nfunc parameterGuard(boxed any)         { _ = boxed == nil }\nfunc dynamicReturn(factory func() any) { _ = factory() == nil }\nfunc recursiveReturn()                 { _ = recursiveBox() == nil }\nfunc clearedBox() {\n\tvar boxed any = Parcel{Code: 88}\n\tboxed = nil\n\t_ = boxed == nil\n}\nfunc mixedAssignment(enabled bool) {\n\tvar boxed any\n\tif enabled {\n\t\tboxed = Parcel{Code: 89}\n\t}\n\t_ = boxed == nil\n}\nfunc genericReturn[T any](value T) { _ = genericBox(value) == nil }\nfunc replaceBox(boxed *any)        { *boxed = nil }\nfunc escapedBox() {\n\tvar boxed any = Parcel{Code: 90}\n\treplaceBox(&boxed)\n\t_ = boxed == nil\n}\nfunc laterDefinition() {\n\tvar boxed any\n\t_ = boxed == nil\n\tboxed = Parcel{Code: 91}\n\t_ = boxed\n}\n\nfunc shadowedNil() {\n\tnil := Parcel{Code: 92}\n\tvar boxed any = Parcel{Code: 93}\n\t_ = boxed == nil\n}\nfunc parenthesizedNil() {\n\tvar boxed any = Parcel{Code: 94}\n\t_ = boxed == (nil) // want-nonnil: parentheses do not change the nil constant\n}\n\ntype Inbox struct{ Value any }\n\nfunc fieldGuard(inbox *Inbox)       { _ = inbox.Value == nil }\nfunc mapGuard(inbox map[string]any) { _ = inbox[\"pending\"] == nil }\nfunc sliceGuard(inbox []any)        { _ = inbox[0] == nil }\nfunc dereferenceGuard(inbox *any)   { _ = *inbox == nil }\n","graph":{"definitions":[{"id":"d1","node_id":"n1","symbol_id":"s1"},{"id":"d2","node_id":"n10","symbol_id":"s2"},{"id":"d3","node_id":"n3","symbol_id":"s2"},{"id":"d4","node_id":"n6","symbol_id":"s2"},{"id":"d5","node_id":"n14","symbol_id":"s2"}],"edges":[{"evidence":{"description":"Lexical control nesting; not post-dominator control dependence.","status":"approximated"},"id":"e2","kind":"control","operand_position":0,"provenance":{"description":"Lexical control nesting; not post-dominator control dependence.","origin":"analysis"},"source":"n2","subkind":"lexical-control","target":"n3"},{"evidence":{"description":"Lexical control nesting; not post-dominator control dependence.","status":"approximated"},"id":"e3","kind":"control","operand_position":0,"provenance":{"description":"Lexical control nesting; not post-dominator control dependence.","origin":"analysis"},"source":"n2","subkind":"lexical-control","target":"n4"},{"evidence":{"description":"Lexical control nesting; not post-dominator control dependence.","status":"approximated"},"id":"e4","kind":"control","operand_position":0,"provenance":{"description":"Lexical control nesting; not post-dominator control dependence.","origin":"analysis"},"source":"n2","subkind":"lexical-control","target":"n5"},{"evidence":{"description":"Lexical control nesting; not post-dominator control dependence.","status":"approximated"},"id":"e7","kind":"control","operand_position":1,"provenance":{"description":"Lexical control nesting; not post-dominator control dependence.","origin":"analysis"},"source":"n2","subkind":"lexical-control","target":"n6"},{"evidence":{"description":"Lexical control nesting; not post-dominator control dependence.","status":"approximated"},"id":"e8","kind":"control","operand_position":1,"provenance":{"description":"Lexical control nesting; not post-dominator control dependence.","origin":"analysis"},"source":"n2","subkind":"lexical-control","target":"n7"},{"evidence":{"description":"Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete.","status":"approximated"},"id":"e11","kind":"execution","provenance":{"description":"Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete.","origin":"analysis"},"source":"n10","subkind":"must-precede","target":"n11"},{"evidence":{"description":"Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete.","status":"approximated"},"id":"e12","kind":"execution","provenance":{"description":"Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete.","origin":"analysis"},"source":"n11","subkind":"must-precede","target":"n6"},{"evidence":{"description":"Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete.","status":"approximated"},"id":"e13","kind":"execution","provenance":{"description":"Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete.","origin":"analysis"},"source":"n11","subkind":"must-precede","target":"n3"},{"evidence":{"description":"Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete.","status":"approximated"},"id":"e14","kind":"execution","provenance":{"description":"Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete.","origin":"analysis"},"source":"n11","subkind":"must-precede","target":"n8"},{"evidence":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","status":"supported"},"id":"e15","kind":"data","operand_position":0,"provenance":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","origin":"analysis"},"source":"n11","subkind":"binding-value","target":"n2"},{"evidence":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","status":"supported"},"id":"e16","kind":"data","operand_position":0,"provenance":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","origin":"analysis"},"source":"n7","subkind":"binding-value","target":"n6"},{"evidence":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","status":"supported"},"id":"e17","kind":"data","provenance":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","origin":"analysis"},"source":"n12","subkind":"binding-value","target":"n4"},{"evidence":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","status":"supported"},"id":"e18","kind":"data","provenance":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","origin":"analysis"},"source":"n5","subkind":"binding-value","target":"n4"},{"evidence":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","status":"supported"},"id":"e19","kind":"data","operand_position":0,"provenance":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","origin":"analysis"},"source":"n4","subkind":"binding-value","target":"n3"},{"evidence":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","status":"supported"},"id":"e20","kind":"data","operand_position":0,"provenance":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","origin":"analysis"},"source":"n13","subkind":"binding-value","target":"n9"},{"evidence":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","status":"supported"},"id":"e21","kind":"data","operand_position":0,"provenance":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","origin":"analysis"},"source":"n9","subkind":"binding-value","target":"n8"},{"definition_id":"d1","evidence":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","status":"supported"},"id":"e22","kind":"data","provenance":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","origin":"analysis"},"source":"n1","subkind":"reaching-definition","symbol_id":"s1","target":"n11"},{"definition_id":"d3","evidence":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","status":"supported"},"id":"e23","kind":"data","provenance":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","origin":"analysis"},"source":"n3","subkind":"reaching-definition","symbol_id":"s2","target":"n14"},{"definition_id":"d4","evidence":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","status":"supported"},"id":"e24","kind":"data","provenance":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","origin":"analysis"},"source":"n6","subkind":"reaching-definition","symbol_id":"s2","target":"n14"},{"definition_id":"d5","evidence":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","status":"supported"},"id":"e25","kind":"data","provenance":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","origin":"analysis"},"source":"n14","subkind":"reaching-definition","symbol_id":"s2","target":"n13"}],"extraction_evidence":{"capabilities":{"branch_merges":{"description":"Merge values are not computed.","status":"unsupported"},"calls":{"description":"Static declarations resolve where available; dynamic targets and call effects are unknown.","status":"approximated"},"closures":{"description":"Closure bodies and capture dependencies are not extracted.","status":"unsupported"},"concurrency":{"description":"Go/select/send operations are recorded; scheduling dependencies are not computed.","status":"unsupported"},"control_dependencies":{"description":"Lexical control nesting is approximated; post-dominator dependencies are not computed.","status":"approximated"},"exceptional_flow":{"description":"Panic/recover dependencies are not computed.","status":"unsupported"},"execution_dependencies":{"description":"Sparse must-precede edges between reachable statement/condition anchors, from sequential order and dominance; intrastatement and exceptional/concurrent ordering are incomplete.","status":"approximated"},"interface_binding_flow":{"description":"Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.","status":"supported"},"loop_carried_dependencies":{"description":"Loop-carried definitions are not computed.","status":"unsupported"},"macros":{"description":"Go has no language macros.","status":"not_applicable"},"memory_aliases":{"description":"Memory accesses are explicit; targets and aliases are unresolved.","status":"unknown"},"node_extraction":{"description":"Mixed statement/expression operations; closures are opaque; not a complete language lowering.","status":"approximated"},"parameters":{"description":"Receiver, inputs, named/unnamed outputs, types and variadic facts are recorded.","status":"supported"},"reference_counting":{"description":"Distinct recorded Go reference-bearing variable bindings; type parameters remain unknown. Not alias or storage-location counting.","status":"supported"},"returns":{"description":"Explicit returns connect to formal output slots; bare returns read named results. Reaching definitions, deferred result writes and implicit or exceptional exits are not computed.","status":"approximated"},"scalar_reaching_definitions":{"description":"Distinct syntactic definitions are recorded; mining edges use first bindings, not reaching definitions.","status":"unsupported"}},"conformance":{"reasons":["Dependency analysis and the shared extraction profile are incomplete."],"status":"non_conformant"},"diagnostics":[{"code":"pdg.incomplete-dependencies","message":"Operation facts are available; dependency absence must not be treated as independence.","severity":"warning"}]},"function":{"id":"github.com/rstyled/gstyle/adapters/gopatterns/testdata/interface-nil.branchAssignments","inputs":[{"extensions":{"gstyle.go.scalar-normal:resolved-type":{"primitive":"bool"}},"name":{"status":"known","value":"enabled"},"position":0,"role":"parameter","symbol_id":"s1","type":{"status":"known","value":"bool"},"variadic":{"status":"known","value":false}}],"interface_completeness":{"description":"Complete typed function interface.","status":"supported"},"name":{"status":"known","value":"branchAssignments"},"outputs":[],"qualified_name":{"status":"known","value":"github.com/rstyled/gstyle/adapters/gopatterns/testdata/interface-nil.branchAssignments"},"reference_count":{"status":"known","value":1},"source_span":{"end":2438,"source_id":"adapters/gopatterns/testdata/interface-nil/sample.go","start":2239}},"memory_locations":[],"nodes":[{"attributes":{"defines":["d1"],"position":0,"symbol_ids":["s1"]},"category":"formal_input","evidence":{"description":"Operation identified in typed source; dependency completeness is separate.","status":"approximated"},"id":"n1","original_kind":{"status":"known","value":"*ast.Field"},"provenance":{"description":"Go source operation; abstraction lowering is approximate.","origin":"source"},"source_span":{"end":2274,"source_id":"adapters/gopatterns/testdata/interface-nil/sample.go","start":2262},"synthetic":false},{"attributes":{"construct":"if","outcomes":["true","false"]},"category":"control","evidence":{"description":"Operation identified in typed source; dependency completeness is separate.","status":"approximated"},"id":"n2","original_kind":{"status":"known","value":"*ast.IfStmt"},"provenance":{"description":"Go source operation; abstraction lowering is approximate.","origin":"source"},"source_span":{"end":2365,"source_id":"adapters/gopatterns/testdata/interface-nil/sample.go","start":2294},"synthetic":false},{"attributes":{"defines":["d3"],"symbol_ids":["s2"],"write_form":"=","writes":[{"symbol_id":"s2"}]},"category":"assignment","evidence":{"description":"Operation identified in typed source; dependency completeness is separate.","status":"approximated"},"id":"n3","original_kind":{"status":"known","value":"*ast.AssignStmt"},"provenance":{"description":"Go source operation; abstraction lowering is approximate.","origin":"source"},"source_span":{"end":2333,"source_id":"adapters/gopatterns/testdata/interface-nil/sample.go","start":2309},"synthetic":false},{"attributes":{"extensions":{"gstyle:interface-value":"concrete"},"operator":{"status":"known","value":"composite"}},"category":"computation","evidence":{"description":"Operation identified in typed source; dependency completeness is separate.","status":"approximated"},"id":"n4","original_kind":{"status":"known","value":"*ast.CompositeLit"},"provenance":{"description":"Go source operation; abstraction lowering is approximate.","origin":"source"},"source_span":{"end":2333,"source_id":"adapters/gopatterns/testdata/interface-nil/sample.go","start":2317},"synthetic":false},{"attributes":{"extensions":{"gstyle:interface-value":"concrete"},"literal":{"status":"known","value":"87"},"operator":{"status":"known","value":"literal"}},"category":"computation","evidence":{"description":"Operation identified in typed source; dependency completeness is separate.","status":"approximated"},"id":"n5","original_kind":{"status":"known","value":"*ast.BasicLit"},"provenance":{"description":"Go source operation; abstraction lowering is approximate.","origin":"source"},"source_span":{"end":2332,"source_id":"adapters/gopatterns/testdata/interface-nil/sample.go","start":2330},"synthetic":false},{"attributes":{"defines":["d4"],"symbol_ids":["s2"],"write_form":"=","writes":[{"symbol_id":"s2"}]},"category":"assignment","evidence":{"description":"Operation identified in typed source; dependency completeness is separate.","status":"approximated"},"id":"n6","original_kind":{"status":"known","value":"*ast.AssignStmt"},"provenance":{"description":"Go source operation; abstraction lowering is approximate.","origin":"source"},"source_span":{"end":2362,"source_id":"adapters/gopatterns/testdata/interface-nil/sample.go","start":2346},"synthetic":false},{"attributes":{"extensions":{"gstyle:interface-value":"concrete"},"literal":{"status":"known","value":"\"queued\""},"operator":{"status":"known","value":"literal"}},"category":"computation","evidence":{"description":"Operation identified in typed source; dependency completeness is separate.","status":"approximated"},"id":"n7","original_kind":{"status":"known","value":"*ast.BasicLit"},"provenance":{"description":"Go source operation; abstraction lowering is approximate.","origin":"source"},"source_span":{"end":2362,"source_id":"adapters/gopatterns/testdata/interface-nil/sample.go","start":2354},"synthetic":false},{"attributes":{"write_form":"="},"category":"assignment","evidence":{"description":"Operation identified in typed source; dependency completeness is separate.","status":"approximated"},"id":"n8","original_kind":{"status":"known","value":"*ast.AssignStmt"},"provenance":{"description":"Go source operation; abstraction lowering is approximate.","origin":"source"},"source_span":{"end":2383,"source_id":"adapters/gopatterns/testdata/interface-nil/sample.go","start":2367},"synthetic":false},{"attributes":{"extensions":{"gstyle:interface-nil-operand":1,"gstyle:interface-value":"concrete"},"operator":{"status":"known","value":"=="}},"category":"computation","evidence":{"description":"Operation identified in typed source; dependency completeness is separate.","status":"approximated"},"id":"n9","original_kind":{"status":"known","value":"*ast.BinaryExpr"},"provenance":{"description":"Go source operation; abstraction lowering is approximate.","origin":"source"},"source_span":{"end":2383,"source_id":"adapters/gopatterns/testdata/interface-nil/sample.go","start":2371},"synthetic":false},{"attributes":{"defines":["d2"],"symbol_ids":["s2"],"writes":[{"symbol_id":"s2"}]},"category":"declaration","evidence":{"description":"Operation identified in typed source; dependency completeness is separate.","status":"approximated"},"id":"n10","original_kind":{"status":"known","value":"*ast.ValueSpec"},"provenance":{"description":"Go source operation; abstraction lowering is approximate.","origin":"source"},"source_span":{"end":2292,"source_id":"adapters/gopatterns/testdata/interface-nil/sample.go","start":2283},"synthetic":false},{"attributes":{"extensions":{"gstyle:interface-value":"concrete"},"reads":[{"symbol_id":"s1"}]},"category":"read","evidence":{"description":"Operation identified in typed source; dependency completeness is separate.","status":"approximated"},"id":"n11","original_kind":{"status":"known","value":"*ast.Ident"},"provenance":{"description":"Go source operation; abstraction lowering is approximate.","origin":"source"},"source_span":{"end":2304,"source_id":"adapters/gopatterns/testdata/interface-nil/sample.go","start":2297},"synthetic":false},{"attributes":{"reads":[{"symbol_id":"s3"}]},"category":"read","evidence":{"description":"Operation identified in typed source; dependency completeness is separate.","status":"approximated"},"id":"n12","original_kind":{"status":"known","value":"*ast.Ident"},"provenance":{"description":"Go source operation; abstraction lowering is approximate.","origin":"source"},"source_span":{"end":2328,"source_id":"adapters/gopatterns/testdata/interface-nil/sample.go","start":2324},"synthetic":false},{"attributes":{"extensions":{"gstyle:interface-value":"interface"},"reads":[{"symbol_id":"s2"}]},"category":"read","evidence":{"description":"Operation identified in typed source; dependency completeness is separate.","status":"approximated"},"id":"n13","original_kind":{"status":"known","value":"*ast.Ident"},"provenance":{"description":"Go source operation; abstraction lowering is approximate.","origin":"source"},"source_span":{"end":2376,"source_id":"adapters/gopatterns/testdata/interface-nil/sample.go","start":2371},"synthetic":false},{"attributes":{"defines":["d5"],"description":"Scalar value join at a reachable read site.","symbol_ids":["s2"]},"category":"merge","evidence":{"description":"Exact scalar reaching definitions for acyclic normal flow: local integer/boolean bindings, assignments, if branches, short-circuit expressions, explicit value joins and returns; calls, memory and loops are excluded.","status":"supported"},"id":"n14","original_kind":{"reason":"Derived scalar value/read/predicate entity; its span identifies the source value site.","status":"not_applicable"},"provenance":{"description":"Exact scalar reaching definitions for acyclic normal flow: local integer/boolean bindings, assignments, if branches, short-circuit expressions, explicit value joins and returns; calls, memory and loops are excluded.","origin":"analysis"},"source_span":{"end":2376,"source_id":"adapters/gopatterns/testdata/interface-nil/sample.go","start":2371},"synthetic":true}],"producer":{"configuration":{"pointer_width":64,"package":"github.com/rstyled/gstyle/adapters/gopatterns/testdata/interface-nil"},"language":"go","language_version":{"status":"known","value":"go1.26.0"},"name":"gstyle","version":"pdg-ir-0.2.0"},"profile":{"id":"gstyle.abstraction","version":"0.2.0"},"schema_version":"0.1.0","sources":[{"content_identity":{"status":"known","value":"d606c83d9d1c123fe960112bbfd89c9d26c5a658516ae08390700d82cfd0fe14"},"id":"adapters/gopatterns/testdata/interface-nil/sample.go","path":"adapters/gopatterns/testdata/interface-nil/sample.go"}],"symbols":[{"extensions":{"gstyle.go.scalar-normal:resolved-type":{"primitive":"bool"}},"id":"s1","name":{"status":"known","value":"enabled"},"role":"parameter","scope_id":"scope:adapters/gopatterns/testdata/interface-nil/sample.go:lexical:2239:2438","type":{"status":"known","value":"bool"}},{"id":"s2","name":{"status":"known","value":"boxed"},"role":"local","scope_id":"scope:adapters/gopatterns/testdata/interface-nil/sample.go:lexical:2239:2438","type":{"status":"known","value":"any"}},{"extensions":{"gstyle.go.scalar-normal:resolved-type":{"primitive":"isize"}},"id":"s3","name":{"status":"known","value":"Code"},"role":"local","scope_id":"scope:unbound:github.com/rstyled/gstyle/adapters/gopatterns/testdata/interface-nil","type":{"status":"known","value":"int"}}]},"finding":{"Kind":"typednil","ScoreMilli":750,"Breakdown":{"Support":1,"LiftMilli":0,"Holes":0,"CoverageMilli":1000},"Observation":"typed nil compared to nil: `interface value is provably non-nil`","Inference":"interface nil checks do not test whether the contained value is nil","PossibleRefactor":"","Sites":[{"Path":"adapters/gopatterns/testdata/interface-nil/sample.go","Line":79,"EndLine":79,"ID":"github.com/rstyled/gstyle/adapters/gopatterns/testdata/interface-nil.branchAssignments","Name":"github.com/rstyled/gstyle/adapters/gopatterns/testdata/interface-nil.branchAssignments"}],"Definitions":null,"CounterEvidence":null,"FixSpec":null},"structure":{"ast":[{"kind":"*ast.FuncDecl","start":2239,"end":2438},{"kind":"*ast.Ident","start":2244,"end":2261},{"kind":"*ast.FuncType","start":2239,"end":2275},{"kind":"*ast.FieldList","start":2261,"end":2275},{"kind":"*ast.Field","start":2262,"end":2274},{"kind":"*ast.Ident","start":2262,"end":2269},{"kind":"*ast.Ident","start":2270,"end":2274},{"kind":"*ast.BlockStmt","start":2276,"end":2438},{"kind":"*ast.DeclStmt","start":2279,"end":2292},{"kind":"*ast.GenDecl","start":2279,"end":2292},{"kind":"*ast.ValueSpec","start":2283,"end":2292},{"kind":"*ast.Ident","start":2283,"end":2288},{"kind":"*ast.Ident","start":2289,"end":2292},{"kind":"*ast.IfStmt","start":2294,"end":2365},{"kind":"*ast.Ident","start":2297,"end":2304},{"kind":"*ast.BlockStmt","start":2305,"end":2336},{"kind":"*ast.AssignStmt","start":2309,"end":2333},{"kind":"*ast.Ident","start":2309,"end":2314},{"kind":"*ast.CompositeLit","start":2317,"end":2333},{"kind":"*ast.Ident","start":2317,"end":2323},{"kind":"*ast.KeyValueExpr","start":2324,"end":2332},{"kind":"*ast.Ident","start":2324,"end":2328},{"kind":"*ast.BasicLit","start":2330,"end":2332},{"kind":"*ast.BlockStmt","start":2342,"end":2365},{"kind":"*ast.AssignStmt","start":2346,"end":2362},{"kind":"*ast.Ident","start":2346,"end":2351},{"kind":"*ast.BasicLit","start":2354,"end":2362},{"kind":"*ast.AssignStmt","start":2367,"end":2383},{"kind":"*ast.Ident","start":2367,"end":2368},{"kind":"*ast.BinaryExpr","start":2371,"end":2383},{"kind":"*ast.Ident","start":2371,"end":2376},{"kind":"*ast.Ident","start":2380,"end":2383}],"cfg":[{"id":0,"kind":"Body","live":true,"successors":[1,3],"nodes":[{"kind":"*ast.ValueSpec","start":2283,"end":2292},{"kind":"*ast.Ident","start":2297,"end":2304}]},{"id":1,"kind":"IfThen","live":true,"successors":[2],"nodes":[{"kind":"*ast.AssignStmt","start":2309,"end":2333}]},{"id":2,"kind":"IfDone","live":true,"successors":[],"nodes":[{"kind":"*ast.AssignStmt","start":2367,"end":2383},{"kind":"*ast.ReturnStmt","start":2437,"end":2443}]},{"id":3,"kind":"IfElse","live":true,"successors":[2],"nodes":[{"kind":"*ast.AssignStmt","start":2346,"end":2362}]}],"typed":true},"replay":{"false":[{"kind":"initial","start":2279,"type":"\u003cnil>","value":null,"result":true},{"kind":"branch","start":2297,"type":"bool","value":false,"result":false},{"kind":"value","start":2346,"type":"string","value":"queued","result":false},{"kind":"value","start":2367,"type":"string","value":"queued","result":false}],"true":[{"kind":"initial","start":2279,"type":"\u003cnil>","value":null,"result":true},{"kind":"branch","start":2297,"type":"bool","value":true,"result":true},{"kind":"value","start":2309,"type":"main.Parcel","value":{"Code":87},"result":false},{"kind":"value","start":2367,"type":"main.Parcel","value":{"Code":87},"result":false}]},"detector":{"path":"domain/interfacenil/proof.go","source":"// Package interfacenil proves non-nil interface comparisons from the shared\n// PDG. It never consumes ASTs, mining-value edges, or clone matching labels.\npackage interfacenil\n\nimport \"github.com/rstyled/gstyle/domain/pdg\"\n\ntype site struct {\n\tgraph int\n\tnode  pdg.Ref\n}\n\ntype proofNode struct {\n\tdependencies []int\n\tusers        []int\n\tpending      int\n\tseed         bool\n}\n\n// The worklist is private scratch storage. Mutating counters and adjacency\n// lists keeps proof linear in graph size; no per-node ancestry sets are copied.\ntype solver struct {\n\tnodes   []proofNode\n\tsites   []site\n\toffsets []int\n\toutputs map[string]int\n}\n\nfunc newSolver(graphs []pdg.Graph) *solver {\n\ts := &solver{outputs: map[string]int{}}\n\tfor i, graph := range graphs {\n\t\tif !supported(&graph) {\n\t\t\ts.offsets = append(s.offsets, -1)\n\t\t\tcontinue\n\t\t}\n\t\ts.offsets = append(s.offsets, len(s.nodes))\n\t\tfor ref, node := range graph.Nodes {\n\t\t\ts.nodes = append(s.nodes, proofNode{})\n\t\t\ts.sites = append(s.sites, site{i, pdg.Ref(ref + 1)})\n\t\t\tif node.Category == pdg.FormalOutput && len(graph.Function.Outputs) == 1 {\n\t\t\t\ts.outputs[graph.Tables.Text(graph.Function.ID)] = s.offsets[i] + ref\n\t\t\t}\n\t\t}\n\t}\n\treturn s\n}\n\nfunc (s *solver) function(graph pdg.Graph, index int) {\n\tif !supported(&graph) {\n\t\treturn\n\t}\n\toffset := s.offsets[index]\n\teligible := make([]bool, len(graph.Nodes))\n\tfor ref, node := range graph.Nodes {\n\t\tattrs := graph.NodeAttributes(node)\n\t\ttarget := offset + ref\n\t\teligible[ref] = s.operation(&graph, node, attrs, target)\n\t}\n\n\tfor _, edge := range graph.Edges {\n\t\tif !eligible[edge.Target-1] || !proofEdge(&graph, edge) {\n\t\t\tcontinue\n\t\t}\n\t\ttarget := offset + int(edge.Target) - 1\n\t\ts.nodes[target].dependencies = append(s.nodes[target].dependencies, offset+int(edge.Source)-1)\n\t}\n}\n\nfunc (s *solver) operation(graph *pdg.Graph, node pdg.Node, attrs pdg.Attributes, target int) bool {\n\tkind := extension(graph, attrs, \"gstyle:interface-value\")\n\ts.nodes[target].seed = kind == `\"concrete\"` || kind == `\"boxed\"`\n\tif node.Category == pdg.Call {\n\t\ts.call(graph, attrs, target)\n\t\treturn false\n\t}\n\treturn transfer(node.Category, attrs, graph)\n}\n\nfunc (s *solver) call(graph *pdg.Graph, attrs pdg.Attributes, target int) {\n\tif attrs.CallForm != pdg.DirectCall || attrs.Callee.Status != pdg.Known {\n\t\treturn\n\t}\n\toutput, ok := s.outputs[graph.Tables.Text(attrs.Callee.Value)]\n\tif ok {\n\t\ts.nodes[target].dependencies = append(s.nodes[target].dependencies, output)\n\t}\n}\n\nfunc (s *solver) solve() []bool {\n\tknown := make([]bool, len(s.nodes))\n\tqueue := s.seedQueue(known)\n\n\tfor cursor := 0; cursor \u003c len(queue); cursor++ {\n\t\tfor _, user := range s.nodes[queue[cursor]].users {\n\t\t\ts.nodes[user].pending--\n\t\t\tif known[user] || s.nodes[user].pending != 0 {\n\t\t\t\tcontinue\n\t\t\t}\n\t\t\tknown[user] = true\n\t\t\tqueue = append(queue, user)\n\t\t}\n\t}\n\treturn known\n}\n\nfunc (s *solver) seedQueue(known []bool) []int {\n\tvar queue []int\n\tfor index := range s.nodes {\n\t\tnode := &s.nodes[index]\n\t\tnode.pending = len(node.dependencies)\n\t\tfor _, dependency := range node.dependencies {\n\t\t\ts.nodes[dependency].users = append(s.nodes[dependency].users, index)\n\t\t}\n\t\tif node.seed {\n\t\t\tknown[index] = true\n\t\t\tqueue = append(queue, index)\n\t\t}\n\t}\n\treturn queue\n}\n\nfunc (s *solver) operandKnown(graphs []pdg.Graph, index int, position pdg.Position, known []bool) bool {\n\twhere := s.sites[index]\n\tgraph := &graphs[where.graph]\n\toffset := s.offsets[where.graph]\n\tfound := false\n\tfor _, edge := range graph.Edges {\n\t\tif !comparisonOperand(graph, edge, where.node, position) {\n\t\t\tcontinue\n\t\t}\n\t\tif !known[offset+int(edge.Source)-1] {\n\t\t\treturn false\n\t\t}\n\t\tfound = true\n\t}\n\treturn found\n}\n\n// Find returns comparison nodes with a proven non-nil interface operand.\n// Unknown inputs and unresolved/recursive call summaries do not become proof.\nfunc Find(graphs []pdg.Graph) [][]pdg.Ref {\n\ts := newSolver(graphs)\n\tfor i := range graphs {\n\t\ts.function(graphs[i], i)\n\t}\n\tknown := s.solve()\n\tresults := make([][]pdg.Ref, len(graphs))\n\tfor index, where := range s.sites {\n\t\tgraph := &graphs[where.graph]\n\t\tattrs := graph.NodeAttributes(graph.Nodes[where.node-1])\n\t\tposition := nilOperand(graph, attrs)\n\t\tif position == 0 {\n\t\t\tcontinue\n\t\t}\n\t\tif s.operandKnown(graphs, index, position, known) {\n\t\t\tresults[where.graph] = append(results[where.graph], where.node)\n\t\t}\n\t}\n\treturn results\n}\n\nfunc supported(graph *pdg.Graph) bool {\n\tfor _, capability := range graph.Capabilities {\n\t\tif graph.Tables.Text(capability.Name) == \"interface_binding_flow\" {\n\t\t\treturn graph.Tables.Evidence[capability.Evidence-1].Status == pdg.Supported\n\t\t}\n\t}\n\treturn false\n}\n\nfunc transfer(category pdg.Category, attrs pdg.Attributes, graph *pdg.Graph) bool {\n\tswitch category {\n\tcase pdg.Read:\n\t\treturn localRead(attrs)\n\tcase pdg.Assignment, pdg.Declaration, pdg.Return, pdg.FormalOutput, pdg.Merge:\n\t\treturn true\n\tcase pdg.Computation:\n\t\tif attrs.Operator.Status != pdg.Known {\n\t\t\treturn false\n\t\t}\n\t\toperator := graph.Tables.Text(attrs.Operator.Value)\n\t\treturn operator == \"conversion\" || operator == \"parentheses\"\n\tdefault:\n\t\treturn false\n\t}\n}\n\nfunc localRead(attrs pdg.Attributes) bool {\n\tif len(attrs.Reads) != 1 {\n\t\treturn false\n\t}\n\tread := attrs.Reads[0]\n\treturn read.Symbol != 0 && read.Location == 0 && read.UnresolvedReason == 0\n}\n\nfunc proofEdge(graph *pdg.Graph, edge pdg.Edge) bool {\n\tif edge.Kind != pdg.Data {\n\t\treturn false\n\t}\n\tswitch graph.Tables.Text(edge.Subkind) {\n\tcase \"reaching-definition\", \"binding-value\", \"return-value\":\n\t\treturn graph.Tables.Evidence[edge.Evidence-1].Status == pdg.Supported\n\tdefault:\n\t\treturn false\n\t}\n}\n\nfunc extension(graph *pdg.Graph, attrs pdg.Attributes, name string) string {\n\tfor _, value := range attrs.Extensions {\n\t\tif graph.Tables.Text(value.Name) == name {\n\t\t\treturn graph.Tables.Text(value.Value)\n\t\t}\n\t}\n\treturn \"\"\n}\n\nfunc nilOperand(graph *pdg.Graph, attrs pdg.Attributes) pdg.Position {\n\tswitch extension(graph, attrs, \"gstyle:interface-nil-operand\") {\n\tcase \"1\":\n\t\treturn 1\n\tcase \"2\":\n\t\treturn 2\n\tdefault:\n\t\treturn 0\n\t}\n}\n\nfunc comparisonOperand(graph *pdg.Graph, edge pdg.Edge, target pdg.Ref, position pdg.Position) bool {\n\tif edge.Target != target || edge.Position != position {\n\t\treturn false\n\t}\n\treturn graph.Tables.Text(edge.Subkind) == \"binding-value\" && proofEdge(graph, edge)\n}\n","sha256":"296064ac75097ea8ab4b215d9bbd6a3f880cb9c182ca749d064b89c6ff8706eb","witness":{"comparison":"n9","operand":1,"roots":["n13"],"steps":[{"node":"n13","seed":false,"dependencies":["n14"]},{"node":"n14","seed":false,"dependencies":["n3","n6"]},{"node":"n3","seed":false,"dependencies":["n4"]},{"node":"n6","seed":false,"dependencies":["n7"]},{"node":"n4","seed":true,"dependencies":[]},{"node":"n7","seed":true,"dependencies":[]}]}},"repair":{"before":"func branchAssignments(enabled bool) {\n\tvar boxed any\n\tif enabled {\n\t\tboxed = Parcel{Code: 87}\n\t} else {\n\t\tboxed = \"queued\"\n\t}\n\t_ = boxed == nil // want-nonnil: every reaching definition is non-nil\n}","after":"func branchAssignments(enabled bool) {\n\tvar boxed any\n\tif enabled {\n\t\tboxed = Parcel{Code: 87}\n\t} else {\n\t\tboxed = nil\n\t}\n\t_ = boxed == nil // want-nonnil: every reaching definition is non-nil\n}","runs":{"false":[{"kind":"initial","start":2279,"type":"\u003cnil>","value":null,"result":true},{"kind":"branch","start":2297,"type":"bool","value":false,"result":false},{"kind":"value","start":2346,"type":"\u003cnil>","value":null,"result":true},{"kind":"value","start":2362,"type":"\u003cnil>","value":null,"result":true}],"true":[{"kind":"initial","start":2279,"type":"\u003cnil>","value":null,"result":true},{"kind":"branch","start":2297,"type":"bool","value":true,"result":true},{"kind":"value","start":2309,"type":"main.Parcel","value":{"Code":87},"result":false},{"kind":"value","start":2362,"type":"main.Parcel","value":{"Code":87},"result":false}]},"remainingFindings":0,"contract":"For this experiment only: disabled means no value (nil); enabled means a Parcel. The original fixture does not specify this product intent."}}</script><script type="module">// tools/code-lens/explanation.ts
+function explanationSteps(g, w) {
+  const steps = new Map(w.steps.map((s) => [s.node, s]));
+  const read = w.roots[0], join = steps.get(read)?.dependencies[0];
+  const writes = steps.get(join)?.dependencies || [];
+  const control = g.nodes.find((n) => n.category === "control" && writes.every((id) => g.edges.some((e) => e.kind === "control" && e.source === n.id && e.target === id)));
+  if (!control || writes.length !== 2)
+    throw new Error("Expected two branch assignments in the solver witness");
+  const seeds = writes.flatMap((id) => steps.get(id)?.dependencies || []);
+  return [
+    { title: "1. enabled chooses one branch", body: "If enabled is true, the left branch runs. If it is false, the right branch runs. They do not both run in one call.", selected: control.id, nodes: [control.id, ...seeds] },
+    { title: "2. Either branch puts a value in boxed", body: 'The left branch stores Parcel{Code: 87}. The right branch stores "queued". Both branches store a concrete value in boxed. Neither leaves it as an empty interface (nil).', selected: writes[0], nodes: [...seeds, ...writes] },
+    { title: "3. The later code can receive either value", body: 'These arrows follow the two possible definitions of boxed. The join is a graph operation: it means "this read can get the value from either branch". It does not combine the values.', selected: join, nodes: [...writes, join, read] },
+    { title: "4. boxed == nil is always false here", body: "The check asks whether boxed is an empty interface. Both branches stored a value and its type, so boxed == nil cannot be true. That is the finding gstyle reports; the fixture does not tell us what the author intended instead.", selected: w.comparison, nodes: [join, read, w.comparison] }
+  ];
+}
+
+// tools/code-lens/directed-layout.ts
+function investigationLayout(g, w) {
+  const positions = new Map;
+  const roles = new Map;
+  const put = (id, x, y, role) => {
+    if (!id)
+      return;
+    positions.set(id, { x, y, w: 220, h: 88 });
+    roles.set(id, role);
+  };
+  const steps = new Map(w.steps.map((s) => [s.node, s]));
+  const read = w.roots[0], join = steps.get(read)?.dependencies[0];
+  const writes = steps.get(join)?.dependencies || [];
+  const control = g.nodes.find((n) => n.category === "control" && writes.every((id) => g.edges.some((e) => e.kind === "control" && e.source === n.id && e.target === id)));
+  if (!control || writes.length !== 2)
+    throw new Error("This directed view requires the two-branch fixture witness");
+  const branchRead = g.edges.find((e) => e.target === control.id && e.kind === "data")?.source;
+  const input = g.edges.find((e) => e.target === branchRead && e.subkind === "reaching-definition")?.source;
+  put(input, 130, 100, "Input");
+  put(branchRead, 400, 100, "Read enabled");
+  put(control.id, 670, 100, "Choose one branch");
+  for (const id of writes) {
+    const edge = g.edges.find((e) => e.kind === "control" && e.target === id);
+    const x = edge.operand_position === 1 ? 940 : 400;
+    const seed = steps.get(id)?.dependencies[0];
+    put(seed, x, 285, "Non-nil value");
+    put(id, x, 435, "Set boxed");
+  }
+  put(join, 670, 620, "Join both values");
+  put(read, 940, 620, "Read boxed");
+  put(w.comparison, 1210, 620, "Nil check is false");
+  const after = g.edges.find((e) => e.source === w.comparison && e.kind === "data")?.target;
+  put(after, 1210, 790, "Discard result");
+  let row = 0;
+  for (const n of g.nodes.filter((n) => !positions.has(n.id)).sort((a, b) => (a.source_span?.start || 0) - (b.source_span?.start || 0))) {
+    put(n.id, 130, 285 + row++ * 150, n.category === "declaration" ? "Initial value" : n.category === "read" ? "Field name" : "Literal");
+  }
+  return { positions, roles, width: 1380, height: 900, control: control.id, join };
+}
+function inside(p, n, pad = 0) {
+  return p.x > n.x - n.w / 2 - pad && p.x < n.x + n.w / 2 + pad && p.y > n.y - n.h / 2 - pad && p.y < n.y + n.h / 2 + pad;
+}
+function segmentHits(a, b, n, pad = 0) {
+  if (a.x === b.x)
+    return a.x > n.x - n.w / 2 - pad && a.x < n.x + n.w / 2 + pad && Math.max(a.y, b.y) > n.y - n.h / 2 - pad && Math.min(a.y, b.y) < n.y + n.h / 2 + pad;
+  return a.y > n.y - n.h / 2 - pad && a.y < n.y + n.h / 2 + pad && Math.max(a.x, b.x) > n.x - n.w / 2 - pad && Math.min(a.x, b.x) < n.x + n.w / 2 + pad;
+}
+function routeEdge(a, b, obstacles, index, ports = {}) {
+  const horizontal = ports.vertical ? false : ports.horizontal ? true : Math.abs(b.x - a.x) > Math.abs(b.y - a.y);
+  const sign = horizontal ? Math.sign(b.x - a.x) : Math.sign(b.y - a.y);
+  const start = { x: a.x + (horizontal ? sign * a.w / 2 : ports.sourceOffset || 0), y: a.y + (horizontal ? 0 : sign * a.h / 2) };
+  const end = { x: b.x - (horizontal ? sign * b.w / 2 : -(ports.targetOffset || 0)), y: b.y - (horizontal ? 0 : sign * b.h / 2) };
+  const first = { x: start.x + (horizontal ? sign * 18 : 0), y: start.y + (horizontal ? 0 : sign * 18) };
+  const last = { x: end.x - (horizontal ? sign * 18 : 0), y: end.y - (horizontal ? 0 : sign * 18) };
+  const xs = [...new Set([first.x, last.x, 25, 1355, ...obstacles.flatMap((n) => [n.x - n.w / 2 - 22 - index % 3 * 5, n.x + n.w / 2 + 22 + index % 3 * 5])])].sort((a, b) => a - b);
+  const ys = [...new Set([first.y, last.y, 25, 875, ...obstacles.flatMap((n) => [n.y - n.h / 2 - 22 - index % 3 * 5, n.y + n.h / 2 + 22 + index % 3 * 5])])].sort((a, b) => a - b);
+  const path = searchGrid(xs, ys, first, last, obstacles);
+  return simplify([start, ...path, end]);
+}
+function searchGrid(xs, ys, start, end, obstacles) {
+  const queue = [{ x: xs.indexOf(start.x), y: ys.indexOf(start.y), dir: 0, cost: 0, path: [start] }], best = new Map;
+  while (queue.length) {
+    queue.sort((a, b) => a.cost - b.cost);
+    const s = queue.shift(), p = { x: xs[s.x], y: ys[s.y] };
+    if (p.x === end.x && p.y === end.y)
+      return s.path;
+    for (const [dx, dy, dir] of [[1, 0, 1], [-1, 0, 1], [0, 1, 2], [0, -1, 2]]) {
+      const x = s.x + dx, y = s.y + dy;
+      if (x < 0 || y < 0 || x >= xs.length || y >= ys.length)
+        continue;
+      const next = { x: xs[x], y: ys[y] };
+      if (obstacles.some((n) => inside(next, n, 4) || segmentHits(p, next, n, 4)))
+        continue;
+      const cost = s.cost + Math.abs(next.x - p.x) + Math.abs(next.y - p.y) + (s.dir && s.dir !== dir ? 35 : 0), key = `${x}:${y}:${dir}`;
+      if ((best.get(key) ?? Infinity) <= cost)
+        continue;
+      best.set(key, cost);
+      queue.push({ x, y, dir, cost, path: [...s.path, next] });
+    }
+  }
+  throw new Error("No unobstructed graph route");
+}
+function simplify(points) {
+  const out = [];
+  for (const p of points) {
+    const a = out.at(-2), b = out.at(-1);
+    if (a && b && (a.x === b.x && b.x === p.x || a.y === b.y && b.y === p.y))
+      out.pop();
+    if (!out.length || out.at(-1).x !== p.x || out.at(-1).y !== p.y)
+      out.push(p);
+  }
+  return out;
+}
+function routePath(points) {
+  return points.map((p, i) => `${i ? "L" : "M"}${p.x} ${p.y}`).join(" ");
+}
+function directedRoutes(g, w, layout) {
+  const seeds = new Set(w.steps.filter((s) => s.seed).map((s) => s.node));
+  return new Map(g.edges.map((e, i) => {
+    const a = layout.positions.get(e.source), b = layout.positions.get(e.target);
+    const join = e.target === layout.join, branch = e.kind === "control" && seeds.has(e.target);
+    const ports = join ? { vertical: true, targetOffset: a.x < b.x ? -43 : 43 } : branch ? { vertical: true, sourceOffset: a.x > b.x ? -43 : 43 } : seeds.has(e.target) ? { horizontal: true } : {};
+    return [e.id, routeEdge(a, b, [...layout.positions.values()], i, ports)];
+  }));
+}
+
+// tools/code-lens/model.ts
+var bytes = (source, start, end) => new TextDecoder().decode(new TextEncoder().encode(source).slice(start, end));
+var lineAt = (source, offset) => bytes(source, 0, offset).split(`
+`).length;
+function snippet(source, node) {
+  const s = node.source_span;
+  if (!s)
+    return "No source location";
+  return bytes(source, s.start, s.end);
+}
+function lineNodes(g, source, line) {
+  return g.nodes.filter((n) => n.source_span && lineAt(source, n.source_span.start) === line).sort((a, b) => {
+    const priority = { control: 0, assignment: 1, declaration: 2, formal_input: 3 };
+    const rank = (priority[a.category] ?? 4) - (priority[b.category] ?? 4);
+    return rank || a.source_span.end - a.source_span.start - (b.source_span.end - b.source_span.start);
+  });
+}
+function validate(g, source) {
+  const ids = new Set(g.nodes.map((n) => n.id));
+  if (ids.size !== g.nodes.length)
+    throw new Error("Duplicate graph nodes");
+  const size = new TextEncoder().encode(source).length;
+  for (const n of g.nodes) {
+    const s = n.source_span;
+    if (s && (s.start < 0 || s.end < s.start || s.end > size))
+      throw new Error(`Invalid source span: ${n.id}`);
+  }
+  for (const e of g.edges) {
+    if (!ids.has(e.source) || !ids.has(e.target))
+      throw new Error(`Missing edge endpoint: ${e.id}`);
+  }
+}
+function upstream(g, start) {
+  const ids = new Set([start]), queue = [start];
+  for (let i = 0;i < queue.length; i++) {
+    for (const e of g.edges.filter((e) => e.kind === "data" && e.target === queue[i])) {
+      if (ids.has(e.source))
+        continue;
+      ids.add(e.source);
+      queue.push(e.source);
+    }
+  }
+  return ids;
+}
+function proofRegion(g, w) {
+  const ids = new Set([w.comparison, ...w.steps.map((s) => s.node)]);
+  const graphIDs = new Set(g.nodes.map((n) => n.id));
+  for (const id of ids)
+    if (!graphIDs.has(id))
+      throw new Error(`Unknown proof node: ${id}`);
+  const pairs = new Set(w.roots.map((id) => `${id}:${w.comparison}`));
+  for (const s of w.steps)
+    for (const dep of s.dependencies) {
+      if (!ids.has(dep))
+        throw new Error(`Missing proof dependency: ${dep}`);
+      pairs.add(`${dep}:${s.node}`);
+    }
+  const matches = g.edges.filter((e) => e.kind === "data" && e.evidence.status === "supported" && pairs.has(`${e.source}:${e.target}`));
+  for (const pair of pairs)
+    if (!matches.some((e) => `${e.source}:${e.target}` === pair))
+      throw new Error(`Missing supported proof edge: ${pair}`);
+  const edges = new Set(matches.map((e) => e.id));
+  return { ids, edges };
+}
+function zoomBox(box, factor, px = 0.5, py = 0.5) {
+  const w = box.w * factor, h = box.h * factor;
+  return { x: box.x + (box.w - w) * px, y: box.y + (box.h - h) * py, w, h };
+}
+function fitBox(bounds, aspect, pad = 60) {
+  const w = Math.max(bounds.w + pad * 2, (bounds.h + pad * 2) * aspect), h = w / aspect;
+  return { x: bounds.x + bounds.w / 2 - w / 2, y: bounds.y + bounds.h / 2 - h / 2, w, h };
+}
+function resizeBox(box, aspect) {
+  if (!Number.isFinite(aspect) || aspect <= 0)
+    return { ...box };
+  const h = box.w / aspect;
+  return { ...box, h, y: box.y + box.h / 2 - h / 2 };
+}
+
+// tools/code-lens/runtime.ts
+var $ = (id) => document.getElementById(id);
+var svg = $("graph");
+var mini = $("minimap");
+var data = JSON.parse($("evidence").textContent);
+var g = data.graph;
+var witness = data.detector.witness;
+validate(g, data.source);
+var nodes = new Map(g.nodes.map((n) => [n.id, n]));
+var layout = investigationLayout(g, witness);
+var positions = layout.positions;
+var full = { x: 0, y: 0, w: layout.width, h: layout.height };
+var box = { ...full };
+var whole = { ...full };
+var selected = witness.comparison;
+var selectedEdge = "";
+var highlight = "none";
+var region = new Set;
+var panel = "";
+var proofStep = "";
+var guideStep = -1;
+var guide = explanationSteps(g, witness);
+var enabled = new Set(["data", "control", "execution"]);
+var esc = (s) => String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+var firstLine = lineAt(data.source, g.function.source_span.start);
+var functionSource = bytes(data.source, g.function.source_span.start, g.function.source_span.end);
+var sourceLines = functionSource.split(`
+`);
+var line = (n) => n.source_span ? lineAt(data.source, n.source_span.start) : firstLine;
+var short = (n) => n.category === "merge" ? "merge(boxed)" : snippet(data.source, n).split(`
+`)[0].trim().split("//")[0].trim();
+var category = (n) => n.category.replaceAll("_", " ");
+var proof = proofRegion(g, witness);
+var seeds = new Set(witness.steps.filter((s) => s.seed).map((s) => s.node));
+var routes = directedRoutes(g, witness, layout);
+var semantic = (n) => ({ merge: "Join both reaching values", control: "Choose a branch", read: "Read the binding", assignment: "Assign the value", computation: "Compute the expression", declaration: "Declare the initial value", formal_input: "Receive the input" })[n.category] || category(n);
+var title = (n) => short(n).length > 26 ? short(n).slice(0, 25) + "…" : short(n);
+function graphMarkup() {
+  const edges = g.edges.map((e, i) => {
+    const a = positions.get(e.source), b = positions.get(e.target);
+    const points = routes.get(e.id), path = routePath(points);
+    const segments = points.slice(1).map((p, j) => ({ a: points[j], b: p, length: Math.abs(p.x - points[j].x) + Math.abs(p.y - points[j].y) })).sort((a, b) => b.length - a.length);
+    const middle = segments[0];
+    const label = e.kind === "control" && seeds.has(e.target) ? e.operand_position === 1 ? "false" : "true" : proof.edges.has(e.id) ? seeds.has(e.source) ? "non-nil" : e.subkind === "reaching-definition" ? "boxed" : "value" : "";
+    const labelX = (middle.a.x + middle.b.x) / 2 + (middle.a.x === middle.b.x ? 8 : 0), labelY = (middle.a.y + middle.b.y) / 2 - 7;
+    return `<g data-edge-group="${e.id}" data-kind="${e.kind}"><path class="edge-hit" data-edge="${e.id}" d="${path}"/><path class="edge ${e.kind}" data-edge="${e.id}" d="${path}" marker-end="url(#arrow-${e.kind})"><title>${esc(e.id + " · " + e.source + " → " + e.target + " · " + e.subkind + " · " + e.evidence.status)}</title></path><text class="edge-label" x="${labelX}" y="${labelY}" text-anchor="${middle.a.x === middle.b.x ? "start" : "middle"}">${label}</text></g>`;
+  }).join("");
+  const items = g.nodes.map((n) => {
+    const p = positions.get(n.id);
+    return `<g class="graph-node ${n.category === "control" ? "control-node" : ""} ${n.synthetic ? "synthetic-node" : ""}" data-node="${n.id}" transform="translate(${p.x} ${p.y})" tabindex="0" role="button" aria-label="${esc(n.id + " " + category(n) + " source line " + line(n) + ": " + short(n))}"><title>${esc(short(n))}</title><rect x="-110" y="-44" width="220" height="88" rx="8"/><text class="node-id" x="-94" y="-25">${n.id}</text><text class="node-meta" x="-63" y="-25">${esc(category(n))} · L${line(n)}</text><text class="node-role" x="-94" y="0">${esc(layout.roles.get(n.id))}</text><text class="node-label" x="-94" y="24">${esc(title(n))}</text></g>`;
+  }).join("");
+  const defs = ["data", "control", "execution"].map((k) => `<marker id="arrow-${k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10" fill="var(--${k === "data" ? "accent" : k})"/></marker>`).join("");
+  return `<defs>${defs}</defs><g class="layout-guides"><rect x="10" y="205" width="245" height="465" rx="14"/><text x="28" y="232">SUPPORTING OPERATIONS</text><text x="325" y="210">TRUE BRANCH</text><text x="870" y="210">FALSE BRANCH</text><text x="560" y="545">BOTH PATHS REACH THE JOIN</text></g><g id="edges">${edges}</g><g id="nodes">${items}</g>`;
+}
+svg.innerHTML = graphMarkup();
+mini.setAttribute("viewBox", `0 0 ${layout.width} ${layout.height}`);
+mini.innerHTML = g.edges.map((e) => {
+  const a = positions.get(e.source), b = positions.get(e.target);
+  return `<path class="map-edge" d="M${a.x} ${a.y}L${b.x} ${b.y}"/>`;
+}).join("") + g.nodes.map((n) => {
+  const p = positions.get(n.id);
+  return `<rect data-map-node="${n.id}" class="map-node" x="${p.x - 65}" y="${p.y - 22}" width="130" height="44" rx="7"/>`;
+}).join("") + '<rect class="map-window" id="map-window"/>';
+var lastAspect = 1.5;
+function aspect() {
+  const r = svg.getBoundingClientRect();
+  if (r.width > 0 && r.height > 0)
+    lastAspect = r.width / r.height;
+  return lastAspect;
+}
+function camera() {
+  svg.setAttribute("viewBox", `${box.x} ${box.y} ${box.w} ${box.h}`);
+  const scale = svg.getBoundingClientRect().width / box.w;
+  svg.classList.toggle("overview", scale < 0.48);
+  $("zoom-label").textContent = `${Math.round(whole.w / box.w * 100)}%`;
+  const view = $("map-window");
+  for (const key of ["x", "y", "w", "h"])
+    view.setAttribute(key === "w" ? "width" : key === "h" ? "height" : key, String(box[key]));
+}
+function fitAll() {
+  whole = fitBox(full, aspect(), 30);
+  box = { ...whole };
+  camera();
+}
+function wholeGraph() {
+  guideStep = -1;
+  highlight = "none";
+  region.clear();
+  update();
+  guideReadout();
+  fitAll();
+}
+function bounds(ids) {
+  const ps = [...ids].map((id) => positions.get(id)).filter(Boolean);
+  const xs = ps.map((p) => p.x), ys = ps.map((p) => p.y);
+  return { x: Math.min(...xs) - 120, y: Math.min(...ys) - 54, w: Math.max(...xs) - Math.min(...xs) + 240, h: Math.max(...ys) - Math.min(...ys) + 108 };
+}
+function focus(ids) {
+  box = fitBox(bounds(ids), aspect(), 70);
+  camera();
+}
+function zoom(factor, x = 0.5, y = 0.5) {
+  if (box.w * factor < 260 || box.w * factor > whole.w * 4)
+    return;
+  box = zoomBox(box, factor, x, y);
+  camera();
+}
+function refreshGraph() {
+  svg.querySelectorAll(".graph-node").forEach((el) => {
+    const id = el.dataset.node;
+    el.classList.toggle("active", id === selected);
+    el.classList.toggle("proof-node", highlight === "proof" && proof.ids.has(id));
+    el.classList.toggle("context", highlight !== "none" && !region.has(id) && id !== selected);
+  });
+  svg.querySelectorAll("[data-edge-group]").forEach((el) => {
+    const e = g.edges.find((e) => e.id === el.dataset.edgeGroup);
+    el.style.display = enabled.has(e.kind) ? "" : "none";
+    el.classList.toggle("context-edge", guideStep >= 0 && !(region.has(e.source) && region.has(e.target)));
+    const edge = el.querySelector(".edge");
+    edge.classList.toggle("active", e.id === selectedEdge || highlight === "none" && (e.source === selected || e.target === selected));
+    edge.classList.toggle("proof", proof.edges.has(e.id));
+    edge.classList.toggle("supporting-edge", !proof.edges.has(e.id) && !(e.kind === "control" && seeds.has(e.target)));
+    edge.classList.toggle("context", highlight !== "none" && !(highlight === "proof" ? proof.edges.has(e.id) : region.has(e.source) && region.has(e.target)));
+  });
+  mini.querySelectorAll("[data-map-node]").forEach((el) => el.classList.toggle("selected", el.dataset.mapNode === selected));
+  const visible = g.edges.filter((e) => enabled.has(e.kind)).length;
+  $("counts").textContent = `${g.nodes.length} NODES · ${visible}/${g.edges.length} EDGES`;
+  $("graph-state").textContent = highlight === "proof" ? "DETECTOR PROOF / CONTEXT RETAINED" : highlight === "slice" ? "BACKWARD VALUE SLICE / CONTEXT RETAINED" : "FULL EXPORT / ALL NODES RETAINED";
+  $("selection-readout").textContent = `${selected} · source L${line(nodes.get(selected))}`;
+}
+function sourceMarkup() {
+  let offset = g.function.source_span.start;
+  const n = nodes.get(selected), s = n.source_span;
+  const proofLines = new Set([...guideStep >= 0 ? region : proof.ids].map((id) => line(nodes.get(id))));
+  return sourceLines.map((text, i) => {
+    const start = offset, end = start + new TextEncoder().encode(text).length;
+    offset = end + 1;
+    let code = esc(text);
+    if (s && s.start < end && s.end > start) {
+      const a = Math.max(start, s.start), b = Math.min(end, s.end);
+      code = esc(bytes(data.source, start, a)) + `<mark>${esc(bytes(data.source, a, b))}</mark>` + esc(bytes(data.source, b, end));
+    }
+    return `<div class="source-row ${line(n) === firstLine + i ? "active" : ""} ${(highlight === "proof" || guideStep >= 0) && proofLines.has(firstLine + i) ? "proof" : ""}" data-line="${firstLine + i}" tabindex="0" role="button" aria-label="Source line ${firstLine + i}: ${esc(text.trim())}"><span class="ln">${firstLine + i}</span><code>${code}</code></div>`;
+  }).join("");
+}
+function edgeDescription(e) {
+  if (e.kind === "control")
+    return `Lexical ${e.operand_position === 1 ? "false" : "true"} branch`;
+  if (e.kind === "execution")
+    return "Recorded order constraint";
+  return e.subkind === "reaching-definition" ? "Reaching definition" : e.subkind === "binding-value" ? "Value supplied to operation" : e.subkind;
+}
+function nodeExplanation(n) {
+  if (n.id === witness.comparison)
+    return "This is the comparison reported by the actual detector. Its interface operand is proven non-nil through the solver witness; therefore == nil is false.";
+  if (n.category === "merge")
+    return "An analysis operation joins the recorded reaching definitions of boxed. Both branch assignments must be non-nil for this join to become known. This is not a Go statement.";
+  if (n.category === "declaration")
+    return "boxed starts nil here. Neither branch leaves that value unchanged, so this declaration does not reach the later comparison.";
+  const step = witness.steps.find((s) => s.node === n.id);
+  if (step?.seed)
+    return "The detector marks this concrete interface value as a non-nil seed. It does not need this expression’s syntax operands to establish non-nil.";
+  if (step)
+    return `The detector propagates non-nil from ${step.dependencies.join(", ")} into this operation. Select “Detector proof” to inspect its exact transfer rule.`;
+  if (n.category === "control")
+    return "This branch selects which assignment runs. Its control edges provide navigation context; the non-nil detector does not consume them as proof edges.";
+  return n.evidence.description;
+}
+function inspect() {
+  const n = nodes.get(selected);
+  $("source").innerHTML = sourceMarkup();
+  $("source-status").textContent = `L${line(n)} · ${n.source_span?.start}–${n.source_span?.end} bytes`;
+  $("detail-label").textContent = highlight === "proof" && !proof.ids.has(selected) ? "SELECTED CONTEXT / NOT IN PROOF" : "SELECTED OPERATION";
+  $("title").textContent = semantic(n);
+  $("badge").textContent = `${n.id} · ${category(n)} · ${n.synthetic ? "synthetic" : "source"} · L${line(n)}`;
+  $("snippet").textContent = snippet(data.source, n);
+  $("explanation").textContent = guideStep >= 0 ? guide[guideStep].body : nodeExplanation(n);
+  const edges = g.edges.filter((e) => e.source === selected || e.target === selected);
+  $("connections-title").textContent = `${edges.length} direct connections · select twice to follow`;
+  $("connections").innerHTML = edges.map((e) => {
+    const other = nodes.get(e.source === selected ? e.target : e.source);
+    return `<button class="connection ${selectedEdge === e.id ? "active" : ""}" data-connection="${e.id}"><b>${esc(e.source + " → " + e.target + " · " + short(other))}</b><small>${esc(edgeDescription(e))} · ${esc(e.evidence.status)}${enabled.has(e.kind) ? "" : " · hidden by filter"}</small></button>`;
+  }).join("") || '<span class="muted">No direct exported connections.</span>';
+  const e = g.edges.find((e) => e.id === selectedEdge);
+  $("edge-evidence").textContent = e ? e.evidence.description : "Select a connection to read its evidence. Selection survives zooming and view changes.";
+  $("raw").textContent = JSON.stringify(e ? { edge: e, source: nodes.get(e.source), target: nodes.get(e.target) } : n, null, 2);
+  $("node-select").value = selected;
+}
+function update() {
+  refreshGraph();
+  inspect();
+}
+function select(id, reveal = false) {
+  if (!nodes.has(id))
+    return;
+  if (guideStep >= 0) {
+    guideStep = -1;
+    highlight = "none";
+    region.clear();
+    guideReadout();
+  }
+  selected = id;
+  selectedEdge = "";
+  update();
+  if (reveal)
+    focus(new Set([id]));
+}
+function chooseEdge(id) {
+  const e = g.edges.find((e) => e.id === id);
+  if (selectedEdge === id) {
+    select(e.source === selected ? e.target : e.source, true);
+    return;
+  }
+  if (e.source !== selected && e.target !== selected)
+    selected = e.target;
+  selectedEdge = id;
+  update();
+}
+function showPanel(name) {
+  panel = panel === name ? "" : name;
+  for (const id of ["proof", "runs"])
+    $(id + "-panel").classList.toggle("visible", panel === id);
+  document.querySelectorAll("[data-panel]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.panel === panel)));
+}
+function guideReadout() {
+  document.body.classList.toggle("guided", guideStep >= 0);
+  const step = guide[guideStep];
+  $("guide-title").textContent = step?.title || "Can boxed be nil at the final check?";
+  $("guide-body").textContent = step?.body || "Both branches give boxed a value. Follow these four steps to see why the nil check is always false.";
+  document.querySelectorAll("[data-guide-step]").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.guideStep) === guideStep)));
+  $("guide-prev").disabled = guideStep <= 0;
+  $("guide-next").disabled = guideStep === guide.length - 1;
+  $("guide-next").textContent = guideStep < 0 ? "Start →" : "Next →";
+}
+function startGuide(index) {
+  if (index < 0 || index >= guide.length)
+    return;
+  guideStep = index;
+  const step = guide[index];
+  highlight = "slice";
+  region = new Set(step.nodes);
+  selected = step.selected;
+  selectedEdge = "";
+  update();
+  guideReadout();
+  focus(region);
+  $("graph-state").textContent = `EXPLANATION / STEP ${index + 1} OF ${guide.length}`;
+}
+function finding() {
+  startGuide(0);
+}
+function detectorRule(n) {
+  const step = witness.steps.find((s) => s.node === n.id);
+  if (n.id === witness.comparison)
+    return { name: "operandKnown", reason: "The comparison is reported only when a matching supported operand exists and every matching source is known." };
+  if (step?.seed)
+    return { name: "operation", reason: "The concrete/boxed interface-value annotation seeds this node as non-nil." };
+  if (n.category === "merge")
+    return { name: "solve", reason: "The worklist marks the join known only after all recorded dependencies have become known." };
+  return { name: "transfer", reason: "Only eligible transfer categories consume supported proof dependencies. The witness records the actual dependencies used." };
+}
+function methodSource(name) {
+  const source = data.detector.source;
+  const match = new RegExp("^func (?:\\([^)]*\\) )?" + name + "\\(", "m").exec(source);
+  if (!match)
+    throw new Error("Detector rule is missing: " + name);
+  const start = match.index;
+  const next = source.indexOf(`
+func `, start + 1);
+  return { text: source.slice(start, next < 0 ? source.length : next), line: source.slice(0, start).split(`
+`).length };
+}
+function showProofStep(id, reveal = true) {
+  guideStep = -1;
+  guideReadout();
+  proofStep = id;
+  if (highlight !== "proof") {
+    highlight = "proof";
+    region = new Set(proof.ids);
+  }
+  select(id, reveal);
+  const n = nodes.get(id), rule = detectorRule(n), source = methodSource(rule.name);
+  $("detector-path").textContent = `${data.detector.path}:${source.line} · ${rule.name}`;
+  $("detector-explanation").textContent = rule.reason;
+  $("detector-code").textContent = source.text;
+  $("proof-step-status").textContent = `${id}: ${nodeExplanation(n)}`;
+  document.querySelectorAll("[data-proof-node]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.proofNode === id)));
+}
+var ordered = [...witness.steps].reverse();
+$("proof-steps").innerHTML = ordered.map((s, i) => `<button data-proof-node="${s.node}" aria-pressed="false">${i + 1}. ${esc(short(nodes.get(s.node)))}<small>${s.node} · ${s.seed ? "concrete seed" : "needs " + s.dependencies.join(" + ")}</small></button>`).join("") + `<button data-proof-node="${witness.comparison}" aria-pressed="false">${ordered.length + 1}. Report comparison<small>${witness.comparison} · operand ${witness.operand}</small></button>`;
+function runsMarkup(runs) {
+  return ["true", "false"].map((input) => {
+    const e = runs[input].at(-1);
+    return `<div class="run"><span class="mono">enabled = ${input}</span><strong>== nil: ${e.result}</strong><small>${esc(e.type)} · ${esc(JSON.stringify(e.value))}</small></div>`;
+  }).join("");
+}
+$("original-runs").innerHTML = runsMarkup(data.replay);
+$("repair-runs").innerHTML = runsMarkup(data.repair.runs);
+$("repair-contract").textContent = data.repair.contract;
+$("repair-result").textContent = `Go confirms the contract for both inputs. The real detector reports ${data.repair.remainingFindings} typednil findings for this experimental function. This is a reviewed source experiment, not a safe automatic fix.`;
+$("repair-source").textContent = data.repair.after;
+$("detector-hash").textContent = `DETECTOR SOURCE SHA-256 ${data.detector.sha256.slice(0, 16)}…`;
+$("coverage").textContent = JSON.stringify(g.extraction_evidence, null, 2);
+$("source-path").textContent = data.path;
+$("finding-location").textContent = `L${data.finding.Sites[0].Line} · ${witness.comparison}`;
+$("provenance").textContent = `${data.path} · source revision ${data.revision.slice(0, 12)}`;
+$("integrity").textContent = `${g.nodes.length}/${g.nodes.length} nodes · ${g.edges.length}/${g.edges.length} edges loaded · source hash verified`;
+$("node-select").innerHTML = g.nodes.map((n) => `<option value="${n.id}">${n.id} · ${category(n)} · L${line(n)}</option>`).join("");
+$("node-select").onchange = () => select($("node-select").value, true);
+$("connections").onclick = (event) => {
+  const b = event.target.closest("[data-connection]");
+  if (b)
+    chooseEdge(b.dataset.connection);
+};
+function sourceSelect(event) {
+  const el = event.target.closest("[data-line]");
+  if (!el)
+    return;
+  const candidates = lineNodes(g, data.source, Number(el.dataset.line));
+  if (!candidates.length)
+    return;
+  const next = candidates.some((n) => n.id === selected) ? candidates[(candidates.findIndex((n) => n.id === selected) + 1) % candidates.length] : candidates[0];
+  select(next.id, true);
+}
+$("source").onclick = sourceSelect;
+$("source").onkeydown = (event) => {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    sourceSelect(event);
+  }
+};
+svg.addEventListener("click", (event) => {
+  if (dragged) {
+    dragged = false;
+    return;
+  }
+  const el = event.target;
+  const n = el.closest("[data-node]");
+  if (n) {
+    select(n.dataset.node);
+    return;
+  }
+  const e = el.closest("[data-edge]");
+  if (e)
+    chooseEdge(e.dataset.edge);
+});
+svg.addEventListener("keydown", (event) => {
+  const id = event.target.closest("[data-node]")?.dataset.node;
+  if ((event.key === "Enter" || event.key === " ") && id) {
+    event.preventDefault();
+    select(id);
+    return;
+  }
+  if (event.key === "+" || event.key === "=") {
+    event.preventDefault();
+    zoom(0.8);
+    return;
+  }
+  if (event.key === "-") {
+    event.preventDefault();
+    zoom(1.25);
+    return;
+  }
+  if (event.key === "Home") {
+    event.preventDefault();
+    wholeGraph();
+    return;
+  }
+  if (!["ArrowRight", "ArrowLeft"].includes(event.key))
+    return;
+  event.preventDefault();
+  const i = g.nodes.findIndex((n) => n.id === selected), d = event.key === "ArrowRight" ? 1 : -1;
+  select(g.nodes[(i + d + g.nodes.length) % g.nodes.length].id, true);
+});
+var drag = null;
+var dragged = false;
+svg.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0)
+    return;
+  drag = { x: event.clientX, y: event.clientY, box: { ...box } };
+  dragged = false;
+  if (!event.target.closest("[data-node],[data-edge]"))
+    svg.setPointerCapture(event.pointerId);
+});
+svg.addEventListener("pointermove", (event) => {
+  if (!drag)
+    return;
+  const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
+  if (Math.abs(dx) + Math.abs(dy) < 5)
+    return;
+  dragged = true;
+  const r = svg.getBoundingClientRect();
+  box = { ...drag.box, x: drag.box.x - dx / r.width * drag.box.w, y: drag.box.y - dy / r.height * drag.box.h };
+  camera();
+});
+svg.addEventListener("pointerup", () => {
+  drag = null;
+});
+svg.addEventListener("pointercancel", () => {
+  drag = null;
+});
+svg.addEventListener("wheel", (event) => {
+  event.preventDefault();
+  const r = svg.getBoundingClientRect();
+  zoom(event.deltaY > 0 ? 1.14 : 1 / 1.14, (event.clientX - r.left) / r.width, (event.clientY - r.top) / r.height);
+}, { passive: false });
+mini.addEventListener("click", (event) => {
+  const p = mini.createSVGPoint();
+  p.x = event.clientX;
+  p.y = event.clientY;
+  const at = p.matrixTransform(mini.getScreenCTM().inverse());
+  box = { ...box, x: at.x - box.w / 2, y: at.y - box.h / 2 };
+  camera();
+});
+$("zoom-in").onclick = () => zoom(0.8);
+$("zoom-out").onclick = () => zoom(1.25);
+$("focus").onclick = () => focus(new Set([selected]));
+$("fit").onclick = wholeGraph;
+$("slice").onclick = () => {
+  guideStep = -1;
+  guideReadout();
+  highlight = "slice";
+  region = upstream(g, selected);
+  update();
+  focus(region);
+};
+$("finding").onclick = finding;
+$("guide-prev").onclick = () => startGuide(guideStep - 1);
+$("guide-next").onclick = () => startGuide(guideStep + 1);
+$("guide-steps").onclick = (event) => {
+  const b = event.target.closest("[data-guide-step]");
+  if (b)
+    startGuide(Number(b.dataset.guideStep));
+};
+$("guide-steps").innerHTML = guide.map((s, i) => `<button data-guide-step="${i}" aria-pressed="false">${["Choose branch", "Assign boxed", "Follow boxed", "Check nil"][i]}</button>`).join("");
+guideReadout();
+$("theme").onclick = () => {
+  document.body.classList.toggle("dark");
+  $("theme").setAttribute("aria-pressed", String(document.body.classList.contains("dark")));
+};
+$("proof-steps").onclick = (event) => {
+  const b = event.target.closest("[data-proof-node]");
+  if (b)
+    showProofStep(b.dataset.proofNode);
+};
+for (const input of document.querySelectorAll("input[data-kind]"))
+  input.onchange = () => {
+    if (input.checked)
+      enabled.add(input.dataset.kind);
+    else
+      enabled.delete(input.dataset.kind);
+    refreshGraph();
+    inspect();
+  };
+for (const b of document.querySelectorAll("[data-panel]"))
+  b.onclick = () => {
+    showPanel(b.dataset.panel);
+    if (panel === "proof")
+      showProofStep(proofStep || witness.comparison, false);
+  };
+new ResizeObserver(() => {
+  const r = svg.getBoundingClientRect();
+  if (r.width <= 0 || r.height <= 0)
+    return;
+  const ratio = aspect();
+  whole = fitBox(full, ratio, 30);
+  box = resizeBox(box, ratio);
+  camera();
+}).observe(svg);
+fitAll();
+update();
+startGuide(0);
+Object.defineProperty(window, "codeLens", { value: { getState: () => ({ selected, selectedEdge, highlight, panel, guideStep, box: { ...box }, nodeIDs: g.nodes.map((n) => n.id), edgeIDs: g.edges.map((e) => e.id), visibleEdges: g.edges.filter((e) => enabled.has(e.kind)).map((e) => e.id), proofNodes: [...proof.ids], proofEdges: [...proof.edges], region: [...region], sourceLine: line(nodes.get(selected)), zoom: whole.w / box.w }) } });
+</script></body></html>

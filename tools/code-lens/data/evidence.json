@@ -1,0 +1,1467 @@
+{
+  "revision": "9ec8c822bfe46120388c3cc4967547425c72cdb7",
+  "path": "adapters/gopatterns/testdata/interface-nil/sample.go",
+  "source": "// Original gstyle synthetic cases. A non-nil dynamic type makes an interface\n// non-nil, even when its contained pointer, slice, or map is nil.\npackage interfacenilfixture\n\ntype Parcel struct{ Code int }\ntype Trouble struct{}\n\nfunc (*Trouble) Error() string { return \"delivery stopped\" }\n\nfunc parcelBox(parcel *Parcel) any { return parcel }\nfunc relayBox(parcel *Parcel) any  { return parcelBox(parcel) }\nfunc parcelValue() any             { return Parcel{Code: 81} }\nfunc emptyTrouble() error          { return (*Trouble)(nil) }\nfunc optionalBox(enabled bool) any {\n\tif enabled {\n\t\treturn Parcel{Code: 82}\n\t}\n\treturn nil\n}\nfunc variedBox(enabled bool) any {\n\tif enabled {\n\t\treturn Parcel{Code: 83}\n\t}\n\treturn \"deferred\"\n}\nfunc recursiveBox() any         { return recursiveBox() }\nfunc (parcel *Parcel) box() any { return parcel }\nfunc namedBox() (result any) {\n\tresult = Parcel{Code: 84}\n\treturn\n}\nfunc genericBox[T any](value T) any { return value }\n\nfunc localPointer() {\n\tvar parcel *Parcel\n\tvar boxed any = parcel\n\t_ = boxed == nil // want-nonnil: a nil pointer still has a dynamic type\n}\nfunc concreteRecord() {\n\tvar boxed any = Parcel{Code: 85}\n\t_ = boxed != nil // want-nonnil: the interface contains a concrete record\n}\nfunc concreteNumber() {\n\tvar boxed any = 0\n\t_ = nil == boxed // want-nonnil: numeric zero is not an empty interface\n}\nfunc typedReturn(parcel *Parcel) {\n\t_ = parcelBox(parcel) == nil // want-nonnil: every return boxes a pointer\n}\nfunc forwardedReturn(parcel *Parcel) {\n\t_ = relayBox(parcel) != nil // want-nonnil: a direct forwarding call preserves the proof\n}\nfunc concreteReturn() {\n\t_ = parcelValue() == nil // want-nonnil: a concrete record is returned through any\n}\nfunc errorReturn() {\n\t_ = emptyTrouble() == nil // want-nonnil: the error has a concrete pointer type\n}\nfunc branchReturns(enabled bool) {\n\t_ = variedBox(enabled) == nil // want-nonnil: both return paths supply concrete values\n}\nfunc assignedCall(parcel *Parcel) {\n\tboxed := relayBox(parcel)\n\talias := boxed\n\t_ = alias == nil // want-nonnil: the call result reaches the alias read\n}\nfunc overwrittenBox() {\n\tvar boxed any = nil\n\tboxed = Parcel{Code: 86}\n\t_ = boxed == nil // want-nonnil: the later definition kills the empty interface\n}\nfunc branchAssignments(enabled bool) {\n\tvar boxed any\n\tif enabled {\n\t\tboxed = Parcel{Code: 87}\n\t} else {\n\t\tboxed = \"queued\"\n\t}\n\t_ = boxed == nil // want-nonnil: every reaching definition is non-nil\n}\nfunc namedReturn() {\n\t_ = namedBox() == nil // want-nonnil: the named result reads its assigned value\n}\nfunc methodReturn(parcel *Parcel) {\n\t_ = parcel.box() == nil // want-nonnil: this statically resolved method boxes its receiver\n}\nfunc boxedSlice() {\n\tvar parcels []Parcel\n\tvar boxed any = parcels\n\t_ = boxed == nil // want-nonnil: a nil slice is boxed into an interface\n}\nfunc boxedMap() {\n\tvar parcels map[string]Parcel\n\tvar boxed any = parcels\n\t_ = boxed == nil // want-nonnil: a nil map is boxed into an interface\n}\n\n// Valid or unresolved checks must remain unflagged.\nfunc pointerGuard(parcel *Parcel)      { _ = parcel == nil }\nfunc emptyInterface()                  { var boxed any; _ = boxed == nil }\nfunc mixedReturn(enabled bool)         { _ = optionalBox(enabled) == nil }\nfunc parameterGuard(boxed any)         { _ = boxed == nil }\nfunc dynamicReturn(factory func() any) { _ = factory() == nil }\nfunc recursiveReturn()                 { _ = recursiveBox() == nil }\nfunc clearedBox() {\n\tvar boxed any = Parcel{Code: 88}\n\tboxed = nil\n\t_ = boxed == nil\n}\nfunc mixedAssignment(enabled bool) {\n\tvar boxed any\n\tif enabled {\n\t\tboxed = Parcel{Code: 89}\n\t}\n\t_ = boxed == nil\n}\nfunc genericReturn[T any](value T) { _ = genericBox(value) == nil }\nfunc replaceBox(boxed *any)        { *boxed = nil }\nfunc escapedBox() {\n\tvar boxed any = Parcel{Code: 90}\n\treplaceBox(&boxed)\n\t_ = boxed == nil\n}\nfunc laterDefinition() {\n\tvar boxed any\n\t_ = boxed == nil\n\tboxed = Parcel{Code: 91}\n\t_ = boxed\n}\n\nfunc shadowedNil() {\n\tnil := Parcel{Code: 92}\n\tvar boxed any = Parcel{Code: 93}\n\t_ = boxed == nil\n}\nfunc parenthesizedNil() {\n\tvar boxed any = Parcel{Code: 94}\n\t_ = boxed == (nil) // want-nonnil: parentheses do not change the nil constant\n}\n\ntype Inbox struct{ Value any }\n\nfunc fieldGuard(inbox *Inbox)       { _ = inbox.Value == nil }\nfunc mapGuard(inbox map[string]any) { _ = inbox[\"pending\"] == nil }\nfunc sliceGuard(inbox []any)        { _ = inbox[0] == nil }\nfunc dereferenceGuard(inbox *any)   { _ = *inbox == nil }\n",
+  "graph": {
+    "definitions": [
+      {
+        "id": "d1",
+        "node_id": "n1",
+        "symbol_id": "s1"
+      },
+      {
+        "id": "d2",
+        "node_id": "n10",
+        "symbol_id": "s2"
+      },
+      {
+        "id": "d3",
+        "node_id": "n3",
+        "symbol_id": "s2"
+      },
+      {
+        "id": "d4",
+        "node_id": "n6",
+        "symbol_id": "s2"
+      },
+      {
+        "id": "d5",
+        "node_id": "n14",
+        "symbol_id": "s2"
+      }
+    ],
+    "edges": [
+      {
+        "evidence": {
+          "description": "Lexical control nesting; not post-dominator control dependence.",
+          "status": "approximated"
+        },
+        "id": "e2",
+        "kind": "control",
+        "operand_position": 0,
+        "provenance": {
+          "description": "Lexical control nesting; not post-dominator control dependence.",
+          "origin": "analysis"
+        },
+        "source": "n2",
+        "subkind": "lexical-control",
+        "target": "n3"
+      },
+      {
+        "evidence": {
+          "description": "Lexical control nesting; not post-dominator control dependence.",
+          "status": "approximated"
+        },
+        "id": "e3",
+        "kind": "control",
+        "operand_position": 0,
+        "provenance": {
+          "description": "Lexical control nesting; not post-dominator control dependence.",
+          "origin": "analysis"
+        },
+        "source": "n2",
+        "subkind": "lexical-control",
+        "target": "n4"
+      },
+      {
+        "evidence": {
+          "description": "Lexical control nesting; not post-dominator control dependence.",
+          "status": "approximated"
+        },
+        "id": "e4",
+        "kind": "control",
+        "operand_position": 0,
+        "provenance": {
+          "description": "Lexical control nesting; not post-dominator control dependence.",
+          "origin": "analysis"
+        },
+        "source": "n2",
+        "subkind": "lexical-control",
+        "target": "n5"
+      },
+      {
+        "evidence": {
+          "description": "Lexical control nesting; not post-dominator control dependence.",
+          "status": "approximated"
+        },
+        "id": "e7",
+        "kind": "control",
+        "operand_position": 1,
+        "provenance": {
+          "description": "Lexical control nesting; not post-dominator control dependence.",
+          "origin": "analysis"
+        },
+        "source": "n2",
+        "subkind": "lexical-control",
+        "target": "n6"
+      },
+      {
+        "evidence": {
+          "description": "Lexical control nesting; not post-dominator control dependence.",
+          "status": "approximated"
+        },
+        "id": "e8",
+        "kind": "control",
+        "operand_position": 1,
+        "provenance": {
+          "description": "Lexical control nesting; not post-dominator control dependence.",
+          "origin": "analysis"
+        },
+        "source": "n2",
+        "subkind": "lexical-control",
+        "target": "n7"
+      },
+      {
+        "evidence": {
+          "description": "Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete.",
+          "status": "approximated"
+        },
+        "id": "e11",
+        "kind": "execution",
+        "provenance": {
+          "description": "Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete.",
+          "origin": "analysis"
+        },
+        "source": "n10",
+        "subkind": "must-precede",
+        "target": "n11"
+      },
+      {
+        "evidence": {
+          "description": "Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete.",
+          "status": "approximated"
+        },
+        "id": "e12",
+        "kind": "execution",
+        "provenance": {
+          "description": "Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete.",
+          "origin": "analysis"
+        },
+        "source": "n11",
+        "subkind": "must-precede",
+        "target": "n6"
+      },
+      {
+        "evidence": {
+          "description": "Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete.",
+          "status": "approximated"
+        },
+        "id": "e13",
+        "kind": "execution",
+        "provenance": {
+          "description": "Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete.",
+          "origin": "analysis"
+        },
+        "source": "n11",
+        "subkind": "must-precede",
+        "target": "n3"
+      },
+      {
+        "evidence": {
+          "description": "Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete.",
+          "status": "approximated"
+        },
+        "id": "e14",
+        "kind": "execution",
+        "provenance": {
+          "description": "Reachable statement/condition anchors; same-block order or nearest dominating operation. Intrastatement, panic/recover and concurrent ordering are not complete.",
+          "origin": "analysis"
+        },
+        "source": "n11",
+        "subkind": "must-precede",
+        "target": "n8"
+      },
+      {
+        "evidence": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "status": "supported"
+        },
+        "id": "e15",
+        "kind": "data",
+        "operand_position": 0,
+        "provenance": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "origin": "analysis"
+        },
+        "source": "n11",
+        "subkind": "binding-value",
+        "target": "n2"
+      },
+      {
+        "evidence": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "status": "supported"
+        },
+        "id": "e16",
+        "kind": "data",
+        "operand_position": 0,
+        "provenance": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "origin": "analysis"
+        },
+        "source": "n7",
+        "subkind": "binding-value",
+        "target": "n6"
+      },
+      {
+        "evidence": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "status": "supported"
+        },
+        "id": "e17",
+        "kind": "data",
+        "provenance": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "origin": "analysis"
+        },
+        "source": "n12",
+        "subkind": "binding-value",
+        "target": "n4"
+      },
+      {
+        "evidence": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "status": "supported"
+        },
+        "id": "e18",
+        "kind": "data",
+        "provenance": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "origin": "analysis"
+        },
+        "source": "n5",
+        "subkind": "binding-value",
+        "target": "n4"
+      },
+      {
+        "evidence": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "status": "supported"
+        },
+        "id": "e19",
+        "kind": "data",
+        "operand_position": 0,
+        "provenance": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "origin": "analysis"
+        },
+        "source": "n4",
+        "subkind": "binding-value",
+        "target": "n3"
+      },
+      {
+        "evidence": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "status": "supported"
+        },
+        "id": "e20",
+        "kind": "data",
+        "operand_position": 0,
+        "provenance": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "origin": "analysis"
+        },
+        "source": "n13",
+        "subkind": "binding-value",
+        "target": "n9"
+      },
+      {
+        "evidence": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "status": "supported"
+        },
+        "id": "e21",
+        "kind": "data",
+        "operand_position": 0,
+        "provenance": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "origin": "analysis"
+        },
+        "source": "n9",
+        "subkind": "binding-value",
+        "target": "n8"
+      },
+      {
+        "definition_id": "d1",
+        "evidence": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "status": "supported"
+        },
+        "id": "e22",
+        "kind": "data",
+        "provenance": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "origin": "analysis"
+        },
+        "source": "n1",
+        "subkind": "reaching-definition",
+        "symbol_id": "s1",
+        "target": "n11"
+      },
+      {
+        "definition_id": "d3",
+        "evidence": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "status": "supported"
+        },
+        "id": "e23",
+        "kind": "data",
+        "provenance": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "origin": "analysis"
+        },
+        "source": "n3",
+        "subkind": "reaching-definition",
+        "symbol_id": "s2",
+        "target": "n14"
+      },
+      {
+        "definition_id": "d4",
+        "evidence": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "status": "supported"
+        },
+        "id": "e24",
+        "kind": "data",
+        "provenance": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "origin": "analysis"
+        },
+        "source": "n6",
+        "subkind": "reaching-definition",
+        "symbol_id": "s2",
+        "target": "n14"
+      },
+      {
+        "definition_id": "d5",
+        "evidence": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "status": "supported"
+        },
+        "id": "e25",
+        "kind": "data",
+        "provenance": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "origin": "analysis"
+        },
+        "source": "n14",
+        "subkind": "reaching-definition",
+        "symbol_id": "s2",
+        "target": "n13"
+      }
+    ],
+    "extraction_evidence": {
+      "capabilities": {
+        "branch_merges": {
+          "description": "Merge values are not computed.",
+          "status": "unsupported"
+        },
+        "calls": {
+          "description": "Static declarations resolve where available; dynamic targets and call effects are unknown.",
+          "status": "approximated"
+        },
+        "closures": {
+          "description": "Closure bodies and capture dependencies are not extracted.",
+          "status": "unsupported"
+        },
+        "concurrency": {
+          "description": "Go/select/send operations are recorded; scheduling dependencies are not computed.",
+          "status": "unsupported"
+        },
+        "control_dependencies": {
+          "description": "Lexical control nesting is approximated; post-dominator dependencies are not computed.",
+          "status": "approximated"
+        },
+        "exceptional_flow": {
+          "description": "Panic/recover dependencies are not computed.",
+          "status": "unsupported"
+        },
+        "execution_dependencies": {
+          "description": "Sparse must-precede edges between reachable statement/condition anchors, from sequential order and dominance; intrastatement and exceptional/concurrent ordering are incomplete.",
+          "status": "approximated"
+        },
+        "interface_binding_flow": {
+          "description": "Exact local binding reaching definitions on acyclic normal flow; address escapes, closures, deferred writes, concurrency, loops and multi-value assignments are excluded. Call effects and memory aliases remain unknown.",
+          "status": "supported"
+        },
+        "loop_carried_dependencies": {
+          "description": "Loop-carried definitions are not computed.",
+          "status": "unsupported"
+        },
+        "macros": {
+          "description": "Go has no language macros.",
+          "status": "not_applicable"
+        },
+        "memory_aliases": {
+          "description": "Memory accesses are explicit; targets and aliases are unresolved.",
+          "status": "unknown"
+        },
+        "node_extraction": {
+          "description": "Mixed statement/expression operations; closures are opaque; not a complete language lowering.",
+          "status": "approximated"
+        },
+        "parameters": {
+          "description": "Receiver, inputs, named/unnamed outputs, types and variadic facts are recorded.",
+          "status": "supported"
+        },
+        "reference_counting": {
+          "description": "Distinct recorded Go reference-bearing variable bindings; type parameters remain unknown. Not alias or storage-location counting.",
+          "status": "supported"
+        },
+        "returns": {
+          "description": "Explicit returns connect to formal output slots; bare returns read named results. Reaching definitions, deferred result writes and implicit or exceptional exits are not computed.",
+          "status": "approximated"
+        },
+        "scalar_reaching_definitions": {
+          "description": "Distinct syntactic definitions are recorded; mining edges use first bindings, not reaching definitions.",
+          "status": "unsupported"
+        }
+      },
+      "conformance": {
+        "reasons": [
+          "Dependency analysis and the shared extraction profile are incomplete."
+        ],
+        "status": "non_conformant"
+      },
+      "diagnostics": [
+        {
+          "code": "pdg.incomplete-dependencies",
+          "message": "Operation facts are available; dependency absence must not be treated as independence.",
+          "severity": "warning"
+        }
+      ]
+    },
+    "function": {
+      "id": "github.com/rstyled/gstyle/adapters/gopatterns/testdata/interface-nil.branchAssignments",
+      "inputs": [
+        {
+          "extensions": {
+            "gstyle.go.scalar-normal:resolved-type": {
+              "primitive": "bool"
+            }
+          },
+          "name": {
+            "status": "known",
+            "value": "enabled"
+          },
+          "position": 0,
+          "role": "parameter",
+          "symbol_id": "s1",
+          "type": {
+            "status": "known",
+            "value": "bool"
+          },
+          "variadic": {
+            "status": "known",
+            "value": false
+          }
+        }
+      ],
+      "interface_completeness": {
+        "description": "Complete typed function interface.",
+        "status": "supported"
+      },
+      "name": {
+        "status": "known",
+        "value": "branchAssignments"
+      },
+      "outputs": [],
+      "qualified_name": {
+        "status": "known",
+        "value": "github.com/rstyled/gstyle/adapters/gopatterns/testdata/interface-nil.branchAssignments"
+      },
+      "reference_count": {
+        "status": "known",
+        "value": 1
+      },
+      "source_span": {
+        "end": 2438,
+        "source_id": "adapters/gopatterns/testdata/interface-nil/sample.go",
+        "start": 2239
+      }
+    },
+    "memory_locations": [],
+    "nodes": [
+      {
+        "attributes": {
+          "defines": [
+            "d1"
+          ],
+          "position": 0,
+          "symbol_ids": [
+            "s1"
+          ]
+        },
+        "category": "formal_input",
+        "evidence": {
+          "description": "Operation identified in typed source; dependency completeness is separate.",
+          "status": "approximated"
+        },
+        "id": "n1",
+        "original_kind": {
+          "status": "known",
+          "value": "*ast.Field"
+        },
+        "provenance": {
+          "description": "Go source operation; abstraction lowering is approximate.",
+          "origin": "source"
+        },
+        "source_span": {
+          "end": 2274,
+          "source_id": "adapters/gopatterns/testdata/interface-nil/sample.go",
+          "start": 2262
+        },
+        "synthetic": false
+      },
+      {
+        "attributes": {
+          "construct": "if",
+          "outcomes": [
+            "true",
+            "false"
+          ]
+        },
+        "category": "control",
+        "evidence": {
+          "description": "Operation identified in typed source; dependency completeness is separate.",
+          "status": "approximated"
+        },
+        "id": "n2",
+        "original_kind": {
+          "status": "known",
+          "value": "*ast.IfStmt"
+        },
+        "provenance": {
+          "description": "Go source operation; abstraction lowering is approximate.",
+          "origin": "source"
+        },
+        "source_span": {
+          "end": 2365,
+          "source_id": "adapters/gopatterns/testdata/interface-nil/sample.go",
+          "start": 2294
+        },
+        "synthetic": false
+      },
+      {
+        "attributes": {
+          "defines": [
+            "d3"
+          ],
+          "symbol_ids": [
+            "s2"
+          ],
+          "write_form": "=",
+          "writes": [
+            {
+              "symbol_id": "s2"
+            }
+          ]
+        },
+        "category": "assignment",
+        "evidence": {
+          "description": "Operation identified in typed source; dependency completeness is separate.",
+          "status": "approximated"
+        },
+        "id": "n3",
+        "original_kind": {
+          "status": "known",
+          "value": "*ast.AssignStmt"
+        },
+        "provenance": {
+          "description": "Go source operation; abstraction lowering is approximate.",
+          "origin": "source"
+        },
+        "source_span": {
+          "end": 2333,
+          "source_id": "adapters/gopatterns/testdata/interface-nil/sample.go",
+          "start": 2309
+        },
+        "synthetic": false
+      },
+      {
+        "attributes": {
+          "extensions": {
+            "gstyle:interface-value": "concrete"
+          },
+          "operator": {
+            "status": "known",
+            "value": "composite"
+          }
+        },
+        "category": "computation",
+        "evidence": {
+          "description": "Operation identified in typed source; dependency completeness is separate.",
+          "status": "approximated"
+        },
+        "id": "n4",
+        "original_kind": {
+          "status": "known",
+          "value": "*ast.CompositeLit"
+        },
+        "provenance": {
+          "description": "Go source operation; abstraction lowering is approximate.",
+          "origin": "source"
+        },
+        "source_span": {
+          "end": 2333,
+          "source_id": "adapters/gopatterns/testdata/interface-nil/sample.go",
+          "start": 2317
+        },
+        "synthetic": false
+      },
+      {
+        "attributes": {
+          "extensions": {
+            "gstyle:interface-value": "concrete"
+          },
+          "literal": {
+            "status": "known",
+            "value": "87"
+          },
+          "operator": {
+            "status": "known",
+            "value": "literal"
+          }
+        },
+        "category": "computation",
+        "evidence": {
+          "description": "Operation identified in typed source; dependency completeness is separate.",
+          "status": "approximated"
+        },
+        "id": "n5",
+        "original_kind": {
+          "status": "known",
+          "value": "*ast.BasicLit"
+        },
+        "provenance": {
+          "description": "Go source operation; abstraction lowering is approximate.",
+          "origin": "source"
+        },
+        "source_span": {
+          "end": 2332,
+          "source_id": "adapters/gopatterns/testdata/interface-nil/sample.go",
+          "start": 2330
+        },
+        "synthetic": false
+      },
+      {
+        "attributes": {
+          "defines": [
+            "d4"
+          ],
+          "symbol_ids": [
+            "s2"
+          ],
+          "write_form": "=",
+          "writes": [
+            {
+              "symbol_id": "s2"
+            }
+          ]
+        },
+        "category": "assignment",
+        "evidence": {
+          "description": "Operation identified in typed source; dependency completeness is separate.",
+          "status": "approximated"
+        },
+        "id": "n6",
+        "original_kind": {
+          "status": "known",
+          "value": "*ast.AssignStmt"
+        },
+        "provenance": {
+          "description": "Go source operation; abstraction lowering is approximate.",
+          "origin": "source"
+        },
+        "source_span": {
+          "end": 2362,
+          "source_id": "adapters/gopatterns/testdata/interface-nil/sample.go",
+          "start": 2346
+        },
+        "synthetic": false
+      },
+      {
+        "attributes": {
+          "extensions": {
+            "gstyle:interface-value": "concrete"
+          },
+          "literal": {
+            "status": "known",
+            "value": "\"queued\""
+          },
+          "operator": {
+            "status": "known",
+            "value": "literal"
+          }
+        },
+        "category": "computation",
+        "evidence": {
+          "description": "Operation identified in typed source; dependency completeness is separate.",
+          "status": "approximated"
+        },
+        "id": "n7",
+        "original_kind": {
+          "status": "known",
+          "value": "*ast.BasicLit"
+        },
+        "provenance": {
+          "description": "Go source operation; abstraction lowering is approximate.",
+          "origin": "source"
+        },
+        "source_span": {
+          "end": 2362,
+          "source_id": "adapters/gopatterns/testdata/interface-nil/sample.go",
+          "start": 2354
+        },
+        "synthetic": false
+      },
+      {
+        "attributes": {
+          "write_form": "="
+        },
+        "category": "assignment",
+        "evidence": {
+          "description": "Operation identified in typed source; dependency completeness is separate.",
+          "status": "approximated"
+        },
+        "id": "n8",
+        "original_kind": {
+          "status": "known",
+          "value": "*ast.AssignStmt"
+        },
+        "provenance": {
+          "description": "Go source operation; abstraction lowering is approximate.",
+          "origin": "source"
+        },
+        "source_span": {
+          "end": 2383,
+          "source_id": "adapters/gopatterns/testdata/interface-nil/sample.go",
+          "start": 2367
+        },
+        "synthetic": false
+      },
+      {
+        "attributes": {
+          "extensions": {
+            "gstyle:interface-nil-operand": 1,
+            "gstyle:interface-value": "concrete"
+          },
+          "operator": {
+            "status": "known",
+            "value": "=="
+          }
+        },
+        "category": "computation",
+        "evidence": {
+          "description": "Operation identified in typed source; dependency completeness is separate.",
+          "status": "approximated"
+        },
+        "id": "n9",
+        "original_kind": {
+          "status": "known",
+          "value": "*ast.BinaryExpr"
+        },
+        "provenance": {
+          "description": "Go source operation; abstraction lowering is approximate.",
+          "origin": "source"
+        },
+        "source_span": {
+          "end": 2383,
+          "source_id": "adapters/gopatterns/testdata/interface-nil/sample.go",
+          "start": 2371
+        },
+        "synthetic": false
+      },
+      {
+        "attributes": {
+          "defines": [
+            "d2"
+          ],
+          "symbol_ids": [
+            "s2"
+          ],
+          "writes": [
+            {
+              "symbol_id": "s2"
+            }
+          ]
+        },
+        "category": "declaration",
+        "evidence": {
+          "description": "Operation identified in typed source; dependency completeness is separate.",
+          "status": "approximated"
+        },
+        "id": "n10",
+        "original_kind": {
+          "status": "known",
+          "value": "*ast.ValueSpec"
+        },
+        "provenance": {
+          "description": "Go source operation; abstraction lowering is approximate.",
+          "origin": "source"
+        },
+        "source_span": {
+          "end": 2292,
+          "source_id": "adapters/gopatterns/testdata/interface-nil/sample.go",
+          "start": 2283
+        },
+        "synthetic": false
+      },
+      {
+        "attributes": {
+          "extensions": {
+            "gstyle:interface-value": "concrete"
+          },
+          "reads": [
+            {
+              "symbol_id": "s1"
+            }
+          ]
+        },
+        "category": "read",
+        "evidence": {
+          "description": "Operation identified in typed source; dependency completeness is separate.",
+          "status": "approximated"
+        },
+        "id": "n11",
+        "original_kind": {
+          "status": "known",
+          "value": "*ast.Ident"
+        },
+        "provenance": {
+          "description": "Go source operation; abstraction lowering is approximate.",
+          "origin": "source"
+        },
+        "source_span": {
+          "end": 2304,
+          "source_id": "adapters/gopatterns/testdata/interface-nil/sample.go",
+          "start": 2297
+        },
+        "synthetic": false
+      },
+      {
+        "attributes": {
+          "reads": [
+            {
+              "symbol_id": "s3"
+            }
+          ]
+        },
+        "category": "read",
+        "evidence": {
+          "description": "Operation identified in typed source; dependency completeness is separate.",
+          "status": "approximated"
+        },
+        "id": "n12",
+        "original_kind": {
+          "status": "known",
+          "value": "*ast.Ident"
+        },
+        "provenance": {
+          "description": "Go source operation; abstraction lowering is approximate.",
+          "origin": "source"
+        },
+        "source_span": {
+          "end": 2328,
+          "source_id": "adapters/gopatterns/testdata/interface-nil/sample.go",
+          "start": 2324
+        },
+        "synthetic": false
+      },
+      {
+        "attributes": {
+          "extensions": {
+            "gstyle:interface-value": "interface"
+          },
+          "reads": [
+            {
+              "symbol_id": "s2"
+            }
+          ]
+        },
+        "category": "read",
+        "evidence": {
+          "description": "Operation identified in typed source; dependency completeness is separate.",
+          "status": "approximated"
+        },
+        "id": "n13",
+        "original_kind": {
+          "status": "known",
+          "value": "*ast.Ident"
+        },
+        "provenance": {
+          "description": "Go source operation; abstraction lowering is approximate.",
+          "origin": "source"
+        },
+        "source_span": {
+          "end": 2376,
+          "source_id": "adapters/gopatterns/testdata/interface-nil/sample.go",
+          "start": 2371
+        },
+        "synthetic": false
+      },
+      {
+        "attributes": {
+          "defines": [
+            "d5"
+          ],
+          "description": "Scalar value join at a reachable read site.",
+          "symbol_ids": [
+            "s2"
+          ]
+        },
+        "category": "merge",
+        "evidence": {
+          "description": "Exact scalar reaching definitions for acyclic normal flow: local integer/boolean bindings, assignments, if branches, short-circuit expressions, explicit value joins and returns; calls, memory and loops are excluded.",
+          "status": "supported"
+        },
+        "id": "n14",
+        "original_kind": {
+          "reason": "Derived scalar value/read/predicate entity; its span identifies the source value site.",
+          "status": "not_applicable"
+        },
+        "provenance": {
+          "description": "Exact scalar reaching definitions for acyclic normal flow: local integer/boolean bindings, assignments, if branches, short-circuit expressions, explicit value joins and returns; calls, memory and loops are excluded.",
+          "origin": "analysis"
+        },
+        "source_span": {
+          "end": 2376,
+          "source_id": "adapters/gopatterns/testdata/interface-nil/sample.go",
+          "start": 2371
+        },
+        "synthetic": true
+      }
+    ],
+    "producer": {
+      "configuration": {
+        "pointer_width": 64,
+        "package": "github.com/rstyled/gstyle/adapters/gopatterns/testdata/interface-nil"
+      },
+      "language": "go",
+      "language_version": {
+        "status": "known",
+        "value": "go1.26.0"
+      },
+      "name": "gstyle",
+      "version": "pdg-ir-0.2.0"
+    },
+    "profile": {
+      "id": "gstyle.abstraction",
+      "version": "0.2.0"
+    },
+    "schema_version": "0.1.0",
+    "sources": [
+      {
+        "content_identity": {
+          "status": "known",
+          "value": "d606c83d9d1c123fe960112bbfd89c9d26c5a658516ae08390700d82cfd0fe14"
+        },
+        "id": "adapters/gopatterns/testdata/interface-nil/sample.go",
+        "path": "adapters/gopatterns/testdata/interface-nil/sample.go"
+      }
+    ],
+    "symbols": [
+      {
+        "extensions": {
+          "gstyle.go.scalar-normal:resolved-type": {
+            "primitive": "bool"
+          }
+        },
+        "id": "s1",
+        "name": {
+          "status": "known",
+          "value": "enabled"
+        },
+        "role": "parameter",
+        "scope_id": "scope:adapters/gopatterns/testdata/interface-nil/sample.go:lexical:2239:2438",
+        "type": {
+          "status": "known",
+          "value": "bool"
+        }
+      },
+      {
+        "id": "s2",
+        "name": {
+          "status": "known",
+          "value": "boxed"
+        },
+        "role": "local",
+        "scope_id": "scope:adapters/gopatterns/testdata/interface-nil/sample.go:lexical:2239:2438",
+        "type": {
+          "status": "known",
+          "value": "any"
+        }
+      },
+      {
+        "extensions": {
+          "gstyle.go.scalar-normal:resolved-type": {
+            "primitive": "isize"
+          }
+        },
+        "id": "s3",
+        "name": {
+          "status": "known",
+          "value": "Code"
+        },
+        "role": "local",
+        "scope_id": "scope:unbound:github.com/rstyled/gstyle/adapters/gopatterns/testdata/interface-nil",
+        "type": {
+          "status": "known",
+          "value": "int"
+        }
+      }
+    ]
+  },
+  "finding": {
+    "Kind": "typednil",
+    "ScoreMilli": 750,
+    "Breakdown": {
+      "Support": 1,
+      "LiftMilli": 0,
+      "Holes": 0,
+      "CoverageMilli": 1000
+    },
+    "Observation": "typed nil compared to nil: `interface value is provably non-nil`",
+    "Inference": "interface nil checks do not test whether the contained value is nil",
+    "PossibleRefactor": "",
+    "Sites": [
+      {
+        "Path": "adapters/gopatterns/testdata/interface-nil/sample.go",
+        "Line": 79,
+        "EndLine": 79,
+        "ID": "github.com/rstyled/gstyle/adapters/gopatterns/testdata/interface-nil.branchAssignments",
+        "Name": "github.com/rstyled/gstyle/adapters/gopatterns/testdata/interface-nil.branchAssignments"
+      }
+    ],
+    "Definitions": null,
+    "CounterEvidence": null,
+    "FixSpec": null
+  },
+  "structure": {
+    "ast": [
+      {
+        "kind": "*ast.FuncDecl",
+        "start": 2239,
+        "end": 2438
+      },
+      {
+        "kind": "*ast.Ident",
+        "start": 2244,
+        "end": 2261
+      },
+      {
+        "kind": "*ast.FuncType",
+        "start": 2239,
+        "end": 2275
+      },
+      {
+        "kind": "*ast.FieldList",
+        "start": 2261,
+        "end": 2275
+      },
+      {
+        "kind": "*ast.Field",
+        "start": 2262,
+        "end": 2274
+      },
+      {
+        "kind": "*ast.Ident",
+        "start": 2262,
+        "end": 2269
+      },
+      {
+        "kind": "*ast.Ident",
+        "start": 2270,
+        "end": 2274
+      },
+      {
+        "kind": "*ast.BlockStmt",
+        "start": 2276,
+        "end": 2438
+      },
+      {
+        "kind": "*ast.DeclStmt",
+        "start": 2279,
+        "end": 2292
+      },
+      {
+        "kind": "*ast.GenDecl",
+        "start": 2279,
+        "end": 2292
+      },
+      {
+        "kind": "*ast.ValueSpec",
+        "start": 2283,
+        "end": 2292
+      },
+      {
+        "kind": "*ast.Ident",
+        "start": 2283,
+        "end": 2288
+      },
+      {
+        "kind": "*ast.Ident",
+        "start": 2289,
+        "end": 2292
+      },
+      {
+        "kind": "*ast.IfStmt",
+        "start": 2294,
+        "end": 2365
+      },
+      {
+        "kind": "*ast.Ident",
+        "start": 2297,
+        "end": 2304
+      },
+      {
+        "kind": "*ast.BlockStmt",
+        "start": 2305,
+        "end": 2336
+      },
+      {
+        "kind": "*ast.AssignStmt",
+        "start": 2309,
+        "end": 2333
+      },
+      {
+        "kind": "*ast.Ident",
+        "start": 2309,
+        "end": 2314
+      },
+      {
+        "kind": "*ast.CompositeLit",
+        "start": 2317,
+        "end": 2333
+      },
+      {
+        "kind": "*ast.Ident",
+        "start": 2317,
+        "end": 2323
+      },
+      {
+        "kind": "*ast.KeyValueExpr",
+        "start": 2324,
+        "end": 2332
+      },
+      {
+        "kind": "*ast.Ident",
+        "start": 2324,
+        "end": 2328
+      },
+      {
+        "kind": "*ast.BasicLit",
+        "start": 2330,
+        "end": 2332
+      },
+      {
+        "kind": "*ast.BlockStmt",
+        "start": 2342,
+        "end": 2365
+      },
+      {
+        "kind": "*ast.AssignStmt",
+        "start": 2346,
+        "end": 2362
+      },
+      {
+        "kind": "*ast.Ident",
+        "start": 2346,
+        "end": 2351
+      },
+      {
+        "kind": "*ast.BasicLit",
+        "start": 2354,
+        "end": 2362
+      },
+      {
+        "kind": "*ast.AssignStmt",
+        "start": 2367,
+        "end": 2383
+      },
+      {
+        "kind": "*ast.Ident",
+        "start": 2367,
+        "end": 2368
+      },
+      {
+        "kind": "*ast.BinaryExpr",
+        "start": 2371,
+        "end": 2383
+      },
+      {
+        "kind": "*ast.Ident",
+        "start": 2371,
+        "end": 2376
+      },
+      {
+        "kind": "*ast.Ident",
+        "start": 2380,
+        "end": 2383
+      }
+    ],
+    "cfg": [
+      {
+        "id": 0,
+        "kind": "Body",
+        "live": true,
+        "successors": [
+          1,
+          3
+        ],
+        "nodes": [
+          {
+            "kind": "*ast.ValueSpec",
+            "start": 2283,
+            "end": 2292
+          },
+          {
+            "kind": "*ast.Ident",
+            "start": 2297,
+            "end": 2304
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "kind": "IfThen",
+        "live": true,
+        "successors": [
+          2
+        ],
+        "nodes": [
+          {
+            "kind": "*ast.AssignStmt",
+            "start": 2309,
+            "end": 2333
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "kind": "IfDone",
+        "live": true,
+        "successors": [],
+        "nodes": [
+          {
+            "kind": "*ast.AssignStmt",
+            "start": 2367,
+            "end": 2383
+          },
+          {
+            "kind": "*ast.ReturnStmt",
+            "start": 2437,
+            "end": 2443
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "kind": "IfElse",
+        "live": true,
+        "successors": [
+          2
+        ],
+        "nodes": [
+          {
+            "kind": "*ast.AssignStmt",
+            "start": 2346,
+            "end": 2362
+          }
+        ]
+      }
+    ],
+    "typed": true
+  },
+  "replay": {
+    "false": [
+      {
+        "kind": "initial",
+        "start": 2279,
+        "type": "<nil>",
+        "value": null,
+        "result": true
+      },
+      {
+        "kind": "branch",
+        "start": 2297,
+        "type": "bool",
+        "value": false,
+        "result": false
+      },
+      {
+        "kind": "value",
+        "start": 2346,
+        "type": "string",
+        "value": "queued",
+        "result": false
+      },
+      {
+        "kind": "value",
+        "start": 2367,
+        "type": "string",
+        "value": "queued",
+        "result": false
+      }
+    ],
+    "true": [
+      {
+        "kind": "initial",
+        "start": 2279,
+        "type": "<nil>",
+        "value": null,
+        "result": true
+      },
+      {
+        "kind": "branch",
+        "start": 2297,
+        "type": "bool",
+        "value": true,
+        "result": true
+      },
+      {
+        "kind": "value",
+        "start": 2309,
+        "type": "main.Parcel",
+        "value": {
+          "Code": 87
+        },
+        "result": false
+      },
+      {
+        "kind": "value",
+        "start": 2367,
+        "type": "main.Parcel",
+        "value": {
+          "Code": 87
+        },
+        "result": false
+      }
+    ]
+  },
+  "detector": {
+    "path": "domain/interfacenil/proof.go",
+    "source": "// Package interfacenil proves non-nil interface comparisons from the shared\n// PDG. It never consumes ASTs, mining-value edges, or clone matching labels.\npackage interfacenil\n\nimport \"github.com/rstyled/gstyle/domain/pdg\"\n\ntype site struct {\n\tgraph int\n\tnode  pdg.Ref\n}\n\ntype proofNode struct {\n\tdependencies []int\n\tusers        []int\n\tpending      int\n\tseed         bool\n}\n\n// The worklist is private scratch storage. Mutating counters and adjacency\n// lists keeps proof linear in graph size; no per-node ancestry sets are copied.\ntype solver struct {\n\tnodes   []proofNode\n\tsites   []site\n\toffsets []int\n\toutputs map[string]int\n}\n\nfunc newSolver(graphs []pdg.Graph) *solver {\n\ts := &solver{outputs: map[string]int{}}\n\tfor i, graph := range graphs {\n\t\tif !supported(&graph) {\n\t\t\ts.offsets = append(s.offsets, -1)\n\t\t\tcontinue\n\t\t}\n\t\ts.offsets = append(s.offsets, len(s.nodes))\n\t\tfor ref, node := range graph.Nodes {\n\t\t\ts.nodes = append(s.nodes, proofNode{})\n\t\t\ts.sites = append(s.sites, site{i, pdg.Ref(ref + 1)})\n\t\t\tif node.Category == pdg.FormalOutput && len(graph.Function.Outputs) == 1 {\n\t\t\t\ts.outputs[graph.Tables.Text(graph.Function.ID)] = s.offsets[i] + ref\n\t\t\t}\n\t\t}\n\t}\n\treturn s\n}\n\nfunc (s *solver) function(graph pdg.Graph, index int) {\n\tif !supported(&graph) {\n\t\treturn\n\t}\n\toffset := s.offsets[index]\n\teligible := make([]bool, len(graph.Nodes))\n\tfor ref, node := range graph.Nodes {\n\t\tattrs := graph.NodeAttributes(node)\n\t\ttarget := offset + ref\n\t\teligible[ref] = s.operation(&graph, node, attrs, target)\n\t}\n\n\tfor _, edge := range graph.Edges {\n\t\tif !eligible[edge.Target-1] || !proofEdge(&graph, edge) {\n\t\t\tcontinue\n\t\t}\n\t\ttarget := offset + int(edge.Target) - 1\n\t\ts.nodes[target].dependencies = append(s.nodes[target].dependencies, offset+int(edge.Source)-1)\n\t}\n}\n\nfunc (s *solver) operation(graph *pdg.Graph, node pdg.Node, attrs pdg.Attributes, target int) bool {\n\tkind := extension(graph, attrs, \"gstyle:interface-value\")\n\ts.nodes[target].seed = kind == `\"concrete\"` || kind == `\"boxed\"`\n\tif node.Category == pdg.Call {\n\t\ts.call(graph, attrs, target)\n\t\treturn false\n\t}\n\treturn transfer(node.Category, attrs, graph)\n}\n\nfunc (s *solver) call(graph *pdg.Graph, attrs pdg.Attributes, target int) {\n\tif attrs.CallForm != pdg.DirectCall || attrs.Callee.Status != pdg.Known {\n\t\treturn\n\t}\n\toutput, ok := s.outputs[graph.Tables.Text(attrs.Callee.Value)]\n\tif ok {\n\t\ts.nodes[target].dependencies = append(s.nodes[target].dependencies, output)\n\t}\n}\n\nfunc (s *solver) solve() []bool {\n\tknown := make([]bool, len(s.nodes))\n\tqueue := s.seedQueue(known)\n\n\tfor cursor := 0; cursor < len(queue); cursor++ {\n\t\tfor _, user := range s.nodes[queue[cursor]].users {\n\t\t\ts.nodes[user].pending--\n\t\t\tif known[user] || s.nodes[user].pending != 0 {\n\t\t\t\tcontinue\n\t\t\t}\n\t\t\tknown[user] = true\n\t\t\tqueue = append(queue, user)\n\t\t}\n\t}\n\treturn known\n}\n\nfunc (s *solver) seedQueue(known []bool) []int {\n\tvar queue []int\n\tfor index := range s.nodes {\n\t\tnode := &s.nodes[index]\n\t\tnode.pending = len(node.dependencies)\n\t\tfor _, dependency := range node.dependencies {\n\t\t\ts.nodes[dependency].users = append(s.nodes[dependency].users, index)\n\t\t}\n\t\tif node.seed {\n\t\t\tknown[index] = true\n\t\t\tqueue = append(queue, index)\n\t\t}\n\t}\n\treturn queue\n}\n\nfunc (s *solver) operandKnown(graphs []pdg.Graph, index int, position pdg.Position, known []bool) bool {\n\twhere := s.sites[index]\n\tgraph := &graphs[where.graph]\n\toffset := s.offsets[where.graph]\n\tfound := false\n\tfor _, edge := range graph.Edges {\n\t\tif !comparisonOperand(graph, edge, where.node, position) {\n\t\t\tcontinue\n\t\t}\n\t\tif !known[offset+int(edge.Source)-1] {\n\t\t\treturn false\n\t\t}\n\t\tfound = true\n\t}\n\treturn found\n}\n\n// Find returns comparison nodes with a proven non-nil interface operand.\n// Unknown inputs and unresolved/recursive call summaries do not become proof.\nfunc Find(graphs []pdg.Graph) [][]pdg.Ref {\n\ts := newSolver(graphs)\n\tfor i := range graphs {\n\t\ts.function(graphs[i], i)\n\t}\n\tknown := s.solve()\n\tresults := make([][]pdg.Ref, len(graphs))\n\tfor index, where := range s.sites {\n\t\tgraph := &graphs[where.graph]\n\t\tattrs := graph.NodeAttributes(graph.Nodes[where.node-1])\n\t\tposition := nilOperand(graph, attrs)\n\t\tif position == 0 {\n\t\t\tcontinue\n\t\t}\n\t\tif s.operandKnown(graphs, index, position, known) {\n\t\t\tresults[where.graph] = append(results[where.graph], where.node)\n\t\t}\n\t}\n\treturn results\n}\n\nfunc supported(graph *pdg.Graph) bool {\n\tfor _, capability := range graph.Capabilities {\n\t\tif graph.Tables.Text(capability.Name) == \"interface_binding_flow\" {\n\t\t\treturn graph.Tables.Evidence[capability.Evidence-1].Status == pdg.Supported\n\t\t}\n\t}\n\treturn false\n}\n\nfunc transfer(category pdg.Category, attrs pdg.Attributes, graph *pdg.Graph) bool {\n\tswitch category {\n\tcase pdg.Read:\n\t\treturn localRead(attrs)\n\tcase pdg.Assignment, pdg.Declaration, pdg.Return, pdg.FormalOutput, pdg.Merge:\n\t\treturn true\n\tcase pdg.Computation:\n\t\tif attrs.Operator.Status != pdg.Known {\n\t\t\treturn false\n\t\t}\n\t\toperator := graph.Tables.Text(attrs.Operator.Value)\n\t\treturn operator == \"conversion\" || operator == \"parentheses\"\n\tdefault:\n\t\treturn false\n\t}\n}\n\nfunc localRead(attrs pdg.Attributes) bool {\n\tif len(attrs.Reads) != 1 {\n\t\treturn false\n\t}\n\tread := attrs.Reads[0]\n\treturn read.Symbol != 0 && read.Location == 0 && read.UnresolvedReason == 0\n}\n\nfunc proofEdge(graph *pdg.Graph, edge pdg.Edge) bool {\n\tif edge.Kind != pdg.Data {\n\t\treturn false\n\t}\n\tswitch graph.Tables.Text(edge.Subkind) {\n\tcase \"reaching-definition\", \"binding-value\", \"return-value\":\n\t\treturn graph.Tables.Evidence[edge.Evidence-1].Status == pdg.Supported\n\tdefault:\n\t\treturn false\n\t}\n}\n\nfunc extension(graph *pdg.Graph, attrs pdg.Attributes, name string) string {\n\tfor _, value := range attrs.Extensions {\n\t\tif graph.Tables.Text(value.Name) == name {\n\t\t\treturn graph.Tables.Text(value.Value)\n\t\t}\n\t}\n\treturn \"\"\n}\n\nfunc nilOperand(graph *pdg.Graph, attrs pdg.Attributes) pdg.Position {\n\tswitch extension(graph, attrs, \"gstyle:interface-nil-operand\") {\n\tcase \"1\":\n\t\treturn 1\n\tcase \"2\":\n\t\treturn 2\n\tdefault:\n\t\treturn 0\n\t}\n}\n\nfunc comparisonOperand(graph *pdg.Graph, edge pdg.Edge, target pdg.Ref, position pdg.Position) bool {\n\tif edge.Target != target || edge.Position != position {\n\t\treturn false\n\t}\n\treturn graph.Tables.Text(edge.Subkind) == \"binding-value\" && proofEdge(graph, edge)\n}\n",
+    "sha256": "296064ac75097ea8ab4b215d9bbd6a3f880cb9c182ca749d064b89c6ff8706eb",
+    "witness": {
+      "comparison": "n9",
+      "operand": 1,
+      "roots": [
+        "n13"
+      ],
+      "steps": [
+        {
+          "node": "n13",
+          "seed": false,
+          "dependencies": [
+            "n14"
+          ]
+        },
+        {
+          "node": "n14",
+          "seed": false,
+          "dependencies": [
+            "n3",
+            "n6"
+          ]
+        },
+        {
+          "node": "n3",
+          "seed": false,
+          "dependencies": [
+            "n4"
+          ]
+        },
+        {
+          "node": "n6",
+          "seed": false,
+          "dependencies": [
+            "n7"
+          ]
+        },
+        {
+          "node": "n4",
+          "seed": true,
+          "dependencies": []
+        },
+        {
+          "node": "n7",
+          "seed": true,
+          "dependencies": []
+        }
+      ]
+    }
+  },
+  "repair": {
+    "before": "func branchAssignments(enabled bool) {\n\tvar boxed any\n\tif enabled {\n\t\tboxed = Parcel{Code: 87}\n\t} else {\n\t\tboxed = \"queued\"\n\t}\n\t_ = boxed == nil // want-nonnil: every reaching definition is non-nil\n}",
+    "after": "func branchAssignments(enabled bool) {\n\tvar boxed any\n\tif enabled {\n\t\tboxed = Parcel{Code: 87}\n\t} else {\n\t\tboxed = nil\n\t}\n\t_ = boxed == nil // want-nonnil: every reaching definition is non-nil\n}",
+    "runs": {
+      "false": [
+        {
+          "kind": "initial",
+          "start": 2279,
+          "type": "<nil>",
+          "value": null,
+          "result": true
+        },
+        {
+          "kind": "branch",
+          "start": 2297,
+          "type": "bool",
+          "value": false,
+          "result": false
+        },
+        {
+          "kind": "value",
+          "start": 2346,
+          "type": "<nil>",
+          "value": null,
+          "result": true
+        },
+        {
+          "kind": "value",
+          "start": 2362,
+          "type": "<nil>",
+          "value": null,
+          "result": true
+        }
+      ],
+      "true": [
+        {
+          "kind": "initial",
+          "start": 2279,
+          "type": "<nil>",
+          "value": null,
+          "result": true
+        },
+        {
+          "kind": "branch",
+          "start": 2297,
+          "type": "bool",
+          "value": true,
+          "result": true
+        },
+        {
+          "kind": "value",
+          "start": 2309,
+          "type": "main.Parcel",
+          "value": {
+            "Code": 87
+          },
+          "result": false
+        },
+        {
+          "kind": "value",
+          "start": 2362,
+          "type": "main.Parcel",
+          "value": {
+            "Code": 87
+          },
+          "result": false
+        }
+      ]
+    },
+    "remainingFindings": 0,
+    "contract": "For this experiment only: disabled means no value (nil); enabled means a Parcel. The original fixture does not specify this product intent."
+  }
+}
