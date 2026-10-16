@@ -34,6 +34,8 @@ func TestNilGuard(t *testing.T) {
 		{"explicit nil without another guard", `func Get() int { p := (*int)(nil); return *p }`, true},
 		{"nil replaced by allocation", `func Get() int { p := (*int)(nil); p = new(int); return *p }`, false},
 		{"contradictory nil branch", `func Get(p *int) int { if p == nil { return 0 }; if p == nil { return *p }; return 1 }`, false},
+		{"safe helper result without another guard", `func safePointer() *int { return new(int) }; func Get() int { p := safePointer(); return *p }`, false},
+		{"safe helper result with unrelated guard", `func safePointer() *int { return new(int) }; func Get(q *int) int { if q == nil { return 0 }; p := safePointer(); return *p }`, false},
 		{"unrelated guard and receiver", `type Item struct { N int }; func (p *Item) Get(q *int) int { if q == nil { return 0 }; return p.N }`, false},
 		{"implicit field dereference", `type Item struct { N int }; func Get(p, q *Item) int { if q == nil { return -1 }; return p.N }`, false},
 		{"parenthesized field dereference", `type Item struct { N int }; func Get(p, q *Item) int { if q == nil { return -1 }; return (p).N }`, false},
