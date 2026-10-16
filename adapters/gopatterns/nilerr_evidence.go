@@ -59,7 +59,7 @@ func (e nilErrEvidence) unknownHandling(node ast.Node) bool {
 func (e nilErrEvidence) unknownOperation(node ast.Node) bool {
 	switch node := node.(type) {
 	case *ast.CallExpr:
-		return !nilErrLoggingCall(node, e.info) && !e.info.Types[node.Fun].IsType()
+		return !nilErrBuiltinPrintCall(node, e.info) && !e.info.Types[node.Fun].IsType()
 	case *ast.AssignStmt:
 		return e.unknownAssignment(node)
 	case *ast.ValueSpec:
@@ -78,38 +78,15 @@ func (e nilErrEvidence) replacesCheckedValue(targets []ast.Expr) bool {
 	return false
 }
 
-// Logging records a failure; it does not recover from it.
-func nilErrLoggingCall(call *ast.CallExpr, info *types.Info) bool {
-	switch fun := ast.Unparen(call.Fun).(type) {
-	case *ast.Ident:
-		builtin, ok := info.ObjectOf(fun).(*types.Builtin)
-		return ok && (builtin.Name() == "print" || builtin.Name() == "println")
-	case *ast.SelectorExpr:
-		return nilErrLoggingFunction(info.ObjectOf(fun.Sel))
-	default:
+// Built-in print calls do not invoke formatting methods, writers or handlers.
+// Standard-library logging calls can run user code and remain unknown.
+func nilErrBuiltinPrintCall(call *ast.CallExpr, info *types.Info) bool {
+	name, ok := ast.Unparen(call.Fun).(*ast.Ident)
+	if !ok {
 		return false
 	}
-}
-
-func nilErrLoggingFunction(object types.Object) bool {
-	function, ok := object.(*types.Func)
-	if !ok || function.Pkg() == nil {
-		return false
-	}
-	switch function.Pkg().Path() {
-	case "log/slog":
-		return true
-	case "log":
-		return nilErrPrintName(function.Name())
-	case "fmt":
-		return nilErrFmtPrintName(function.Name())
-	default:
-		return false
-	}
-}
-
-func nilErrPrintName(name string) bool {
-	return name == "Print" || name == "Printf" || name == "Println" || name == "Output"
+	builtin, ok := info.ObjectOf(name).(*types.Builtin)
+	return ok && (builtin.Name() == "print" || builtin.Name() == "println")
 }
 
 func (e nilErrEvidence) copiesCheckedValue(assign *ast.AssignStmt) bool {
@@ -123,10 +100,6 @@ func (e nilErrEvidence) copiesCheckedValue(assign *ast.AssignStmt) bool {
 		}
 	}
 	return false
-}
-
-func nilErrFmtPrintName(name string) bool {
-	return name == "Print" || name == "Printf" || name == "Println" || name == "Fprint" || name == "Fprintf" || name == "Fprintln"
 }
 
 func nilErrNamedTargets(targets []ast.Expr) bool {
