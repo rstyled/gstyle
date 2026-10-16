@@ -104,16 +104,10 @@ gstyle fix --kind declaration_order . # preview one kind
 Pattern analysis uses program dependence graphs to find repeated regions and
 track values and dependencies. It also reports opportunities such as guard
 clauses, parameter groups, declaration ordering, and unchecked type assertions.
-The `unchecked_output` pattern requires a reachable discarded `fmt.Fprint*`
-error followed directly by a nil error return in the same block. This shows how a failed write can be
-reported as success. Diagnostics that return an existing error, unknown callback
-outcomes, and functions without an error result stay quiet. Known `*bytes.Buffer`
-and `*strings.Builder` destinations are excluded. This pattern has no automatic
-fix. Known nil interface writers stay quiet. Arguments and other return values
-must be names, constants, or package-qualified values; other expressions have
-unmodeled completion and stay quiet. Indirect calls and deferred writes remain
-outside this rule. Functions with deferred calls and writes assigned to index
-or pointer targets also stay quiet because completion is not established.
+Discarded output errors are retained as analysis facts. They do not produce
+`unchecked_output` findings: a failed write followed by a nil return does not
+establish that output delivery is required. Status messages can fail after the
+requested operation succeeds.
 
 Coverage can be partial; no finding does not establish that a dependency or bug
 is absent.

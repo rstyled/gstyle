@@ -152,3 +152,18 @@ func TestOutputCompletionBoundaries(t *testing.T) {
 		}
 	})
 }
+
+// Regression from bbolt a4ef19710eb7ddc41fd1155336baf331b5c57ba8.
+// dumpPage loses requested output; surgeryFreelistAbandonFunc can persist the
+// requested change before a status write fails. Both return nil.
+func TestWriteFailureDoesNotEstablishOperationFailure(t *testing.T) {
+	required := &failingWriter{}
+	if err := OutputRequiredContractUnknown(required); err != nil || required.writes != 1 {
+		t.Fatalf("required output: writes=%d,error=%v", required.writes, err)
+	}
+	status := &failingWriter{}
+	completed := false
+	if err := OutputStatusContractUnknown(status, &completed); err != nil || status.writes != 1 || !completed {
+		t.Fatalf("status output: writes=%d,error=%v,completed=%v", status.writes, err, completed)
+	}
+}

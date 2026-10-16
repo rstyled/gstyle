@@ -152,3 +152,14 @@ func OutputAssignmentNameSafe(w io.Writer) error {
 	n, err = fmt.Fprintln(w, "result")
 	return err
 }
+
+// These have the same output tail. The operation contract differs.
+func OutputRequiredContractUnknown(w io.Writer) error {
+	fmt.Fprintln(w, "result")
+	return nil
+}
+func OutputStatusContractUnknown(w io.Writer, completed *bool) error {
+	*completed = true
+	fmt.Fprintln(w, "result")
+	return nil
+}

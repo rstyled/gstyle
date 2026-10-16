@@ -56,8 +56,8 @@ func Closure(w io.Writer){_ = func(){f.Fprintln(w,"not attributed to outer")}}
 			}
 			found[c.Sites[0].Name] = true
 		}
-		if len(found) != 4 || !found["example.Dropped"] || !found["example.Blank"] || !found["example.CountOnly"] || !found["example.Generic"] {
-			t.Fatalf("unexpected findings: %v", found)
+		if len(found) != 0 {
+			t.Fatalf("discarded output does not prove a broken output contract: %v", found)
 		}
 	}
 }

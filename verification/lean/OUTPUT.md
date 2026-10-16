@@ -1,3 +1,10 @@
+> Default mining does not emit `unchecked_output`. The retained classifier and
+> proofs establish structural discard facts, not an obligation to deliver output.
+> Runtime tests show both requested-output loss and failed status messages after
+> successful database changes. Neither a nil return nor a failed write supplies
+> the missing output contract. The candidate projection is removed. No replacement
+> findings mode or new semantic proof claim is added.
+
 # Unchecked-output proof
 
 Run `make verify-output`. Go, Python 3 and elan are required. It uses the same
