@@ -114,3 +114,41 @@ func OutputReturnIndexPanicSafe(w io.Writer) (int, error) {
 	fmt.Fprintln(w, "result")
 	return s[0], nil
 }
+
+func OutputDeferredPanicSafe(w io.Writer) error {
+	defer func() { panic("after output") }()
+	fmt.Fprintln(w, "result")
+	return nil
+}
+func OutputNormalDeferUnknown(w io.Writer, done *bool) error {
+	defer func() { *done = true }()
+	fmt.Fprintln(w, "result")
+	return nil
+}
+func OutputDeferredErrorSafe(w io.Writer) (err error) {
+	defer func() { err = io.ErrClosedPipe }()
+	fmt.Fprintln(w, "result")
+	return nil
+}
+func OutputAssignmentNameBad(w io.Writer) error {
+	n := 0
+	_ = n
+	n, _ = fmt.Fprintln(w, "result")
+	return nil
+}
+func OutputSliceTargetUnknown(w io.Writer, s []int) error {
+	s[0], _ = fmt.Fprintln(w, "result")
+	return nil
+}
+func OutputPointerTargetUnknown(w io.Writer, p *int) error {
+	*p, _ = fmt.Fprintln(w, "result")
+	return nil
+}
+
+func OutputAssignmentNameSafe(w io.Writer) error {
+	n := 0
+	_ = n
+	var err error
+	n, err = fmt.Fprintln(w, "result")
+	return err
+}

@@ -32,8 +32,9 @@ func outputErrorResult(fn *ast.FuncDecl, info *types.Info) int {
 	if !isErrorTypeCheck(results.At(index).Type()) {
 		return -1
 	}
-	// A deferred call can replace a named nil result after return evaluation.
-	if results.At(index).Name() != "" && containsOutputDefer(fn.Body) {
+	// Deferred calls can panic, exit, or replace a named error. Their
+	// completion is outside this rule, regardless of result names.
+	if containsOutputDefer(fn.Body) {
 		return -1
 	}
 	return index
@@ -64,8 +65,10 @@ func successfulOutputBlock(node ast.Node, call *ast.CallExpr, index int, info *t
 }
 
 func directOutputStatement(statement ast.Stmt, call *ast.CallExpr) bool {
-	switch statement.(type) {
-	case *ast.ExprStmt, *ast.AssignStmt, *ast.DeclStmt:
+	switch statement := statement.(type) {
+	case *ast.AssignStmt:
+		return namedOutputTargets(statement.Lhs) && statement.Pos() <= call.Pos() && call.End() <= statement.End()
+	case *ast.ExprStmt, *ast.DeclStmt:
 		return statement.Pos() <= call.Pos() && call.End() <= statement.End()
 	default:
 		return false
@@ -124,4 +127,14 @@ func nilOutputWriter(call *ast.CallExpr, knownNil bool, info *types.Info) bool {
 	}
 	typ := info.TypeOf(writer)
 	return knownNil && !unknownInterfaceValue(typ) && interfaceType(typ)
+}
+
+// Index and pointer targets can panic after the RHS call completes.
+func namedOutputTargets(targets []ast.Expr) bool {
+	for _, target := range targets {
+		if _, ok := ast.Unparen(target).(*ast.Ident); !ok {
+			return false
+		}
+	}
+	return true
 }

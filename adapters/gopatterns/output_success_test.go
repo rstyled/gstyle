@@ -52,6 +52,8 @@ func TestOutputSuccessReturnShapes(t *testing.T) {
 		{"tuple", `func f(w io.Writer)(int,error){fmt.Fprintln(w,"x");return 0,nil}`, true},
 		{"named result", `func f(w io.Writer)(err error){fmt.Fprintln(w,"x");return nil}`, true},
 		{"deferred named replacement", `func f(w io.Writer)(err error){defer func(){err=fmt.Errorf("failed")}();fmt.Fprintln(w,"x");return nil}`, false},
+		{"deferred unnamed panic", `func f(w io.Writer)error{defer func(){panic("stop")}();fmt.Fprintln(w,"x");return nil}`, false},
+		{"normal defer unknown", `func f(w io.Writer)error{defer func(){}();fmt.Fprintln(w,"x");return nil}`, false},
 		{"void best effort", `func f(w io.Writer){fmt.Fprintln(w,"x")}`, false},
 		{"exit callback", `func f(w io.Writer,err error,exit func(int)){if err!=nil{fmt.Fprintln(w,err);exit(1)}}`, false},
 	}

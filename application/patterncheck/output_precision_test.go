@@ -26,7 +26,7 @@ func TestExecutableOutputPrecisionCorpus(t *testing.T) {
 			}
 		}
 	}
-	for _, name := range []string{"OutputDirect", "OutputLocal", "OutputBranch", "OutputBoxedNil"} {
+	for _, name := range []string{"OutputDirect", "OutputLocal", "OutputBranch", "OutputBoxedNil", "OutputAssignmentName"} {
 		if counts[name+"Bad"] != 1 {
 			t.Errorf("%sBad findings=%d,want one", name, counts[name+"Bad"])
 		}
@@ -34,7 +34,7 @@ func TestExecutableOutputPrecisionCorpus(t *testing.T) {
 			t.Errorf("%sSafe findings=%d,want zero", name, counts[name+"Safe"])
 		}
 	}
-	for _, name := range []string{"OutputPanicSafe", "OutputExistingFailureSafe", "OutputFalseSafe", "OutputContradictionSafe", "OutputClearedInterfaceSafe", "OutputZeroInterfaceSafe", "OutputNilGuardWriterSafe", "OutputLiteralNilWriterSafe", "OutputDeclaredNilWriterSafe", "OutputAssignedNilWriterSafe", "OutputReturnPanicSafe", "OutputReturnIndexPanicSafe"} {
+	for _, name := range []string{"OutputPanicSafe", "OutputExistingFailureSafe", "OutputFalseSafe", "OutputContradictionSafe", "OutputClearedInterfaceSafe", "OutputZeroInterfaceSafe", "OutputNilGuardWriterSafe", "OutputLiteralNilWriterSafe", "OutputDeclaredNilWriterSafe", "OutputAssignedNilWriterSafe", "OutputReturnPanicSafe", "OutputReturnIndexPanicSafe", "OutputDeferredPanicSafe", "OutputNormalDeferUnknown", "OutputDeferredErrorSafe", "OutputSliceTargetUnknown", "OutputPointerTargetUnknown"} {
 		if counts[name] != 0 {
 			t.Errorf("%s findings=%d,want zero", name, counts[name])
 		}

@@ -112,7 +112,8 @@ and `*strings.Builder` destinations are excluded. This pattern has no automatic
 fix. Known nil interface writers stay quiet. Arguments and other return values
 must be names, constants, or package-qualified values; other expressions have
 unmodeled completion and stay quiet. Indirect calls and deferred writes remain
-outside this rule.
+outside this rule. Functions with deferred calls and writes assigned to index
+or pointer targets also stay quiet because completion is not established.
 
 Coverage can be partial; no finding does not establish that a dependency or bug
 is absent.

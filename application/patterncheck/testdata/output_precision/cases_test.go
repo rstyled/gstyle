@@ -19,6 +19,7 @@ func TestWriteBehavior(t *testing.T) {
 		{"OutputDirectBad", OutputDirectBad, true}, {"OutputDirectSafe", OutputDirectSafe, false},
 		{"OutputLocalBad", OutputLocalBad, true}, {"OutputLocalSafe", OutputLocalSafe, false},
 		{"OutputBranchBad", OutputBranchBad, true}, {"OutputBranchSafe", OutputBranchSafe, false},
+		{"OutputAssignmentNameBad", OutputAssignmentNameBad, true}, {"OutputAssignmentNameSafe", OutputAssignmentNameSafe, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -105,4 +106,49 @@ func TestReturnPanicCannotReportSuccess(t *testing.T) {
 			call(w)
 		})
 	}
+}
+
+func TestOutputCompletionBoundaries(t *testing.T) {
+	t.Run("normal defer completes", func(t *testing.T) {
+		w := &failingWriter{}
+		done := false
+		if err := OutputNormalDeferUnknown(w, &done); err != nil || w.writes != 1 || !done {
+			t.Fatalf("writes=%d,error=%v,done=%v", w.writes, err, done)
+		}
+	})
+	t.Run("defer replaces error", func(t *testing.T) {
+		w := &failingWriter{}
+		if err := OutputDeferredErrorSafe(w); !errors.Is(err, io.ErrClosedPipe) || w.writes != 1 {
+			t.Fatalf("writes=%d,error=%v", w.writes, err)
+		}
+	})
+	for name, call := range map[string]func(io.Writer) error{
+		"deferred panic": OutputDeferredPanicSafe,
+		"slice target":   func(w io.Writer) error { return OutputSliceTargetUnknown(w, nil) },
+		"pointer target": func(w io.Writer) error { return OutputPointerTargetUnknown(w, nil) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			w := &failingWriter{}
+			defer func() {
+				if recover() == nil || w.writes != 1 {
+					t.Fatalf("expected panic after write;writes=%d", w.writes)
+				}
+			}()
+			call(w)
+		})
+	}
+	t.Run("valid targets complete", func(t *testing.T) {
+		w := &failingWriter{}
+		s := make([]int, 1)
+		p := 0
+		if err := OutputSliceTargetUnknown(w, s); err != nil {
+			t.Fatal(err)
+		}
+		if err := OutputPointerTargetUnknown(w, &p); err != nil {
+			t.Fatal(err)
+		}
+		if w.writes != 2 {
+			t.Fatalf("writes=%d", w.writes)
+		}
+	})
 }
