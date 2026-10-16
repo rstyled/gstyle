@@ -49,6 +49,11 @@ def Access.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
 
 attribute [irreducible] Access.ty
 
+def Call.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.Named go!"github.com/rstyled/gstyle/domain/runtimeguard.Call" [])
+
+attribute [irreducible] Call.ty
+
 def Report.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
   (go.GoType.Named go!"github.com/rstyled/gstyle/domain/runtimeguard.Report" [])
 
@@ -57,6 +62,8 @@ attribute [irreducible] Report.ty
 axiom analysis.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Access.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
+
+axiom Call.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Report.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
@@ -87,6 +94,9 @@ noncomputable def booleanContradiction [FfiSyntax] [GoGlobalContext] : GoString 
 
 noncomputable def Analyze [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard.Analyze"
+
+noncomputable def solve [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard.solve"
 
 noncomputable def singleValueWrite [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard.singleValueWrite"
@@ -132,6 +142,12 @@ noncomputable def incrementInteger [FfiSyntax] [GoGlobalContext] : GoString :=
 
 noncomputable def decrementInteger [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard.decrementInteger"
+
+noncomputable def nilableKind [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard.nilableKind"
+
+noncomputable def interfaceSourceValue [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard.interfaceSourceValue"
 
 noncomputable def invalidatesRoot [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard.invalidatesRoot"
@@ -606,7 +622,7 @@ noncomputable def booleanContradiction.impl [FfiSyntax] [GoGlobalContext] : val 
   (App (Val doExecute)
   (Val #())))))))))
 
-/-- go: flow.go:127:21 -/
+/-- go: flow.go:129:21 -/
 noncomputable def graphView.join.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "previous"
@@ -690,7 +706,7 @@ noncomputable def graphView.join.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (Val #())))))))))))
 
-/-- go: flow.go:146:21 -/
+/-- go: flow.go:148:21 -/
 noncomputable def graphView.assignmentValue.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "symbol"
@@ -721,7 +737,7 @@ noncomputable def graphView.assignmentValue.impl [FfiSyntax] [GoGlobalContext] :
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore Value.ty))) (Pair (Var "base") (Var "$r0"))))))))))))))
 
-/-- go: flow.go:184:6 -/
+/-- go: flow.go:197:6 -/
 noncomputable def singleValueWrite.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "category"
   (Lam "form"
@@ -1463,7 +1479,7 @@ noncomputable def fieldIdentity.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doReturn)
   (If (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoOp GoEquals go.uint64))) (Pair (App (Val (GoInstruction (GoLoad go.uint64))) (Var "identity")) (Val #(W64 0))))) (App (Val (GoInstruction (GoOp GoEquals go.uint64))) (Pair (App (Val (GoInstruction (GoOp GoRemainder go.uint64))) (Pair (App (Val (GoInstruction (GoLoad go.uint64))) (Var "identity")) (Val #(W64 2)))) (Val #(W64 0)))) (Val #false)) (App (Val (GoInstruction (GoOp GoGt go.uint64))) (Pair (App (Val (GoInstruction (GoOp GoDiv go.uint64))) (Pair (App (Val (GoInstruction (GoLoad go.uint64))) (Var "identity")) (Val #(W64 2)))) (App (Val (GoInstruction (Convert go.int go.uint64))) (App (Val (GoInstruction (GoLoad go.int))) (Var "symbols"))))) (Val #false))))))))
 
-/-- go: track.go:60:21 -/
+/-- go: track.go:61:21 -/
 noncomputable def graphView.trackedBinding.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "symbol"
@@ -1571,7 +1587,7 @@ noncomputable def Value.mergePointers.impl [FfiSyntax] [GoGlobalContext] : val :
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore go.bool))) (Pair (Var "$l0") (Var "$r0"))))))))))))))))
 
-/-- go: value.go:57:6 -/
+/-- go: value.go:65:6 -/
 noncomputable def copyState.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "state"
   (App (Val exceptionDo)
@@ -1601,7 +1617,7 @@ noncomputable def copyState.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore State.ty))) (Pair (Var "out") (Var "$r0"))))))))))
 
-/-- go: value.go:65:6 -/
+/-- go: value.go:73:6 -/
 noncomputable def equalState.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "a"
   (Lam "b"
@@ -1966,6 +1982,19 @@ attribute [instance] Access.TypeAssumptions.type_repr
   Access.TypeAssumptions.underlying
   Access.TypeAssumptions.isUnderlying
 
+axiom Call : Type
+axiom Call.zero_val : ZeroVal Call
+attribute [instance] Call.zero_val
+
+class Call.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
+  type_repr : go.TypeReprUnderlying Call.underlying Call
+  underlying : go.UnderlyingDirectedEq Call.ty Call.underlying
+  isUnderlying : go.IsUnderlying Call.underlying Call.underlying
+
+attribute [instance] Call.TypeAssumptions.type_repr
+  Call.TypeAssumptions.underlying
+  Call.TypeAssumptions.isUnderlying
+
 axiom Report : Type
 axiom Report.zero_val : ZeroVal Report
 attribute [instance] Report.zero_val
@@ -1985,6 +2014,7 @@ class Assumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFun
   Value_instance : Value.TypeAssumptions
   State_instance : State.TypeAssumptions
   Access_instance : Access.TypeAssumptions
+  Call_instance : Call.TypeAssumptions
   Report_instance : Report.TypeAssumptions
   integerConstraint_unfold : FuncUnfold integerConstraint [] integerConstraint.impl
   lengthConstraint_unfold : FuncUnfold lengthConstraint [] lengthConstraint.impl
@@ -2010,6 +2040,7 @@ attribute [instance] Assumptions.analysis_instance
   Assumptions.Value_instance
   Assumptions.State_instance
   Assumptions.Access_instance
+  Assumptions.Call_instance
   Assumptions.Report_instance
   Assumptions.integerConstraint_unfold
   Assumptions.lengthConstraint_unfold
