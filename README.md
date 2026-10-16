@@ -109,6 +109,13 @@ Discarded output errors are retained as analysis facts. They do not produce
 establish that output delivery is required. Status messages can fail after the
 requested operation succeeds.
 
+The `nilerr` rule checks bounded local paths from a non-nil error guard to an
+empty result and a nil error return. It keeps boolean branch facts and compiler
+field identities. Logging alone is not recovery. Deferred or concurrent code,
+opaque calls, escaped storage, unsupported control flow, and exhausted path
+budgets stay quiet. Generic zero values and boxed nil pointers do not establish
+a nil error. This is not an interprocedural proof of correct error handling.
+
 Size thresholds, signature/clone similarity and mined usage deviations do not produce
 findings. Parameterization requires a complete supported source match with
 compatible callable types; an aligned graph region alone is not enough.

@@ -22,25 +22,16 @@ type nilErrCheck struct {
 // findNilErrHits finds `if err != nil { return nil }` and
 // the equivalent `if err == nil { ... } else { return nil }` pattern.
 func findNilErrHits(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info) []patterns.NilErrHit {
-	var out []patterns.NilErrHit
 	if fn.Body == nil {
-		return out
+		return nil
 	}
-	errPositions := errorResultPositions(fn, info)
-	ast.Inspect(fn.Body, func(n ast.Node) bool {
-		if _, ok := n.(*ast.FuncLit); ok {
-			return false
-		}
-		ifStmt, ok := n.(*ast.IfStmt)
-		if !ok {
-			return true
-		}
-		if hit := checkNilErrIf(ifStmt, fset, info, errPositions); hit != nil {
-			out = append(out, *hit)
-		}
-		return true
-	})
-	return out
+	positions := errorResultPositions(fn, info)
+	if len(positions) == 0 {
+		return nil
+	}
+	collector := nilErrCollector{fn: fn, fset: fset, info: info, positions: positions, scope: nilErrEvidence{info: info, values: map[types.Object]nilErrValue{}, truths: map[types.Object]bool{}}, remaining: nilErrPathBudget, seen: map[token.Pos]bool{}}
+	collector.sequence(fn.Body.List)
+	return collector.hits
 }
 
 // errorResultPositions returns every error result, including named results.
@@ -86,6 +77,9 @@ func isNilErrErrorType(t types.Type) bool {
 	if t == nil {
 		return false
 	}
+	if _, generic := types.Unalias(t).(*types.TypeParam); generic {
+		return false
+	}
 	iface, ok := t.Underlying().(*types.Interface)
 	if !ok {
 		return false
@@ -100,22 +94,23 @@ func isErrorASTType(e ast.Expr) bool {
 	return ok && ident.Name == "error"
 }
 
-// checkNilErrIf checks one if statement for the nilerr pattern.
-func checkNilErrIf(ifStmt *ast.IfStmt, fset *token.FileSet, info *types.Info, errPositions []int) *patterns.NilErrHit {
-	check := parseNilErrCond(ifStmt.Cond, info)
+// finding checks one if statement using the current predecessor facts.
+func (c *nilErrCollector) finding(ifStmt *ast.IfStmt, rest []ast.Stmt, context nilErrEvidence) *patterns.NilErrHit {
+	check := parseNilErrCond(ifStmt.Cond, c.info)
 	if check == nil {
 		return nil
 	}
 	branch := nilErrBranch(ifStmt, check.isNotNil)
+	statements := nilErrStatements(branch)
 	if branch == nil {
-		return nil
+		statements = rest
 	}
-	if !branchReturnsNilErrors(branch, errPositions, info) || usesErrorValue(branch, check.errVal, info) {
+	if !c.lostPath(statements, check.errVal, context) {
 		return nil
 	}
 	return &patterns.NilErrHit{
-		Line:     fset.Position(ifStmt.Pos()).Line,
-		CondText: condText(fset, ifStmt.Cond),
+		Line:     c.fset.Position(ifStmt.Pos()).Line,
+		CondText: condText(c.fset, ifStmt.Cond),
 		Kind:     "returns nil when err != nil",
 	}
 }
@@ -186,28 +181,6 @@ func isErrorExpr(info *types.Info, e ast.Expr) bool {
 		return false
 	}
 	return types.Implements(t, errorType)
-}
-
-// usesErrorValue reports whether the error value is used in the branch
-// (e.g. log(err)). If used, it's not a nilerr bug.
-func usesErrorValue(branch ast.Stmt, errVal ast.Expr, info *types.Info) bool {
-	errID, _ := specUnwrapParens(errVal).(*ast.Ident)
-	if errID == nil {
-		return false
-	}
-	errObject := info.ObjectOf(errID)
-	used := false
-	ast.Inspect(branch, func(n ast.Node) bool {
-		if _, ok := n.(*ast.FuncLit); ok {
-			return false
-		}
-		if call, ok := n.(*ast.CallExpr); ok && callUsesObject(call, errObject, info) {
-			used = true
-		}
-
-		return true
-	})
-	return used
 }
 
 // condText returns the source text of a condition.
@@ -385,21 +358,6 @@ func typedNilExpr(expr ast.Expr, info *types.Info) bool {
 	return info.Types[expr].IsNil()
 }
 
-func branchReturnsNilErrors(branch ast.Stmt, positions []int, info *types.Info) bool {
-	found := false
-	ast.Inspect(branch, func(n ast.Node) bool {
-		if _, ok := n.(*ast.FuncLit); ok {
-			return false
-		}
-		ret, ok := n.(*ast.ReturnStmt)
-		if ok && nilErrorResults(ret, positions, info) {
-			found = true
-		}
-		return true
-	})
-	return found
-}
-
 func nilErrorResults(ret *ast.ReturnStmt, positions []int, info *types.Info) bool {
 	if len(positions) == 0 {
 		return false
@@ -410,14 +368,4 @@ func nilErrorResults(ret *ast.ReturnStmt, positions []int, info *types.Info) boo
 		}
 	}
 	return true
-}
-
-func callUsesObject(call *ast.CallExpr, object types.Object, info *types.Info) bool {
-	for _, arg := range call.Args {
-		id, _ := specUnwrapParens(arg).(*ast.Ident)
-		if id != nil && object != nil && info.ObjectOf(id) == object {
-			return true
-		}
-	}
-	return false
 }
