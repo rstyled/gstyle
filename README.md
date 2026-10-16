@@ -111,6 +111,13 @@ calls, assignments, and declarations that discard the error with `_`. Known
 review; this pattern has no automatic fix. It does not track indirect function
 calls, deferred writes, or later uses of assigned errors.
 
+Size thresholds, signature/clone similarity and mined usage deviations do not produce
+findings. Parameterization requires a complete supported source match with
+compatible callable types; an aligned graph region alone is not enough.
+Signature groups remain internal matching inputs. Default fixing also skips
+unverified interface and generic proposals. Explicit fix kinds still preview
+those transformations for manual review.
+
 Coverage can be partial; no finding does not establish that a dependency or bug
 is absent.
 
