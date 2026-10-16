@@ -135,14 +135,6 @@ func newExtractCtx(pkg *packages.Package, root string) extractCtx {
 	}
 }
 
-// ctrlFrame is one level of the control stack: nodes lowered inside it gain a
-// Ctrl edge from owner with this arm index. This is lexical nesting (like
-// rstyle's pdg.rs), not full post-dominator control dependence.
-type ctrlFrame struct {
-	owner int
-	arm   int
-}
-
 // loopCtx records an enclosing iteration for the loop-element
 // canonicalization: coll[counter] resolves to the Iterate node, so
 // `for i ... { f(names[i]) }` and `for _, n := range names { f(n) }`
@@ -164,7 +156,6 @@ type builder struct {
 	origin    ast.Node
 	parameter int
 	binds     map[types.Object]int
-	ctrl      []ctrlFrame
 	loops     []loopCtx
 }
 
@@ -172,27 +163,16 @@ func (b *builder) line(pos token.Pos) int {
 	return b.fset.PositionFor(pos, false).Line
 }
 
-// node appends a node, wiring a Ctrl edge from the enclosing control owner.
+// node records an operation. Control dependencies are computed from the CFG.
 func (b *builder) node(n patterns.PdgNode) int {
-	index := b.matchingNode(n)
-	if len(b.ctrl) > 0 {
-		top := b.ctrl[len(b.ctrl)-1]
-		b.ir.miningEdge(top.owner, index, top.arm, pdg.ControlEdge)
-	}
-	return index
+	return b.matchingNode(n)
 }
 
 func (b *builder) data(from, to, pos int) {
 	if from == none {
 		return
 	}
-	b.ir.miningEdge(from, to, pos, pdg.Data)
-}
-
-func (b *builder) under(owner, arm int, f func()) {
-	b.ctrl = append(b.ctrl, ctrlFrame{owner, arm})
-	f()
-	b.ctrl = b.ctrl[:len(b.ctrl)-1]
+	b.ir.miningValueEdge(from, to, pos)
 }
 
 // bind records the node a variable resolves to. First binding wins:

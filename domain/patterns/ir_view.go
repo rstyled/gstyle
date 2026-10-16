@@ -88,7 +88,8 @@ func miningNode(g *pdg.Graph, n pdg.Node) PdgNode {
 }
 
 func appendMiningEdge(g *pdg.Graph, view *MiningGraph, indexes []int, e pdg.Edge) {
-	if g.Tables.Text(e.Subkind) == "source-value" {
+	switch g.Tables.Text(e.Subkind) {
+	case "source-value":
 		return
 	}
 	from, to := indexes[e.Source-1], indexes[e.Target-1]

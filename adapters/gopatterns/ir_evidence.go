@@ -14,7 +14,7 @@ var irCapabilities = map[string]irCapability{
 	"scalar_reaching_definitions": {pdg.Unsupported, "Distinct syntactic definitions are recorded; mining edges use first bindings, not reaching definitions."},
 	"branch_merges":               {pdg.Unsupported, "Merge values are not computed."},
 	"loop_carried_dependencies":   {pdg.Unsupported, "Loop-carried definitions are not computed."},
-	"control_dependencies":        {pdg.Approximated, "Lexical control nesting is approximated; post-dominator dependencies are not computed."},
+	"control_dependencies":        {pdg.Unsupported, "Semantic control dependencies are not computed for unsupported control flow; lexical containment is not substituted."},
 	"execution_dependencies":      {pdg.Approximated, "Sparse must-precede edges between reachable statement/condition anchors, from sequential order and dominance; intrastatement and exceptional/concurrent ordering are incomplete."},
 	"returns":                     {pdg.Approximated, "Explicit returns connect to formal output slots; bare returns read named results. Reaching definitions, deferred result writes and implicit or exceptional exits are not computed."},
 	"calls":                       {pdg.Approximated, "Static declarations resolve where available; dynamic targets and call effects are unknown."},
@@ -67,13 +67,21 @@ func (b *irBuilder) capabilities() {
 }
 
 func (b *irBuilder) capability(name string) irCapability {
-	if b.normalDependencies && b.scalarOrderKnown && name == "execution_dependencies" {
-		return irCapability{pdg.Supported, orderedExecutionDescription}
+	if b.semanticControl && name == "control_dependencies" {
+		return irCapability{pdg.Approximated, semanticControlDescription}
 	}
 	if b.normalDependencies {
-		if c, ok := irNormalCapabilities[name]; ok {
-			return c
-		}
+		return b.normalCapability(name)
+	}
+	return irCapabilities[name]
+}
+
+func (b *irBuilder) normalCapability(name string) irCapability {
+	if b.scalarOrderKnown && name == "execution_dependencies" {
+		return irCapability{pdg.Supported, orderedExecutionDescription}
+	}
+	if capability, ok := irNormalCapabilities[name]; ok {
+		return capability
 	}
 	return irCapabilities[name]
 }
