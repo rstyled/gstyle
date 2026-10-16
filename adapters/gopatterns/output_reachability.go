@@ -18,18 +18,18 @@ func reachableErrorCheckFacts(fn *ast.FuncDecl, fset *token.FileSet, info *types
 	if len(success) == 0 {
 		return sites, nil, nil
 	}
-	nodes, err := runtimeguard.ReachableNodes(graph)
+	report, err := runtimeguard.Analyze(graph)
 	if err != nil {
 		return nil, nil, err
 	}
-	reachable := make(map[outputSpan]bool)
-	for _, ref := range nodes {
-		node := graph.Nodes[ref-1]
+	reachable := make(map[outputSpan]runtimeguard.Value)
+	for _, call := range report.Calls {
+		node := graph.Nodes[call.Node-1]
 		if node.Category != pdg.Call || node.Span == 0 {
 			continue
 		}
 		span := graph.Spans[node.Span-1]
-		reachable[outputSpan{span.Start, span.End}] = true
+		reachable[outputSpan{span.Start, span.End}] = call.FirstArgument
 	}
 	sites, success = scanErrorCheckFacts(fn, fset, info, reachable)
 	return sites, success, nil

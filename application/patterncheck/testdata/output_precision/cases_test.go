@@ -2,6 +2,7 @@ package precision
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"testing"
 )
@@ -70,5 +71,38 @@ func TestBoxedNilIsANonNilInterface(t *testing.T) {
 	}
 	if err := OutputZeroInterfaceSafe(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestNilWriterCannotReportSuccess(t *testing.T) {
+	calls := []func(io.Writer) error{
+		func(io.Writer) error { return OutputNilGuardWriterSafe(nil) },
+		func(io.Writer) error { return OutputLiteralNilWriterSafe() },
+		func(io.Writer) error { return OutputDeclaredNilWriterSafe() },
+		OutputAssignedNilWriterSafe,
+	}
+	for i, call := range calls {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			w := &failingWriter{}
+			defer func() {
+				if recover() == nil || w.writes != 0 {
+					t.Fatalf("expected panic before write;writes=%d", w.writes)
+				}
+			}()
+			call(w)
+		})
+	}
+}
+func TestReturnPanicCannotReportSuccess(t *testing.T) {
+	for i, call := range []func(io.Writer) (int, error){OutputReturnPanicSafe, OutputReturnIndexPanicSafe} {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			w := &failingWriter{}
+			defer func() {
+				if recover() == nil || w.writes != 1 {
+					t.Fatalf("expected panic after write;writes=%d", w.writes)
+				}
+			}()
+			call(w)
+		})
 	}
 }

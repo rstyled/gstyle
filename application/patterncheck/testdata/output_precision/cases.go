@@ -93,3 +93,24 @@ func OutputZeroInterfaceSafe() error {
 	}
 	return nil
 }
+
+func OutputNilGuardWriterSafe(w io.Writer) error {
+	if w == nil {
+		fmt.Fprintln(w, "result")
+		return nil
+	}
+	return nil
+}
+func OutputLiteralNilWriterSafe() error             { fmt.Fprintln(nil, "result"); return nil }
+func OutputDeclaredNilWriterSafe() error            { var w io.Writer; fmt.Fprintln(w, "result"); return nil }
+func OutputAssignedNilWriterSafe(w io.Writer) error { w = nil; fmt.Fprintln(w, "result"); return nil }
+func OutputReturnPanicSafe(w io.Writer) (int, error) {
+	fmt.Fprintln(w, "result")
+	return neverInt(), nil
+}
+func neverInt() int { panic("after output") }
+func OutputReturnIndexPanicSafe(w io.Writer) (int, error) {
+	s := []int{}
+	fmt.Fprintln(w, "result")
+	return s[0], nil
+}

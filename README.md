@@ -109,8 +109,10 @@ error followed directly by a nil error return in the same block. This shows how 
 reported as success. Diagnostics that return an existing error, unknown callback
 outcomes, and functions without an error result stay quiet. Known `*bytes.Buffer`
 and `*strings.Builder` destinations are excluded. This pattern has no automatic
-fix. Calls in write arguments can prevent the write and stay quiet; indirect
-calls and deferred writes remain outside this rule.
+fix. Known nil interface writers stay quiet. Arguments and other return values
+must be names, constants, or package-qualified values; other expressions have
+unmodeled completion and stay quiet. Indirect calls and deferred writes remain
+outside this rule.
 
 Coverage can be partial; no finding does not establish that a dependency or bug
 is absent.

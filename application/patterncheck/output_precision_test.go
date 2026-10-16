@@ -34,7 +34,7 @@ func TestExecutableOutputPrecisionCorpus(t *testing.T) {
 			t.Errorf("%sSafe findings=%d,want zero", name, counts[name+"Safe"])
 		}
 	}
-	for _, name := range []string{"OutputPanicSafe", "OutputExistingFailureSafe", "OutputFalseSafe", "OutputContradictionSafe", "OutputClearedInterfaceSafe", "OutputZeroInterfaceSafe"} {
+	for _, name := range []string{"OutputPanicSafe", "OutputExistingFailureSafe", "OutputFalseSafe", "OutputContradictionSafe", "OutputClearedInterfaceSafe", "OutputZeroInterfaceSafe", "OutputNilGuardWriterSafe", "OutputLiteralNilWriterSafe", "OutputDeclaredNilWriterSafe", "OutputAssignedNilWriterSafe", "OutputReturnPanicSafe", "OutputReturnIndexPanicSafe"} {
 		if counts[name] != 0 {
 			t.Errorf("%s findings=%d,want zero", name, counts[name])
 		}

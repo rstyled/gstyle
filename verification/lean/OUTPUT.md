@@ -123,3 +123,8 @@ findings on that same source. It covers locals, branches, pre-write panics,
 contradictory guards, reassignment and boxed nil pointers. Reachability, interface
 normalization and finding projection remain outside the Lean proof. The source
 binding is regenerated; the existing kernel contracts do not change.
+
+Output call facts now include the first argument at the call. These facts use the
+existing flow solver; they do not prove call completion. The source adapter
+excludes known nil interface writers and requires operands without unmodeled
+evaluation. No interprocedural completion theorem is added.

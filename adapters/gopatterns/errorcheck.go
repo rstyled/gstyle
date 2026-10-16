@@ -1,6 +1,7 @@
 package gopatterns
 
 import (
+	"github.com/rstyled/gstyle/domain/runtimeguard"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -9,7 +10,7 @@ import (
 )
 
 type errorCheckWalker struct {
-	reachable          map[outputSpan]bool
+	reachable          map[outputSpan]runtimeguard.Value
 	function           *ast.FuncDecl
 	successReturnSites []int
 	fset               *token.FileSet
@@ -163,7 +164,7 @@ func findErrorCheckFacts(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info
 	return scanErrorCheckFacts(fn, fset, info, nil)
 }
 
-func scanErrorCheckFacts(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info, reachable map[outputSpan]bool) ([]patterns.ErrorCheckSite, []int) {
+func scanErrorCheckFacts(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info, reachable map[outputSpan]runtimeguard.Value) ([]patterns.ErrorCheckSite, []int) {
 	if fn.Body == nil {
 		return nil, nil
 	}

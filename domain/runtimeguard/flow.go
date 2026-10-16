@@ -44,6 +44,7 @@ func (a *analysis) block(block pdg.FlowBlock, state State, report *Report) {
 	for _, ref := range block.Operations {
 		if report != nil {
 			a.access(ref, state, report)
+			a.call(ref, state, report)
 		}
 		a.transfer(ref, state)
 	}
@@ -216,4 +217,11 @@ func pointerGuardContext(site Access, state State) []pdg.Ref {
 		return nil
 	}
 	return activePointerGuards(state, site.Symbol)
+}
+
+func (a *analysis) call(ref pdg.Ref, state State, report *Report) {
+	if a.view.graph.Nodes[ref-1].Category != pdg.Call {
+		return
+	}
+	report.Calls = append(report.Calls, Call{Node: ref, FirstArgument: a.view.value(a.view.operand(ref, 0), state)})
 }

@@ -8,7 +8,7 @@ import (
 // A discarded error alone does not establish that a failed write becomes
 // success. Require a reachable write immediately followed by a nil error return.
 func (w *errorCheckWalker) successReturnOutput(call *ast.CallExpr) bool {
-	if !w.reachableOutput(call) || nestedOutputCall(call) {
+	if !w.reachableOutput(call) || !simpleOutputOperands(call.Args, w.info) {
 		return false
 	}
 	index := outputErrorResult(w.function, w.info)
@@ -60,7 +60,7 @@ func successfulOutputBlock(node ast.Node, call *ast.CallExpr, index int, info *t
 		return false
 	}
 	statement := block.List[len(block.List)-2]
-	return directOutputStatement(statement, call) && typedNil(info, ast.Unparen(result.Results[index]))
+	return directOutputStatement(statement, call) && successfulOutputReturn(result, index, info)
 }
 
 func directOutputStatement(statement ast.Stmt, call *ast.CallExpr) bool {
@@ -77,20 +77,51 @@ func (w *errorCheckWalker) reachableOutput(call *ast.CallExpr) bool {
 		return true
 	}
 	span := outputSpan{uint32(w.fset.PositionFor(call.Pos(), false).Offset), uint32(w.fset.PositionFor(call.End(), false).Offset)}
-	return w.reachable[span]
+	value, ok := w.reachable[span]
+	return ok && !nilOutputWriter(call, value.Nil, w.info)
 }
 
-// An opaque argument call can panic or exit before the write. Do not claim
-// that the output error reaches a success return without its completion facts.
-func nestedOutputCall(call *ast.CallExpr) bool {
-	found := false
-	for _, arg := range call.Args {
-		ast.Inspect(arg, func(node ast.Node) bool {
-			if _, ok := node.(*ast.CallExpr); ok {
-				found = true
-			}
-			return !found
-		})
+// Only operands with no unmodeled evaluation establish completion here.
+func simpleOutputOperands(operands []ast.Expr, info *types.Info) bool {
+	for _, operand := range operands {
+		if !simpleOutputOperand(ast.Unparen(operand), info) {
+			return false
+		}
 	}
-	return found
+	return true
+}
+
+func simpleOutputOperand(expr ast.Expr, info *types.Info) bool {
+	if info.Types[expr].Value != nil {
+		return true
+	}
+	switch expr := expr.(type) {
+	case *ast.Ident:
+		return true
+	case *ast.SelectorExpr:
+		ident, ok := expr.X.(*ast.Ident)
+		if !ok {
+			return false
+		}
+		_, ok = info.ObjectOf(ident).(*types.PkgName)
+		return ok
+	default:
+		return false
+	}
+}
+
+func successfulOutputReturn(result *ast.ReturnStmt, index int, info *types.Info) bool {
+	return typedNil(info, ast.Unparen(result.Results[index])) && simpleOutputOperands(result.Results, info)
+}
+
+func nilOutputWriter(call *ast.CallExpr, knownNil bool, info *types.Info) bool {
+	if len(call.Args) == 0 {
+		return false
+	}
+	writer := call.Args[0]
+	if info.Types[writer].IsNil() {
+		return true
+	}
+	typ := info.TypeOf(writer)
+	return knownNil && !unknownInterfaceValue(typ) && interfaceType(typ)
 }
