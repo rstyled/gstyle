@@ -111,9 +111,15 @@ Each mutant builds only its affected proof module. The full unchanged project is
 checked before mutation tests, so unrelated pattern proofs are not rebuilt for
 every mutant.
 
-The outer input projection matches a two-statement function body: a discarded
-output call followed directly by a return of the universe nil in the function's error result. Unknown callback
-outcomes and functions without an error result stay quiet. Named results with
-deferred calls are excluded because a defer can replace nil. Raw discard facts
-remain available. This source filter and its occurrence-index metadata are tested
-in Go; they are outside the Lean proof.
+The outer input projection requires a discarded output call followed directly
+by a nil error return in the same block. It uses the runtime flow solver to
+exclude infeasible branches, rather than limiting functions by statement count.
+Opaque argument calls, unknown callback outcomes and deferred named-result
+replacement stay quiet. Interface constraints track the whole interface value;
+a boxed nil pointer is non-nil. Raw discard facts remain available.
+
+The executable output corpus runs the source with a failing writer, then checks
+findings on that same source. It covers locals, branches, pre-write panics,
+contradictory guards, reassignment and boxed nil pointers. Reachability, interface
+normalization and finding projection remain outside the Lean proof. The source
+binding is regenerated; the existing kernel contracts do not change.

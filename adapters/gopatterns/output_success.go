@@ -6,13 +6,21 @@ import (
 )
 
 // A discarded error alone does not establish that a failed write becomes
-// success. Match a two-statement body: the write, then a nil error return.
+// success. Require a reachable write immediately followed by a nil error return.
 func (w *errorCheckWalker) successReturnOutput(call *ast.CallExpr) bool {
+	if !w.reachableOutput(call) || nestedOutputCall(call) {
+		return false
+	}
 	index := outputErrorResult(w.function, w.info)
 	if index < 0 {
 		return false
 	}
-	return successfulOutputBlock(w.function.Body, call, index, w.info)
+	for _, node := range w.stack {
+		if successfulOutputBlock(node, call, index, w.info) {
+			return true
+		}
+	}
+	return false
 }
 
 func outputErrorResult(fn *ast.FuncDecl, info *types.Info) int {
@@ -44,7 +52,7 @@ func containsOutputDefer(body *ast.BlockStmt) bool {
 
 func successfulOutputBlock(node ast.Node, call *ast.CallExpr, index int, info *types.Info) bool {
 	block, ok := node.(*ast.BlockStmt)
-	if !ok || len(block.List) != 2 {
+	if !ok || len(block.List) < 2 {
 		return false
 	}
 	result, ok := block.List[len(block.List)-1].(*ast.ReturnStmt)
@@ -62,4 +70,27 @@ func directOutputStatement(statement ast.Stmt, call *ast.CallExpr) bool {
 	default:
 		return false
 	}
+}
+
+func (w *errorCheckWalker) reachableOutput(call *ast.CallExpr) bool {
+	if w.reachable == nil {
+		return true
+	}
+	span := outputSpan{uint32(w.fset.PositionFor(call.Pos(), false).Offset), uint32(w.fset.PositionFor(call.End(), false).Offset)}
+	return w.reachable[span]
+}
+
+// An opaque argument call can panic or exit before the write. Do not claim
+// that the output error reaches a success return without its completion facts.
+func nestedOutputCall(call *ast.CallExpr) bool {
+	found := false
+	for _, arg := range call.Args {
+		ast.Inspect(arg, func(node ast.Node) bool {
+			if _, ok := node.(*ast.CallExpr); ok {
+				found = true
+			}
+			return !found
+		})
+	}
+	return found
 }

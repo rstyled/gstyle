@@ -66,6 +66,7 @@ func (a *analysis) transfer(ref pdg.Ref, state State) {
 			continue
 		}
 		assigned := a.view.incrementValue(ref, write.Symbol, value, state)
+		assigned = a.view.interfaceAssignment(ref, write.Symbol, assigned)
 		a.view.assign(ref, write.Symbol, assigned, state)
 		a.rangeWrite(ref, write.Symbol, state)
 	}
@@ -161,12 +162,23 @@ func (v *graphView) publicAccess(site Access, state State) Access {
 }
 
 func Analyze(g *pdg.Graph) (Report, error) {
-	if g == nil || g.ValueFlow == nil {
+	a, err := solve(g)
+	if err != nil {
+		return Report{}, err
+	}
+	if a == nil {
 		return Report{}, nil
+	}
+	return a.report(), nil
+}
+
+func solve(g *pdg.Graph) (*analysis, error) {
+	if g == nil || g.ValueFlow == nil {
+		return nil, nil
 	}
 	view, err := newGraphView(g)
 	if err != nil {
-		return Report{}, err
+		return nil, err
 	}
 	a := analysis{view: view, inputs: make([]State, len(g.ValueFlow.Blocks)), queued: make([]bool, len(g.ValueFlow.Blocks))}
 	a.inputs[g.ValueFlow.Entry-1] = State{}
@@ -178,7 +190,7 @@ func Analyze(g *pdg.Graph) (Report, error) {
 		a.block(g.ValueFlow.Blocks[ref-1], state, nil)
 		a.successors(ref, state)
 	}
-	return a.report(), nil
+	return &a, nil
 }
 
 func singleValueWrite(category pdg.Category, form string, writes int) bool {

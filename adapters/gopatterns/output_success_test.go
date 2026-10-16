@@ -14,8 +14,8 @@ func TestOutputSuccessEvidence(t *testing.T) {
 	}{
 		{"success return", `fmt.Fprintln(w,err);return nil`, true},
 		{"blank error", `_,_=fmt.Fprintln(w,err);return nil`, true},
-		{"nil branch result", `if err!=nil{fmt.Fprintln(w,err);return nil};return nil`, false},
-		{"unreachable write", `if false{fmt.Fprintln(w,err);return nil};return nil`, false},
+		{"nil branch result", `if err!=nil{fmt.Fprintln(w,err);return nil};return nil`, true},
+
 		{"original error", `if err!=nil{fmt.Fprintln(w,err);return err};return nil`, false},
 		{"nested diagnostic", `if err!=nil{if w!=nil{fmt.Fprintln(w,err)};return err};return nil`, false},
 		{"unknown return", `fmt.Fprintln(w,err);return err`, false},
@@ -87,5 +87,13 @@ func TestFailedWriteBehavior(t *testing.T) {
 	output := &failedDiagnosticWriter{}
 	if got := outputThenSuccess(output); output.writes != 1 || got != nil {
 		t.Fatalf("output writes=%d,result=%v", output.writes, got)
+	}
+}
+
+func TestRuntimeTypeParameterIsNotAnInterfaceValue(t *testing.T) {
+	file, _, info, _ := typeCheck(t, `package p;func f[T ~int](value T){}`)
+	parameter := findFunc(file, "f").Type.TypeParams.List[0].Names[0]
+	if got := runtimeTypeKind(info.Defs[parameter].Type()); got != "" {
+		t.Fatalf("type parameter classified as runtime %q", got)
 	}
 }

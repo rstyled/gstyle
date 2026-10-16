@@ -498,7 +498,10 @@ func extractFunc(pkg *packages.Package, fn *ast.FuncDecl, path string, ctx extra
 	if err != nil {
 		return FuncPdg{}, err
 	}
-	sites, successReturnSites := findErrorCheckFacts(fn, pkg.Fset, pkg.TypesInfo)
+	sites, successReturnSites, err := reachableErrorCheckFacts(fn, pkg.Fset, pkg.TypesInfo, &graph)
+	if err != nil {
+		return FuncPdg{}, err
+	}
 	return FuncPdg{
 		Name:            name,
 		Path:            path,

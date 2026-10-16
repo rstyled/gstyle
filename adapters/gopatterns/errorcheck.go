@@ -9,6 +9,7 @@ import (
 )
 
 type errorCheckWalker struct {
+	reachable          map[outputSpan]bool
 	function           *ast.FuncDecl
 	successReturnSites []int
 	fset               *token.FileSet
@@ -159,17 +160,22 @@ func findErrorCheckSites(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info
 }
 
 func findErrorCheckFacts(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info) ([]patterns.ErrorCheckSite, []int) {
+	return scanErrorCheckFacts(fn, fset, info, nil)
+}
+
+func scanErrorCheckFacts(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info, reachable map[outputSpan]bool) ([]patterns.ErrorCheckSite, []int) {
 	if fn.Body == nil {
 		return nil, nil
 	}
 	var sites []patterns.ErrorCheckSite
 	// Use a custom walker that tracks parents.
 	w := &errorCheckWalker{
-		function: fn,
-		fset:     fset,
-		info:     info,
-		sites:    &sites,
-		body:     fn.Body,
+		reachable: reachable,
+		function:  fn,
+		fset:      fset,
+		info:      info,
+		sites:     &sites,
+		body:      fn.Body,
 	}
 	ast.Walk(w, fn.Body)
 	return sites, w.successReturnSites

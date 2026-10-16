@@ -88,6 +88,9 @@ noncomputable def booleanContradiction [FfiSyntax] [GoGlobalContext] : GoString 
 noncomputable def Analyze [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard.Analyze"
 
+noncomputable def solve [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard.solve"
+
 noncomputable def singleValueWrite [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard.singleValueWrite"
 
@@ -133,6 +136,12 @@ noncomputable def incrementInteger [FfiSyntax] [GoGlobalContext] : GoString :=
 noncomputable def decrementInteger [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard.decrementInteger"
 
+noncomputable def nilableKind [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard.nilableKind"
+
+noncomputable def interfaceSourceValue [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard.interfaceSourceValue"
+
 noncomputable def invalidatesRoot [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard.invalidatesRoot"
 
@@ -141,6 +150,9 @@ noncomputable def fieldIdentity [FfiSyntax] [GoGlobalContext] : GoString :=
 
 noncomputable def decodeFact [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard.decodeFact"
+
+noncomputable def ReachableNodes [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/runtimeguard.ReachableNodes"
 
 noncomputable def copyState [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/runtimeguard.copyState"
@@ -606,7 +618,7 @@ noncomputable def booleanContradiction.impl [FfiSyntax] [GoGlobalContext] : val 
   (App (Val doExecute)
   (Val #())))))))))
 
-/-- go: flow.go:127:21 -/
+/-- go: flow.go:128:21 -/
 noncomputable def graphView.join.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "previous"
@@ -690,7 +702,7 @@ noncomputable def graphView.join.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (Val #())))))))))))
 
-/-- go: flow.go:146:21 -/
+/-- go: flow.go:147:21 -/
 noncomputable def graphView.assignmentValue.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "symbol"
@@ -721,7 +733,7 @@ noncomputable def graphView.assignmentValue.impl [FfiSyntax] [GoGlobalContext] :
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore Value.ty))) (Pair (Var "base") (Var "$r0"))))))))))))))
 
-/-- go: flow.go:184:6 -/
+/-- go: flow.go:196:6 -/
 noncomputable def singleValueWrite.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "category"
   (Lam "form"
