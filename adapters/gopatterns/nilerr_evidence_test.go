@@ -39,12 +39,12 @@ func TestNilErrHandlingEvidence(t *testing.T) {
 	}
 }
 
-func TestNilErrLoggingIsNotRecovery(t *testing.T) {
+func TestNilErrStandardLoggingEffectsStayUnknown(t *testing.T) {
 	for _, tc := range []struct {
 		call string
 		want int
 	}{
-		{`log.Println(err)`, 1}, {`slog.Error("failed","error",err)`, 1}, {`fmt.Fprintln(os.Stderr,err)`, 1}, {`log.Fatal(err)`, 0},
+		{`log.Println(err)`, 0}, {`slog.Error("failed","error",err)`, 0}, {`fmt.Fprintln(os.Stderr,err)`, 0}, {`log.Fatal(err)`, 0},
 	} {
 		t.Run(tc.call, func(t *testing.T) {
 			file, fs, info, _ := typeCheck(t, `package p;import("log";"log/slog";"fmt";"os");var _,_,_,_=log.Println,slog.Error,fmt.Fprintln,os.Stderr;func f(err error)error{if err!=nil{`+tc.call+`;return nil};return nil}`)

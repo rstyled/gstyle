@@ -111,7 +111,8 @@ requested operation succeeds.
 
 The `nilerr` rule checks bounded local paths from a non-nil error guard to an
 empty result and a nil error return. It keeps boolean branch facts and compiler
-field identities. Logging alone is not recovery. Deferred or concurrent code,
+field identities. Built-in print calls do not count as recovery. Standard-library
+logging calls can invoke user callbacks and stay unknown. Deferred or concurrent code,
 opaque calls, escaped storage, unsupported control flow, and exhausted path
 budgets stay quiet. Generic zero values and boxed nil pointers do not establish
 a nil error. This is not an interprocedural proof of correct error handling.
