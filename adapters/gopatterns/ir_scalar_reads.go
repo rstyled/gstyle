@@ -6,9 +6,6 @@ import (
 )
 
 func (b *irBuilder) scalarReadOwner(id *ast.Ident) pdg.Ref {
-	if !b.scalarOperations && !b.bindingOperations && !b.runtimeOperations {
-		return b.readOwner(id)
-	}
 	return b.addNode(id, pdg.Read, pdg.Attributes{})
 }
 

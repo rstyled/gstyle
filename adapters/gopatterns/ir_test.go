@@ -3,6 +3,7 @@ package gopatterns
 import (
 	"context"
 	"go/ast"
+	"go/importer"
 	"go/parser"
 	"go/token"
 	"go/types"
@@ -21,7 +22,7 @@ func parseIR(t testing.TB, source string, pool *pdg.Builder) pdg.Graph {
 		t.Fatal(err)
 	}
 	info := &types.Info{Types: map[ast.Expr]types.TypeAndValue{}, Defs: map[*ast.Ident]types.Object{}, Uses: map[*ast.Ident]types.Object{}, Selections: map[*ast.SelectorExpr]*types.Selection{}}
-	pkg, err := (&types.Config{}).Check("example", fset, []*ast.File{file}, info)
+	pkg, err := (&types.Config{Importer: importer.Default()}).Check("example", fset, []*ast.File{file}, info)
 	if err != nil {
 		t.Fatal(err)
 	}

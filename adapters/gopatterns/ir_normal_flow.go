@@ -26,7 +26,7 @@ func (a *normalFlowAnalysis) execution(dom *executionDominators) {
 	for _, index := range dom.order {
 		previous := dom.previousAnchor(index, a.operations)
 		for _, node := range a.operations[index] {
-			a.edge(previous, node, pdg.Execution)
+			a.edge(previous, node, pdg.Execution, 0)
 			previous = node
 		}
 	}
@@ -39,22 +39,22 @@ func (a *normalFlowAnalysis) control(flow *cfg.CFG, dom *executionDominators) {
 			continue
 		}
 		controller := nodes[len(nodes)-1]
-		for _, next := range flow.Blocks[index].Succs {
-			a.controlPath(controller, int(next.Index)+1, a.post.idom[index+1])
+		for arm, next := range flow.Blocks[index].Succs {
+			a.controlPath(controller, int(next.Index)+1, a.post.idom[index+1], pdg.Position(arm+1))
 		}
 	}
 }
 
-func (a *normalFlowAnalysis) controlPath(controller pdg.Ref, start, stop int) {
+func (a *normalFlowAnalysis) controlPath(controller pdg.Ref, start, stop int, position pdg.Position) {
 	for runner := start; runner != stop && runner != 0; runner = a.post.idom[runner] {
 		for _, node := range a.operations[runner-1] {
-			a.edge(controller, node, pdg.ControlEdge)
+			a.edge(controller, node, pdg.ControlEdge, position)
 		}
 	}
 }
 
-func (a *normalFlowAnalysis) edge(source, target pdg.Ref, kind pdg.EdgeKind) {
-	if source == 0 || source == target {
+func (a *normalFlowAnalysis) edge(source, target pdg.Ref, kind pdg.EdgeKind, position pdg.Position) {
+	if source == 0 || (source == target && kind != pdg.ControlEdge) {
 		return
 	}
 	a.nextEdge++
@@ -62,13 +62,15 @@ func (a *normalFlowAnalysis) edge(source, target pdg.Ref, kind pdg.EdgeKind) {
 	if a.builder.scalarOrderKnown {
 		subkind = "nearest-operation-dominator"
 	}
+	b := a.builder
 	evidence := a.executionEvidence
+	outcome := pdg.Text(0)
 	if kind == pdg.ControlEdge {
 		subkind = "post-dominator-control"
 		evidence = a.evidence
+		outcome = b.controlOutcomeName(source, position)
 	}
-	b := a.builder
-	b.graph.Edges = append(b.graph.Edges, pdg.Edge{ID: b.pool.Text("normal-e" + strconv.Itoa(a.nextEdge)), Source: source, Target: target, Kind: kind, Subkind: b.pool.Text(subkind), Evidence: evidence, Provenance: a.origin})
+	b.graph.Edges = append(b.graph.Edges, pdg.Edge{Outcome: outcome, ID: b.pool.Text("normal-e" + strconv.Itoa(a.nextEdge)), Source: source, Target: target, Kind: kind, Subkind: b.pool.Text(subkind), Position: position, Evidence: evidence, Provenance: a.origin})
 }
 
 func (b *irBuilder) normalDependenciesFor(flow *cfg.CFG, dom *executionDominators) {
@@ -84,7 +86,7 @@ func (b *irBuilder) normalDependenciesFor(flow *cfg.CFG, dom *executionDominator
 	for index, block := range flow.Blocks {
 		a.operations[index] = b.normalOperations(block)
 	}
-	b.graph.Edges = slices.DeleteFunc(b.graph.Edges, func(edge pdg.Edge) bool { return edge.Kind == pdg.Execution || edge.Kind == pdg.ControlEdge })
+	b.graph.Edges = slices.DeleteFunc(b.graph.Edges, func(edge pdg.Edge) bool { return edge.Kind == pdg.Execution })
 	a.execution(dom)
 	a.control(flow, dom)
 	b.normalDependencies = true
@@ -124,4 +126,14 @@ func reverseNormalBlock(reverse *cfg.CFG, block *cfg.Block) {
 	for _, next := range block.Succs {
 		reverse.Blocks[next.Index+1].Succs = append(reverse.Blocks[next.Index+1].Succs, current)
 	}
+}
+
+func (b *irBuilder) controlOutcomeName(source pdg.Ref, position pdg.Position) pdg.Text {
+	if source <= pdg.Ref(len(b.graph.Nodes)) && position > 0 {
+		outcomes := b.attributes[b.graph.Nodes[source-1].Attributes-1].Outcomes
+		if int(position) <= len(outcomes) {
+			return outcomes[position-1]
+		}
+	}
+	return b.pool.Text("successor:" + strconv.Itoa(int(position)))
 }

@@ -264,12 +264,12 @@ func Canonicalize(pdg *MiningGraph, rules Rules) *MiningGraph {
 		on   bool
 		step func(*MiningGraph) *MiningGraph
 	}{
-		{rules.Propagate, propagateErrors},
+		{rules.Propagate && hierarchicalControl(pdg), propagateErrors},
 		{rules.Ctor, foldCtors},
 		{rules.Pred, collapsePreds},
-		{rules.Case, unifyCase},
+		{rules.Case && hierarchicalControl(pdg), unifyCase},
 		{rules.Exit, dropUnreachable},
-		{rules.Counter, counterLoops},
+		{rules.Counter && hierarchicalControl(pdg), counterLoops},
 		{rules.Cmp, compareClass},
 	}
 	out := clonePdg(pdg)
@@ -326,14 +326,27 @@ func ownedBy(pdg *MiningGraph, node, consumer int) bool {
 	return len(c) == 1 && ok
 }
 
-// ctrlParent is the single control-dependence parent of node, if any.
+// ctrlParent returns a unique non-self controller. Ambiguous semantic control
+// must not pick a parent based on edge order.
 func ctrlParent(pdg *MiningGraph, node int) (int, bool) {
-	for _, e := range pdg.Edges {
-		if e.To == node && e.Kind == Ctrl {
-			return e.From, true
+	parents := controlParents(pdg, node)
+	if len(parents) != 1 {
+		return 0, false
+	}
+	return parents[0], true
+}
+
+func controlParents(pdg *MiningGraph, node int) []int {
+	var parents []int
+	for _, edge := range pdg.Edges {
+		if edge.To != node || edge.Kind != Ctrl || edge.From == node {
+			continue
+		}
+		if !slices.Contains(parents, edge.From) {
+			parents = append(parents, edge.From)
 		}
 	}
-	return 0, false
+	return parents
 }
 
 // dataOuts collects the data edges leaving from, in edge order.
@@ -1257,7 +1270,9 @@ func rangeLoops(pdg *MiningGraph) *MiningGraph {
 // (a while guard sits between).
 func enclosingLoop(pdg *MiningGraph, node int) (int, bool) {
 	at := node
-	for i := 0; i < 4; i++ {
+	seen := make([]bool, len(pdg.Nodes))
+	for !seen[at] {
+		seen[at] = true
 		next, ok := ctrlParent(pdg, at)
 		if !ok {
 			return 0, false

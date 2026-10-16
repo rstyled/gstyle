@@ -9,6 +9,7 @@ import (
 
 	"github.com/rstyled/gstyle/domain/patterns"
 	"github.com/rstyled/gstyle/domain/pdg"
+	"golang.org/x/tools/go/cfg"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -24,6 +25,7 @@ type irBuilder struct {
 	fset                                 *token.FileSet
 	symbols                              map[types.Object]pdg.Ref
 	nodes                                map[ast.Node]pdg.Ref
+	logicalPredicates                    map[*ast.BinaryExpr]pdg.Ref
 	writeTargets                         map[ast.Node]bool
 	stack                                []ast.Node
 	policy, sourceEvidence, sourceOrigin pdg.Ref
@@ -33,6 +35,7 @@ type irBuilder struct {
 	scalarDefinitions                    bool
 	scalarOperations                     bool
 	implicitReads                        map[ast.Node][]pdg.Ref
+	semanticControl                      bool
 	normalDependencies                   bool
 	scalarOrderKnown                     bool
 }
@@ -42,9 +45,9 @@ func newIRBuilder(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pd
 		pool: pool, info: pkg.TypesInfo, sizes: pkg.TypesSizes, fset: pkg.Fset, typeQualifier: callableQualifier(pkg, fn),
 		sourceFilename: pkg.Fset.PositionFor(fn.Pos(), false).Filename,
 		symbols:        map[types.Object]pdg.Ref{}, nodes: map[ast.Node]pdg.Ref{},
-		writeTargets: map[ast.Node]bool{},
+		writeTargets: map[ast.Node]bool{}, logicalPredicates: map[*ast.BinaryExpr]pdg.Ref{},
 	}
-	b.policy = pool.Policy("gstyle.abstraction", "0.2.0")
+	b.policy = pool.Policy("gstyle.abstraction", "0.3.0")
 	b.sourceEvidence = pool.Evidence(pdg.Approximated, "Operation identified in typed source; dependency completeness is separate.")
 	b.sourceOrigin = pool.Origin(pdg.SourceOrigin, "Go source operation; abstraction lowering is approximate.")
 	b.header(pkg, fn, path)
@@ -62,7 +65,7 @@ func (b *irBuilder) header(pkg *packages.Package, fn *ast.FuncDecl, path string)
 	b.graph = pdg.Graph{
 		Tables: p.Tables, Profile: b.policy,
 		Producer: pdg.Producer{
-			Name: p.Text("gstyle"), Version: p.Text("pdg-ir-0.2.0"), Language: p.Text("go"),
+			Name: p.Text("gstyle"), Version: p.Text("pdg-ir-0.3.0"), Language: p.Text("go"),
 			LanguageVersion: p.Missing(pdg.Unknown, "Compiler language version is not recorded."), Configuration: p.Text("{}"),
 		},
 		Sources: []pdg.Source{{ID: p.Text(path), Path: p.Text(path), ContentIdentity: p.Missing(pdg.Unknown, "Source content digest is not computed.")}},
@@ -187,6 +190,12 @@ func buildGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.
 	b.ir.runtimeFlow(fn, flow)
 	flow, dom = b.ir.reachingDefinitions(fn.Body, flow, dom)
 	b.ir.normalDependenciesFor(flow, dom)
+	// Control lowering starts from source flow, independently of value/reaching
+	// lowering, which can already contain operation markers and logical joins.
+	controlFlow := cfg.New(b.ir.branchCFGBlock(fn.Body), b.ir.mayReturn)
+	if err := b.ir.semanticControlFor(fn.Body, controlFlow); err != nil {
+		return pdg.Graph{}, err
+	}
 	b.ir.capabilities()
 	if err := b.ir.pack(); err != nil {
 		return pdg.Graph{}, err
