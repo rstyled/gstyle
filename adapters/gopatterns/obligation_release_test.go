@@ -15,7 +15,7 @@ func TestObligationHelperRelease(t *testing.T) {
 		want                 int
 	}{
 		{"return close", `return f.Close()`, `return cleanup(f)`, 0},
-		{"joined errors", `_, err := io.WriteString(f, "rules"); return errors.Join(err, f.Close())`, `if err := cleanup(f); err != nil { return err }; return nil`, 0},
+		{"opaque writer before joined close", `_, err := io.WriteString(f, "rules"); return errors.Join(err, f.Close())`, `if err := cleanup(f); err != nil { return err }; return nil`, 1},
 		{"deferred helper close", `defer f.Close(); return nil`, `return cleanup(f)`, 0},
 		{"direct close", `return nil`, `return f.Close()`, 0},
 		{"both arms close", `if choose { return f.Close() }; return f.Close()`, `return cleanup(f)`, 0},
@@ -35,6 +35,16 @@ func TestObligationHelperRelease(t *testing.T) {
 		{"helper write failure skips close", `_, err := io.WriteString(f, "rules"); if err != nil { return err }; return f.Close()`, `return cleanup(f)`, 1},
 		{"caller error address", `return f.Close()`, `ptr := &err; *ptr = errors.New("other"); if err != nil { return nil }; return cleanup(f)`, 1},
 		{"deferred helper", `return f.Close()`, `defer cleanup(f); return nil`, 0},
+		{"later abort blocks deferred close", `defer f.Close(); defer os.Exit(0); return nil`, `return cleanup(f)`, 1},
+		{"close precedes abort on unwind", `defer os.Exit(0); defer f.Close(); return nil`, `return cleanup(f)`, 0},
+		{"caller later abort blocks close", `return f.Close()`, `defer f.Close(); defer os.Exit(0); return nil`, 1},
+		{"caller close precedes abort", `return f.Close()`, `defer os.Exit(0); defer f.Close(); return nil`, 0},
+		{"print returns before older close", `defer f.Close(); defer println("exit"); return nil`, `return cleanup(f)`, 0},
+		{"loop never starts exit", `defer f.Close(); for choose {}; return nil`, `return cleanup(f)`, 1},
+		{"conditional abort blocks close", `defer f.Close(); if choose { defer os.Exit(0) }; return nil`, `return cleanup(f)`, 1},
+		{"conditional deferred close", `if choose { defer f.Close() }; return nil`, `return cleanup(f)`, 1},
+		{"branch capture stacks stay distinct", `if choose { defer f.Close() } else { defer other.Close() }; return nil`, `return cleanup(f)`, 1},
+		{"direct abort does not unwind", `defer f.Close(); os.Exit(0); return nil`, `return cleanup(f)`, 1},
 		{"short circuit cleanup", `return f.Close()`, `if choose && cleanup(f) != nil { return nil }; return nil`, 1},
 		{"helper does not close", `return nil`, `return cleanup(f)`, 1},
 	} {

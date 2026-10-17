@@ -34,9 +34,12 @@ func TestIRWriteTargetsAndReadModifyWrite(t *testing.T) {
 			for _, node := range graph.Nodes {
 				attrs := graph.NodeAttributes(node)
 				for _, read := range attrs.Reads {
-					if read.UnresolvedReason != 0 {
+					if read.UnresolvedReason != 0 || read.Location != 0 {
 						unresolvedReads++
 					}
+				}
+				if node.Span == 0 {
+					continue
 				}
 				span := graph.Spans[node.Span-1]
 				if strings.TrimSpace(source[span.Start:span.End]) != tc.statement || len(attrs.Writes) == 0 {
@@ -44,8 +47,13 @@ func TestIRWriteTargetsAndReadModifyWrite(t *testing.T) {
 				}
 				writes += len(attrs.Writes)
 				target := attrs.Writes[0]
-				if tc.memory && target.UnresolvedReason == 0 {
-					t.Fatal("memory target claims a known alias")
+				if tc.memory {
+					if target.Location == 0 {
+						t.Fatal("memory target has no may-alias location")
+					}
+					if graph.Tables.Evidence[graph.Locations[target.Location-1].Evidence-1].Status != pdg.Approximated {
+						t.Fatal("memory target claims an exact alias")
+					}
 				}
 				if !tc.memory && target.Symbol == 0 {
 					t.Fatal("scalar write loses binding")

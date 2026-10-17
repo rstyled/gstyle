@@ -4,154 +4,140 @@ import (
 	"go/ast"
 	"go/types"
 
+	"github.com/rstyled/gstyle/domain/callflow"
+	"github.com/rstyled/gstyle/domain/pdg"
+	"github.com/rstyled/gstyle/domain/resourceflow"
 	"golang.org/x/tools/go/packages"
-	"golang.org/x/tools/go/types/typeutil"
 )
 
-// Bounded source summaries cover direct and unmodified local file returns. Cycles without a
-// known acquisition never become sources; dynamic user interfaces stay unknown.
-func returnedFileSources(pkg *packages.Package) map[types.Object]bool {
-	sources := map[types.Object]bool{}
-	for range 8 {
-		changed := false
-		for _, file := range pkg.Syntax {
-			for _, decl := range file.Decls {
-				if addFileSource(pkg, decl, sources) {
-					changed = true
-				}
+type resourceFunction struct {
+	object       types.Object
+	graph        *pdg.Graph
+	query        *resourceflow.Query
+	helperSymbol pdg.Ref
+	errorSecond  bool
+}
+type packageResourceFacts struct {
+	sources, failures, helpers map[types.Object]bool
+	exits                      callflow.ExitSummaries
+}
+
+func summarizeResources(functions map[string]resourceFunction) (packageResourceFacts, error) {
+	exits, err := resourceExits(functions)
+	if err != nil {
+		return packageResourceFacts{}, err
+	}
+	helpers := cleanupSummaries(functions, exits)
+	summaries := resourceFactories(functions, helpers)
+	facts := packageResourceFacts{exits: exits, sources: map[types.Object]bool{}, failures: map[types.Object]bool{}, helpers: map[types.Object]bool{}}
+	for identity, function := range functions {
+		summary := summaries[identity]
+		facts.sources[function.object] = summary.Fresh
+		facts.failures[function.object] = summary.Fresh && summary.FailureEmpty && function.errorSecond
+		facts.helpers[function.object] = helpers[identity]
+	}
+	return facts, nil
+}
+func resourceFunctions(pkg *packages.Package, graphs []functionGraph) (map[string]resourceFunction, error) {
+	functions := make(map[string]resourceFunction, len(graphs))
+	for _, source := range graphs {
+		function, err := resourceFunctionQuery(pkg, source)
+		if err != nil {
+			return nil, err
+		}
+		functions[source.graph.Tables.Text(source.graph.Function.ID)] = function
+	}
+	return functions, nil
+}
+func resourceFunctionQuery(pkg *packages.Package, source functionGraph) (resourceFunction, error) {
+	fn, graph := source.declaration, source.graph
+	object := pkg.TypesInfo.Defs[fn.Name].(*types.Func)
+	signature := object.Type().(*types.Signature)
+	query, err := resourceflow.New(graph)
+	if err != nil {
+		return resourceFunction{}, err
+	}
+	function := resourceFunction{object: object, graph: graph, query: query, errorSecond: factoryErrorSecond(signature)}
+	if releaseHelperShape(pkg.TypesInfo, fn) {
+		function.helperSymbol = graph.Function.Inputs[0].Symbol
+	}
+	return function, nil
+}
+func cleanupSummaries(functions map[string]resourceFunction, exits callflow.ExitSummaries) map[string]bool {
+	helpers := map[string]bool{}
+	for changed := true; changed; {
+		changed = false
+		for identity, function := range functions {
+			if helpers[identity] || function.helperSymbol == 0 {
+				continue
 			}
-		}
-		if !changed {
-			break
-		}
-	}
-	return sources
-}
-
-func addFileSource(pkg *packages.Package, decl ast.Decl, sources map[types.Object]bool) bool {
-	fn, ok := decl.(*ast.FuncDecl)
-	if !ok || fn.Body == nil {
-		return false
-	}
-	object := pkg.TypesInfo.Defs[fn.Name]
-	if sources[object] || !forwardsFile(pkg.TypesInfo, fn, sources) {
-		return false
-	}
-	sources[object] = true
-	return true
-}
-
-func forwardsFile(info *types.Info, fn *ast.FuncDecl, sources map[types.Object]bool) bool {
-	locals := fileSourceLocals(info, fn, sources)
-	valid, acquires := true, false
-	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		if _, ok := node.(*ast.FuncLit); ok {
-			return false
-		}
-		if ret, ok := node.(*ast.ReturnStmt); ok {
-			kind := fileReturnKind(info, ret, sources, locals)
-			valid = valid && kind != 0
-			acquires = acquires || kind == 2
-		}
-		return valid
-	})
-	return valid && acquires
-}
-
-// Return kinds: 0 unknown, 1 nil resource, 2 acquired resource.
-func fileReturnKind(info *types.Info, ret *ast.ReturnStmt, sources map[types.Object]bool, locals map[types.Object]bool) uint8 {
-	if len(ret.Results) == 2 {
-		if returnedLocalFile(info, ret.Results[0], locals) {
-			return 2
-		}
-		if typedNil(info, ret.Results[0]) {
-			return 1
-		}
-		return 0
-	}
-	if len(ret.Results) != 1 {
-		return 0
-	}
-	return directFileReturn(info, ret.Results[0], sources)
-}
-
-func directFileReturn(info *types.Info, expr ast.Expr, sources map[types.Object]bool) uint8 {
-	call, ok := ast.Unparen(expr).(*ast.CallExpr)
-	if ok && fileSourceCall(info, call, sources) {
-		return 2
-	}
-	return 0
-}
-
-func fileSourceCall(info *types.Info, call *ast.CallExpr, sources map[types.Object]bool) bool {
-	if osFileCall(info, call) {
-		return true
-	}
-	function := fileCallObject(info, call)
-	if function == nil {
-		return false
-	}
-	return sources[function] || function.FullName() == "(io/fs.FS).Open"
-}
-
-func fileCallObject(info *types.Info, call *ast.CallExpr) *types.Func {
-	function, _ := typeutil.Callee(info, call).(*types.Func)
-	return function
-}
-
-func returnedLocalFile(info *types.Info, expr ast.Expr, locals map[types.Object]bool) bool {
-	name, ok := ast.Unparen(expr).(*ast.Ident)
-	return ok && locals[info.ObjectOf(name)]
-}
-
-func fileSourceLocals(info *types.Info, fn *ast.FuncDecl, sources map[types.Object]bool) map[types.Object]bool {
-	locals := map[types.Object]bool{}
-	writes := nilErrWrites(fn, info)
-	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		assign, ok := node.(*ast.AssignStmt)
-		if ok && sourceAssignment(info, assign, sources) != nil {
-			object := info.Defs[assign.Lhs[0].(*ast.Ident)]
-			locals[object] = writes[object] == 1
-		}
-		return true
-	})
-	// Only return-slot uses may forward ownership. Closing, aliasing or
-	// capturing the handle prevents a fresh-file summary.
-	if len(locals) == 0 {
-		return locals
-	}
-	allowed := returnedFileNames(fn)
-	for name, object := range info.Uses {
-		if !allowed[name] {
-			delete(locals, object)
+			if !function.query.FromEntry(resourceflow.Policy{Resource: function.helperSymbol, Helpers: helpers, Exits: exits}) {
+				continue
+			}
+			helpers[identity] = true
+			changed = true
 		}
 	}
-	return locals
+	return helpers
 }
 
-func sourceAssignment(info *types.Info, assign *ast.AssignStmt, sources map[types.Object]bool) *ast.CallExpr {
-	if len(assign.Lhs) != 2 || len(assign.Rhs) != 1 || !newResourceBindings(info, assign.Lhs) {
+// Syntax selects a binding/report boundary. Dependency and wrapper summaries
+// are canonical graph queries; this function does not walk reads or returns.
+func sourceAcquisition(info *types.Info, node ast.Node) *ast.CallExpr {
+	targets, values := acquisitionSyntax(node)
+	if len(targets) == 0 || len(values) != 1 || !localResourceTarget(info, targets[0]) {
 		return nil
 	}
-	call, ok := ast.Unparen(assign.Rhs[0]).(*ast.CallExpr)
-	if !ok || !fileSourceCall(info, call, sources) {
+	call, ok := ast.Unparen(values[0]).(*ast.CallExpr)
+	if !ok {
 		return nil
 	}
 	return call
 }
+func acquisitionSyntax(node ast.Node) ([]ast.Expr, []ast.Expr) {
+	switch node := node.(type) {
+	case *ast.AssignStmt:
+		return node.Lhs, node.Rhs
+	case *ast.ValueSpec:
+		return memoryDeclaredTargets(node.Names), node.Values
+	default:
+		return nil, nil
+	}
+}
+func localResourceTarget(info *types.Info, expr ast.Expr) bool {
+	identifier, ok := ast.Unparen(expr).(*ast.Ident)
+	if !ok || identifier.Name == "_" {
+		return false
+	}
+	variable, ok := info.ObjectOf(identifier).(*types.Var)
+	if !ok || variable.Pkg() == nil {
+		return false
+	}
+	return variable.Parent() != variable.Pkg().Scope()
+}
+func releaseHelperShape(info *types.Info, fn *ast.FuncDecl) bool {
+	if fn.Body == nil || fn.Recv != nil {
+		return false
+	}
+	signature := info.Defs[fn.Name].Type().(*types.Signature)
+	return signature.Params().Len() == 1 && !signature.Variadic()
+}
 
-func returnedFileNames(fn *ast.FuncDecl) map[*ast.Ident]bool {
-	names := map[*ast.Ident]bool{}
-	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		if _, ok := node.(*ast.FuncLit); ok {
-			return false
-		}
-		ret, ok := node.(*ast.ReturnStmt)
-		if ok && len(ret.Results) > 0 {
-			name, _ := ast.Unparen(ret.Results[0]).(*ast.Ident)
-			names[name] = true
-		}
-		return true
-	})
-	return names
+func factoryErrorSecond(signature *types.Signature) bool {
+	return signature.Results().Len() > 1 && isErrorTypeCheck(signature.Results().At(1).Type())
+}
+
+func resourceExits(functions map[string]resourceFunction) (callflow.ExitSummaries, error) {
+	graphs := map[string]*pdg.Graph{}
+	for identity, function := range functions {
+		graphs[identity] = function.graph
+	}
+	return callflow.ExitEffects(graphs)
+}
+func resourceFactories(functions map[string]resourceFunction, helpers map[string]bool) map[string]resourceflow.FactorySummary {
+	queries := make(map[string]*resourceflow.Query, len(functions))
+	for identity, function := range functions {
+		queries[identity] = function.query
+	}
+	return resourceflow.SummarizeFactories(queries, helpers)
 }

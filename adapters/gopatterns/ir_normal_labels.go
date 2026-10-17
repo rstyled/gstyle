@@ -10,11 +10,11 @@ var normalMiningKinds = map[pdg.Category]patterns.NodeKind{
 	pdg.FormalInput: patterns.Param,
 }
 
-var normalMiningDetails = map[pdg.Category]string{pdg.Read: "read", pdg.Merge: "merge", pdg.Assignment: "assignment", pdg.FormalOutput: "result"}
+var normalMiningDetails = map[pdg.Category]string{pdg.Read: "read", pdg.Merge: "merge", pdg.Assignment: "assignment", pdg.FormalOutput: "result", pdg.MemorySummary: "memory"}
 
-// The abstraction consumer must not silently lose def/read/value edges when
-// scalar reads and joins become explicit. All scalar-profile entities receive
-// navigation-compatible mining labels; strict CCGraph still uses five categories.
+// Strict normal-flow entities label their explicit operations for matching.
+// General entities retain the source abstraction and project canonical paths
+// through unlabelled reads and joins.
 func (b *irBuilder) normalMiningLabels() {
 	for i, node := range b.graph.Nodes {
 		if node.MatchLabel != 0 {

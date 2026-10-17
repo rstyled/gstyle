@@ -34,6 +34,7 @@ type textEdit struct {
 // The transform is behavior-preserving: ifStmt of the form
 // `if [init;] cond { happy } else { return }` becomes
 // `[init;] if !cond { return }; happy`.
+// Bodies that declare names retain their lexical block.
 // If no inverted guards are found, it returns src unchanged.
 func FixInvertedGuards(fset *token.FileSet, f *ast.File, src []byte) ([]byte, []GuardFix, error) {
 	var edits []textEdit
@@ -120,13 +121,11 @@ func guardEdit(fset *token.FileSet, ifStmt *ast.IfStmt, src []byte, snapshot pdg
 	stmtEnd := fset.PositionFor(ifStmt.End(), false).Offset
 	elseStart := fset.PositionFor(elseBlock.Pos(), false).Offset
 	elseEnd := fset.PositionFor(elseBlock.End(), false).Offset
-	bodyLbrace := fset.PositionFor(ifStmt.Body.Lbrace, false).Offset
-	bodyRbrace := fset.PositionFor(ifStmt.Body.Rbrace, false).Offset
 
 	// The else block text (including braces) becomes the new guard body.
 	guardBody := src[elseStart:elseEnd]
 	// The if-body inner statements (without braces) flow after.
-	happyPath := bytes.TrimSpace(src[bodyLbrace+1 : bodyRbrace])
+	happyPath := guardHappyPath(fset, ifStmt.Body, src)
 
 	var b bytes.Buffer
 	// Hoist the init statement, if present.
@@ -150,6 +149,39 @@ func guardEdit(fset *token.FileSet, ifStmt *ast.IfStmt, src []byte, snapshot pdg
 	return textEdit{start: stmtStart, end: stmtEnd, replacement: b.Bytes()},
 		GuardFix{Line: line, Kind: "guard_clause"},
 		true
+}
+
+func guardHappyPath(fset *token.FileSet, body *ast.BlockStmt, src []byte) []byte {
+	start := fset.PositionFor(body.Lbrace, false).Offset
+	end := fset.PositionFor(body.Rbrace, false).Offset
+	if guardBodyDeclares(body) {
+		return src[start : end+1]
+	}
+	return bytes.TrimSpace(src[start+1 : end])
+}
+
+// Keep an existing lexical boundary when its immediate statements declare
+// names. Nested blocks already retain their own boundaries in the copied text.
+func guardBodyDeclares(body *ast.BlockStmt) bool {
+	for _, statement := range body.List {
+		if guardStatementDeclares(statement) {
+			return true
+		}
+	}
+	return false
+}
+
+func guardStatementDeclares(statement ast.Stmt) bool {
+	switch statement := statement.(type) {
+	case *ast.AssignStmt:
+		return statement.Tok == token.DEFINE
+	case *ast.DeclStmt:
+		return true
+	case *ast.LabeledStmt:
+		return guardStatementDeclares(statement.Stmt)
+	default:
+		return false
+	}
 }
 
 // guardHeaderHasComments protects comments that a rewritten header would drop.

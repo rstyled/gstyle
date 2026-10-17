@@ -30,7 +30,7 @@ func (source *parameterizationSource) verifyCandidate(c patterns.Candidate, othe
 	}
 	return patterns.Candidate{
 		Kind: c.Kind, ScoreMilli: c.ScoreMilli, Breakdown: c.Breakdown, Observation: c.Observation,
-		Inference:        "complete source bodies match under substitutions with compatible PDG callable types",
+		Inference:        "complete source bodies match under callable substitutions with compatible PDG types and dependencies",
 		PossibleRefactor: "extract the verified pair into a shared helper with the differing callables as parameters",
 		Sites:            c.Sites, Definitions: c.Definitions, CounterEvidence: c.CounterEvidence, FixSpec: spec,
 	}
@@ -53,7 +53,7 @@ func (s *parameterizationSource) prove(sites []patterns.Site, other *parameteriz
 	if !ok {
 		return nil, "PDG callable types are unknown or incompatible"
 	}
-	if reason := s.rewriteRisk(pair); reason != "" {
+	if reason := s.rewriteRisk(pair, holes); reason != "" {
 		return nil, reason
 	}
 	return pair.first.proofSpec(pair, signatures)
@@ -108,7 +108,7 @@ func (s *parameterizationSource) currentGraph(graph *pdg.Graph) bool {
 	return valid
 }
 
-const substitutionPolicy = "gstyle.parameterization/0.3.0"
+const substitutionPolicy = "gstyle.parameterization/0.5.0"
 
 type parameterizationPair struct {
 	first, second *parameterizationSource
@@ -117,6 +117,29 @@ type parameterizationPair struct {
 }
 
 type callableProof struct{ canonical, source string }
+
+func (v *parameterizationVerifier) verifyParameterization(c patterns.Candidate) (patterns.Candidate, error) {
+	c.FixSpec = nil
+	if len(c.Sites) != 2 {
+		return unverifiedParameterization(c, "automatic extraction requires one explicit function pair"), nil
+	}
+	if functionPackage(c.Sites[0].ID) != functionPackage(c.Sites[1].ID) {
+		return unverifiedParameterization(c, "helper extraction requires functions in the same package"), nil
+	}
+	left, right := v.graphs[c.Sites[0].ID], v.graphs[c.Sites[1].ID]
+	if !compatibleInterfaces(left, right) {
+		return unverifiedParameterization(c, "PDG function interfaces have unknown or incompatible types"), nil
+	}
+	source, err := parameterizationFile(c.Sites[0].Path, v.files, v.names[functionPackage(c.Sites[0].ID)], left.Tables.Sources, v.fset)
+	if err != nil {
+		return c, err
+	}
+	other, err := parameterizationFile(c.Sites[1].Path, v.files, v.names[functionPackage(c.Sites[1].ID)], right.Tables.Sources, v.fset)
+	if err != nil {
+		return c, err
+	}
+	return v.frameChecked(source.verifyCandidate(c, other, left, right)), nil
+}
 
 // VerifyParameterizations uses canonical IR facts, not a second compiler load.
 // AST matching checks the complete source; it does not establish type safety.
@@ -130,7 +153,12 @@ func VerifyParameterizations(report *patterns.PatternsReport, extraction *Extrac
 		fp := &extraction.Funcs[i]
 		graphs[fp.Name] = &fp.Pdg
 	}
-	verifier := parameterizationVerifier{graphs: graphs, files: make(map[string]*parameterizationSource), names: maps.Clone(extraction.PackageNames), fset: token.NewFileSet(), claimed: make(map[string]bool), attempts: make(map[[2]string]parameterizationAttempt)}
+	frames, err := parameterizationFrameEffects(graphs)
+	if err != nil {
+		rejectFrameParameterizations(report, err.Error())
+		return nil
+	}
+	verifier := parameterizationVerifier{frames: frames, graphs: graphs, files: make(map[string]*parameterizationSource), names: maps.Clone(extraction.PackageNames), fset: token.NewFileSet(), claimed: make(map[string]bool), attempts: make(map[[2]string]parameterizationAttempt)}
 	var candidates []patterns.Candidate
 	for _, candidate := range report.Candidates {
 		verified, err := verifier.candidates(candidate)
@@ -141,29 +169,6 @@ func VerifyParameterizations(report *patterns.PatternsReport, extraction *Extrac
 	}
 	report.Candidates = candidates
 	return nil
-}
-
-func verifyParameterization(c patterns.Candidate, graphs map[string]*pdg.Graph, files map[string]*parameterizationSource, names map[string][]string, fset *token.FileSet) (patterns.Candidate, error) {
-	c.FixSpec = nil
-	if len(c.Sites) != 2 {
-		return unverifiedParameterization(c, "automatic extraction requires one explicit function pair"), nil
-	}
-	if functionPackage(c.Sites[0].ID) != functionPackage(c.Sites[1].ID) {
-		return unverifiedParameterization(c, "helper extraction requires functions in the same package"), nil
-	}
-	left, right := graphs[c.Sites[0].ID], graphs[c.Sites[1].ID]
-	if !compatibleInterfaces(left, right) {
-		return unverifiedParameterization(c, "PDG function interfaces have unknown or incompatible types"), nil
-	}
-	source, err := parameterizationFile(c.Sites[0].Path, files, names[functionPackage(c.Sites[0].ID)], left.Tables.Sources, fset)
-	if err != nil {
-		return c, err
-	}
-	other, err := parameterizationFile(c.Sites[1].Path, files, names[functionPackage(c.Sites[1].ID)], right.Tables.Sources, fset)
-	if err != nil {
-		return c, err
-	}
-	return source.verifyCandidate(c, other, left, right), nil
 }
 
 func parameterizationFile(path string, files map[string]*parameterizationSource, names []string, sources *pdg.SourceContext, fset *token.FileSet) (*parameterizationSource, error) {

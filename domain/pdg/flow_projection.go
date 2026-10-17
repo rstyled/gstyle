@@ -7,11 +7,45 @@ func NormalProjection(g *Graph) []bool {
 	if g.NormalFlow == nil {
 		return nil
 	}
+	return operationProjection(g, g.NormalFlow)
+}
+
+// ReachableProjection also accepts the producer's shared sequential operation
+// flow. Legacy partial value flow does not justify removing source operations.
+// This projection does not grant strict scalar conformance.
+func ReachableProjection(g *Graph) []bool {
+	if g.NormalFlow != nil {
+		return NormalProjection(g)
+	}
+	flow := sharedProjectionFlow(g)
+	if flow == nil {
+		return nil
+	}
+	return operationProjection(g, flow)
+}
+
+func sharedProjectionFlow(g *Graph) *NormalFlow {
+	if !sharedOperationFlow(g) {
+		return nil
+	}
+	return g.ValueFlow
+}
+
+func sharedOperationFlow(g *Graph) bool {
+	for _, extension := range g.Extensions {
+		if g.Tables.Text(extension.Name) == "gstyle.pdg:operation-flow" && g.Tables.Text(extension.Value) == `"0.1.0"` {
+			return true
+		}
+	}
+	return false
+}
+
+func operationProjection(g *Graph, flow *NormalFlow) []bool {
 	kept := make([]bool, len(g.Nodes))
 	for i, node := range g.Nodes {
 		kept[i] = node.Category == FormalInput
 	}
-	for _, block := range g.NormalFlow.Blocks {
+	for _, block := range flow.Blocks {
 		if !block.Reachable {
 			continue
 		}
@@ -51,7 +85,7 @@ func normalValueRequirements(g *Graph) [][]Ref {
 		if edge.Kind != Data {
 			continue
 		}
-		if nonexecutingCategory(g.Nodes[edge.Source-1].Category) {
+		if projectionValue(g.Nodes[edge.Source-1].Category) {
 			required[edge.Target-1] = append(required[edge.Target-1], edge.Source)
 		}
 		if g.Nodes[edge.Target-1].Category == FormalOutput {
@@ -59,4 +93,8 @@ func normalValueRequirements(g *Graph) [][]Ref {
 		}
 	}
 	return required
+}
+
+func projectionValue(category Category) bool {
+	return nonexecutingCategory(category) || category == MemorySummary
 }

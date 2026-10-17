@@ -52,9 +52,7 @@ func (b *irBuilder) runtimeExpression(node ast.Node) {
 	b.runtimeInterfaceValue(expr, attrs)
 	b.runtimeConversionType(expr, attrs)
 	b.runtimeAccessFacts(expr, attrs)
-	if runtimeNonNil(expr, b.info) {
-		b.runtimeExtension(attrs, "non-nil", "true")
-	}
+	b.runtimeCompletionFacts(expr, attrs)
 }
 
 func (b *irBuilder) runtimeExtension(attrs *pdg.Attributes, name, value string) {
@@ -172,6 +170,49 @@ func (b *irBuilder) runtimeFieldFacts(expr *ast.SelectorExpr, attrs *pdg.Attribu
 	}
 }
 
+func (b *irBuilder) runtimeIncrementFacts(node ast.Node) {
+	increment, ok := node.(*ast.IncDecStmt)
+	if !ok {
+		return
+	}
+	basic, ok := b.info.TypeOf(increment.X).Underlying().(*types.Basic)
+	if !ok {
+		return
+	}
+	if !b.signedStep64Type(basic) {
+		return
+	}
+	ref := b.nodes[node]
+	attrs := &b.attributes[b.graph.Nodes[ref-1].Attributes-1]
+	b.runtimeExtension(attrs, "signed-step64", strconv.Quote(increment.Tok.String()))
+}
+
+func (b *irBuilder) signedStep64Type(basic *types.Basic) bool {
+	if basic.Kind() == types.Int64 {
+		return true
+	}
+	if basic.Kind() != types.Int || b.sizes == nil {
+		return false
+	}
+	return b.sizes.Sizeof(basic) == 8
+}
+
+func (b *irBuilder) runtimeZeroDeclaration(node ast.Node) {
+	spec, ok := node.(*ast.ValueSpec)
+	if !ok || len(spec.Values) != 0 {
+		return
+	}
+	if ref := b.nodes[node]; ref != 0 {
+		b.runtimeExtension(&b.attributes[b.graph.Nodes[ref-1].Attributes-1], "zero-initialized", "true")
+	}
+}
+
+func (b *irBuilder) runtimeInterfaceValue(expr ast.Expr, attrs *pdg.Attributes) {
+	if kind := interfaceValueKind(expr, b.info); kind != "" {
+		b.runtimeExtension(attrs, "interface-value", `"`+kind+`"`)
+	}
+}
+
 // Compiler facts annotate the canonical PDG once. They describe values and
 // accesses, not findings or safety decisions.
 func runtimeRelevant(fn *ast.FuncDecl, info *types.Info) bool {
@@ -188,6 +229,8 @@ func runtimeRelevant(fn *ast.FuncDecl, info *types.Info) bool {
 
 func runtimeAccess(node ast.Node, info *types.Info) bool {
 	switch node := node.(type) {
+	case *ast.DeferStmt:
+		return true
 	case *ast.CallExpr:
 		return runtimeOutputCall(node, info)
 	case *ast.StarExpr:
@@ -317,47 +360,4 @@ func runtimePointerField(expr *ast.SelectorExpr, info *types.Info) bool {
 		return false
 	}
 	return pointerType(info.TypeOf(expr.X)) || embeddedPointerAccess(selection)
-}
-
-func (b *irBuilder) runtimeIncrementFacts(node ast.Node) {
-	increment, ok := node.(*ast.IncDecStmt)
-	if !ok {
-		return
-	}
-	basic, ok := b.info.TypeOf(increment.X).Underlying().(*types.Basic)
-	if !ok {
-		return
-	}
-	if !b.signedStep64Type(basic) {
-		return
-	}
-	ref := b.nodes[node]
-	attrs := &b.attributes[b.graph.Nodes[ref-1].Attributes-1]
-	b.runtimeExtension(attrs, "signed-step64", strconv.Quote(increment.Tok.String()))
-}
-
-func (b *irBuilder) signedStep64Type(basic *types.Basic) bool {
-	if basic.Kind() == types.Int64 {
-		return true
-	}
-	if basic.Kind() != types.Int || b.sizes == nil {
-		return false
-	}
-	return b.sizes.Sizeof(basic) == 8
-}
-
-func (b *irBuilder) runtimeZeroDeclaration(node ast.Node) {
-	spec, ok := node.(*ast.ValueSpec)
-	if !ok || len(spec.Values) != 0 {
-		return
-	}
-	if ref := b.nodes[node]; ref != 0 {
-		b.runtimeExtension(&b.attributes[b.graph.Nodes[ref-1].Attributes-1], "zero-initialized", "true")
-	}
-}
-
-func (b *irBuilder) runtimeInterfaceValue(expr ast.Expr, attrs *pdg.Attributes) {
-	if kind := interfaceValueKind(expr, b.info); kind != "" {
-		b.runtimeExtension(attrs, "interface-value", `"`+kind+`"`)
-	}
 }

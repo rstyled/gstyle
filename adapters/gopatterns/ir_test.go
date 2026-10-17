@@ -21,7 +21,7 @@ func parseIR(t testing.TB, source string, pool *pdg.Builder) pdg.Graph {
 	if err != nil {
 		t.Fatal(err)
 	}
-	info := &types.Info{Types: map[ast.Expr]types.TypeAndValue{}, Defs: map[*ast.Ident]types.Object{}, Uses: map[*ast.Ident]types.Object{}, Selections: map[*ast.SelectorExpr]*types.Selection{}}
+	info := &types.Info{Types: map[ast.Expr]types.TypeAndValue{}, Defs: map[*ast.Ident]types.Object{}, Uses: map[*ast.Ident]types.Object{}, Selections: map[*ast.SelectorExpr]*types.Selection{}, Implicits: map[ast.Node]types.Object{}}
 	pkg, err := (&types.Config{Importer: importer.Default()}).Check("example", fset, []*ast.File{file}, info)
 	if err != nil {
 		t.Fatal(err)
@@ -29,7 +29,11 @@ func parseIR(t testing.TB, source string, pool *pdg.Builder) pdg.Graph {
 	loaded := &packages.Package{PkgPath: "example", Fset: fset, TypesInfo: info, Types: pkg}
 	for _, decl := range file.Decls {
 		if fn, ok := decl.(*ast.FuncDecl); ok && fn.Body != nil {
-			extracted, err := extractFunc(loaded, fn, "fixture.go", extractCtx{pool: pool})
+			graph, err := buildGraph(loaded, fn, "fixture.go", pool)
+			if err != nil {
+				t.Fatal(err)
+			}
+			extracted, err := extractFunc(loaded, functionGraph{declaration: fn, path: "fixture.go", graph: &graph}, extractCtx{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -85,19 +89,24 @@ func TestIRUnresolvedMemoryAndInterfaceDispatch(t *testing.T) {
 	if err := pdg.Validate(&g); err != nil {
 		t.Fatal(err)
 	}
-	if len(g.Locations) != 0 {
-		t.Fatal("invented alias location")
+	if len(g.Locations) == 0 {
+		t.Fatal("missing explicit may-alias storage")
+	}
+	for _, location := range g.Locations {
+		if g.Tables.Evidence[location.Evidence-1].Status != pdg.Approximated {
+			t.Fatal("unknown storage falsely claims exact aliasing")
+		}
 	}
 	unknownReads, unknownWrites, indirectCalls := 0, 0, 0
 	for _, node := range g.Nodes {
 		attrs := g.NodeAttributes(node)
 		for _, read := range attrs.Reads {
-			if read.UnresolvedReason != 0 {
+			if read.UnresolvedReason != 0 || read.Location != 0 {
 				unknownReads++
 			}
 		}
 		for _, write := range attrs.Writes {
-			if write.UnresolvedReason != 0 {
+			if write.UnresolvedReason != 0 || write.Location != 0 {
 				unknownWrites++
 			}
 		}
@@ -108,7 +117,7 @@ func TestIRUnresolvedMemoryAndInterfaceDispatch(t *testing.T) {
 			}
 		}
 	}
-	if unknownReads < 1 || unknownWrites != 1 || indirectCalls != 2 {
+	if unknownReads < 1 || unknownWrites < 1 || indirectCalls != 2 {
 		t.Fatalf("reads=%d writes=%d indirect=%d", unknownReads, unknownWrites, indirectCalls)
 	}
 }
@@ -204,9 +213,17 @@ func TestIRGlobalWritesRetainGlobalRole(t *testing.T) {
 	if len(g.Symbols) != 1 || g.Symbols[0].Role != pdg.GlobalRole {
 		t.Fatal("global binding marked local")
 	}
+	found := false
 	for _, edge := range g.Edges {
-		if edge.Definition != 0 {
-			t.Fatal("global def-use claimed under local-only policy")
+		if edge.Definition == 0 || edge.Symbol == 0 {
+			continue
 		}
+		found = true
+		if g.Symbols[edge.Symbol-1].Role != pdg.GlobalRole || g.Tables.Evidence[edge.Evidence-1].Status != pdg.Approximated {
+			t.Fatal("global definition has incorrect role or certainty")
+		}
+	}
+	if !found {
+		t.Fatal("global write has no conservative def/use edge")
 	}
 }

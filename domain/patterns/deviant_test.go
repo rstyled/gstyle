@@ -45,3 +45,18 @@ func TestFindBeliefViolations(t *testing.T) {
 		t.Errorf("violation FuncID = %q, want b", violations[0].FuncID)
 	}
 }
+
+func TestUnknownErrorUsesDoNotCreateBeliefsOrViolations(t *testing.T) {
+	sites := []ErrorCheckSite{}
+	for range 5 {
+		sites = append(sites, ErrorCheckSite{Callee: "fetch", Checked: true})
+	}
+	sites = append(sites, ErrorCheckSite{Callee: "fetch", CheckUnknown: true})
+	beliefs := MineErrorBeliefs(sites)
+	if len(beliefs) != 1 || beliefs[0].Support != 5 || beliefs[0].Confidence != 1 {
+		t.Fatalf("unknown site changes belief: %+v", beliefs)
+	}
+	if violations := FindBeliefViolations(sites, beliefs); len(violations) != 0 {
+		t.Fatalf("unknown site becomes violation: %+v", violations)
+	}
+}

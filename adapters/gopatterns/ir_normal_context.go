@@ -32,21 +32,19 @@ func (b *irBuilder) normalFlowContext(flow *cfg.CFG, operations [][]pdg.Ref, dom
 	b.graph.NormalFlow = context
 	b.graph.Profile = b.pool.Policy(ScalarNormalProfileID, ScalarNormalProfileVersion)
 	b.graph.Function.ReferenceCount = pdg.CountFact{Status: pdg.Known, Value: context.ReadBindings}
-	b.normalReturnTransfers()
+	b.normalReturnTransfers(flow, dom)
 }
 
 // Unreachable source operations remain available for navigation, but an
 // unexecuted return cannot transfer a value to a live function output entity.
-func (b *irBuilder) normalReturnTransfers() {
+func (b *irBuilder) normalReturnTransfers(flow *cfg.CFG, dom *executionDominators) {
 	reachable := map[pdg.Ref]bool{}
-	for _, block := range b.graph.NormalFlow.Blocks {
-		if !block.Reachable {
-			continue
-		}
-		for _, operation := range block.Operations {
+	for _, index := range dom.order {
+		for _, operation := range b.normalOperations(flow.Blocks[index]) {
 			reachable[operation] = true
 		}
 	}
+
 	b.graph.Edges = slices.DeleteFunc(b.graph.Edges, func(edge pdg.Edge) bool {
 		return b.pool.Tables.Text(edge.Subkind) == "return-value" && !reachable[edge.Source]
 	})

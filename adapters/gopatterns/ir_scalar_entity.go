@@ -14,7 +14,7 @@ func (b *irBuilder) scalarEntity(span pdg.Ref, category pdg.Category, attrs pdg.
 	b.graph.Nodes = append(b.graph.Nodes, pdg.Node{
 		ID: b.pool.Text("n" + strconv.Itoa(int(ref))), Category: category, Span: span, Attributes: pdg.Ref(len(b.attributes)), Synthetic: true,
 		OriginalKind: b.pool.Missing(pdg.NotApplicable, "Derived scalar value/read/predicate entity; its span identifies the source value site."),
-		Evidence:     b.pool.Evidence(pdg.Supported, scalarDefinitionDescription), Provenance: b.pool.Origin(pdg.Analysis, scalarDefinitionDescription),
+		Evidence:     b.pool.Evidence(b.bindingStatus(), b.bindingDescription()), Provenance: b.pool.Origin(pdg.Analysis, b.bindingDescription()),
 	})
 	return ref
 }

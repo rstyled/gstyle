@@ -454,10 +454,13 @@ func Validate(g *Graph) error {
 	v.nodes()
 	v.edges()
 	v.evidence()
-	if v.err == nil && g.NormalFlow != nil {
+	if v.err != nil {
+		return v.err
+	}
+	if g.NormalFlow != nil {
 		return validateNormalFlow(g)
 	}
-	return v.err
+	return validateOperationFlow(g)
 }
 
 func contains(ids []Ref, target Ref) bool {

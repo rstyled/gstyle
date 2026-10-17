@@ -221,10 +221,11 @@ func (b *builder) tryNode(s *ast.IfStmt, obj types.Object) {
 // (`for i := 0; i < len(coll); i++`) become Iterate over coll with the
 // loop-element canonicalization; everything else becomes Loop.
 func (b *builder) forStmt(s *ast.ForStmt) {
-	if s.Init != nil {
+	counter, coll, iterate := b.counterLoop(s)
+	if s.Init != nil && !b.abstractCounterInit(s.Init, iterate) {
 		b.stmt(s.Init)
 	}
-	if counter, coll, ok := b.counterLoop(s); ok {
+	if iterate {
 		collNode := b.expr(coll)
 		n := b.node(patterns.PdgNode{Kind: patterns.Iterate, Line: b.line(s.Pos())})
 		b.data(collNode, n, 0)
@@ -242,6 +243,17 @@ func (b *builder) forStmt(s *ast.ForStmt) {
 	if s.Post != nil {
 		b.stmt(s.Post)
 	}
+}
+
+// Matching abstracts a constant counter seed along with the index operation.
+// Source enrichment still emits its operation, definition and dependencies in
+// the canonical PDG. Nonconstant initializers retain their matching operations.
+func (b *builder) abstractCounterInit(init ast.Stmt, iterate bool) bool {
+	if !iterate {
+		return false
+	}
+	assign := init.(*ast.AssignStmt) // counterLoop accepts a single definition.
+	return b.info.Types[assign.Rhs[0]].Value != nil
 }
 
 // counterLoop recognizes `for i := <int>; i < len(coll); i++`
@@ -388,11 +400,15 @@ func (b *builder) returnStmt(s *ast.ReturnStmt) {
 	}
 }
 
-// wrappedCall lowers `defer f()` / `go f()`: the call lowers normally, then a
-// Defer/Go node wraps it with a data edge, so the launch semantics survive.
+// A deferred invocation consumes its saved registration. Spawn keeps its coarse
+// legacy wrapper until concurrent execution has its own lowering.
 func (b *builder) wrappedCall(call *ast.CallExpr, kind patterns.NodeKind, pos token.Pos) {
 	c := b.expr(call)
 	n := b.node(patterns.PdgNode{Kind: kind, Line: b.line(pos)})
+	if kind == patterns.Defer {
+		b.data(n, c, 0)
+		return
+	}
 	b.data(c, n, 0)
 }
 

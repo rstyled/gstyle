@@ -64,7 +64,7 @@ func MiningView(g *pdg.Graph) *MiningGraph {
 	if g == nil {
 		return nil
 	}
-	kept := pdg.NormalProjection(g)
+	kept := pdg.ReachableProjection(g)
 	view := &MiningGraph{Paper: nativeCharacteristicsFor(g, kept), Nodes: make([]PdgNode, 0, matchingNodeCount(g)), Edges: make([]PdgEdge, 0, len(g.Edges))}
 	indexes := make([]int, len(g.Nodes))
 	for i, n := range g.Nodes {
@@ -75,10 +75,11 @@ func MiningView(g *pdg.Graph) *MiningGraph {
 		indexes[i] = len(view.Nodes)
 		view.Nodes = append(view.Nodes, miningNode(g, n))
 	}
-	// Typed operand edges belong to the value-flow projection. The abstraction
-	// matcher compares its existing dependence policy, not duplicate operands.
-	for _, e := range g.Edges {
-		appendMiningEdge(g, view, indexes, e)
+	// Matching labels select the compact abstraction. Canonical dependencies
+	// through unlabelled operations still connect its visible producers.
+	projection := newMatchingProjection(g, view, indexes, kept)
+	for _, edge := range g.Edges {
+		projection.edge(edge)
 	}
 	return view
 }
@@ -88,10 +89,6 @@ func miningNode(g *pdg.Graph, n pdg.Node) PdgNode {
 }
 
 func appendMiningEdge(g *pdg.Graph, view *MiningGraph, indexes []int, e pdg.Edge) {
-	switch g.Tables.Text(e.Subkind) {
-	case "source-value":
-		return
-	}
 	from, to := indexes[e.Source-1], indexes[e.Target-1]
 	if from < 0 || to < 0 {
 		return

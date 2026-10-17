@@ -9,6 +9,46 @@ type Decision struct {
 	ErrorBlank bool
 }
 
+type Site struct {
+	FuncID          string
+	Line            int
+	Callee          string
+	Checked         bool
+	CheckUnknown    bool `json:",omitempty"`
+	DiscardedOutput bool `json:",omitempty"`
+}
+
+type Function struct {
+	Path string
+	ID   string
+	Name string
+}
+
+type Advisory struct {
+	Path            string
+	Line            int
+	EndLine         int
+	ID              string
+	Name            string
+	Kind            string
+	ScoreMilli      uint32
+	Observation     string
+	Inference       string
+	CounterEvidence string
+}
+
+type Identity struct {
+	Package string
+	Name    string
+}
+
+type Consumption struct {
+	Standalone bool
+	Values     int
+	Results    int
+	ErrorName  string
+}
+
 func Discards(input Decision) (result bool) {
 	if !input.Formatted || input.Memory {
 		return false
@@ -17,14 +57,6 @@ func Discards(input Decision) (result bool) {
 		return true
 	}
 	return input.Values == 1 && input.Results == 2 && input.ErrorBlank
-}
-
-type Site struct {
-	FuncID          string
-	Line            int
-	Callee          string
-	Checked         bool
-	DiscardedOutput bool `json:",omitempty"`
 }
 
 func Select(sites []Site, suppressed bool) []Site {
@@ -62,25 +94,6 @@ func Find(sites []Site, suppressions []string) []Site {
 	return Select(sites, hasSuppression(suppressions))
 }
 
-type Function struct {
-	Path string
-	ID   string
-	Name string
-}
-
-type Advisory struct {
-	Path            string
-	Line            int
-	EndLine         int
-	ID              string
-	Name            string
-	Kind            string
-	ScoreMilli      uint32
-	Observation     string
-	Inference       string
-	CounterEvidence string
-}
-
 func describe(function Function, site Site) Advisory {
 	return Advisory{
 		Path: function.Path, Line: site.Line, EndLine: site.Line,
@@ -99,18 +112,6 @@ func Report(function Function, sites []Site, suppressions []string) []Advisory {
 		out = append(out, describe(function, selected[i]))
 	}
 	return out
-}
-
-type Identity struct {
-	Package string
-	Name    string
-}
-
-type Consumption struct {
-	Standalone bool
-	Values     int
-	Results    int
-	ErrorName  string
 }
 
 func Classify(callee, writer Identity, use Consumption) bool {

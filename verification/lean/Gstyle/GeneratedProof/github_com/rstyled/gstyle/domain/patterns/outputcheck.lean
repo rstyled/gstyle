@@ -157,6 +157,7 @@ instance Site_typed_pointsto :
     "Line" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Site go!"Line" l) v.Line' dq ∗
     "Callee" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Site go!"Callee" l) v.Callee' dq ∗
     "Checked" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Site go!"Checked" l) v.Checked' dq ∗
+    "CheckUnknown" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Site go!"CheckUnknown" l) v.CheckUnknown' dq ∗
     "DiscardedOutput" ∷ typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Site go!"DiscardedOutput" l) v.DiscardedOutput' dq ∗
     "_" ∷ True)
   typedPointstoDef_dfractional := by solve_typed_pointsto_dfractional
@@ -228,6 +229,22 @@ instance Site_access_store_Checked (l : Loc) (v : github_com.rstyled.gstyle.doma
       (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Site go!"Checked" l) v.Checked' (DFrac.own 1))
       (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Site go!"Checked" l) Checked' (DFrac.own 1))
       (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with Checked' := Checked' } : github_com.rstyled.gstyle.domain.patterns.outputcheck.Site) (DFrac.own 1)) :=
+ by
+  solve_pointsto_access_struct
+
+instance Site_access_load_CheckUnknown (l : Loc) (v : github_com.rstyled.gstyle.domain.patterns.outputcheck.Site) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Site go!"CheckUnknown" l) v.CheckUnknown' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Site go!"CheckUnknown" l) v.CheckUnknown' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Site_access_store_CheckUnknown (l : Loc) (v : github_com.rstyled.gstyle.domain.patterns.outputcheck.Site) (CheckUnknown' : Bool) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Site go!"CheckUnknown" l) v.CheckUnknown' (DFrac.own 1))
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.patterns.outputcheck.Site go!"CheckUnknown" l) CheckUnknown' (DFrac.own 1))
+      (typedPointsto l v (DFrac.own 1)) (typedPointsto l ({ v with CheckUnknown' := CheckUnknown' } : github_com.rstyled.gstyle.domain.patterns.outputcheck.Site) (DFrac.own 1)) :=
  by
   solve_pointsto_access_struct
 

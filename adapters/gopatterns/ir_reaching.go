@@ -58,8 +58,8 @@ func (a *reachingAnalysis) input(index int) reachingState {
 func (a *reachingAnalysis) seed(state reachingState) {
 	for i, definition := range a.builder.graph.Definitions {
 		category := a.builder.graph.Nodes[definition.Node-1].Category
-		if category == pdg.FormalInput || category == pdg.FormalOutput {
-			state[definition.Symbol] = []pdg.Ref{pdg.Ref(i + 1)}
+		if a.initialDefinition(definition, category) {
+			state[a.key(definition.Symbol, definition.Location)] = []pdg.Ref{pdg.Ref(i + 1)}
 		}
 	}
 }
@@ -105,7 +105,7 @@ func (a *reachingAnalysis) operations(source ast.Node) []pdg.Ref {
 func (a *reachingAnalysis) parent(stack []ast.Node, child ast.Node) (pdg.Ref, pdg.Position) {
 	for i := len(stack) - 1; i >= 0; i-- {
 		if ref := a.builder.nodes[stack[i]]; ref != 0 {
-			return ref, sourceOperandPosition(stack[i], child)
+			return ref, a.builder.runtimeOperandPosition(stack[i], child)
 		}
 		child = stack[i]
 	}
@@ -128,17 +128,17 @@ func (a *reachingAnalysis) valueEdge(source, target pdg.Ref, position pdg.Positi
 func (a *reachingAnalysis) operation(node pdg.Ref, state reachingState) {
 	attributes := a.builder.attributes[a.builder.graph.Nodes[node-1].Attributes-1]
 	for _, read := range attributes.Reads {
-		definitions := state[read.Symbol]
+		key := a.key(read.Symbol, read.Location)
+		definitions := state[key]
 		if len(definitions) == 0 {
 			continue
 		}
-		definition := a.joinedDefinition(read.Symbol, node, definitions)
-		state[read.Symbol] = []pdg.Ref{definition}
+		definition := a.joinedDefinition(key, node, definitions)
+		state[key] = []pdg.Ref{definition}
 		a.edge(definition, node, read.Position)
 	}
 	for _, ref := range attributes.Defines {
-		definition := a.builder.graph.Definitions[ref-1]
-		state[definition.Symbol] = []pdg.Ref{ref}
+		a.writeDefinition(ref, state)
 	}
 }
 
@@ -150,7 +150,7 @@ func (a *reachingAnalysis) edge(ref, target pdg.Ref, position pdg.Position) {
 		Source: definition.Node, Target: target, Kind: pdg.Data,
 		Position: position,
 		Subkind:  b.pool.Text("reaching-definition"), Symbol: definition.Symbol,
-		Definition: ref, Evidence: a.evidence, Provenance: a.origin,
+		Definition: ref, Location: definition.Location, Evidence: a.evidence, Provenance: a.origin,
 	})
 }
 
@@ -162,21 +162,7 @@ func (a *reachingAnalysis) sourceValues(flow *cfg.CFG, dom *executionDominators)
 	}
 }
 
-const scalarDefinitionDescription = "Exact scalar reaching definitions for acyclic normal flow: local integer/boolean bindings, assignments, if branches, short-circuit expressions, explicit value joins and returns; calls, memory and loops are excluded."
-
-func (b *irBuilder) reachingDefinitions(body *ast.BlockStmt, flow *cfg.CFG, dom *executionDominators) (*cfg.CFG, *executionDominators) {
-	if !b.scalarOperations && !b.bindingOperations {
-		return flow, dom
-	}
-	nextEdgeID := len(b.graph.Edges)
-	b.removeFirstBindingEdges()
-
-	a := reachingAnalysis{builder: b, controls: b.executionControls(body), nextEdgeID: nextEdgeID, evidence: b.pool.Evidence(pdg.Supported, b.bindingDescription()), origin: b.pool.Origin(pdg.Analysis, b.bindingDescription())}
-	a.sourceValues(flow, dom)
-	flow = b.scalarCFG(body, flow)
-	dom = newExecutionDominators(flow)
-	a.outputs = make([]reachingState, len(flow.Blocks))
-	a.predecessors = dom.predecessors
+func (a *reachingAnalysis) acyclic(flow *cfg.CFG, dom *executionDominators) {
 	a.remaining = reachingConsumers(flow)
 
 	for _, index := range dom.order {
@@ -186,8 +172,75 @@ func (b *irBuilder) reachingDefinitions(body *ast.BlockStmt, flow *cfg.CFG, dom 
 			a.outputs[index] = state
 		}
 	}
+}
+
+func (a *reachingAnalysis) sourceReachingValues(flow *cfg.CFG, dom *executionDominators) {
+	if a.builder.generalBindings || a.builder.runtimeOperations {
+		return
+	}
+	a.sourceValues(flow, dom)
+}
+
+func (a *reachingAnalysis) initialDefinition(definition pdg.Definition, category pdg.Category) bool {
+	if category == pdg.FormalInput || category == pdg.FormalOutput {
+		return true
+	}
+	attrs := a.builder.attributes[a.builder.graph.Nodes[definition.Node-1].Attributes-1]
+	return category == pdg.MemorySummary && a.builder.pool.Tables.Text(attrs.Construct) == "memory-input"
+}
+
+func (a *reachingAnalysis) key(symbol, location pdg.Ref) pdg.Ref {
+	if symbol != 0 {
+		return symbol
+	}
+	if location == 0 {
+		return 0
+	}
+	return pdg.Ref(len(a.builder.graph.Symbols)) + location
+}
+
+func (a *reachingAnalysis) writeDefinition(ref pdg.Ref, state reachingState) {
+	definition := a.builder.graph.Definitions[ref-1]
+	key := a.key(definition.Symbol, definition.Location)
+	if a.builder.weakDefinitions[ref] {
+		state.merge(reachingState{key: []pdg.Ref{ref}})
+		return
+	}
+	state[key] = []pdg.Ref{ref}
+}
+
+const scalarDefinitionDescription = "Exact scalar reaching definitions for acyclic normal flow: local integer/boolean bindings, assignments, if branches, short-circuit expressions, explicit value joins and returns; calls, memory and loops are excluded."
+
+func (b *irBuilder) reachingDefinitions(body *ast.BlockStmt, flow *cfg.CFG, dom *executionDominators) (*cfg.CFG, *executionDominators, error) {
+	if !b.reachingEnabled() {
+		return flow, dom, nil
+	}
+	nextEdgeID := len(b.graph.Edges)
+	b.removeFirstBindingEdges()
+
+	a := reachingAnalysis{builder: b, controls: b.executionControls(body), nextEdgeID: nextEdgeID, evidence: b.pool.Evidence(b.bindingStatus(), b.bindingDescription()), origin: b.pool.Origin(pdg.Analysis, b.bindingDescription())}
+	a.sourceReachingValues(flow, dom)
+	var err error
+	flow, err = b.reachingCFG(body, flow)
+	if err != nil {
+		return nil, nil, err
+	}
+	dom = newExecutionDominators(flow)
+	if b.generalBindings {
+		if err := b.generalMemory(); err != nil {
+			return nil, nil, err
+		}
+	}
+	a.outputs = make([]reachingState, len(flow.Blocks))
+	a.predecessors = dom.predecessors
+	if b.fixedPointBindings() {
+		a.fixedPoint(flow, dom)
+		b.normalReturnTransfers(flow, dom)
+		return flow, dom, nil
+	}
+	a.acyclic(flow, dom)
 	b.scalarDefinitions = b.scalarOperations
-	return flow, dom
+	return flow, dom, nil
 }
 
 // Source scalar flow replaces the old abstraction's first-binding data edges.
@@ -199,6 +252,12 @@ func (b *irBuilder) removeFirstBindingEdges() {
 }
 
 func (b *irBuilder) bindingDescription() string {
+	if b.generalBindings {
+		return generalBindingDescription
+	}
+	if b.extendedScalar {
+		return cyclicDefinitionDescription
+	}
 	if b.bindingOperations {
 		return interfaceFlowDescription
 	}
@@ -210,6 +269,26 @@ func (b *irBuilder) valueSubkind() string {
 		return "binding-value"
 	}
 	return "scalar-value"
+}
+
+func (b *irBuilder) reachingCFG(body *ast.BlockStmt, flow *cfg.CFG) (*cfg.CFG, error) {
+	if !b.fixedPointBindings() && !b.bindingOperations {
+		return b.scalarCFG(body, flow), nil
+	}
+	return b.semanticControlCFG(body, flow)
+}
+
+func (b *irBuilder) reachingEnabled() bool {
+	return b.scalarOperations || b.bindingOperations || b.generalBindings
+}
+
+func (b *irBuilder) fixedPointBindings() bool { return b.extendedScalar || b.generalBindings }
+
+func (b *irBuilder) bindingStatus() pdg.Status {
+	if b.generalBindings {
+		return pdg.Approximated
+	}
+	return pdg.Supported
 }
 
 func reachingConsumers(flow *cfg.CFG) []int {

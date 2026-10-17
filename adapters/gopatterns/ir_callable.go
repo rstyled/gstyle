@@ -28,6 +28,15 @@ func (b *irBuilder) callableExtensions(expr ast.Expr) []pdg.Extension {
 	}
 }
 
+func (b *irBuilder) implicitReceiver(expr ast.Expr) bool {
+	selector, ok := unparen(expr).(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	selection := b.info.Selections[selector]
+	return selection != nil && selection.Kind() == types.MethodVal
+}
+
 func unnamedTuple(tuple *types.Tuple) *types.Tuple {
 	vars := make([]*types.Var, tuple.Len())
 	for i := range vars {

@@ -16,7 +16,7 @@ func TestReturnValuesReachEachFormalOutput(t *testing.T) {
 		{"identity", "func f(x int) int { return x }", 1, 1, true},
 		{"branch", "func f(x int,c bool) int { if c { return x }; return 0 }", 2, 1, true},
 		{"reassignment", "func f(x int) int { x=1; x=2; return x }", 1, 1, true},
-		{"loop", "func f(x int) int { for x>0 { x--; if x==2 { return x } }; return x }", 2, 1, false},
+		{"loop", "func f(x int) int { for x>0 { x--; if x==2 { return x } }; return x }", 2, 1, true},
 		{"multiple results", "func f(x int) (int,bool) { return x,true }", 1, 2, true},
 		{"tuple call", "func f() (int,bool) { return pair() }; func pair() (int,bool) { return 1,true }", 1, 2, false},
 		{"named bare return", "func f(x int) (a,b int) { a=x; b=x+1; return }", 1, 2, true},

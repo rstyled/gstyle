@@ -479,6 +479,15 @@ noncomputable def listAt [FfiSyntax] [GoGlobalContext] : GoString :=
 noncomputable def attributeInput [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/pdg.attributeInput"
 
+noncomputable def BodyFlow [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/pdg.BodyFlow"
+
+noncomputable def bodyValueFlow [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/pdg.bodyValueFlow"
+
+noncomputable def ExitBodyFlow [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/pdg.ExitBodyFlow"
+
 noncomputable def Compact [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/pdg.Compact"
 
@@ -488,11 +497,26 @@ noncomputable def compactSlice [FfiSyntax] [GoGlobalContext] : GoString :=
 noncomputable def NormalProjection [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/pdg.NormalProjection"
 
+noncomputable def ReachableProjection [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/pdg.ReachableProjection"
+
+noncomputable def sharedProjectionFlow [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/pdg.sharedProjectionFlow"
+
+noncomputable def sharedOperationFlow [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/pdg.sharedOperationFlow"
+
+noncomputable def operationProjection [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/pdg.operationProjection"
+
 noncomputable def retainNormalValues [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/pdg.retainNormalValues"
 
 noncomputable def normalValueRequirements [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/pdg.normalValueRequirements"
+
+noncomputable def projectionValue [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/pdg.projectionValue"
 
 noncomputable def validateNormalFlow [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/pdg.validateNormalFlow"
@@ -523,6 +547,18 @@ noncomputable def resolvedScalarAccess [FfiSyntax] [GoGlobalContext] : GoString 
 
 noncomputable def reachableFlowRead [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/pdg.reachableFlowRead"
+
+noncomputable def ValidateFlow [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/pdg.ValidateFlow"
+
+noncomputable def validateFlowSites [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/pdg.validateFlowSites"
+
+noncomputable def validateOperationFlow [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/pdg.validateOperationFlow"
+
+noncomputable def operationBlockReferences [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/pdg.operationBlockReferences"
 
 noncomputable def NewSourceContext [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/pdg.NewSourceContext"

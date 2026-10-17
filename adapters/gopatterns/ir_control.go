@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"slices"
 
 	"github.com/rstyled/gstyle/domain/pdg"
 	"golang.org/x/tools/go/cfg"
@@ -12,15 +13,15 @@ import (
 
 const controlVertexLimit = 16384
 
-const semanticControlDescription = "Divergence-sensitive post-dominator control dependence on operation CFG flow, including finite and infinite paths. Ordinary calls are assumed to return; built-in panic, os.Exit and runtime.Goexit terminate paths. Implicit panics, recovery, deferred execution and concurrent control are not modeled."
+const semanticControlDescription = "Operation-CFG dominance and divergence-sensitive post-dominator control dependence, including finite and infinite paths. Ordinary calls are assumed to return; built-in panic, os.Exit, runtime.Goexit and resolved log Fatal/Panic variants terminate paths. Implicit panics, recovery, deferred execution and concurrent control are not modeled."
 
 func (b *irBuilder) semanticControlFor(body *ast.BlockStmt, flow *cfg.CFG) error {
 	if b.normalDependencies || !b.semanticControlSubset(body) {
 		return nil
 	}
-	flow, outcomes := b.controlCFG(body, flow)
-	if len(flow.Blocks) > controlVertexLimit {
-		return fmt.Errorf("control dependence exceeds %d operation CFG vertices", controlVertexLimit)
+	flow, err := b.semanticControlCFG(body, flow)
+	if err != nil {
+		return err
 	}
 	dom := newExecutionDominators(flow)
 	sets := maximalPostDominators(flow, dom)
@@ -28,9 +29,71 @@ func (b *irBuilder) semanticControlFor(body *ast.BlockStmt, flow *cfg.CFG) error
 	for _, index := range dom.order {
 		a.operations[index] = b.normalOperations(flow.Blocks[index])
 	}
-	a.maximalControl(flow, dom, sets, outcomes)
+	// Execution and control must use the same operation sites and transfers.
+	// Statement anchors can place range targets before their iteration decision.
+	b.graph.Edges = slices.DeleteFunc(b.graph.Edges, func(edge pdg.Edge) bool { return edge.Kind == pdg.Execution })
+	a.executionEvidence = b.pool.Evidence(pdg.Approximated, generalExecutionDescription)
+	a.execution(dom)
+	a.maximalControl(flow, dom, sets, b.controlOutcomes)
 	b.semanticControl = true
 	return nil
+}
+
+func (b *irBuilder) semanticControlSubset(body *ast.BlockStmt) bool {
+	return b.bodyOperationSubset(body, false)
+}
+
+func (b *irBuilder) registrationFlowSubset(body *ast.BlockStmt) bool {
+	return b.bodyOperationSubset(body, true)
+}
+
+func (b *irBuilder) bodyOperationSubset(body *ast.BlockStmt, allowDefer bool) bool {
+	supported := true
+	ast.Inspect(body, func(node ast.Node) bool {
+		if _, closure := node.(*ast.FuncLit); closure {
+			return false
+		}
+		supported = supported && bodyOperationNode(node, allowDefer) && !b.recoveryCall(node)
+		return supported
+	})
+	return supported
+}
+
+func (b *irBuilder) recoveryCall(node ast.Node) bool {
+	call, ok := node.(*ast.CallExpr)
+	if !ok {
+		return false
+	}
+	builtin, ok := b.callee(call.Fun).(*types.Builtin)
+	return ok && builtin.Name() == "recover"
+}
+
+// Value and control analysis share the same lowered CFG when both are enabled.
+// This preserves operation identity for synthetic switch and short-circuit tests.
+func (b *irBuilder) semanticControlCFG(body *ast.BlockStmt, original *cfg.CFG) (*cfg.CFG, error) {
+	if b.controlFlow != nil {
+		return b.controlFlow, nil
+	}
+	flow, outcomes := b.controlCFG(body, original)
+	if len(flow.Blocks) > controlVertexLimit {
+		return nil, fmt.Errorf("control dependence exceeds %d operation CFG vertices", controlVertexLimit)
+	}
+	b.controlFlow, b.controlOutcomes = flow, outcomes
+	return flow, nil
+}
+
+// exitOperationSubset admits recovery only for the separate exit-body context.
+// Ordinary control consumers must continue to reject recovery semantics.
+func (b *irBuilder) exitOperationSubset(body *ast.BlockStmt) bool {
+	supported := true
+	ast.Inspect(body, func(node ast.Node) bool {
+		if _, closure := node.(*ast.FuncLit); closure {
+			return false
+		}
+		supported = supported && bodyOperationNode(node, true)
+		return supported
+	})
+	return supported
 }
 
 func (a *normalFlowAnalysis) maximalControl(flow *cfg.CFG, dom *executionDominators, sets controlPostSets, outcomes map[int][]pdg.Position) {
@@ -45,13 +108,6 @@ func (a *normalFlowAnalysis) maximalControl(flow *cfg.CFG, dom *executionDominat
 	}
 }
 
-func controlOutcome(outcomes map[int][]pdg.Position, block, arm int) pdg.Position {
-	if positions := outcomes[block]; len(positions) != 0 {
-		return positions[arm]
-	}
-	return pdg.Position(arm + 1)
-}
-
 func (a *normalFlowAnalysis) maximalControlArm(controller pdg.Ref, from, next int, outcome pdg.Position, dom *executionDominators, sets controlPostSets) {
 	for _, target := range dom.order {
 		if !sets.contains(next, target) || (target != from && sets.contains(from, target)) {
@@ -63,31 +119,22 @@ func (a *normalFlowAnalysis) maximalControlArm(controller pdg.Ref, from, next in
 	}
 }
 
-func (b *irBuilder) semanticControlSubset(body *ast.BlockStmt) bool {
-	supported := true
-	ast.Inspect(body, func(node ast.Node) bool {
-		supported = supported && semanticControlNode(node) && !b.recoveryCall(node)
-		return supported
-	})
-	return supported
+func controlOutcome(outcomes map[int][]pdg.Position, block, arm int) pdg.Position {
+	if positions := outcomes[block]; len(positions) != 0 {
+		return positions[arm]
+	}
+	return pdg.Position(arm + 1)
 }
 
-func semanticControlNode(node ast.Node) bool {
+func bodyOperationNode(node ast.Node, allowDefer bool) bool {
 	switch node := node.(type) {
-	case *ast.FuncLit, *ast.DeferStmt, *ast.GoStmt, *ast.SelectStmt, *ast.SendStmt:
+	case *ast.DeferStmt:
+		return allowDefer
+	case *ast.GoStmt, *ast.SelectStmt, *ast.SendStmt:
 		return false
 	case *ast.UnaryExpr:
 		return node.Op != token.ARROW
 	default:
 		return true
 	}
-}
-
-func (b *irBuilder) recoveryCall(node ast.Node) bool {
-	call, ok := node.(*ast.CallExpr)
-	if !ok {
-		return false
-	}
-	builtin, ok := b.callee(call.Fun).(*types.Builtin)
-	return ok && builtin.Name() == "recover"
 }

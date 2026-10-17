@@ -1,7 +1,10 @@
 package gopatterns
 
 import (
+	"github.com/rstyled/gstyle/domain/bindingflow"
+	"github.com/rstyled/gstyle/domain/pdg"
 	"go/ast"
+	"golang.org/x/tools/go/packages"
 	"strings"
 	"testing"
 )
@@ -24,6 +27,8 @@ func TestNilErrPathBoundaries(t *testing.T) {
 		{"initializer replaces nil state lost", `func f(fetch func()error)([]byte,error){var err error;var result []byte;if result,err=produce(fetch);err!=nil{return nil,nil};return result,nil}`, 1},
 		{"named error guard propagated", `func f(fetch func()error)(err error){if err=fetch();err!=nil{return};return nil}`, 0},
 		{"known nil guard unreachable", `func f()error{var err error;if err!=nil{return nil};return nil}`, 0},
+		{"folded numeric conversion zero", `func f(err error)(int,error){if err!=nil{return int(0),nil};return 0,err}`, 1},
+		{"folded numeric conversion nonzero", `func f(err error)(int,error){if err!=nil{return int(1),nil};return 0,err}`, 0},
 		{"nil conversion guard unreachable", `func f()error{err:=error(nil);if err!=nil{return nil};return nil}`, 0},
 		{"blank declaration", `func f(err error)error{if err!=nil{var _ error;return nil};return nil}`, 1},
 		{"blank constant", `func f(err error)error{if err!=nil{const _=0;return nil};return nil}`, 1},
@@ -71,23 +76,41 @@ func TestNilErrPathBoundaries(t *testing.T) {
 }
 
 func TestNilErrCompilerFieldIdentity(t *testing.T) {
-	file, _, info, _ := typeCheck(t, `package p;type R struct{Err,Other error};type Promoted struct{*R};func f(p,q *Promoted){_=p.Err;_=p.R.Err;_=q.Err;_=p.Other;_=p.R}`)
+	file, fs, info, _ := typeCheck(t, `package p;type R struct{Err,Other error};type Promoted struct{*R};func f(p,q *Promoted){_=p.Err;_=p.R.Err;_=q.Err;_=p.Other;_=p.R}`)
 	fn := findFunc(file, "f")
 	var values []ast.Expr
 	for _, statement := range fn.Body.List {
 		values = append(values, statement.(*ast.AssignStmt).Rhs[0])
 	}
-	if !sameNilErrValue(values[0], values[1], info) {
+	graph, err := buildGraph(&packages.Package{Fset: fs, TypesInfo: info}, fn, "test.go", pdg.NewBuilder())
+	if err != nil {
+		t.Fatal(err)
+	}
+	query := newNilErrGraph(fn, fs, &graph)
+	query.indexTypedBindings(fn, info)
+	if err := query.indexValueFacts(info); err != nil {
+		t.Fatal(err)
+	}
+	paths := make([]bindingflow.Path, len(values))
+	for ref, node := range query.source {
+		for i, value := range values {
+			if node == value {
+				paths[i] = query.copies.Path(ref, query.valueFacts)
+			}
+		}
+	}
+	if paths[0].Root == 0 || !paths[0].Same(paths[1]) {
 		t.Fatal("promoted path differs from explicit path")
 	}
-	for _, other := range values[2:4] {
-		if sameNilErrValue(values[0], other, info) {
+	for _, other := range paths[2:4] {
+		if other.Root == 0 || paths[0].Same(other) {
 			t.Fatal("different receiver or field equated")
 		}
 	}
-	if !replacesNilErrValue(values[4], values[0], info) {
+	if !paths[4].PrefixOf(paths[0]) {
 		t.Fatal("embedded receiver replacement not recognized")
 	}
+
 }
 
 func TestNilErrPathBudgetIsQuiet(t *testing.T) {

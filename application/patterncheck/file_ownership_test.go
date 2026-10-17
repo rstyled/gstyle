@@ -103,6 +103,7 @@ func cycleCaller(name string)error{f,err:=cycle(name);_=f;return err}
 		}
 	}
 	for name, want := range map[string]int{
+		"aliasUnknown": 1, "varAliasUnknown": 1,
 		"leak": 1, "partial": 1, "fsLeak": 1, "borrowedLeak": 1, "borrowedResultLeak": 1,
 		"discarded": 1, "branchDrop": 1, "differentFile": 1, "reassigned": 1, "sameLine": 2,
 	} {

@@ -118,9 +118,10 @@ Each mutant builds only its affected proof module. The full unchanged project is
 checked before mutation tests, so unrelated pattern proofs are not rebuilt for
 every mutant.
 
-The outer input projection requires a discarded output call followed directly
-by a nil error return in the same block. It uses the runtime flow solver to
-exclude infeasible branches, rather than limiting functions by statement count.
+The outer input projection now uses domain/outputflow to follow shared PDG
+operation flow. All modeled continuations must reach a nil error return; source
+block adjacency is no longer the criterion. It uses runtime call facts to exclude
+infeasible call sites, rather than limiting functions by statement count.
 Opaque argument calls, unknown callback outcomes and deferred named-result
 replacement stay quiet. Interface constraints track the whole interface value;
 a boxed nil pointer is non-nil. Raw discard facts remain available.
@@ -135,3 +136,24 @@ Output call facts now include the first argument at the call. These facts use th
 existing flow solver; they do not prove call completion. The source adapter
 excludes known nil interface writers and requires operands without unmodeled
 evaluation. No interprocedural completion theorem is added.
+
+## Error-use and completion query boundary
+
+The Site record now carries CheckUnknown. Generated Go bindings and layout proof
+scaffolding include that field. The existing Select/Find/Report contracts still
+filter only DiscardedOutput and preserve the complete selected records. They do
+not establish the truth of Checked or CheckUnknown.
+
+domain/errorflow computes reachable may-use from PDG definitions, reads, merges
+and operand copies. domain/outputflow computes conservative normal completion.
+Neither query, source lowering, unknown-site belief filtering nor memory/call
+scope is proved by this output-classifier profile. Independent graph/source tests
+and mutation controls cover those integrations. The regenerated existing proof
+project builds without adding axioms or weakening the classifier contracts.
+
+The ownership body-flow migration adds the generated PDG symbol declarations
+BodyFlow and bodyValueFlow. Existing selected assume/output source bindings, the
+full Lean build and their axiom audits are checked after regeneration. These
+checks preserve the existing proof scope. resourceflow, defer scheduling and the
+bindingflow semantic-boundary query have no new formal proof; their source and
+mutation tests are separate finite evidence.

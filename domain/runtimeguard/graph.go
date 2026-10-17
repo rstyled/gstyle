@@ -56,13 +56,6 @@ func (v *graphView) attrs(ref pdg.Ref) pdg.Attributes {
 	return v.graph.NodeAttributes(v.graph.Nodes[ref-1])
 }
 
-func operatorText(tables *pdg.Tables, fact pdg.Fact) string {
-	if fact.Status != pdg.Known {
-		return ""
-	}
-	return tables.Text(fact.Value)
-}
-
 func (v *graphView) fact(ref pdg.Ref, name string) string {
 	return extension(v.graph, v.attrs(ref).Extensions, name)
 }
@@ -174,6 +167,13 @@ func (v *graphView) conversionValue(ref pdg.Ref, state State, constant Value) Va
 	}
 }
 
+func operatorText(tables *pdg.Tables, fact pdg.Fact) string {
+	if fact.Status != pdg.Known {
+		return ""
+	}
+	return tables.Text(fact.Value)
+}
+
 // The guard projection consumes binary operands, a unary operand, or the first
 // RHS of a single-binding assignment. All other operands remain in the PDG.
 func sourceOperandEdge(graph *pdg.Graph, edge pdg.Edge) bool {
@@ -181,7 +181,7 @@ func sourceOperandEdge(graph *pdg.Graph, edge pdg.Edge) bool {
 		return false
 	}
 	kind := graph.Tables.Text(edge.Subkind)
-	return kind == "source-value" || kind == "scalar-value"
+	return kind == "source-value" || kind == "scalar-value" || kind == "control-value"
 }
 
 func operandReferences(edge pdg.Edge, nodes int) bool {

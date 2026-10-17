@@ -41,6 +41,30 @@ var irNormalCapabilities = map[string]irCapability{
 	"concurrency":                 {pdg.NotApplicable, "The entire scalar source body excludes go, select, send and receive operations."},
 }
 
+var cyclicScalarCapabilities = map[string]irCapability{
+	"scalar_reaching_definitions": {pdg.Supported, cyclicDefinitionDescription},
+	"branch_merges":               {pdg.Supported, cyclicDefinitionDescription},
+	"loop_carried_dependencies":   {pdg.Supported, cyclicDefinitionDescription},
+	"returns":                     {pdg.Supported, "Explicit and named scalar returns under local normal flow, including loops and transfers. Calls, deferred writes and memory operations are excluded."},
+	"calls":                       {pdg.NotApplicable, "The whole scalar body excludes calls."},
+	"memory_aliases":              {pdg.NotApplicable, "The whole scalar body and interface exclude memory and reference-bearing values."},
+	"closures":                    {pdg.NotApplicable, "The whole scalar body excludes closures."},
+	"concurrency":                 {pdg.NotApplicable, "The whole scalar body excludes concurrent operations."},
+}
+
+var irSemanticCapabilities = map[string]irCapability{
+	"control_dependencies":   {pdg.Approximated, semanticControlDescription},
+	"execution_dependencies": {pdg.Approximated, generalExecutionDescription},
+}
+
+var generalBindingCapabilities = map[string]irCapability{
+	"scalar_reaching_definitions": {pdg.Approximated, generalBindingDescription},
+	"branch_merges":               {pdg.Approximated, generalBindingDescription},
+	"loop_carried_dependencies":   {pdg.Approximated, generalBindingDescription},
+	"memory_aliases":              {pdg.Approximated, generalBindingDescription},
+	"returns":                     {pdg.Approximated, generalBindingDescription},
+}
+
 func (b *irBuilder) capabilities() {
 	capabilities := make([]pdg.NamedCapability, len(pdg.RequiredCapabilities))
 	for i, name := range pdg.RequiredCapabilities {
@@ -67,8 +91,16 @@ func (b *irBuilder) capabilities() {
 }
 
 func (b *irBuilder) capability(name string) irCapability {
-	if b.semanticControl && name == "control_dependencies" {
-		return irCapability{pdg.Approximated, semanticControlDescription}
+	if capability, ok := b.closureCapability(name); ok {
+		return capability
+	}
+	if capability, ok := b.dataCapability(name); ok {
+		return capability
+	}
+	if b.semanticControl {
+		if capability, ok := irSemanticCapabilities[name]; ok {
+			return capability
+		}
 	}
 	if b.normalDependencies {
 		return b.normalCapability(name)
@@ -84,4 +116,23 @@ func (b *irBuilder) normalCapability(name string) irCapability {
 		return capability
 	}
 	return irCapabilities[name]
+}
+
+func (b *irBuilder) dataCapability(name string) (irCapability, bool) {
+	if b.extendedScalar {
+		c, ok := cyclicScalarCapabilities[name]
+		return c, ok
+	}
+	if b.generalBindings {
+		c, ok := generalBindingCapabilities[name]
+		return c, ok
+	}
+	return irCapability{}, false
+}
+
+func (b *irBuilder) closureCapability(name string) (irCapability, bool) {
+	if name != "closures" || !b.closureValues || !b.generalBindings {
+		return irCapability{}, false
+	}
+	return irCapability{pdg.Approximated, "Closure construction and captured-cell addresses are explicit. Calls have conservative unknown memory effects; bodies and resolved execution summaries remain opaque."}, true
 }

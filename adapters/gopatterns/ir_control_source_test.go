@@ -75,9 +75,12 @@ func TestResolvedNonReturningCalls(t *testing.T) {
 	}{
 		{`import "os";`, `os.Exit(1)`, true},
 		{`import "runtime";`, `runtime.Goexit()`, true},
+		{`import "log";`, `log.Fatal("stop")`, true},
+		{`import "log";`, `log.Panic("stop")`, true},
+		{``, `Fatal("stop")`, false},
 		{``, `Exit(1)`, false},
 	} {
-		source := `package p;` + tc.imports + `func f(a bool){if a{` + tc.call + `};work()};func Exit(int){};func work(){}`
+		source := `package p;` + tc.imports + `func f(a bool){if a{` + tc.call + `};work()};func Exit(int){};func Fatal(string){};func work(){}`
 		graph := parseIR(t, source, pdg.NewBuilder())
 		got := controlCallEdges(graph, source)
 		key := `if a{` + tc.call + `}|2|work()`

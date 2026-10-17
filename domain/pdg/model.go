@@ -168,6 +168,11 @@ type Access struct {
 	Position         Position
 }
 
+// DirectSymbol reports whether the access names a resolved symbol directly.
+func (access Access) DirectSymbol() bool {
+	return access.Symbol != 0 && access.Location == 0 && access.UnresolvedReason == 0
+}
+
 // Attributes are sparse: Node.Attributes is zero when the attribute object is
 // empty. Slices live only here, not in every node's hot record.
 type Attributes struct {

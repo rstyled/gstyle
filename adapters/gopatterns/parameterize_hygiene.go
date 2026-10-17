@@ -7,8 +7,6 @@ import (
 	"go/types"
 	"slices"
 	"strings"
-
-	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 func unsafeExtractionBody(fn *ast.FuncDecl) bool {
@@ -44,18 +42,21 @@ func forwardableParameters(fn *ast.FuncDecl) bool {
 	return true
 }
 
-func (source *parameterizationSource) rewriteRisk(pair *parameterizationPair) string {
+func (source *parameterizationSource) rewriteRisk(pair *parameterizationPair, holes []hole) string {
 	if len(source.packageNames) == 0 {
 		return "package binding names are unavailable for helper extraction"
-	}
-	if frameSensitiveCalls(pair.left) || frameSensitiveCalls(pair.right) {
-		return "helper extraction changes the frame of recover or stack inspection"
 	}
 	if reason := parameterizationImportRisk(pair); reason != "" {
 		return reason
 	}
+	return parameterizationGraphRisk(pair, holes, source.fset)
+}
+func parameterizationGraphRisk(pair *parameterizationPair, holes []hole, fset *token.FileSet) string {
 	if !matchingParameterizationBindings(pair.left, pair.right) {
 		return "PDG binding identities differ under the source substitutions"
+	}
+	if !matchingParameterizationDependencies(pair, holes, fset) {
+		return "PDG operation flow, value, control or memory dependencies differ under the source substitutions"
 	}
 	return ""
 }
@@ -140,28 +141,6 @@ func freshHelperName(source *parameterizationSource, pair *parameterizationPair)
 
 func validHelperIdentifier(name string) bool {
 	return token.IsIdentifier(name) && name != "_" && name != "init" && types.Universe.Lookup(name) == nil
-}
-
-func frameSensitiveCalls(graph *pdg.Graph) bool {
-	for _, node := range graph.Nodes {
-		if node.Category == pdg.Call && frameSensitiveCallee(graph, node) {
-			return true
-		}
-	}
-	return false
-}
-
-func frameSensitiveCallee(graph *pdg.Graph, node pdg.Node) bool {
-	callee := graph.NodeAttributes(node).Callee
-	if callee.Status != pdg.Known {
-		return false
-	}
-	switch graph.Tables.Text(callee.Value) {
-	case "recover", "runtime.Caller", "runtime.Callers":
-		return true
-	default:
-		return false
-	}
 }
 
 func holesAreCallTargets(a, b *ast.FuncDecl, holes []hole) bool {

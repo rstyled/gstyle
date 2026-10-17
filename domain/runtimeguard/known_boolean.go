@@ -5,6 +5,19 @@ import "github.com/rstyled/gstyle/domain/pdg"
 // Exact evaluated operands can reject an edge even when neither operand is a
 // binding. In particular, len of a known empty collection equals zero.
 func (v *graphView) successorState(condition pdg.Ref, truth bool, state State) State {
+	// Conditions retain their canonical PDG decision identity. Ordinary and
+	// short-circuit decisions test one boolean operand; tagless switch tests do
+	// likewise. Tagged switches retain their explicit comparison operation.
+	attrs := v.attrs(condition)
+	switch v.graph.Tables.Text(attrs.Construct) {
+	case "if", "for", "short-circuit":
+		condition = v.operand(condition, 0)
+	default:
+		if operatorText(v.graph.Tables, attrs.Operator) == "truth-test" {
+			condition = v.operand(condition, 0)
+		}
+	}
+
 	if condition == 0 {
 		return state
 	}
@@ -47,19 +60,6 @@ func (v *graphView) knownLogical(ref pdg.Ref, operator string, state State) (boo
 	return false, false
 }
 
-func logicalBoolean(operator string, left, right bool) bool {
-	if operator == "&&" {
-		return left && right
-	}
-	return left || right
-}
-func shortCircuitBoolean(operator string, value bool) (bool, bool) {
-	if operator == "&&" {
-		return false, !value
-	}
-	return true, value
-}
-
 func (v *graphView) knownComparison(ref pdg.Ref, operator string, state State) (bool, bool) {
 	left, right := v.value(v.operand(ref, 0), state), v.value(v.operand(ref, 1), state)
 	if !exactInteger(left) || !exactInteger(right) {
@@ -67,6 +67,21 @@ func (v *graphView) knownComparison(ref pdg.Ref, operator string, state State) (
 	}
 	return compareExactIntegers(operator, left.Lower, right.Lower)
 }
+
+func logicalBoolean(operator string, left, right bool) bool {
+	if operator == "&&" {
+		return left && right
+	}
+	return left || right
+}
+
+func shortCircuitBoolean(operator string, value bool) (bool, bool) {
+	if operator == "&&" {
+		return false, !value
+	}
+	return true, value
+}
+
 func compareExactIntegers(operator string, left, right int64) (bool, bool) {
 	if operator == "==" {
 		return left == right, true
@@ -76,6 +91,7 @@ func compareExactIntegers(operator string, left, right int64) (bool, bool) {
 	}
 	return compareExactOrder(operator, left, right)
 }
+
 func compareExactOrder(operator string, left, right int64) (bool, bool) {
 	switch operator {
 	case "<":
