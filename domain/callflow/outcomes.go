@@ -24,6 +24,9 @@ const (
 )
 
 type ExitSummary struct {
+	// PreservesCallerMemory certifies no writes to caller-owned Go storage.
+	// It does not certify purity, termination, or absence of I/O.
+	PreservesCallerMemory   bool
 	returned                string
 	arity                   int
 	Ordinary, DeferredPanic Outcomes

@@ -69,6 +69,9 @@ func (evaluation *exitEvaluation) recoveryValue(point exitPoint, ref pdg.Ref) ex
 }
 
 func (evaluation *exitEvaluation) transferValues(point exitPoint, ref pdg.Ref) exitPoint {
+	if evaluation.body.graph.Nodes[ref-1].Category == pdg.Call && evaluation.body.calls.PreservesCallerMemory(evaluation.summaries, ref) {
+		return point
+	}
 	point = evaluation.captureValues(point, ref)
 	writes := evaluation.body.paths.WriteValues(ref, evaluation.valueContext(point))
 	if len(writes) == 0 {
