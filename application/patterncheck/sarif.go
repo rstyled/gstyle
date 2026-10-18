@@ -16,5 +16,5 @@ func writeSARIF(output io.Writer, report *patterns.PatternsReport) error {
 		}
 		findings = append(findings, finding)
 	}
-	return sarif.Write(output, findings)
+	return sarif.Write(output, findings, "gstyle/patterns/")
 }

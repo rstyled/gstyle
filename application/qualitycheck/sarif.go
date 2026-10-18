@@ -14,5 +14,5 @@ func writeSARIF(output io.Writer, report quality.Report) error {
 			Locations: []sarif.Location{{Path: diagnostic.Path, Line: diagnostic.Line}},
 		})
 	}
-	return sarif.Write(output, findings)
+	return sarif.Write(output, findings, "gstyle/check/")
 }

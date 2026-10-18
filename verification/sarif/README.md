@@ -8,6 +8,9 @@ without a custom parser.
 ## Contract
 
 - Each report contains one run with the `gstyle` driver.
+- Categories `gstyle/check/` and `gstyle/patterns/` distinguish the two analyses.
+- `%SRCROOT%` records the current working directory for relative path resolution.
+  Run from the repository root, including when loading saved facts.
 - Each quality diagnostic becomes one warning with its existing rule ID and message.
 - Each published pattern candidate becomes one warning. Its kind is the rule ID;
   its observation, inference, and proposed refactor form the message.
@@ -57,3 +60,31 @@ boundaries. These functions run analysis or write reports; moving their IO into
 more wrappers would hide the same work. The SARIF adapter has no mutation or
 aggregate-rule findings. No rule suppressions are added. The repository baseline
 is regenerated with this change.
+
+## GitHub code scanning
+
+The [GitHub SARIF support guide](https://docs.github.com/en/code-security/reference/code-scanning/sarif-files/sarif-support)
+is an additional consumer contract. The CLI test checks the driver, category,
+source-root base URI, nonempty IDs and messages, and primary source locations.
+These checks cover our output contract; they do not run the complete Microsoft
+GitHub ingestion validator or perform a hosted upload.
+
+Run from the repository root. Upload the two reports with distinct categories:
+
+```yaml
+- uses: github/codeql-action/upload-sarif@v4
+  with:
+    sarif_file: quality.sarif
+    category: gstyle/check
+- uses: github/codeql-action/upload-sarif@v4
+  with:
+    sarif_file: patterns.sarif
+    category: gstyle/patterns
+```
+
+The upload action can generate missing `partialFingerprints` from checked-out
+source. Gstyle does not emit fingerprints. A direct `/code-scanning/sarifs` API
+upload should add them first to avoid duplicate alerts. GitHub has file-size
+and result-count limits; Gstyle preserves all findings and does not truncate
+reports to fit those limits. A location outside the repository or through a
+symlink may need path normalization before GitHub can display it.

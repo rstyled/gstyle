@@ -13,7 +13,7 @@ func TestReportLocations(t *testing.T) {
 		{Path: "dir/a #é.go", Line: 3},
 		{Path: "/tmp/other.go", Line: 5},
 	}}}
-	if err := Write(&output, findings); err != nil {
+	if err := Write(&output, findings, "test/"); err != nil {
 		t.Fatal(err)
 	}
 	var report log
@@ -36,7 +36,7 @@ func TestReportLocations(t *testing.T) {
 func TestEmptyReportAndUnknownPosition(t *testing.T) {
 	for _, findings := range [][]Finding{nil, {{RuleID: "rule", Message: "message", Locations: []Location{{Path: "a.go"}}}}} {
 		var output bytes.Buffer
-		if err := Write(&output, findings); err != nil {
+		if err := Write(&output, findings, "test/"); err != nil {
 			t.Fatal(err)
 		}
 		var report log
@@ -58,7 +58,7 @@ type failedWriter struct{}
 
 func (failedWriter) Write([]byte) (int, error) { return 0, errors.New("write failed") }
 func TestWriterError(t *testing.T) {
-	if err := Write(failedWriter{}, nil); err == nil {
+	if err := Write(failedWriter{}, nil, "test/"); err == nil {
 		t.Fatal("missing IO error")
 	}
 }

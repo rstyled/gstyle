@@ -18,8 +18,18 @@ def run_report(binary, cwd, args, expected_exit):
     report = json.loads(result.stdout)
     VALIDATOR.validate(report)
     assert report["version"] == "2.1.0"
-    assert report["runs"][0]["tool"]["driver"]["name"] == "gstyle"
-    return report["runs"][0]["results"]
+    run = report["runs"][0]
+    assert run["tool"]["driver"]["name"] == "gstyle"
+    assert run["automationDetails"]["id"] == f"gstyle/{args[0]}/"
+    assert run["originalUriBaseIds"]["%SRCROOT%"]["uri"] == cwd.as_uri() + "/"
+    for item in run["results"]:
+        assert item["ruleId"] and item["message"]["text"].strip()
+        assert len(item["locations"]) == 1
+        physical = item["locations"][0]["physicalLocation"]
+        assert physical["region"]["startLine"] > 0
+        artifact = physical["artifactLocation"]
+        assert artifact.get("uriBaseId") == "%SRCROOT%" or artifact["uri"].startswith("file://")
+    return run["results"]
 
 
 with tempfile.TemporaryDirectory(prefix="gstyle-sarif-") as directory:

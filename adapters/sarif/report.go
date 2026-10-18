@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -29,8 +30,14 @@ type log struct {
 }
 
 type run struct {
-	Tool    tool     `json:"tool"`
-	Results []result `json:"results"`
+	Tool       tool                `json:"tool"`
+	Results    []result            `json:"results"`
+	Automation automation          `json:"automationDetails"`
+	Bases      map[string]artifact `json:"originalUriBaseIds"`
+}
+
+type automation struct {
+	ID string `json:"id"`
 }
 
 type tool struct {
@@ -58,20 +65,33 @@ type source struct {
 	Region   *region  `json:"region,omitempty"`
 }
 type artifact struct {
-	URI string `json:"uri"`
+	URI  string `json:"uri"`
+	Base string `json:"uriBaseId,omitempty"`
 }
 type region struct {
 	Line int `json:"startLine"`
 }
 
-// Write preserves finding order. Additional sites are related locations: SARIF
-// permits only one primary location per result.
-func Write(output io.Writer, findings []Finding) error {
+// Write preserves finding order. Additional sites are related locations because
+// GitHub code scanning uses only the first primary location.
+func Write(output io.Writer, findings []Finding, category string) error {
+	root, err := os.Getwd()
+	if err != nil {
+		return err
+	}
 	results := make([]result, 0, len(findings))
 	for _, finding := range findings {
 		results = append(results, toResult(finding))
 	}
-	report := log{Schema, "2.1.0", []run{{tool{driver{"gstyle", "https://github.com/rstyled/gstyle"}}, results}}}
+	report := log{
+		Schema: Schema, Version: "2.1.0",
+		Runs: []run{{
+			Tool:       tool{driver{"gstyle", "https://github.com/rstyled/gstyle"}},
+			Results:    results,
+			Automation: automation{category},
+			Bases:      map[string]artifact{"%SRCROOT%": {URI: sourceURI(root + string(filepath.Separator))}},
+		}},
+	}
 	encoder := json.NewEncoder(output)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(report)
@@ -92,7 +112,7 @@ func toResult(finding Finding) result {
 }
 
 func toPhysical(location Location) physical {
-	return physical{source{Artifact: artifact{sourceURI(location.Path)}, Region: sourceRegion(location.Line)}}
+	return physical{source{Artifact: sourceArtifact(location.Path), Region: sourceRegion(location.Line)}}
 }
 
 func sourceURI(path string) string {
@@ -110,4 +130,11 @@ func sourceRegion(line int) *region {
 		return nil
 	}
 	return &region{Line: line}
+}
+
+func sourceArtifact(path string) artifact {
+	if filepath.IsAbs(path) {
+		return artifact{URI: sourceURI(path)}
+	}
+	return artifact{URI: sourceURI(path), Base: "%SRCROOT%"}
 }
