@@ -196,8 +196,9 @@
     {
       "function": "IndirectSQL",
       "label": "unsafe",
-      "expected": [],
-      "gap": "Cross-function taint summaries are not implemented."
+      "expected": [
+        "go/sql-injection"
+      ]
     },
     {
       "function": "RequestObject",

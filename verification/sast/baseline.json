@@ -2,10 +2,10 @@
   "version": 1,
   "summary": {
     "unsafe": 36,
-    "detected_unsafe": 34,
+    "detected_unsafe": 35,
     "safe": 19,
     "flagged_safe": 1,
-    "known_gaps": 3
+    "known_gaps": 2
   },
   "analysis_coverage": {
     "analysis": "taint_flow",
@@ -274,9 +274,12 @@
     {
       "function": "IndirectSQL",
       "label": "unsafe",
-      "expected": [],
-      "gap": "Cross-function taint summaries are not implemented.",
-      "observed": []
+      "expected": [
+        "go/sql-injection"
+      ],
+      "observed": [
+        "go/sql-injection"
+      ]
     },
     {
       "function": "RequestObject",

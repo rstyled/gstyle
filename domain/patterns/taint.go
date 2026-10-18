@@ -33,6 +33,7 @@ func (p taintPropagation) spread(from int, tos []int) bool {
 type TaintFlow struct {
 	SourceNode, SinkNode string
 	FuncID               string
+	SourceFuncID         string
 	// SourceLine is where the tainted data enters.
 	SourceLine int
 	// SourceCall is the source callee, e.g. "(*url.Values).Get".
@@ -243,7 +244,7 @@ func TaintFlowCandidates(flows []TaintFlow, facts []*MiningFacts) []Candidate {
 		out = append(out, Candidate{
 			Kind:       TaintFlowKind,
 			Security:   securityForRisk(fl.Risk),
-			Analysis:   analysisEvidence(f, TaintFlowKind, fl.SourceNode, fl.SinkNode),
+			Analysis:   taintEvidence(f, factByID[fl.SourceFuncID], fl),
 			ScoreMilli: 900, // Prioritize recorded source-to-sink paths for review.
 			Observation: fmt.Sprintf(
 				"tainted data from `%s` reaches `%s` (%s)",
@@ -254,7 +255,7 @@ func TaintFlowCandidates(flows []TaintFlow, facts []*MiningFacts) []Candidate {
 			),
 			PossibleRefactor: "sanitize the input or parameterize the operation",
 			Sites: []Site{
-				{Path: f.Path, Line: fl.SourceLine, Name: f.Name},
+				taintSourceSite(f, factByID[fl.SourceFuncID], fl.SourceLine),
 				{Path: f.Path, Line: fl.SinkLine, Name: f.Name},
 			},
 		})
@@ -276,4 +277,21 @@ func taintSourceLocation(graph *MiningGraph, index int) (int, string) {
 		return 0, ""
 	}
 	return graph.Nodes[index].Line, graph.Nodes[index].CalleeID
+}
+
+func taintSourceSite(sink, source *MiningFacts, line int) Site {
+	if source == nil {
+		source = sink
+	}
+	return Site{Path: source.Path, Line: line, Name: source.Name}
+}
+func taintEvidence(sink, source *MiningFacts, flow TaintFlow) *AnalysisEvidence {
+	if source == nil || source.ID == sink.ID {
+		return analysisEvidence(sink, TaintFlowKind, flow.SourceNode, flow.SinkNode)
+	}
+	result := analysisEvidence(sink, TaintFlowKind, flow.SinkNode)
+	result.Related = []*AnalysisEvidence{analysisEvidence(source, TaintFlowKind, flow.SourceNode)}
+	result.Status = "partial"
+	result.Missing = append(result.Missing, "cross-function taint is a may-dependency summary")
+	return result
 }
