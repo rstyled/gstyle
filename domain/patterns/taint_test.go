@@ -15,10 +15,10 @@ func TestTaintQueryToExecIsFlagged(t *testing.T) {
 	// x := r.URL.Query().Get("q"); db.Exec("SELECT ... " + x)
 	pdg := testTaintPdg(
 		[]PdgNode{
-			{Kind: Call, CalleeID: "(*url.Values).Get", Line: 10}, // 0: source
-			{Kind: Let, Line: 10},                              // 1: x :=
-			{Kind: Op, Detail: "add:string", Line: 11},         // 2: "..." + x
-			{Kind: Call, CalleeID: "(*sql.DB).Exec", Line: 11}, // 3: sink
+			{Kind: Call, CalleeID: "net/url.Values.Get", Line: 10}, // 0: source
+			{Kind: Let, Line: 10},                                    // 1: x :=
+			{Kind: Op, Detail: "add:string", Line: 11},               // 2: "..." + x
+			{Kind: Call, CalleeID: "database/sql.DB.Exec", Line: 11}, // 3: sink
 		},
 		[]PdgEdge{
 			{From: 0, To: 1, Kind: Data, ArgPos: 0},
@@ -39,26 +39,25 @@ func TestTaintQueryToExecIsFlagged(t *testing.T) {
 	}
 }
 
-func TestTaintSanitizedNotFlagged(t *testing.T) {
-	// x := r.URL.Query().Get("q"); safe := template.HTMLEscapeString(x)
-	// tmpl.Execute(w, safe)
+func TestTaintHTMLEscapingDoesNotSanitizeTemplateSource(t *testing.T) {
+	// HTML escaping does not remove template actions such as {{.}}.
 	pdg := testTaintPdg(
 		[]PdgNode{
-			{Kind: Call, CalleeID: "(*url.Values).Get", Line: 10}, // 0: source
+			{Kind: Call, CalleeID: "net/url.Values.Get", Line: 10}, // 0: source
 			{Kind: Let, Line: 10}, // 1: x :=
-			{Kind: Call, CalleeID: "template.HTMLEscapeString", Line: 11}, // 2: sanitizer
+			{Kind: Call, CalleeID: "html/template.HTMLEscapeString", Line: 11}, // 2: HTML escaping
 			{Kind: Let, Line: 11}, // 3: safe :=
-			{Kind: Call, CalleeID: "(*template.Template).Execute", Line: 12}, // 4: sink
+			{Kind: Call, CalleeID: "html/template.Template.Parse", Line: 12}, // 4: sink
 		},
 		[]PdgEdge{
 			{From: 0, To: 1, Kind: Data, ArgPos: 0},
 			{From: 1, To: 2, Kind: Data, ArgPos: 0},
 			{From: 2, To: 3, Kind: Data, ArgPos: 0},
-			{From: 3, To: 4, Kind: Data, ArgPos: 2}, // data arg
+			{From: 3, To: 4, Kind: Data, ArgPos: 1}, // template source
 		},
 	)
-	if flows := FindTaintFlows(testTaintFacts(pdg)); len(flows) != 0 {
-		t.Errorf("expected no flows (sanitized), got %d", len(flows))
+	if flows := FindTaintFlows(testTaintFacts(pdg)); len(flows) != 1 {
+		t.Errorf("expected template source flow, got %d", len(flows))
 	}
 }
 
@@ -66,7 +65,7 @@ func TestTaintCleanDataNotFlagged(t *testing.T) {
 	// db.Exec("SELECT * FROM users") — no tainted input.
 	pdg := testTaintPdg(
 		[]PdgNode{
-			{Kind: Call, CalleeID: "(*sql.DB).Exec", Line: 10}, // 0: sink, clean
+			{Kind: Call, CalleeID: "database/sql.DB.Exec", Line: 10}, // 0: sink, clean
 		},
 		nil,
 	)
@@ -81,9 +80,9 @@ func TestTaintParameterizedQueryNotFlagged(t *testing.T) {
 	// ArgPos 1 (query string) is dangerous.
 	pdg := testTaintPdg(
 		[]PdgNode{
-			{Kind: Call, CalleeID: "(*url.Values).Get", Line: 10}, // 0: source
-			{Kind: Let, Line: 10},                              // 1: x :=
-			{Kind: Call, CalleeID: "(*sql.DB).Exec", Line: 11}, // 2: sink
+			{Kind: Call, CalleeID: "net/url.Values.Get", Line: 10}, // 0: source
+			{Kind: Let, Line: 10}, // 1: x :=
+			{Kind: Call, CalleeID: "database/sql.DB.Exec", Line: 11}, // 2: sink
 		},
 		[]PdgEdge{
 			{From: 0, To: 1, Kind: Data, ArgPos: 0},
@@ -99,9 +98,9 @@ func TestTaintExecCommandFlagged(t *testing.T) {
 	// name := os.Getenv("TOOL"); exec.Command(name)
 	pdg := testTaintPdg(
 		[]PdgNode{
-			{Kind: Call, CalleeID: "os.Getenv", Line: 10},    // 0: source
-			{Kind: Let, Line: 10},                            // 1: name :=
-			{Kind: Call, CalleeID: "exec.Command", Line: 11}, // 2: sink
+			{Kind: Call, CalleeID: "os.Getenv", Line: 10},       // 0: source
+			{Kind: Let, Line: 10},                               // 1: name :=
+			{Kind: Call, CalleeID: "os/exec.Command", Line: 11}, // 2: sink
 		},
 		[]PdgEdge{
 			{From: 0, To: 1, Kind: Data, ArgPos: 0},

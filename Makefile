@@ -169,3 +169,10 @@ verify-assume:
 .PHONY: verify-sarif
 verify-sarif:
 	uv run --with jsonschema==4.26.0 python verification/sarif/verify.py
+
+.PHONY: verify-sast sast-baseline
+verify-sast:
+	go test ./verification/sast -run TestSourceBaseline -count=1
+
+sast-baseline:
+	go test ./verification/sast -run TestSourceBaseline -count=1 -args -update

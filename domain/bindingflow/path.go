@@ -162,3 +162,12 @@ func operandPositions(values []uint32) ([]pdg.Position, error) {
 func pathBindingNode(category pdg.Category) bool {
 	return category == pdg.Read || category == pdg.FormalInput
 }
+
+// FieldIndexes returns the compiler's selector indexes for one operation.
+// It does not resolve pointer aliases or read a stored field value.
+func (q *Query) FieldIndexes(ref pdg.Ref) []uint32 {
+	if q == nil {
+		return nil
+	}
+	return slices.Clone(q.fields[ref])
+}

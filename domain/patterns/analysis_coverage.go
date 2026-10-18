@@ -11,14 +11,16 @@ import (
 
 // Coverage is analysis completeness, not a probability that a finding is a bug.
 type AnalysisEvidence struct {
-	FunctionID  string   `json:"function_id,omitempty"`
-	Conformance string   `json:"graph_conformance,omitempty"`
-	Status      string   `json:"status"`
-	NodeIDs     []string `json:"node_ids,omitempty"`
-	Missing     []string `json:"missing_or_approximate,omitempty"`
+	Related     []*AnalysisEvidence `json:"related_functions,omitempty"`
+	FunctionID  string              `json:"function_id,omitempty"`
+	Conformance string              `json:"graph_conformance,omitempty"`
+	Status      string              `json:"status"`
+	NodeIDs     []string            `json:"node_ids,omitempty"`
+	Missing     []string            `json:"missing_or_approximate,omitempty"`
 }
 
 type AnalysisCoverage struct {
+	Reason      string        `json:"reason,omitempty"`
 	Kind        CandidateKind `json:"analysis"`
 	Complete    int           `json:"complete"`
 	Partial     int           `json:"partial"`
@@ -61,7 +63,7 @@ func nonemptyStrings(nodes []string) []string {
 }
 
 func analysisGaps(graph *pdg.Graph, kind CandidateKind) []string {
-	return slices.Concat(capabilityGaps(graph, analysisRequirements(graph, kind)), dependencyEvidenceGaps(graph, kind))
+	return slices.Concat(capabilityGaps(graph, analysisRequirements(graph, kind)), dependencyEvidenceGaps(graph, kind), taintSummaryLimitations(kind))
 }
 
 func capabilityGaps(graph *pdg.Graph, required []string) []string {
@@ -166,6 +168,9 @@ func coverageText(coverage []AnalysisCoverage) string {
 	lines := []string{"Dependency analysis coverage (no findings does not prove clean flow):"}
 	for _, row := range coverage {
 		lines = append(lines, fmt.Sprintf("  %s: %d complete, %d partial, %d not evaluated, %d unavailable", row.Kind, row.Complete, row.Partial, row.Unknown, row.Unavailable))
+		if row.Reason != "" {
+			lines = append(lines, "    "+row.Reason)
+		}
 	}
 	return strings.Join(lines, "\n")
 }
@@ -239,4 +244,11 @@ func sourceFeatureRequirements(graph *pdg.Graph) []string {
 		required = append(required, capability)
 	}
 	return required
+}
+
+func taintSummaryLimitations(kind CandidateKind) []string {
+	if kind != TaintFlowKind {
+		return nil
+	}
+	return []string{"taint summaries are partial: validation, dynamic targets, collection contents and exceptional field effects are not proved"}
 }

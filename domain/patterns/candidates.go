@@ -288,6 +288,7 @@ type Breakdown struct {
 
 // Candidate is one ranked abstraction proposal.
 type Candidate struct {
+	Security         *SecurityFinding  `json:"security,omitempty"`
 	Analysis         *AnalysisEvidence `json:"analysis_evidence,omitempty"`
 	Kind             CandidateKind
 	ScoreMilli       uint32

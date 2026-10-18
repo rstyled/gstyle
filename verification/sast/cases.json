@@ -1,0 +1,369 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "function": "SQLDirect",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLContext",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLTx",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLConn",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLPrepare",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SSRFGet",
+      "label": "unsafe",
+      "expected": [
+        "go/ssrf"
+      ]
+    },
+    {
+      "function": "SSRFClient",
+      "label": "unsafe",
+      "expected": [
+        "go/ssrf"
+      ]
+    },
+    {
+      "function": "SSRFPost",
+      "label": "unsafe",
+      "expected": [
+        "go/ssrf"
+      ]
+    },
+    {
+      "function": "CommandExecutable",
+      "label": "unsafe",
+      "expected": [
+        "go/command-injection"
+      ]
+    },
+    {
+      "function": "CommandContextExecutable",
+      "label": "unsafe",
+      "expected": [
+        "go/command-injection"
+      ]
+    },
+    {
+      "function": "CommandShell",
+      "label": "unsafe",
+      "expected": [
+        "go/command-injection"
+      ]
+    },
+    {
+      "function": "CommandContextShell",
+      "label": "unsafe",
+      "expected": [
+        "go/command-injection"
+      ]
+    },
+    {
+      "function": "HTMLSource",
+      "label": "unsafe",
+      "expected": [
+        "go/template-injection"
+      ]
+    },
+    {
+      "function": "TextSource",
+      "label": "unsafe",
+      "expected": [
+        "go/template-injection"
+      ]
+    },
+    {
+      "function": "PathOpen",
+      "label": "unsafe",
+      "expected": [
+        "go/path-traversal"
+      ]
+    },
+    {
+      "function": "PathOpenFile",
+      "label": "unsafe",
+      "expected": [
+        "go/path-traversal"
+      ]
+    },
+    {
+      "function": "SQLParameter",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "SQLContextParameter",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "SQLConstant",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "SSRFConstant",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "SSRFClientConstant",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "CommandData",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "CommandContextData",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "HTMLData",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "TextConstant",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "PathWritePayload",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "DeadSQL",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "LookalikeSink",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "LookalikeSource",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "sqlHelper",
+      "label": "support",
+      "expected": []
+    },
+    {
+      "function": "Exec",
+      "label": "support",
+      "expected": []
+    },
+    {
+      "function": "FormValue",
+      "label": "support",
+      "expected": []
+    },
+    {
+      "function": "IndirectSQL",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "RequestObject",
+      "label": "unsafe",
+      "expected": [],
+      "gap": "HTTP request-object URL propagation is not modeled."
+    },
+    {
+      "function": "ValidatedPath",
+      "label": "safe",
+      "expected": [
+        "go/path-traversal"
+      ],
+      "gap": "Branch allowlist validation is not modeled."
+    },
+    {
+      "function": "SQLDBQuery",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLDBRow",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLDBQueryContext",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLDBRowContext",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLDBPrepare",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLTxExec",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLTxQuery",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLTxRow",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLTxExecContext",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLTxRowContext",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLTxPrepare",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLTxPrepareContext",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLConnExec",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLConnQuery",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLConnPrepare",
+      "label": "unsafe",
+      "expected": [
+        "go/sql-injection"
+      ]
+    },
+    {
+      "function": "SQLTxParameter",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "SQLConnParameter",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "SQLStatementParameter",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "SSRFPostForm",
+      "label": "unsafe",
+      "expected": [
+        "go/ssrf"
+      ]
+    },
+    {
+      "function": "SSRFClientPost",
+      "label": "unsafe",
+      "expected": [
+        "go/ssrf"
+      ]
+    },
+    {
+      "function": "SSRFClientPostForm",
+      "label": "unsafe",
+      "expected": [
+        "go/ssrf"
+      ]
+    },
+    {
+      "function": "SSRFBodyData",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "SSRFFormData",
+      "label": "safe",
+      "expected": []
+    }
+  ]
+}

@@ -5,76 +5,13 @@ import (
 	"strings"
 )
 
-// Taint analysis: track untrusted data from sources → through propagators
-// → to sinks. Flag when tainted data reaches a dangerous sink without
-// sanitization.
-//
-// The three abstractions (from SAST engineering):
-//   - Sources: entry points of untrusted input (HTTP params, CLI args, ...)
-//   - Propagators: operations that carry taint (string concat, assignment, ...)
-//   - Sinks: sensitive operations that must not receive tainted input
-//     (SQL queries, shell commands, ...)
-// Sanitizers break the chain: their output is clean even with tainted input.
-//
-// For gstyle: v1 is intraprocedural. We walk the PDG's data edges forward
-// from sources, marking tainted nodes to a fixpoint. A sink whose dangerous
-// argument receives tainted data is a finding. Detection-only: the fix
-// depends on context (parameterize the query? escape the output? validate
-// the path?), so the LLM judges.
-
-// taintSourceSuffixes are CalleeID suffixes whose result is tainted.
-var taintSourceSuffixes = []string{
-	// HTTP request input.
-	"(*url.Values).Get", // r.URL.Query().Get("x")
-	"(*http.Request).FormValue",
-	"(*http.Header).Get", // r.Header.Get("x")
-	// OS input.
-	"os.Getenv",
-	// I/O: result tainted (conservative: assume the reader is untrusted).
-	"io.ReadAll",
-	"ioutil.ReadAll",
-}
-
-// taintSink describes a dangerous operation and which argument positions
-// must not receive tainted data. A nil dangerousArgs means any argument.
-type taintSink struct {
-	// callee is a CalleeID suffix, e.g. "(*sql.DB).Exec".
-	callee string
-	// dangerousArgs are the ArgPos values that must be clean. Nil = any.
-	// Note: for method calls the receiver is ArgPos 0, so the first
-	// real argument is ArgPos 1.
-	dangerousArgs []int
-	// desc is the human-readable risk, e.g. "SQL injection".
-	desc string
-}
-
-// taintSinks is the hardcoded sink list.
-var taintSinks = []taintSink{
-	// SQL: only the query string is dangerous (ArgPos 1; ArgPos 0 is the
-	// receiver). Tainted query parameters (ArgPos 2+) are the safe
-	// parameterized pattern — do NOT flag those.
-	{callee: "(*sql.DB).Exec", dangerousArgs: []int{1}, desc: "SQL injection"},
-	{callee: "(*sql.DB).Query", dangerousArgs: []int{1}, desc: "SQL injection"},
-	{callee: "(*sql.DB).QueryRow", dangerousArgs: []int{1}, desc: "SQL injection"},
-	{callee: "(*sql.Tx).Exec", dangerousArgs: []int{1}, desc: "SQL injection"},
-	{callee: "(*sql.Tx).Query", dangerousArgs: []int{1}, desc: "SQL injection"},
-	{callee: "(*sql.Conn).Exec", dangerousArgs: []int{1}, desc: "SQL injection"},
-	// Shell: any tainted argument is dangerous.
-	{callee: "exec.Command", desc: "command injection"},
-	{callee: "exec.CommandContext", desc: "command injection"},
-	// Templates: the data argument (ArgPos 2; receiver 0, writer 1).
-	{callee: "(*template.Template).Execute", dangerousArgs: []int{2}, desc: "XSS"},
-	// File paths: the path argument.
-	{callee: "os.Open", dangerousArgs: []int{0}, desc: "path traversal"},
-	{callee: "os.Create", dangerousArgs: []int{0}, desc: "path traversal"},
-	{callee: "os.WriteFile", dangerousArgs: []int{0}, desc: "path traversal"},
-	{callee: "ioutil.WriteFile", dangerousArgs: []int{0}, desc: "path traversal"},
-}
+// Taint follows typed sources through per-function PDG value dependencies to
+// modeled dangerous arguments. Context is part of each sink model: query
+// parameters and ordinary argv data are not query text or shell code. A path
+// is advisory; sanitization, feasibility and incomplete graph evidence need review.
 
 type taintPropagation struct {
-	graph   *MiningGraph
 	tainted map[int]bool
-	risk    string
 }
 
 func (p taintPropagation) spread(from int, tos []int) bool {
@@ -83,7 +20,7 @@ func (p taintPropagation) spread(from int, tos []int) bool {
 	}
 	spread := false
 	for _, to := range tos {
-		if p.tainted[to] || p.graph.Nodes[to].sanitizesRisk(p.risk) {
+		if p.tainted[to] {
 			continue
 		}
 		p.tainted[to] = true
@@ -96,6 +33,7 @@ func (p taintPropagation) spread(from int, tos []int) bool {
 type TaintFlow struct {
 	SourceNode, SinkNode string
 	FuncID               string
+	SourceFuncID         string
 	// SourceLine is where the tainted data enters.
 	SourceLine int
 	// SourceCall is the source callee, e.g. "(*url.Values).Get".
@@ -113,8 +51,8 @@ func (n PdgNode) isTaintSource() bool {
 	if n.Kind != Call {
 		return false
 	}
-	for _, s := range taintSourceSuffixes {
-		if taintCalleeMatches(n.CalleeID, s) {
+	for _, s := range taintSources {
+		if n.CalleeID == s {
 			return true
 		}
 	}
@@ -127,32 +65,20 @@ func (n PdgNode) matchTaintSink() *taintSink {
 		return nil
 	}
 	for i := range taintSinks {
-		if taintCalleeMatches(n.CalleeID, taintSinks[i].callee) {
+		if n.CalleeID == taintSinks[i].callee {
 			return &taintSinks[i]
 		}
 	}
 	return nil
 }
 
-func (n PdgNode) sanitizesRisk(risk string) bool {
-	if n.Kind != Call {
-		return false
-	}
-	if risk == "XSS" {
-		return taintCalleeMatches(n.CalleeID, "html.EscapeString") || taintCalleeMatches(n.CalleeID, "template.HTMLEscapeString")
-	}
-	// URL escaping is not SQL, shell or filesystem validation. Numeric parse
-	// results are typed numbers; error/string outputs require result-position proof.
-	return false
-}
-
-// Propagate separately for each sink risk: escaping in one context must not
-// clear taint for an unrelated context.
-func propagateTaintForRisk(pdg *MiningGraph, risk string) map[int]bool {
+// No generic sanitizer clears all risks. Parameterized operations avoid
+// dangerous argument positions; validation requires its own context model.
+func propagateTaint(pdg *MiningGraph) map[int]bool {
 	tainted := seedTaintSources(pdg)
 	succ := dataSuccessors(pdg)
 	for changed := true; changed; {
-		changed = propagateTaintRiskStep(pdg, succ, tainted, risk)
+		changed = propagateTaintStep(succ, tainted)
 	}
 	return tainted
 }
@@ -179,9 +105,9 @@ func dataSuccessors(pdg *MiningGraph) [][]int {
 	return succ
 }
 
-func propagateTaintRiskStep(pdg *MiningGraph, succ [][]int, tainted map[int]bool, risk string) bool {
+func propagateTaintStep(succ [][]int, tainted map[int]bool) bool {
 	changed := false
-	propagation := taintPropagation{graph: pdg, tainted: tainted, risk: risk}
+	propagation := taintPropagation{tainted: tainted}
 	for from, tos := range succ {
 		if propagation.spread(from, tos) {
 			changed = true
@@ -278,18 +204,13 @@ func taintFlowsForFunction(f *MiningFacts) []TaintFlow {
 	copy.Pdg = taintView(f)
 	f = &copy
 	var out []TaintFlow
-	taintByRisk := map[string]map[int]bool{}
+	tainted := propagateTaint(f.Pdg)
 	for i, n := range f.Pdg.Nodes {
 		sink := n.matchTaintSink()
 		if sink == nil {
 			continue
 		}
-		tainted := taintByRisk[sink.desc]
-		if tainted == nil {
-			tainted = propagateTaintForRisk(f.Pdg, sink.desc)
-			taintByRisk[sink.desc] = tainted
-		}
-		if !sinkArgTainted(f.Pdg, i, sink, tainted) {
+		if !sinkArgTainted(f.Pdg, i, commandSink(f, i, sink), tainted) {
 			continue
 		}
 		sourceNode := findTaintSourceNode(f.Pdg, tainted, i)
@@ -322,7 +243,8 @@ func TaintFlowCandidates(flows []TaintFlow, facts []*MiningFacts) []Candidate {
 		}
 		out = append(out, Candidate{
 			Kind:       TaintFlowKind,
-			Analysis:   analysisEvidence(f, TaintFlowKind, fl.SourceNode, fl.SinkNode),
+			Security:   securityForRisk(fl.Risk),
+			Analysis:   taintEvidence(f, factByID[fl.SourceFuncID], fl),
 			ScoreMilli: 900, // Prioritize recorded source-to-sink paths for review.
 			Observation: fmt.Sprintf(
 				"tainted data from `%s` reaches `%s` (%s)",
@@ -333,7 +255,7 @@ func TaintFlowCandidates(flows []TaintFlow, facts []*MiningFacts) []Candidate {
 			),
 			PossibleRefactor: "sanitize the input or parameterize the operation",
 			Sites: []Site{
-				{Path: f.Path, Line: fl.SourceLine, Name: f.Name},
+				taintSourceSite(f, factByID[fl.SourceFuncID], fl.SourceLine),
 				{Path: f.Path, Line: fl.SinkLine, Name: f.Name},
 			},
 		})
@@ -350,14 +272,26 @@ func shortCallee(id string) string {
 	return strings.Join(parts[len(parts)-2:], ".")
 }
 
-func taintCalleeMatches(callee, pattern string) bool {
-	canonical := strings.ReplaceAll(strings.ReplaceAll(pattern, "(*", ""), ").", ".")
-	return strings.HasSuffix(callee, pattern) || strings.HasSuffix(callee, canonical)
-}
-
 func taintSourceLocation(graph *MiningGraph, index int) (int, string) {
 	if index < 0 {
 		return 0, ""
 	}
 	return graph.Nodes[index].Line, graph.Nodes[index].CalleeID
+}
+
+func taintSourceSite(sink, source *MiningFacts, line int) Site {
+	if source == nil {
+		source = sink
+	}
+	return Site{Path: source.Path, Line: line, Name: source.Name}
+}
+func taintEvidence(sink, source *MiningFacts, flow TaintFlow) *AnalysisEvidence {
+	if source == nil || source.ID == sink.ID {
+		return analysisEvidence(sink, TaintFlowKind, flow.SourceNode, flow.SinkNode)
+	}
+	result := analysisEvidence(sink, TaintFlowKind, flow.SinkNode)
+	result.Related = []*AnalysisEvidence{analysisEvidence(source, TaintFlowKind, flow.SourceNode)}
+	result.Status = "partial"
+	result.Missing = append(result.Missing, "cross-function taint is a may-dependency summary")
+	return result
 }

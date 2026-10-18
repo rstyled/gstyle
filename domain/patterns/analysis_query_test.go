@@ -52,7 +52,11 @@ func TestMalformedDependencyEvidenceIsPartialForEverySemanticPattern(t *testing.
 	}
 	fact := &MiningFacts{ID: "evidence", Pdg: &MiningGraph{}, Canonical: graph}
 	for _, kind := range semanticAnalysisKinds {
-		if got := analysisEvidence(fact, kind).Status; got != "complete" {
+		want := "complete"
+		if kind == TaintFlowKind {
+			want = "partial"
+		}
+		if got := analysisEvidence(fact, kind).Status; got != want {
 			t.Fatalf("initial %s: %s", kind, got)
 		}
 		graph.Edges = []pdg.Edge{{Kind: pdg.Data, Evidence: math.MaxUint32}}
