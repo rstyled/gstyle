@@ -2,6 +2,7 @@ package gopatterns
 
 import (
 	"fmt"
+	"github.com/rstyled/gstyle/domain/callflow"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -14,6 +15,7 @@ import (
 )
 
 type irBuilder struct {
+	callExits                            map[pdg.Ref]callflow.Outcomes
 	typeQualifier                        types.Qualifier
 	sourceFilename                       string
 	attributes                           []pdg.Attributes
@@ -194,9 +196,17 @@ func (b *irBuilder) selectScalarSource(fn *ast.FuncDecl) bool {
 
 // buildGraph is the sole production graph construction path.
 func buildGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.Builder) (pdg.Graph, error) {
+	b, err := prepareGraph(pkg, fn, path, pool)
+	if err != nil {
+		return pdg.Graph{}, err
+	}
+	return b.finishGraph(fn)
+}
+
+func prepareGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.Builder) (*irBuilder, error) {
 	file := pkg.Fset.File(fn.Pos())
 	if file == nil || uint64(file.Size()) > uint64(^uint32(0)) {
-		return pdg.Graph{}, fmt.Errorf("PDG source exceeds 32-bit offset range")
+		return nil, fmt.Errorf("PDG source exceeds 32-bit offset range")
 	}
 	b := &builder{info: pkg.TypesInfo, fset: pkg.Fset, binds: map[types.Object]int{}, ir: newIRBuilder(pkg, fn, path, pool)}
 	b.ir.interfaces(fn)
@@ -218,14 +228,18 @@ func buildGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.
 	b.ir.evaluationRegionFacts(fn.Body)
 	b.ir.returnValues(fn.Body)
 	b.ir.references()
-	if err := b.ir.dependencies(fn.Body); err != nil {
+	return b.ir, nil
+}
+
+func (b *irBuilder) finishGraph(fn *ast.FuncDecl) (pdg.Graph, error) {
+	if err := b.dependencies(fn.Body); err != nil {
 		return pdg.Graph{}, err
 	}
 
-	b.ir.canonicalValueFacts(fn)
-	b.ir.capabilities()
-	if err := b.ir.pack(); err != nil {
+	b.canonicalValueFacts(fn)
+	b.capabilities()
+	if err := b.pack(); err != nil {
 		return pdg.Graph{}, err
 	}
-	return b.ir.graph, nil
+	return b.graph, nil
 }

@@ -30,10 +30,11 @@ one bounded subset passes. Keep the baseline and source/golden reports current.
 ## Acceptance order
 
 The table above is the full requirement list. All rows remain open until their
-complete required behavior has direct evidence. The next integration step is to
-make general control lowering and local call-exit queries agree about normal
-continuation after calls. Current control lowering still assumes ordinary calls
-return; an exit summary can instead establish panic or divergence.
+complete required behavior has direct evidence. Package-local summaries now remove proved nonreturning call continuations
+before the final dependency solve; [evidence and boundaries](pdg-call-continuations.md).
+Literal argument facts work. Values learned only from preceding assignments or
+branch selection still need path-sensitive call-site outcomes. General call
+results and arbitrary operand-order flow remain incomplete.
 
 Then complete closure/callback/receiver execution, general result and heap
 state, full exceptional/deferred dependencies, concurrent/blocking flow, and

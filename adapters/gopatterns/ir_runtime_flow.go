@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-const runtimeFlowDescription = "Typed binding operands and normal CFG outcomes; local non-escaped values, assignments and joins. Memory aliases, call results and concurrency remain unknown. Deferred inputs evaluate at registration; invocation and exit effects are outside this flow."
+const runtimeFlowDescription = "Typed binding operands and normal CFG outcomes; local non-escaped values, assignments and joins. Memory aliases, call results and concurrency remain unknown. Local summaries remove proven nonreturning continuations. Deferred inputs evaluate at registration; invocation and unwind remain outside this flow."
 
 func (b *irBuilder) runtimeFlow(body *ast.BlockStmt, flow *cfg.CFG) error {
 	if !b.runtimeOperations {
@@ -84,11 +84,20 @@ func (b *irBuilder) runtimeBlock(block *cfg.Block) pdg.FlowBlock {
 	for _, successor := range block.Succs {
 		out.Successors = append(out.Successors, pdg.Ref(successor.Index+1))
 	}
-	if len(out.Successors) == 2 && len(block.Nodes) != 0 {
-		source := block.Nodes[len(block.Nodes)-1]
-		out.Condition = b.nodes[source]
-	}
+	out.Condition = b.runtimeCondition(block)
 	return out
+}
+
+// Synthetic call-exit alternatives are not Boolean source conditions.
+func (b *irBuilder) runtimeCondition(block *cfg.Block) pdg.Ref {
+	if len(block.Succs) != 2 || len(block.Nodes) == 0 {
+		return 0
+	}
+	ref := b.nodes[block.Nodes[len(block.Nodes)-1]]
+	if b.callExits[ref] != 0 {
+		return 0
+	}
+	return ref
 }
 
 func (b *irBuilder) runtimeOperationsFor(source ast.Node) []pdg.Ref {
