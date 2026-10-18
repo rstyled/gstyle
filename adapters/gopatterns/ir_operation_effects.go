@@ -35,9 +35,8 @@ func (b *irBuilder) operationEffectNode(source ast.Node) {
 		return
 	}
 	effects := b.sourceOperationEffects(source)
-	data, _ := json.Marshal(effects)
 	attrs := &b.attributes[b.graph.Nodes[ref-1].Attributes-1]
-	attrs.Extensions = append(attrs.Extensions, b.pool.SingletonExtension("gstyle.go:operation-effects", string(data))...)
+	attrs.Extensions = append(attrs.Extensions, b.operationEffectsExtension(effects)...)
 	b.bindingInputFacts(source, attrs)
 }
 
@@ -244,4 +243,9 @@ func compositeOperationEffects(typ types.Type) operationEffects {
 	default:
 		return operationEffects{Unknown: true}
 	}
+}
+
+func (b *irBuilder) operationEffectsExtension(effects operationEffects) []pdg.Extension {
+	data, _ := json.Marshal(effects)
+	return b.pool.SingletonExtension("gstyle.go:operation-effects", string(data))
 }

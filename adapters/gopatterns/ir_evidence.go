@@ -134,5 +134,5 @@ func (b *irBuilder) closureCapability(name string) (irCapability, bool) {
 	if name != "closures" || !b.closureValues || !b.generalBindings {
 		return irCapability{}, false
 	}
-	return irCapability{pdg.Approximated, "Closure construction and captured-cell addresses are explicit. Calls have conservative unknown memory effects; bodies and resolved execution summaries remain opaque."}, true
+	return irCapability{pdg.Approximated, "Closure construction, captured-cell addresses and lexical body links are explicit. Calls have conservative unknown memory effects; runtime environments and deferred state execution remain incomplete."}, true
 }

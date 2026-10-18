@@ -38,10 +38,10 @@ func moduleTaintFlows(t *testing.T, files map[string]string) []patterns.TaintFlo
 		t.Fatal(err)
 	}
 	var facts []*patterns.MiningFacts
-	for _, fn := range extraction.Funcs {
-		graph := fn.Pdg
-		facts = append(facts, &patterns.MiningFacts{ID: graph.Tables.Text(graph.Function.ID), Name: fn.Name, Path: fn.Path, Canonical: &graph})
+	for _, graph := range extraction.Callables {
+		facts = append(facts, &patterns.MiningFacts{ID: graph.Tables.Text(graph.Function.ID), Name: graph.Tables.Text(graph.Function.ID), Canonical: graph})
 	}
+
 	flows, err := patterns.QueryTaintFlows(facts)
 	if err != nil {
 		t.Fatal(err)
@@ -139,11 +139,11 @@ func TestTaintBuilderAgainstTwoObjectOracle(t *testing.T) {
 
 func TestTaintRecursiveFieldWideningRetainsDeepSource(t *testing.T) {
 	var source strings.Builder
-	source.WriteString(`type Builder struct{q string;next *Builder};func walk(b *Builder,stop bool)string{if stop{return b.q};return walk(b.next,stop)};func handler(r *http.Request,stop bool){root:=&Builder{};node:=root;`)
+	source.WriteString(`type Builder struct{q string;next *Builder};func walk(b *Builder,depth int)string{if depth==0{return b.q};return walk(b.next,depth-1)};func handler(r *http.Request){root:=&Builder{};node:=root;`)
 	for i := 0; i < 12; i++ {
 		source.WriteString(`node.next=&Builder{};node=node.next;`)
 	}
-	source.WriteString(`node.q=r.FormValue("q");db.Exec(walk(root,stop))}`)
+	source.WriteString(`node.q=r.FormValue("q");db.Exec(walk(root,12))}`)
 	if flows := sourceTaintFlows(t, source.String()); len(flows) != 1 {
 		t.Fatalf("deep source lost: %+v", flows)
 	}

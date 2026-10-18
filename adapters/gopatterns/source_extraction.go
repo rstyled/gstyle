@@ -3,11 +3,13 @@ package gopatterns
 import (
 	"context"
 
+	"github.com/rstyled/gstyle/domain/callflow"
 	"github.com/rstyled/gstyle/domain/pdg"
 	"golang.org/x/tools/go/packages"
 )
 
 type sourceExtraction struct {
+	program    *callflow.Program
 	records    map[string]sourcePackageRecord
 	order      []string
 	root       string
@@ -25,6 +27,9 @@ func (e *sourceExtraction) collect(pkgs []*packages.Package) error {
 }
 
 func (e *sourceExtraction) collectBatch(pkgs []*packages.Package) error {
+	if e.program == nil {
+		e.program = callflow.NewProgram()
+	}
 	functionStart, referenceStart := len(e.result.Sources.Functions), len(e.result.Sources.References)
 	collectSourceReferences(e.result.Sources, pkgs)
 	internSourceMetadataFrom(e.pool, functionStart, referenceStart)
@@ -32,7 +37,7 @@ func (e *sourceExtraction) collectBatch(pkgs []*packages.Package) error {
 		e.result.PackageNames[path] = names
 	}
 	releaseTestCompilerData(pkgs)
-	for _, pkg := range productionPatternPackages(pkgs) {
+	for _, pkg := range orderedSourcePackages(productionPatternPackages(pkgs)) {
 		if err := e.collectPackage(pkg); err != nil {
 			return err
 		}
@@ -42,12 +47,16 @@ func (e *sourceExtraction) collectBatch(pkgs []*packages.Package) error {
 }
 
 func (e *sourceExtraction) collectPackage(pkg *packages.Package) error {
-	funcs, err := packagePdgsWithSources(pkg, e.root, e.pool, e.identities)
+	analysis := packageAnalysis{pkg: pkg, root: e.root, pool: e.pool, sources: e.identities, program: e.program}
+	funcs, err := analysis.run()
 	if err != nil {
 		return err
 	}
 	projectSourceParameterFlow(e.result.Sources, funcs)
 	e.result.Funcs = append(e.result.Funcs, funcs...)
+	for _, source := range analysis.graphs {
+		e.result.Callables = append(e.result.Callables, source.graph)
+	}
 	e.result.DeclarationOrders = append(e.result.DeclarationOrders, findDeclarationOrders(pkg, e.root, e.paths, e.result.Sources)...)
 	e.result.OffsetFallbacks = append(e.result.OffsetFallbacks, findOffsetFallbacks(pkg, e.root, e.paths, e.result.Sources)...)
 	e.result.AnemicModels = append(e.result.AnemicModels, findAnemicModels(pkg, e.root)...)

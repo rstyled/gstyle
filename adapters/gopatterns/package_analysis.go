@@ -2,6 +2,7 @@ package gopatterns
 
 import (
 	"fmt"
+	"github.com/rstyled/gstyle/domain/callflow"
 	"go/ast"
 	"path/filepath"
 
@@ -13,18 +14,23 @@ import (
 // functionGraph owns one lowering of a compiler declaration. Summaries and
 // reports borrow its graph; neither consumer builds a replacement graph.
 type functionGraph struct {
+	closure     bool
+	inventory   *irBuilder
 	declaration *ast.FuncDecl
 	path        string
 	graph       *pdg.Graph
 }
 type packageAnalysis struct {
-	pkg     *packages.Package
-	root    string
-	pool    *pdg.Builder
-	sources map[string]string
-	graphs  []functionGraph
-	context extractCtx
-	result  []FuncPdg
+	closurePackageView *packages.Package
+	program            *callflow.Program
+	exits              callflow.ExitSummaries
+	pkg                *packages.Package
+	root               string
+	pool               *pdg.Builder
+	sources            map[string]string
+	graphs             []functionGraph
+	context            extractCtx
+	result             []FuncPdg
 }
 
 func (p *packageAnalysis) build() error {
@@ -35,7 +41,7 @@ func (p *packageAnalysis) build() error {
 		}
 		p.graphs = append(p.graphs, graphs...)
 	}
-	return nil
+	return p.finalizeGraphs()
 }
 func (p *packageAnalysis) fileGraphs(file *ast.File) ([]functionGraph, error) {
 	filename := p.pkg.Fset.PositionFor(file.Pos(), false).Filename
@@ -49,22 +55,46 @@ func (p *packageAnalysis) fileGraphs(file *ast.File) ([]functionGraph, error) {
 		if !ok || fn.Body == nil {
 			continue
 		}
-		graph, err := buildGraph(p.pkg, fn, filepath.ToSlash(rel), p.pool)
+		sources, err := p.declarationGraphs(fn, filepath.ToSlash(rel), filename)
 		if err != nil {
 			return nil, err
 		}
-		graph.Sources[0].ContentIdentity = pdgSourceIdentity(p.pool, p.sources[filename])
-		graph.Sources[0].Snapshot = sourceSnapshotReference(p.pool.Tables.Sources, filename)
-		graphs = append(graphs, functionGraph{declaration: fn, path: filepath.ToSlash(rel), graph: &graph})
+		graphs = append(graphs, sources...)
 	}
 	return graphs, nil
 }
+func (p *packageAnalysis) declarationGraphs(fn *ast.FuncDecl, path, filename string) ([]functionGraph, error) {
+	source, err := p.typedFunctionGraph(p.pkg, fn, path, filename)
+	if err != nil {
+		return nil, err
+	}
+	closures, err := p.closureGraphs(source, filename)
+	if err != nil {
+		return nil, err
+	}
+	return append([]functionGraph{source}, closures...), nil
+}
+
+func (p *packageAnalysis) typedFunctionGraph(pkg *packages.Package, fn *ast.FuncDecl, path, filename string) (functionGraph, error) {
+	inventory, err := prepareGraph(pkg, fn, path, p.pool)
+	if err != nil {
+		return functionGraph{}, err
+	}
+	graph, err := inventory.summaryInventory().finishGraph(fn)
+	if err != nil {
+		return functionGraph{}, err
+	}
+	graph.Sources[0].ContentIdentity = pdgSourceIdentity(p.pool, p.sources[filename])
+	graph.Sources[0].Snapshot = sourceSnapshotReference(p.pool.Tables.Sources, filename)
+	return functionGraph{inventory: inventory, declaration: fn, path: path, graph: &graph}, nil
+}
+
 func (p *packageAnalysis) summarize() error {
 	functions, err := resourceFunctions(p.pkg, p.graphs)
 	if err != nil {
 		return err
 	}
-	facts, err := summarizeResources(functions)
+	facts, err := summarizeResourcesWithExits(functions, p.exits)
 	if err != nil {
 		return err
 	}
@@ -77,6 +107,9 @@ func (p *packageAnalysis) summarize() error {
 }
 func (p *packageAnalysis) analyze() error {
 	for _, source := range p.graphs {
+		if source.closure {
+			continue
+		}
 		result, err := extractFunc(p.pkg, source, p.context)
 		if err != nil {
 			return err
@@ -84,4 +117,89 @@ func (p *packageAnalysis) analyze() error {
 		p.result = append(p.result, result)
 	}
 	return nil
+}
+
+// Package summaries use provisional dependency solves over one source inventory.
+// Consumers receive only the final canonical graphs.
+func (p *packageAnalysis) finalizeGraphs() error {
+	graphs := map[string]*pdg.Graph{}
+	for _, source := range p.graphs {
+		graphs[source.graph.Tables.Text(source.graph.Function.ID)] = source.graph
+	}
+	if p.program == nil {
+		p.program = callflow.NewProgram()
+	}
+	exits, err := p.program.ExitEffects(graphs)
+	if err != nil {
+		return err
+	}
+	p.exits = exits
+	return p.publishGraphs(exits)
+}
+
+func (p *packageAnalysis) publishGraphs(exits callflow.ExitSummaries) error {
+	for i := range p.graphs {
+		if err := p.graphs[i].finalize(exits); err != nil {
+			return err
+		}
+		if err := p.program.Add(p.graphs[i].graph); err != nil {
+			return err
+		}
+	}
+	p.closurePackageView = nil
+	return nil
+}
+
+func (source *functionGraph) finalize(exits callflow.ExitSummaries) error {
+	if pdg.ExitBodyFlow(source.graph) == nil {
+		source.inventory = nil
+		return nil
+	}
+	queries, err := callflow.NewQueries(source.graph)
+	if err != nil {
+		return err
+	}
+	b := source.inventory
+	b.recordExitObservations(callflow.OrdinaryObservations(queries, exits))
+	if len(b.operationExits)+len(b.conditionValues) == 0 {
+		source.inventory = nil
+		return nil
+	}
+	graph, err := b.finishGraph(source.declaration)
+	if err != nil {
+		return err
+	}
+	graph.Sources = source.graph.Sources
+	graph.ValueFlow.ExitContext = pdg.ExitBodyFlow(source.graph)
+	pruneUnreachableDependencies(&graph)
+	*source.graph = graph
+	source.inventory = nil
+	return nil
+}
+
+// Translate joined domain observations into the adapter's refinement inputs.
+func (b *irBuilder) recordExitObservations(observations callflow.Observations) {
+	b.operationExits = map[pdg.Ref]callflow.Outcomes{}
+	b.conditionValues = observations.Conditions
+	for node, ref := range b.nodes {
+		b.recordCallExit(node, ref, observations.Calls[ref])
+	}
+	for ref, outcome := range observations.Operations {
+		b.recordOperationExit(ref, outcome)
+	}
+}
+
+func (b *irBuilder) recordCallExit(node ast.Node, ref pdg.Ref, outcome callflow.Outcomes) {
+	call, ok := node.(*ast.CallExpr)
+	if !ok || b.deferredInvocation(call) || !b.mayReturn(call) {
+		return
+	}
+	b.recordOperationExit(ref, outcome)
+}
+
+func (b *irBuilder) recordOperationExit(ref pdg.Ref, outcome callflow.Outcomes) {
+	if outcome == 0 || outcome&(callflow.Returns|callflow.UnknownExit) != 0 {
+		return
+	}
+	b.operationExits[ref] = outcome
 }

@@ -163,5 +163,5 @@ func (m *Model) seedCaptures(ref pdg.Ref) {
 }
 
 func externalBinding(role pdg.Role) bool {
-	return role == pdg.ParameterRole || role == pdg.ReceiverRole || role == pdg.GlobalRole
+	return role == pdg.ParameterRole || role == pdg.ReceiverRole || role == pdg.GlobalRole || role == pdg.CaptureRole
 }

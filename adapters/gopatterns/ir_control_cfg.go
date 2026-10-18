@@ -59,6 +59,13 @@ func (b *irBuilder) controlDecision(a *scalarCFGBuilder, block *cfg.Block) {
 // A compiler constant or a short-circuit constant result can remove an
 // impossible outcome without evaluating an unexecuted operand.
 func (b *irBuilder) controlBoolean(expression ast.Expr) (bool, bool) {
+	if fact := b.conditionValues[b.nodes[expression]]; fact.Status == pdg.Known {
+		return fact.Value, true
+	}
+	return b.staticControlBoolean(expression)
+}
+
+func (b *irBuilder) staticControlBoolean(expression ast.Expr) (bool, bool) {
 	if value := b.info.Types[expression].Value; value != nil && value.Kind() == constant.Bool {
 		return constant.BoolVal(value), true
 	}

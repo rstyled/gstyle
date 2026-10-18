@@ -3,21 +3,31 @@ package taintflow
 import (
 	"fmt"
 	"github.com/rstyled/gstyle/domain/bindingflow"
+	"github.com/rstyled/gstyle/domain/callflow"
 	"github.com/rstyled/gstyle/domain/pdg"
 	"slices"
 )
 
 type query struct {
-	graph     *pdg.Graph
-	paths     *bindingflow.Query
-	flow      *pdg.NormalFlow
-	models    Models
-	name      string
-	inputs    map[pdg.Ref]int
-	addresses map[pdg.Ref]map[pdg.Position]pdg.Ref
-	live      map[pdg.Ref]bool
+	cells        map[pdg.Ref]cell
+	captures     []pdg.Ref
+	environments map[string]map[pdg.Ref]pdg.Ref
+	key          string
+	functions    map[int][]string
+	calls        *callflow.CallSites
+	facts        bindingflow.Facts
+	graph        *pdg.Graph
+	paths        *bindingflow.Query
+	flow         *pdg.NormalFlow
+	models       Models
+	name         string
+	inputs       map[pdg.Ref]int
+	addresses    map[pdg.Ref]map[pdg.Position]pdg.Ref
+	live         map[pdg.Ref]bool
 }
 type evaluation struct {
+	solver    *summarySolver
+	arguments map[pdg.Position]value
 	query     *query
 	catalog   map[string]*query
 	summaries map[string]summary
@@ -32,6 +42,9 @@ type evaluation struct {
 func Analyze(graphs map[string]*pdg.Graph, models Models) ([]Finding, error) {
 	queries, err := prepare(graphs, models)
 	if err != nil {
+		return nil, err
+	}
+	if err := linkEnvironments(queries); err != nil {
 		return nil, err
 	}
 	summaries := map[string]summary{}
@@ -59,7 +72,8 @@ func prepare(graphs map[string]*pdg.Graph, models Models) (map[string]*query, er
 	return result, nil
 }
 func newQuery(graph *pdg.Graph, models Models) (*query, error) {
-	paths, err := bindingflow.New(graph)
+	prepared, err := callflow.NewQueries(graph)
+	paths := prepared.Bindings
 	if err != nil || graph == nil {
 		return nil, err
 	}
@@ -68,12 +82,12 @@ func newQuery(graph *pdg.Graph, models Models) (*query, error) {
 		return nil, nil
 	}
 	q := &query{graph: graph, paths: paths, flow: flow, models: models, name: graph.Tables.Text(graph.Function.ID), inputs: map[pdg.Ref]int{}, addresses: map[pdg.Ref]map[pdg.Position]pdg.Ref{}}
-	for index, input := range graph.Function.Inputs {
-		q.inputs[input.Symbol] = index + 1
-	}
+	q.calls, q.facts = prepared.Calls, prepared.Facts
+	q.indexInputs()
 	for _, edge := range graph.Edges {
 		q.indexAddress(edge)
 	}
+	q.key = q.name
 	q.indexLiveNodes()
 	return q, nil
 }
@@ -89,12 +103,18 @@ func (q *query) indexAddress(edge pdg.Edge) {
 func (q *query) initial() state {
 	result := emptyState()
 	for symbol, index := range q.inputs {
-		item := emptyValue()
-		item.Data[atom{Input: index}] = true
-		if !q.paths.ImmutableSymbol(symbol) {
-			item.Objects[object{Input: index}] = true
+		item := q.initialInput(symbol, index)
+		item.Opaque = true
+		if names := q.functions[index]; len(names) != 0 {
+			item.Opaque = false
+			for _, name := range names {
+				item.Functions[name] = true
+			}
 		}
 		result.Bindings[symbol] = item
+		if key, found := q.cells[symbol]; found {
+			result.Memory[key] = item
+		}
 	}
 	return result
 }
@@ -118,4 +138,13 @@ func collectFindings(item summary, seen map[Finding]bool) {
 			}
 		}
 	}
+}
+
+func (q *query) indexInputs() {
+	for index, input := range q.graph.Function.Inputs {
+		if input.Symbol != 0 {
+			q.inputs[input.Symbol] = index + 1
+		}
+	}
+	q.indexCells()
 }

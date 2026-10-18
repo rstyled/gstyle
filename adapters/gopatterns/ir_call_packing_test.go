@@ -24,7 +24,7 @@ func TestExitArgumentsUseVariadicAndTupleInputs(t *testing.T) {
 		{"tuple boxes both results", `func f(){stop(pair())};func pair()(*int,*int){return nil,nil};func stop(first,second any){if first==nil||second==nil{panic("bad")}}`, callflow.Returns},
 		{"tuple values keep their slot types", `func f(){stop(pair())};func pair()(any,*int){return nil,nil};func stop(first,second any){if second==nil{panic("bad")};_=first}`, callflow.Returns},
 		{"tuple position-specific boxing", `func f(){stop(pair())};func pair()(*int,*int){return nil,nil};func stop(first *int,second any){if second==nil{panic("bad")};_=first}`, callflow.Returns},
-		{"tuple interface payload stays unknown", `func f(){stop(pair())};func pair()(any,*int){return nil,nil};func stop(first,second any){if first==nil{panic("unknown")};_=second}`, callflow.Returns | callflow.Panics},
+		{"tuple nil interface result is known", `func f(){stop(pair())};func pair()(any,*int){return nil,nil};func stop(first,second any){if first==nil{panic("unknown")};_=second}`, callflow.Panics},
 		{"tuple fills variadic pack", `func f(){stop(pair())};func pair()(int,int){return 0,0};func stop(values ...int){if values==nil{panic("bad")}}`, callflow.Returns},
 		{"tuple exactly fills fixed prefix", `func f(){stop(pair())};func pair()(*int,*int){return nil,nil};func stop(first,second any,values ...int){if first==nil||second==nil||values!=nil{panic("bad")}}`, callflow.Returns},
 		{"saved nil spread", `func f(){var values []int;defer stop(values...);values=[]int{0};_=values};func stop(values ...int){if values!=nil{panic("bad")}}`, callflow.Returns},

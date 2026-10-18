@@ -1,63 +1,40 @@
 package taintflow
 
 import (
-	"github.com/rstyled/gstyle/domain/pdg"
 	"slices"
 )
 
+type summarySolver struct {
+	queries   map[string]*query
+	summaries map[string]summary
+	callers   map[string][]string
+	queue     []string
+	pending   map[string]bool
+}
+
 func solveSummaries(queries map[string]*query, summaries map[string]summary) {
-	queue := make([]string, 0, len(queries))
-	pending := map[string]bool{}
+	solver := &summarySolver{queries: queries, summaries: summaries, callers: map[string][]string{}, pending: map[string]bool{}}
 	for name := range queries {
-		queue = append(queue, name)
-		pending[name] = true
+		solver.enqueue(name)
 	}
-	slices.Sort(queue)
-	callers := summaryCallers(queries)
-	for cursor := 0; cursor < len(queue); cursor++ {
-		name := queue[cursor]
-		delete(pending, name)
-		next := queries[name].analyze(queries, summaries)
-		if summaryEqual(next, summaries[name]) {
+	slices.Sort(solver.queue)
+	for cursor := 0; cursor < len(solver.queue); cursor++ {
+		key := solver.queue[cursor]
+		delete(solver.pending, key)
+		next := solver.queries[key].analyze(solver)
+		if summaryEqual(next, solver.summaries[key]) {
 			continue
 		}
-		summaries[name] = next
-		queue = queueCallers(queue, pending, callers[name])
-	}
-}
-func queueCallers(queue []string, pending map[string]bool, callers []string) []string {
-	for _, name := range callers {
-		if pending[name] {
-			continue
-		}
-		pending[name] = true
-		queue = append(queue, name)
-	}
-	return queue
-}
-func summaryCallers(queries map[string]*query) map[string][]string {
-	result := map[string][]string{}
-	for _, q := range queries {
-		for _, node := range q.graph.Nodes {
-			q.indexCaller(result, queries, node)
+		solver.summaries[key] = next
+		for _, caller := range solver.callers[key] {
+			solver.enqueue(caller)
 		}
 	}
-	for target := range result {
-		slices.Sort(result[target])
-		result[target] = slices.Compact(result[target])
-	}
-	return result
 }
-func (q *query) indexCaller(result map[string][]string, queries map[string]*query, node pdg.Node) {
-	if node.Category != pdg.Call {
+func (solver *summarySolver) enqueue(key string) {
+	if solver.pending[key] {
 		return
 	}
-	attrs := q.graph.NodeAttributes(node)
-	if attrs.CallForm != pdg.DirectCall || attrs.Callee.Status != pdg.Known {
-		return
-	}
-	target := q.graph.Tables.Text(attrs.Callee.Value)
-	if queries[target] != nil {
-		result[target] = append(result[target], q.name)
-	}
+	solver.pending[key] = true
+	solver.queue = append(solver.queue, key)
 }

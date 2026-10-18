@@ -4,7 +4,7 @@ The native pattern pipeline calls `patterns.QueryTaintFlows`. The reusable
 `domain/taintflow` query validates supplied graphs and summarizes symbolic input,
 result-slot, and direct field dependencies. It uses `bindingflow` operands,
 origins, selector indexes, allocation identities, compiler memory-kind facts,
-and `pdg.BodyFlow`; it does not walk the AST or name application helpers.
+`callflow.InvocationTargets`, canonical capture bindings, and `pdg.BodyFlow`; it does not walk the AST or name application helpers.
 
 A summary can carry an input through a helper return, carry a source discovered
 inside a helper back to its caller, or carry an input into a callee sink. Direct
@@ -15,6 +15,20 @@ update requires one actual target; joins preserve the unchanged value from
 returning paths that do not write it. Empty constructors can return fresh
 object identities. Compiler-proved immutable scalars do not acquire object
 aliases.
+
+The native consumer supplies `Extraction.Callables` separately from declaration
+matching. Function values use the shared canonical target resolver. Summaries
+specialize on finite callable-name sets in input and capture slots, so a callback
+returning a constant does not inherit the payload of an ignored argument. Unknown
+target alternatives keep their conservative argument transfer.
+
+Closure values reference environment objects whose fields link to live lexical
+cells. Returns and helper calls rebase fresh cells and preserve shared aliases;
+capture reads observe call-time stores, not construction snapshots. Distinct
+factory sites stay separate. Repeated allocation families join weakly, including
+later setter calls, and cannot prove a clean overwrite. Passing a captured cell
+by address also retains possible old/new argument dependencies; arbitrary pointer
+writes do not prove a clean overwrite.
 
 Caller and body worklists solve dependencies without a fixed pass count.
 Only expression values used across blocks survive a block transfer. Value maps
@@ -34,9 +48,10 @@ evidence.
 ## Scope and checks
 
 All taint coverage remains partial. The query does not prove arbitrary
-aggregate initialization, collection elements, dynamic targets, closure cells,
-validation, numeric/string encoding, deferred effects, or exceptional heap
-updates. A reported dependency is not proof of a feasible exploit. Missing
+aggregate initialization, collection elements, unresolved targets, bound method
+receivers, validation, general numeric/string decoding, deferred effects, or
+exceptional heap updates. Captured strings and callable values use the admitted
+live-cell model; general closure heap containers remain incomplete. A reported dependency is not proof of a feasible exploit. Missing
 findings are not proof of safety.
 
 Typed-source checks cover helper results and sources, sink helpers, distinct
@@ -44,7 +59,11 @@ result slots, recursion, variadics, direct and nested receiver fields, aliases,
 fluent calls, conditional writes, safe overwrites, separate factory calls,
 separate callers, and cross-package calls. An independent two-object oracle
 checks all 512 four-write/target combinations. A recursive twelve-link case
-checks field widening. Seven compiling fault controls exercise source seeding,
+checks field widening on an executable depth-based walk. Thirty-two independent
+two-cell closure traces check shared writes, safe clears and separate factory
+instances. Source/CLI cases cover returned closures, live callable reassignments,
+nested relay environments, callback contexts, explicit nil and address escapes.
+Seven earlier compiling fault controls exercise source seeding,
 result substitution and slot choice, field transfer and identity, strong clears,
 and variadic mapping.
 
@@ -75,3 +94,20 @@ The first broad query took about 49 seconds on a local Miniflux package set.
 Immutable set sharing, affected-caller worklists and live expression retention
 reduce the measured query to about 2 seconds. These are local measurements,
 not a general performance guarantee.
+
+Callable summaries use the same finite receiving-site history as the PDG closure
+model. Distinct factory instances remain separate through helpers. Repeated
+sites represent allocation families and keep weak writes. The independent
+finite-site oracle covers 364 traces, opaque site IDs and owned result sets;
+a concrete-cell oracle checks projected writes for unique and repeated cells.
+Unknown callback calls retain reachable capture dependencies and may-writes,
+including effects forwarded through a known helper. They do not prove a clean
+overwrite. Eleven compiling fault controls cover callback context, capture
+arguments, live writes, family clears, opaque targets, unknown-call effects and
+allocation history, pending-effect boundaries, captured callback returns and encoding loss at unknown calls.
+
+Pending callback reads and writes are distinct from ordinary heap edges. They
+project onto captured cells when a caller supplies an environment. Interface
+arguments retain possible callback effects without turning every argument into
+a general heap mutation. Boundary tests check that effect payloads do not become
+heap edges and that ordinary objects do not receive captured-cell writes.

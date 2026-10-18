@@ -11,7 +11,7 @@ checks. Legacy runtime nil/boolean records remain readable when a canonical
 record is absent. Identical legacy records are accepted; conflicting values fail.
 Compiler constants are leaf facts, not another dependency graph. Conversion
 inputs still come from canonical operand edges. Identity transfers the actual
-operand; nil conversion requires its nil constant; boxing proves a non-nil
+operand, including conversions between named and underlying Boolean types; nil conversion requires its nil constant; boxing proves a non-nil
 interface; nilness transfers only whole-value nilness. Storage identity does not
 follow boxing or nilness-only conversions.
 
@@ -29,3 +29,10 @@ the full PDG migration.
 
 Conditional constructor non-nilness and payload dependency rules are recorded in
 `pdg-call-packing.md`. A known non-nil shape is not a complete constant payload.
+
+Boolean binding identity uses the compiler-owned resolved primitive extension
+on symbols. The binding query rejects malformed or duplicate records and does
+not infer Boolean identity from a type's original spelling. Selected Boolean
+and nil tests feed direct binding facts into the call-exit path state; later
+writes still invalidate those facts. See `pdg-call-continuations.md` for the
+source failures, finite-value oracle and remaining predicate boundaries.

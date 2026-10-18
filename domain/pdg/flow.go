@@ -4,6 +4,9 @@ package pdg
 // It owns indexes only; it retains no AST, compiler object, source bytes or
 // dominance matrix. Block references and PDG node references are one-based.
 type NormalFlow struct {
+	// ExitContext retains pre-refinement operations for context-sensitive unwind
+	// and unordered operand effects. It does not grant normal reachability.
+	ExitContext  *NormalFlow
 	Blocks       []FlowBlock
 	Entry        Ref
 	ReadBindings uint64

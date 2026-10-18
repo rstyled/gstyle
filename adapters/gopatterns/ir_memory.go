@@ -9,7 +9,7 @@ import (
 	"github.com/rstyled/gstyle/domain/pdgmemory"
 )
 
-const generalBindingDescription = "Conservative fixed-point binding and may-alias storage dependencies on the shared normal operation CFG. Direct local writes kill bindings; indirect and opaque call writes are weak. Memory is field-insensitive; unknown targets retain all possible locations. Closure construction retains captured cells; bodies and resolved call summaries remain opaque. Exceptional, deferred and concurrent flow remain incomplete."
+const generalBindingDescription = "Conservative fixed-point binding and may-alias storage dependencies on the shared normal operation CFG. Direct local writes kill bindings; indirect and opaque call writes are weak. Memory is field-insensitive; unknown targets retain all possible locations. Closure construction retains captured cells; lexical body links and external captured storage are explicit. Runtime environments, exceptional, deferred and concurrent flow remain incomplete."
 
 type memoryBuilder struct {
 	ir        *irBuilder
@@ -48,7 +48,8 @@ func (m *memoryBuilder) memorySource(place pdgmemory.Place, location pdg.Ref) {
 		m.memoryInput(source, 0, location)
 		return
 	}
-	if b.graph.Symbols[place.Symbol-1].Role == pdg.GlobalRole {
+	role := b.graph.Symbols[place.Symbol-1].Role
+	if role == pdg.GlobalRole || role == pdg.CaptureRole {
 		m.memoryInput(source, place.Symbol, location)
 	}
 }

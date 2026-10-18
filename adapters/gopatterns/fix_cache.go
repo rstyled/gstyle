@@ -86,7 +86,11 @@ func (e *FixExtractor) refresh(ctx context.Context, paths []string, options sour
 		return err
 	}
 	e.pool.Tables.Sources = options.snapshots
-	extraction := &sourceExtraction{root: root, paths: paths, pool: e.pool, identities: make(map[string]string), result: Extraction{Sources: options.snapshots, PackageNames: make(map[string][]string)}, records: e.records}
+	program, err := e.programQueries(affected)
+	if err != nil {
+		return err
+	}
+	extraction := &sourceExtraction{program: program, root: root, paths: paths, pool: e.pool, identities: make(map[string]string), result: Extraction{Sources: options.snapshots, PackageNames: make(map[string][]string)}, records: e.records}
 	config := &packages.Config{Context: ctx, Dir: root, Mode: packages.LoadSyntax, Tests: true, ParseFile: patternSourceParser(extraction.identities, options.snapshots)}
 	visit := func(pkgs []*packages.Package) error { return extraction.collect(pkgs) }
 	selected := selectedSourceQueries(e.records, affected)
@@ -126,6 +130,11 @@ type sourcePackageRecord struct {
 
 func (result *Extraction) appendPackageExtraction(facts Extraction, tables *pdg.Tables) {
 	maps.Copy(result.PackageNames, facts.PackageNames)
+	for _, source := range facts.Callables {
+		graph := *source
+		graph.Tables = tables
+		result.Callables = append(result.Callables, &graph)
+	}
 	for _, fn := range facts.Funcs {
 		fn.Pdg.Tables = tables
 		fn.TypedNilHits = slices.Clone(fn.TypedNilHits)

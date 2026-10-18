@@ -27,6 +27,10 @@ func summarizeResources(functions map[string]resourceFunction) (packageResourceF
 	if err != nil {
 		return packageResourceFacts{}, err
 	}
+	return summarizeResourcesWithExits(functions, exits)
+}
+
+func summarizeResourcesWithExits(functions map[string]resourceFunction, exits callflow.ExitSummaries) (packageResourceFacts, error) {
 	helpers := cleanupSummaries(functions, exits)
 	summaries := resourceFactories(functions, helpers)
 	facts := packageResourceFacts{exits: exits, sources: map[types.Object]bool{}, failures: map[types.Object]bool{}, helpers: map[types.Object]bool{}}
@@ -41,6 +45,9 @@ func summarizeResources(functions map[string]resourceFunction) (packageResourceF
 func resourceFunctions(pkg *packages.Package, graphs []functionGraph) (map[string]resourceFunction, error) {
 	functions := make(map[string]resourceFunction, len(graphs))
 	for _, source := range graphs {
+		if source.closure {
+			continue
+		}
 		function, err := resourceFunctionQuery(pkg, source)
 		if err != nil {
 			return nil, err

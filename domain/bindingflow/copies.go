@@ -139,6 +139,10 @@ func (q *Query) copySource(ref pdg.Ref, attrs pdg.Attributes, write *Write) {
 		return
 	}
 
+	if tuple := q.tupleProducer(ref); tuple != 0 {
+		write.Source = tuple
+		return
+	}
 	write.Source = source.ref
 }
 

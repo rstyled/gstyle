@@ -12,6 +12,9 @@ func pathValue(store state, base value, fields string) value {
 	return base
 }
 func pathComponent(store state, base value, field string) value {
+	if field == callbackEffect {
+		return callbackValue(store, base)
+	}
 	if field == "*" {
 		return wildcardValue(store, base)
 	}

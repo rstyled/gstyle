@@ -6,10 +6,10 @@ import (
 	"maps"
 )
 
-func (q *query) analyze(catalog map[string]*query, summaries map[string]summary) summary {
+func (q *query) analyze(solver *summarySolver) summary {
 	result := emptySummary()
 	inputs := map[pdg.Ref]state{q.flow.Entry: q.initial()}
-	e := evaluation{query: q, catalog: catalog, summaries: summaries, result: &result, exits: map[pdg.Ref]state{}}
+	e := evaluation{query: q, solver: solver, catalog: solver.queries, summaries: solver.summaries, result: &result, exits: map[pdg.Ref]state{}}
 	e.solveBody(inputs)
 	summarizeWrites(&result, e.exits)
 	return result
@@ -85,6 +85,7 @@ func (e *evaluation) retainLiveNodes() {
 }
 func joinState(left, right state) state {
 	result := cloneState(left)
+	maps.Copy(result.Repeated, right.Repeated)
 	for key, item := range right.Bindings {
 		result.Bindings[key] = joinValue(result.Bindings[key], item)
 	}
@@ -131,7 +132,7 @@ func (e *evaluation) returned(ref pdg.Ref) {
 		item := e.input(ref, position)
 		e.result.Results[position] = joinValue(e.result.Results[position], item)
 	}
-	e.exits[ref] = state{Memory: maps.Clone(e.state.Memory)}
+	e.exits[ref] = state{Memory: maps.Clone(e.state.Memory), Repeated: maps.Clone(e.state.Repeated)}
 }
 func summarizeWrites(result *summary, exits map[pdg.Ref]state) {
 	var joined state
@@ -144,10 +145,9 @@ func summarizeWrites(result *summary, exits map[pdg.Ref]state) {
 		}
 		joined = joinState(joined, exit)
 	}
+	maps.Copy(result.Repeated, joined.Repeated)
 	for key, item := range joined.Memory {
-		if key.Object.Input != 0 {
-			result.Writes[key] = item
-		}
+		result.Writes[key] = item
 	}
 }
 func compareFinding(left, right Finding) int {
@@ -167,5 +167,5 @@ func compareFinding(left, right Finding) int {
 }
 
 func crossBlockValue(edge pdg.Edge, blocks map[pdg.Ref]int) bool {
-	return edge.Kind == pdg.Data && edge.Position != 0 && blocks[edge.Source] != blocks[edge.Target]
+	return edge.Kind == pdg.Data && blocks[edge.Source] != blocks[edge.Target]
 }

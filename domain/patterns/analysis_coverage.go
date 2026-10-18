@@ -250,5 +250,5 @@ func taintSummaryLimitations(kind CandidateKind) []string {
 	if kind != TaintFlowKind {
 		return nil
 	}
-	return []string{"taint summaries are partial: validation, dynamic targets, collection contents and exceptional field effects are not proved"}
+	return []string{"taint summaries are partial: validation, unresolved targets, collection contents and exceptional field effects are not proved"}
 }

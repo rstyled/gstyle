@@ -14,7 +14,8 @@ func Run(facts []*FuncFacts, options Options) PatternsReport {
 		labels.attach(view.Pdg)
 		views = append(views, view)
 	}
-	options.semantic = nativeSemanticResults(mergeFacts(views))
+	options.semantic = nativeSemanticResults(mergeFacts(views), options.Callables)
+	options.Callables = nil
 	for _, view := range views {
 		view.Canonical = nil
 	}

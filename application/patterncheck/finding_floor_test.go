@@ -13,10 +13,12 @@ import (
 func TestPartialHelperMatchDoesNotBecomeAFinding(t *testing.T) {
 	root := t.TempDir()
 	source := `package example
+// Keep error handling reachable so the fixture tests partial helper matching.
+var fixtureErr error
 func First(x int)(int,error){value,err:=left(x);if err!=nil{return 0,err};return len(value),nil}
 func Second(x int)(int,error){value,err:=right(x);if err!=nil{return 0,err};return len(value)+1,nil}
-func left(int)(string,error){return "a",nil}
-func right(int)(string,error){return "bb",nil}
+func left(int)(string,error){return "a",fixtureErr}
+func right(int)(string,error){return "bb",fixtureErr}
 `
 	for name, text := range map[string]string{"go.mod": "module example\n\ngo 1.26\n", "p.go": source} {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(text), 0600); err != nil {

@@ -58,7 +58,9 @@ func (b *irBuilder) selectionAttributes(selection controlSelection, expression a
 	if selection.typed {
 		attrs.Extensions = b.pool.SingletonExtension("gstyle.control:case-type", strconv.Quote(b.info.TypeOf(expression).String()))
 	}
-	if selectionNormalCompletion(selection, expression, b.info) {
+	normal := selectionNormalCompletion(selection, expression, b.info)
+	attrs.Extensions = append(attrs.Extensions, b.operationEffectsExtension(operationEffects{Panic: !normal})...)
+	if normal {
 		b.runtimeExtension(&attrs, "normal-completion", "true")
 	}
 	return attrs

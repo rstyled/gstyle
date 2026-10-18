@@ -41,9 +41,17 @@ func solveExitPass(bodies map[string]*exitBody, summaries ExitSummaries, pass ex
 		count := invocationCount(summaries)
 		for name, body := range bodies {
 			old := summaries[name]
+			ordinary := evaluateBodyResult(body, summaries, false, "")
+			inherited := evaluateBodyResult(body, summaries, true, "")
 			next := ExitSummary{
-				Ordinary:      pass.update(old.Ordinary, evaluateBody(body, summaries, false)),
-				DeferredPanic: pass.update(old.DeferredPanic, evaluateBody(body, summaries, true)),
+				heaps:                 [2]heapEffects{pass.heapEffects(old.heaps[0], ordinary.heaps), pass.heapEffects(old.heaps[1], inherited.heaps)},
+				frameConfined:         old.frameConfined,
+				captureArity:          old.captureArity,
+				captured:              [2]captureEffects{pass.captureEffects(old.captured[0], ordinary.captured), pass.captureEffects(old.captured[1], inherited.captured)},
+				PreservesCallerMemory: old.PreservesCallerMemory,
+				returned:              pass.returned(old.returned, ordinary.returned), arity: old.arity,
+				Ordinary:      pass.update(old.Ordinary, ordinary.outcomes),
+				DeferredPanic: pass.update(old.DeferredPanic, inherited.outcomes),
 				Receiver:      old.Receiver,
 				invocations:   old.invocations,
 			}
@@ -62,8 +70,10 @@ func seedExitSummaries(bodies map[string]*exitBody) ExitSummaries {
 		if body != nil && body.flow != nil {
 			seed = 0
 		}
-		summaries[name] = ExitSummary{Ordinary: seed, DeferredPanic: seed, Receiver: bodyHasReceiver(body), invocations: newExitInvocations(body)}
+		summaries[name] = ExitSummary{captureArity: bodyCaptureCount(body), frameConfined: memoryBodyKnown(body), PreservesCallerMemory: memoryBodyKnown(body), Ordinary: seed, DeferredPanic: seed, Receiver: bodyHasReceiver(body), arity: bodyResultCount(body), invocations: newExitInvocations(body)}
 	}
+	solveMemoryPreservation(bodies, summaries)
+	solveFrameConfinement(bodies, summaries)
 	return summaries
 }
 
@@ -74,7 +84,9 @@ func seedPossibleDivergence(bodies map[string]*exitBody, summaries ExitSummaries
 		}
 		old := summaries[name]
 		seedInputDivergence(old.invocations)
-		summaries[name] = ExitSummary{Ordinary: old.Ordinary | Diverges, DeferredPanic: old.DeferredPanic | Diverges, Receiver: old.Receiver, invocations: old.invocations}
+		old.Ordinary |= Diverges
+		old.DeferredPanic |= Diverges
+		summaries[name] = old
 	}
 }
 

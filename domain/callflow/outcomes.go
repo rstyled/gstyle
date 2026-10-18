@@ -24,6 +24,15 @@ const (
 )
 
 type ExitSummary struct {
+	heaps [2]heapEffects
+	// PreservesCallerMemory certifies no writes to caller-owned Go storage.
+	// It does not certify purity, termination, or absence of I/O.
+	PreservesCallerMemory   bool
+	frameConfined           bool
+	captured                [2]captureEffects
+	captureArity            int
+	returned                string
+	arity                   int
 	Ordinary, DeferredPanic Outcomes
 	Receiver                bool
 	invocations             *exitInvocations
@@ -47,8 +56,11 @@ func (summary ExitSummary) outcomes(inherited bool) Outcomes {
 type ExitSummaries map[string]ExitSummary
 
 type callTargets struct {
-	names []string
-	known bool
+	bound    []bindingflow.Callable
+	source   pdg.Ref
+	nilValue bool
+	names    []string
+	known    bool
 }
 
 type CallSites struct {
@@ -100,8 +112,7 @@ func (calls *CallSites) index(query *bindingflow.Query) error {
 		}
 		calls.entries[pdg.Ref(i+1)] = entry.kind
 		calls.resourceInputs[pdg.Ref(i+1)] = entry.inputs
-		names, known := frameTargets(graph, query, pdg.Ref(i+1))
-		calls.targets[pdg.Ref(i+1)] = callTargets{names: names, known: known}
+		calls.targets[pdg.Ref(i+1)] = frameTargets(graph, query, pdg.Ref(i+1))
 	}
 	return nil
 }
@@ -110,19 +121,24 @@ func (calls *CallSites) outcomesWithValues(summaries ExitSummaries, ref pdg.Ref,
 	if calls == nil {
 		return UnknownExit
 	}
-	targets, found := calls.targets[ref]
-	if !found || !targets.known || len(targets.names) == 0 {
+	targets := calls.invocationTargets(ref, context)
+	if targets.nilValue {
+		return Panics
+	}
+	if !targets.known || len(targets.names) == 0 {
 		return UnknownExit
 	}
 	var outcomes Outcomes
 	invocation := exitInvocationContext{ref: ref, inherited: inherited, values: context}
-	for _, name := range targets.names {
-		outcomes |= calls.targetWithValues(name, summaries, invocation)
+	for _, target := range targets.callables() {
+		invocation = calls.targetInvocation(summaries, invocation, target)
+		outcomes |= calls.targetWithValues(target.Name, summaries, invocation)
 	}
 	return outcomes
 }
 
 type exitBody struct {
+	captures   []pdg.Ref
 	graph      *pdg.Graph
 	flow       *pdg.NormalFlow
 	paths      *bindingflow.Query
@@ -167,7 +183,9 @@ func externalExitOutcomes(name string) Outcomes {
 
 // ExitEffects interprets canonical body/registration flow and composes local
 // call outcomes to a monotone fixed point. It does not execute foreign code or
-// resolve closure bodies, callback arguments, heap state or recovered payloads.
+// model general closure environments, heap state or recovered payloads.
+// Admitted Boolean/nil/callable arguments and lexical cells use canonical facts.
+// Closure identities compose only when their canonical body graphs are supplied.
 func ExitEffects(graphs map[string]*pdg.Graph) (ExitSummaries, error) {
 	prepared := make(map[string]Queries, len(graphs))
 	for name, graph := range graphs {

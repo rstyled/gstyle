@@ -2,6 +2,7 @@ package gopatterns
 
 import (
 	"fmt"
+	"github.com/rstyled/gstyle/domain/callflow"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -14,6 +15,9 @@ import (
 )
 
 type irBuilder struct {
+	functionScope                        *types.Scope
+	conditionValues                      map[pdg.Ref]pdg.BooleanFact
+	operationExits                       map[pdg.Ref]callflow.Outcomes
 	typeQualifier                        types.Qualifier
 	sourceFilename                       string
 	attributes                           []pdg.Attributes
@@ -52,6 +56,7 @@ func newIRBuilder(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pd
 	b := &irBuilder{
 		pool: pool, info: pkg.TypesInfo, sizes: pkg.TypesSizes, fset: pkg.Fset, typeQualifier: callableQualifier(pkg, fn),
 		sourceFilename: pkg.Fset.PositionFor(fn.Pos(), false).Filename,
+		functionScope:  pkg.TypesInfo.Scopes[fn.Type],
 		symbols:        map[types.Object]pdg.Ref{}, nodes: map[ast.Node]pdg.Ref{},
 		writeTargets: map[ast.Node]bool{}, logicalPredicates: map[*ast.BinaryExpr]pdg.Ref{}, deferredCalls: map[*ast.CallExpr]pdg.Ref{},
 	}
@@ -138,15 +143,16 @@ func (b *irBuilder) symbol(id *ast.Ident, role pdg.Role) pdg.Ref {
 	if ref, ok := b.symbols[obj]; ok {
 		return ref
 	}
-	if obj.Pkg() != nil && obj.Parent() == obj.Pkg().Scope() {
-		role = pdg.GlobalRole
-	}
+	role = b.bindingRole(obj, role)
 	ref := pdg.Ref(len(b.graph.Symbols) + 1)
 	b.graph.Symbols = append(b.graph.Symbols, pdg.Symbol{
 		ID: b.pool.Text("s" + strconv.Itoa(int(ref))), Scope: b.scope(obj),
 		Name: b.pool.Known(obj.Name()), Type: b.pool.Known(irTypeString(obj.Type())), Role: role, Extensions: b.resolvedType(obj.Type()),
 	})
 	b.symbols[obj] = ref
+	if role == pdg.CaptureRole {
+		b.markCapturedSymbol(ref)
+	}
 	return ref
 }
 
@@ -174,8 +180,7 @@ func (b *irBuilder) sourceLine(node ast.Node) uint32 {
 }
 
 func (b *irBuilder) selectScalarLowering(fn *ast.FuncDecl) {
-	b.scalarOperations = b.selectScalarSource(fn)
-	b.bindingOperations = !b.scalarOperations && b.interfaceBindingSubset(fn)
+	b.selectLocalProfiles(fn)
 	b.generalBindings = !b.scalarOperations && !b.bindingOperations && b.exitOperationSubset(fn.Body)
 	b.runtimeOperations = b.generalBindings || runtimeRelevant(fn, b.info)
 	b.scalarOrderKnown = scalarOrderKnown(fn.Body) && len(b.graph.Function.Outputs) <= 1
@@ -194,9 +199,17 @@ func (b *irBuilder) selectScalarSource(fn *ast.FuncDecl) bool {
 
 // buildGraph is the sole production graph construction path.
 func buildGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.Builder) (pdg.Graph, error) {
+	b, err := prepareGraph(pkg, fn, path, pool)
+	if err != nil {
+		return pdg.Graph{}, err
+	}
+	return b.finishGraph(fn)
+}
+
+func prepareGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.Builder) (*irBuilder, error) {
 	file := pkg.Fset.File(fn.Pos())
 	if file == nil || uint64(file.Size()) > uint64(^uint32(0)) {
-		return pdg.Graph{}, fmt.Errorf("PDG source exceeds 32-bit offset range")
+		return nil, fmt.Errorf("PDG source exceeds 32-bit offset range")
 	}
 	b := &builder{info: pkg.TypesInfo, fset: pkg.Fset, binds: map[types.Object]int{}, ir: newIRBuilder(pkg, fn, path, pool)}
 	b.ir.interfaces(fn)
@@ -212,20 +225,25 @@ func buildGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.
 	b.ir.interfaceValueFacts()
 	b.ir.runtimeValueFacts(fn)
 	b.ir.memorySourceFacts(fn)
+	b.ir.singleCellFacts(fn)
 	b.ir.representationFacts(fn)
 	b.ir.deferredSourceFacts(fn.Body)
 	b.ir.operationEffectFacts(fn.Body)
 	b.ir.evaluationRegionFacts(fn.Body)
 	b.ir.returnValues(fn.Body)
 	b.ir.references()
-	if err := b.ir.dependencies(fn.Body); err != nil {
+	return b.ir, nil
+}
+
+func (b *irBuilder) finishGraph(fn *ast.FuncDecl) (pdg.Graph, error) {
+	if err := b.dependencies(fn.Body); err != nil {
 		return pdg.Graph{}, err
 	}
 
-	b.ir.canonicalValueFacts(fn)
-	b.ir.capabilities()
-	if err := b.ir.pack(); err != nil {
+	b.canonicalValueFacts(fn)
+	b.capabilities()
+	if err := b.pack(); err != nil {
 		return pdg.Graph{}, err
 	}
-	return b.ir.graph, nil
+	return b.graph, nil
 }
