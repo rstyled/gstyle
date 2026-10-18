@@ -44,3 +44,17 @@ func (q *Query) allocationFact(location pdg.Ref, extension pdg.Extension, nodes 
 	q.allocations[location] = owner
 	return nil
 }
+
+// IsAllocation reports a compiler-recorded allocation owner. It does not prove
+// that a site executes only once or that aliases cannot escape.
+func (q *Query) IsAllocation(ref pdg.Ref) bool {
+	if q == nil || ref == 0 {
+		return false
+	}
+	for _, owner := range q.allocations {
+		if owner == ref {
+			return true
+		}
+	}
+	return false
+}

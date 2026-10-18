@@ -42,6 +42,7 @@ func (b *irBuilder) memoryExpression(node ast.Node) {
 	attrs := &b.attributes[b.graph.Nodes[ref-1].Attributes-1]
 	attrs.Extensions = append(attrs.Extensions, b.memoryType(b.info.TypeOf(expr))...)
 	b.dependencySourceFacts(expr, attrs)
+	b.basicSourceFact(expr, attrs)
 	if b.writeTargets[expr] {
 		b.memoryWriteOperator(expr, attrs)
 	}

@@ -20,7 +20,8 @@ func (r *semanticResults) candidates(kind CandidateKind) []Candidate {
 }
 
 func nativeSemanticResults(facts []*MiningFacts) *semanticResults {
-	var findings []Candidate
+	flows, err := QueryTaintFlows(facts)
+	findings := TaintFlowCandidates(flows, facts)
 	for _, original := range facts {
 		f := semanticFact(original)
 		if f == nil || f.Pdg == nil {
@@ -28,13 +29,12 @@ func nativeSemanticResults(facts []*MiningFacts) *semanticResults {
 		}
 		findings = append(findings, semanticFunctionCandidates(f)...)
 	}
-	return &semanticResults{findings: findings, coverage: semanticCoverage(facts)}
+	return &semanticResults{findings: findings, coverage: taintQueryCoverage(facts, err)}
 }
 
 func semanticFunctionCandidates(f *MiningFacts) []Candidate {
 	facts := []*MiningFacts{f}
 	return slices.Concat(
-		TaintFlowCandidates(taintFlowsForFunction(f), facts),
 		BarrierSliceCandidates(barrierSlicesForFunc(f), facts),
 		ThinSliceCandidates(thinSlicesForFunc(f), facts),
 		ChopCandidates(chopsForFunc(f), facts),
@@ -46,4 +46,21 @@ func reportSemanticCoverage(facts []*MiningFacts, options Options) []AnalysisCov
 		return options.semantic.coverage
 	}
 	return semanticCoverage(facts)
+}
+
+func taintQueryCoverage(facts []*MiningFacts, err error) []AnalysisCoverage {
+	coverage := semanticCoverage(facts)
+	if err == nil {
+		return coverage
+	}
+	for i := range coverage {
+		row := &coverage[i]
+		if row.Kind != TaintFlowKind {
+			continue
+		}
+		row.Unknown += row.Complete + row.Partial
+		row.Complete, row.Partial = 0, 0
+		row.Reason = err.Error()
+	}
+	return coverage
 }

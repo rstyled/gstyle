@@ -69,7 +69,7 @@ remain separate work. Source-oriented findings can continue to use typed syntax.
 | Contract | Implementation | Evidence and limits |
 | --- | --- | --- |
 | Sequential control, transfers, shared decisions, cyclic definitions and memory | Go adapter operation CFG; `domain/pdg`; `domain/pdgmemory` | [Control and lowering](pdg-control.md); `ir_postdom_oracle_test.go`, `ir_reaching_oracle_test.go`, `ir_shared_flow_test.go`, `ir_general_flow_test.go`, range/type-switch regressions |
-| Matching, slicing and taint | `domain/patterns` canonical projections | `matching_projection_test.go`, semantic-view tests; inspect partial analysis coverage |
+| Matching, slicing and taint | `domain/patterns` canonical projections; [taint summaries](pdg-taint-summaries.md) use shared binding queries and symbolic call/field effects | `matching_projection_test.go`, semantic-view tests; inspect partial analysis coverage |
 | Nil-error values, predicates, storage and handling | Go adapter `nilerr_graph.go`; `domain/bindingflow` | `nilerr_*graph_test.go`; source/type boundaries remain in the adapter; heap/call precision remains incomplete |
 | Error use and output completion | `domain/errorflow`; `domain/outputflow` | Copy/path oracles, `error_use_test.go`, `output_arguments_test.go`; may-use is not handling on every path |
 | Acquisition, binding ownership, handoff and release | `domain/resourceflow`; canonical factory and helper summaries | [Acquisition](pdg-acquisition-state.md), [bindings](pdg-owned-bindings.md), [handoff](pdg-handoff-paths.md); `obligation_*test.go` and patterncheck regressions |
