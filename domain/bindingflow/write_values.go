@@ -43,17 +43,20 @@ func (q *Query) InputValue(owner pdg.Ref, position pdg.Position, context Evaluat
 		return Value{}
 	}
 	if q.tupleProducer(owner) != 0 {
-		return q.tupleInputValue(owner, position)
+		return q.tupleInputValue(owner, position, context)
 	}
 	return q.writeValue(owner, Write{Source: q.Operand(owner, position), Position: position}, context)
 }
 
 func (q *Query) writeValue(owner pdg.Ref, write Write, context Evaluation) Value {
 	if write.Zero {
-		return q.ZeroValue(write.Symbol)
+		return q.InitialValue(write.Symbol, context.Facts)
 	}
 	if write.Source == 0 {
 		return Value{}
+	}
+	if q.tupleProducer(owner) != 0 {
+		return q.tupleInputValue(owner, write.Position, context)
 	}
 	switch q.inputRepresentation(owner, write.Position) {
 	case UnchangedRepresentation:
@@ -97,4 +100,16 @@ func nilableKind(kind string) bool {
 	default:
 		return false
 	}
+}
+
+// InitialValue adds the compiler-owned Boolean zero to the existing nilable
+// zero contract. Missing type evidence does not establish another zero shape.
+func (q *Query) InitialValue(symbol pdg.Ref, facts Facts) Value {
+	if q == nil || symbol == 0 || int(symbol) > len(q.graph.Symbols) {
+		return Value{}
+	}
+	if facts.BooleanSymbols[symbol] {
+		return Value{Scalar: constant.MakeBool(false)}
+	}
+	return q.ZeroValue(symbol)
 }

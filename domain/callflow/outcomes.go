@@ -24,6 +24,8 @@ const (
 )
 
 type ExitSummary struct {
+	returned                string
+	arity                   int
 	Ordinary, DeferredPanic Outcomes
 	Receiver                bool
 	invocations             *exitInvocations

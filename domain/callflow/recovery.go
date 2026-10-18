@@ -7,7 +7,7 @@ func (evaluation *exitEvaluation) recovery(point exitPoint, ref pdg.Ref) Outcome
 	next := exitPoint{
 		block: point.block, offset: point.offset, stack: point.stack,
 		values: valuePoint.values, recovery: ref,
-		recovered: point.recovered || point.pending, pending: false,
+		recovered: point.recovered || point.pending, pending: false, deferred: point.deferred,
 	}
 	return evaluation.visit(evaluation.transferValues(next, ref)) | evaluation.postRecoveryEffects(next, ref)
 }
@@ -26,7 +26,7 @@ func (evaluation *exitEvaluation) postRecoveryEffects(point exitPoint, ref pdg.R
 		if evaluation.body.graph.Nodes[candidate-1].Category == pdg.Call || !evaluation.body.operations.allowsExecution(candidate, context) {
 			continue
 		}
-		result |= finishExit(point, evaluation.body.operations.Outcomes(candidate)&^Returns)
+		result |= evaluation.finish(point, evaluation.body.operations.Outcomes(candidate)&^Returns)
 	}
 	return result
 }

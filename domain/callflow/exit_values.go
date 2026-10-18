@@ -22,7 +22,10 @@ const (
 	trueValue
 )
 
-type exitValues struct{ bindings, nodes map[pdg.Ref]exitValue }
+type exitValues struct {
+	bindings, nodes map[pdg.Ref]exitValue
+	tuples          map[pdg.Ref]string
+}
 
 type valueEntry struct {
 	ref   pdg.Ref
@@ -31,14 +34,14 @@ type valueEntry struct {
 
 func (evaluation *exitEvaluation) valueContext(point exitPoint) bindingflow.Evaluation {
 	values := evaluation.values[point.values]
-	return bindingflow.Evaluation{Bindings: concreteValues(values.bindings), Nodes: concreteValues(values.nodes), Facts: evaluation.body.facts}
+	return bindingflow.Evaluation{Bindings: concreteValues(values.bindings), Nodes: concreteValues(values.nodes), Facts: evaluation.body.facts, Results: concreteResults(values.tuples)}
 }
 
 func (evaluation *exitEvaluation) internValues(values exitValues) string {
-	if len(values.bindings)+len(values.nodes) == 0 {
+	if len(values.bindings)+len(values.nodes)+len(values.tuples) == 0 {
 		return ""
 	}
-	key := fmt.Sprint(valueEntries(values.bindings), "/", valueEntries(values.nodes))
+	key := fmt.Sprint(valueEntries(values.bindings), "/", valueEntries(values.nodes), "/", tupleEntries(values.tuples))
 	evaluation.values[key] = values
 	return key
 }
@@ -59,7 +62,7 @@ func (evaluation *exitEvaluation) recoveryValue(point exitPoint, ref pdg.Ref) ex
 	} else {
 		nodes[ref] = value
 	}
-	next := exitValues{bindings: values.bindings, nodes: nodes}
+	next := exitValues{bindings: values.bindings, nodes: nodes, tuples: values.tuples}
 	point.values = evaluation.internValues(next)
 	return point
 }
@@ -70,7 +73,7 @@ func (evaluation *exitEvaluation) transferValues(point exitPoint, ref pdg.Ref) e
 		return point
 	}
 	values := evaluation.values[point.values]
-	next := exitValues{bindings: nextValueBindings(values.bindings, writes), nodes: values.nodes}
+	next := exitValues{bindings: nextValueBindings(values.bindings, writes), nodes: values.nodes, tuples: values.tuples}
 	point.values = evaluation.internValues(next)
 	return point
 }

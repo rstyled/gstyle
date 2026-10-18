@@ -41,8 +41,10 @@ func solveExitPass(bodies map[string]*exitBody, summaries ExitSummaries, pass ex
 		count := invocationCount(summaries)
 		for name, body := range bodies {
 			old := summaries[name]
+			ordinary := evaluateBodyResult(body, summaries, false, "")
 			next := ExitSummary{
-				Ordinary:      pass.update(old.Ordinary, evaluateBody(body, summaries, false)),
+				returned: pass.returned(old.returned, ordinary.returned), arity: old.arity,
+				Ordinary:      pass.update(old.Ordinary, ordinary.outcomes),
 				DeferredPanic: pass.update(old.DeferredPanic, evaluateBody(body, summaries, true)),
 				Receiver:      old.Receiver,
 				invocations:   old.invocations,
@@ -62,7 +64,7 @@ func seedExitSummaries(bodies map[string]*exitBody) ExitSummaries {
 		if body != nil && body.flow != nil {
 			seed = 0
 		}
-		summaries[name] = ExitSummary{Ordinary: seed, DeferredPanic: seed, Receiver: bodyHasReceiver(body), invocations: newExitInvocations(body)}
+		summaries[name] = ExitSummary{Ordinary: seed, DeferredPanic: seed, Receiver: bodyHasReceiver(body), arity: bodyResultCount(body), invocations: newExitInvocations(body)}
 	}
 	return summaries
 }
@@ -74,7 +76,9 @@ func seedPossibleDivergence(bodies map[string]*exitBody, summaries ExitSummaries
 		}
 		old := summaries[name]
 		seedInputDivergence(old.invocations)
-		summaries[name] = ExitSummary{Ordinary: old.Ordinary | Diverges, DeferredPanic: old.DeferredPanic | Diverges, Receiver: old.Receiver, invocations: old.invocations}
+		old.Ordinary |= Diverges
+		old.DeferredPanic |= Diverges
+		summaries[name] = old
 	}
 }
 

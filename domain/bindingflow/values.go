@@ -68,6 +68,7 @@ func (facts Facts) NilConstant(ref pdg.Ref) bool {
 }
 
 type Evaluation struct {
+	Results  map[pdg.Ref][]Value
 	Bindings map[pdg.Ref]Value
 	Truths   map[pdg.Ref]bool
 	Nodes    map[pdg.Ref]Value

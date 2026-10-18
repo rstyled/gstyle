@@ -11,7 +11,10 @@ type exitInvocationContext struct {
 	values    bindingflow.Evaluation
 }
 
-type exitInvocation struct{ Ordinary, DeferredPanic Outcomes }
+type exitInvocation struct {
+	Ordinary, DeferredPanic Outcomes
+	returned                string
+}
 
 type exitInvocations struct {
 	inputs   []pdg.Parameter
@@ -125,8 +128,10 @@ func solveInputPass(body *exitBody, summaries ExitSummaries, invocations *exitIn
 	}
 	changed := false
 	for key, old := range invocations.states {
+		ordinary := evaluateBodyResult(body, summaries, false, key)
 		next := exitInvocation{
-			Ordinary:      pass.update(old.Ordinary, evaluateBodyInputs(body, summaries, false, key)),
+			returned:      pass.returned(old.returned, ordinary.returned),
+			Ordinary:      pass.update(old.Ordinary, ordinary.outcomes),
 			DeferredPanic: pass.update(old.DeferredPanic, evaluateBodyInputs(body, summaries, true, key)),
 		}
 		if old == next {
@@ -144,7 +149,9 @@ func seedInputDivergence(invocations *exitInvocations) {
 	}
 	invocations.pass = infinitePass
 	for key, state := range invocations.states {
-		invocations.states[key] = exitInvocation{Ordinary: state.Ordinary | Diverges, DeferredPanic: state.DeferredPanic | Diverges}
+		state.Ordinary |= Diverges
+		state.DeferredPanic |= Diverges
+		invocations.states[key] = state
 	}
 }
 

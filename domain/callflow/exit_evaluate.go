@@ -9,9 +9,11 @@ type exitPoint struct {
 	offset             int
 	stack              exitStack
 	pending, recovered bool
+	deferred           bool
 }
 
 type exitEvaluation struct {
+	returned     string
 	callOutcomes map[pdg.Ref]Outcomes
 	values       map[string]exitValues
 	body         *exitBody
@@ -51,12 +53,13 @@ func (evaluation *exitEvaluation) step(point exitPoint) Outcomes {
 func (evaluation *exitEvaluation) operation(point exitPoint, ref pdg.Ref) Outcomes {
 	body := evaluation.body
 	if site, found := body.machine.Site(ref); found {
+		point.deferred = true
 		point.stack = point.stack.pushValues(body.calls, evaluation.summaries, site.Invocation, evaluation.valueContext(point))
 		return evaluation.visit(point)
 	}
 	node := body.graph.Nodes[ref-1]
 	if node.Category == pdg.Return {
-		return finishExit(point, Returns)
+		return evaluation.returnAt(point, ref)
 	}
 	if node.Category == pdg.Call {
 		return evaluation.call(point, ref)
@@ -77,11 +80,12 @@ func (evaluation *exitEvaluation) invocation(point exitPoint, ref pdg.Ref) Outco
 	if evaluation.callOutcomes != nil {
 		evaluation.callOutcomes[ref] |= outcomes
 	}
+	point = evaluation.callResult(point, ref)
 	return evaluation.outcomes(point, ref, outcomes)
 }
 
 func (evaluation *exitEvaluation) outcomes(point exitPoint, ref pdg.Ref, outcomes Outcomes) Outcomes {
-	result := finishExit(point, outcomes&^Returns)
+	result := evaluation.finish(point, outcomes&^Returns)
 	// Unknown execution can return. Observation must visit that continuation
 	// so an opaque prefix cannot hide states at a later call-site join. The
 	// summary solver keeps its existing terminal UnknownExit abstraction.
@@ -102,7 +106,7 @@ func (evaluation *exitEvaluation) priorOutcomes(point exitPoint, ref pdg.Ref) Ou
 		if !evaluation.mayFollowRecovery(point, candidate) || !evaluation.body.operations.allowsExecution(candidate, context) {
 			continue
 		}
-		result |= finishExit(point, evaluation.body.operations.Outcomes(candidate)&^Returns)
+		result |= evaluation.finish(point, evaluation.body.operations.Outcomes(candidate)&^Returns)
 	}
 	return result
 }
@@ -112,11 +116,21 @@ func evaluateBody(body *exitBody, summaries ExitSummaries, inherited bool) Outco
 }
 
 func evaluateBodyInputs(body *exitBody, summaries ExitSummaries, inherited bool, inputs string) Outcomes {
+	return evaluateBodyResult(body, summaries, inherited, inputs).outcomes
+}
+
+type evaluatedBody struct {
+	outcomes Outcomes
+	returned string
+}
+
+func evaluateBodyResult(body *exitBody, summaries ExitSummaries, inherited bool, inputs string) evaluatedBody {
 	if body == nil || body.flow == nil {
-		return UnknownExit
+		return evaluatedBody{outcomes: UnknownExit}
 	}
 	evaluation := newExitEvaluation(body, summaries)
-	return evaluation.run(inherited, inputs)
+	outcomes := evaluation.run(inherited, inputs)
+	return evaluatedBody{outcomes: outcomes, returned: evaluation.returned}
 }
 
 func newExitEvaluation(body *exitBody, summaries ExitSummaries) *exitEvaluation {
@@ -125,7 +139,7 @@ func newExitEvaluation(body *exitBody, summaries ExitSummaries) *exitEvaluation 
 
 func (evaluation *exitEvaluation) run(inherited bool, inputs string) Outcomes {
 	point := exitPoint{block: evaluation.body.flow.Entry, stack: identityExitStack(), pending: inherited}
-	point.values = evaluation.internValues(exitValues{bindings: inputBindings(evaluation.body, inputs)})
+	point.values = evaluation.internValues(exitValues{bindings: evaluation.initialBindings(inputs)})
 	return evaluation.visit(point)
 }
 
