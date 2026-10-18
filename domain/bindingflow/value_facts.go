@@ -15,7 +15,11 @@ func (q *Query) ValueFacts() (Facts, error) {
 	if err != nil {
 		return Facts{}, err
 	}
-	facts := Facts{Nodes: map[pdg.Ref]Fact{}, BooleanSymbols: booleans}
+	captures, err := q.capturedSymbols()
+	if err != nil {
+		return Facts{}, err
+	}
+	facts := Facts{Nodes: map[pdg.Ref]Fact{}, BooleanSymbols: booleans, CapturedSymbols: captures}
 	for i, node := range q.graph.Nodes {
 		fact, found, err := q.nodeValueFact(q.graph.NodeAttributes(node))
 		if err != nil {

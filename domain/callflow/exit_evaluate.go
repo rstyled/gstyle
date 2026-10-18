@@ -140,7 +140,8 @@ func newExitEvaluation(body *exitBody, summaries ExitSummaries) *exitEvaluation 
 
 func (evaluation *exitEvaluation) run(inherited bool, inputs string) Outcomes {
 	point := exitPoint{block: evaluation.body.flow.Entry, stack: identityExitStack(), pending: inherited}
-	point.values = evaluation.internValues(exitValues{bindings: evaluation.initialBindings(inputs)})
+	bindings := evaluation.initialBindings(inputs)
+	point.values = evaluation.internValues(exitValues{bindings: bindings, cells: evaluation.initialCellValues(bindings)})
 	return evaluation.visit(point)
 }
 

@@ -17,10 +17,13 @@ type exitInvocation struct {
 }
 
 type exitInvocations struct {
-	inputs   []pdg.Parameter
-	states   map[string]exitInvocation
-	pass     exitPass
-	building bool
+	graph        *pdg.Graph
+	captures     []pdg.Ref
+	environments map[*pdg.Graph]map[pdg.Ref]pdg.Ref
+	inputs       []pdg.Parameter
+	states       map[string]exitInvocation
+	pass         exitPass
+	building     bool
 }
 
 func newExitInvocations(body *exitBody) *exitInvocations {
@@ -29,10 +32,10 @@ func newExitInvocations(body *exitBody) *exitInvocations {
 	}
 	inputs := body.graph.Function.Inputs
 	_, _, known := bindingflow.CallSignature(inputs)
-	if len(inputs) == 0 || !known {
+	if len(inputs)+len(body.captures) == 0 || !known {
 		return nil
 	}
-	return &exitInvocations{inputs: inputs, states: map[string]exitInvocation{}, building: true}
+	return &exitInvocations{graph: body.graph, captures: body.captures, environments: map[*pdg.Graph]map[pdg.Ref]pdg.Ref{}, inputs: inputs, states: map[string]exitInvocation{}, building: true}
 }
 
 func (invocations *exitInvocations) lookup(key string) (exitInvocation, bool) {
@@ -79,7 +82,7 @@ func (calls *CallSites) inputKey(invocations *exitInvocations, ref pdg.Ref, cont
 	if !known {
 		return ""
 	}
-	return calls.knownInputKey(invocations.inputs, values)
+	return calls.completeInputKey(invocations, values, context)
 }
 
 func (calls *CallSites) knownInputKey(inputs []pdg.Parameter, arguments []bindingflow.Value) string {
@@ -101,15 +104,24 @@ func (calls *CallSites) knownInputKey(inputs []pdg.Parameter, arguments []bindin
 
 func inputBindings(body *exitBody, key string) map[pdg.Ref]exitValue {
 	bindings := map[pdg.Ref]exitValue{}
-	if len(key) != len(body.graph.Function.Inputs) {
+	symbols := invocationSymbols(body)
+	if len(key) != len(symbols) {
 		return bindings
 	}
-	for i, input := range body.graph.Function.Inputs {
-		if key[i] != 0 && input.Symbol != 0 {
-			bindings[input.Symbol] = exitValue(key[i])
+	for i, symbol := range symbols {
+		if key[i] != 0 && symbol != 0 {
+			bindings[symbol] = exitValue(key[i])
 		}
 	}
 	return bindings
+}
+
+func invocationSymbols(body *exitBody) []pdg.Ref {
+	symbols := make([]pdg.Ref, 0, len(body.graph.Function.Inputs)+len(body.captures))
+	for _, input := range body.graph.Function.Inputs {
+		symbols = append(symbols, input.Symbol)
+	}
+	return append(symbols, body.captures...)
 }
 
 func invocationCount(summaries ExitSummaries) int {

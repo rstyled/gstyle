@@ -40,7 +40,7 @@ The cross-pool case checks representation independence. Memory-model evidence
 checks addressable captured storage and unknown external pointer referents.
 
 This establishes lexical cell identity and conservative memory dependencies.
-It does not bind runtime environments, propagate captured values or writes
-between function invocations, model closure instances, or execute deferred state
-updates. These remain required work. The tests are finite evidence, not a new
+[Constant cell-family histories](pdg-captured-invariants.md) can feed ordinary
+invocation inputs. Exact runtime environments, cross-invocation captured writes,
+closure instances and deferred state updates remain required work. The tests are finite evidence, not a new
 formal proof of closure semantics.

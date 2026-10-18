@@ -25,6 +25,8 @@ func (stack exitStack) push(calls *CallSites, summaries ExitSummaries, invocatio
 }
 
 func (stack exitStack) pushValues(calls *CallSites, summaries ExitSummaries, invocationRef pdg.Ref, context bindingflow.Evaluation) exitStack {
+	// Deferred captures are live cells at unwind, not saved registration values.
+	context.Captures = nil
 	var next exitStack
 	for i, mode := range pendingExitModes() {
 		outcomes := calls.outcomesWithValues(summaries, invocationRef, mode == Panics || mode == PanicDuringGoexit, context)

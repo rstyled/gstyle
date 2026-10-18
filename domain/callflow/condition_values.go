@@ -48,6 +48,6 @@ func (evaluation *exitEvaluation) assumeBinding(point exitPoint, symbol pdg.Ref,
 	bindings := make(map[pdg.Ref]exitValue, len(values.bindings)+1)
 	maps.Copy(bindings, values.bindings)
 	bindings[symbol] = bound
-	point.values = evaluation.internValues(exitValues{bindings: bindings, nodes: values.nodes, tuples: values.tuples})
+	point.values = evaluation.internValues(exitValues{bindings: bindings, nodes: values.nodes, tuples: values.tuples, cells: values.cells})
 	return point
 }

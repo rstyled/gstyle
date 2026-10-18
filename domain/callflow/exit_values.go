@@ -24,6 +24,7 @@ const (
 
 type exitValues struct {
 	bindings, nodes map[pdg.Ref]exitValue
+	cells           map[pdg.Ref]exitValue
 	tuples          map[pdg.Ref]string
 }
 
@@ -34,14 +35,14 @@ type valueEntry struct {
 
 func (evaluation *exitEvaluation) valueContext(point exitPoint) bindingflow.Evaluation {
 	values := evaluation.values[point.values]
-	return bindingflow.Evaluation{Bindings: concreteValues(values.bindings), Nodes: concreteValues(values.nodes), Facts: evaluation.body.facts, Results: concreteResults(values.tuples)}
+	return bindingflow.Evaluation{Captures: concreteValues(values.cells), Bindings: concreteValues(values.bindings), Nodes: concreteValues(values.nodes), Facts: evaluation.body.facts, Results: concreteResults(values.tuples)}
 }
 
 func (evaluation *exitEvaluation) internValues(values exitValues) string {
-	if len(values.bindings)+len(values.nodes)+len(values.tuples) == 0 {
+	if len(values.bindings)+len(values.nodes)+len(values.tuples)+len(values.cells) == 0 {
 		return ""
 	}
-	key := fmt.Sprint(valueEntries(values.bindings), "/", valueEntries(values.nodes), "/", tupleEntries(values.tuples))
+	key := fmt.Sprint(valueEntries(values.bindings), "/", valueEntries(values.nodes), "/", tupleEntries(values.tuples), "/", valueEntries(values.cells))
 	evaluation.values[key] = values
 	return key
 }
@@ -62,18 +63,19 @@ func (evaluation *exitEvaluation) recoveryValue(point exitPoint, ref pdg.Ref) ex
 	} else {
 		nodes[ref] = value
 	}
-	next := exitValues{bindings: values.bindings, nodes: nodes, tuples: values.tuples}
+	next := exitValues{bindings: values.bindings, nodes: nodes, tuples: values.tuples, cells: values.cells}
 	point.values = evaluation.internValues(next)
 	return point
 }
 
 func (evaluation *exitEvaluation) transferValues(point exitPoint, ref pdg.Ref) exitPoint {
+	point = evaluation.captureValues(point, ref)
 	writes := evaluation.body.paths.WriteValues(ref, evaluation.valueContext(point))
 	if len(writes) == 0 {
 		return point
 	}
 	values := evaluation.values[point.values]
-	next := exitValues{bindings: nextValueBindings(values.bindings, writes), nodes: values.nodes, tuples: values.tuples}
+	next := exitValues{bindings: nextValueBindings(values.bindings, writes), nodes: values.nodes, tuples: values.tuples, cells: evaluation.nextCellValues(values.cells, writes)}
 	point.values = evaluation.internValues(next)
 	return point
 }

@@ -15,7 +15,7 @@ func exitBodyWithQueries(queries Queries) *exitBody {
 	}
 	graph := queries.Calls.graph
 	machine := deferflow.NewMachineWithIndex[struct{}](queries.Deferred)
-	return &exitBody{graph: graph, flow: pdg.ExitBodyFlow(graph), paths: queries.Bindings, calls: queries.Calls, machine: machine, facts: queries.Facts, operations: queries.Operations}
+	return &exitBody{captures: captureInputs(graph), graph: graph, flow: pdg.ExitBodyFlow(graph), paths: queries.Bindings, calls: queries.Calls, machine: machine, facts: queries.Facts, operations: queries.Operations}
 }
 
 func decodeOperationEffect(value string) (operationEffect, error) {

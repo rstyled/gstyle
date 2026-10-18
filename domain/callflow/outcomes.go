@@ -125,6 +125,7 @@ func (calls *CallSites) outcomesWithValues(summaries ExitSummaries, ref pdg.Ref,
 }
 
 type exitBody struct {
+	captures   []pdg.Ref
 	graph      *pdg.Graph
 	flow       *pdg.NormalFlow
 	paths      *bindingflow.Query

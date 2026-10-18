@@ -28,7 +28,7 @@ func TestClosureBodiesComposeExitEffects(t *testing.T) {
 		{"Boolean result", `if func()bool{return false}(){panic("bad")}`, callflow.Returns},
 		{"tuple result", `a,b:=func()(bool,bool){return false,true}();if a||!b{panic("bad")}`, callflow.Returns},
 		{"construction only", `stop:=func(){panic("not called")};_=stop`, callflow.Returns},
-		{"captured value remains unknown", `flag:=true;func(){if flag{panic("maybe")}}()`, callflow.Returns | callflow.Panics},
+		{"constant captured input", `flag:=true;func(){if flag{panic("maybe")}}()`, callflow.Panics},
 		{"captured write invalidates", `flag:=true;func(){flag=false}();if flag{panic("maybe")}`, callflow.Returns | callflow.Panics},
 		{"target join", `stop:=func(){};if choose{stop=func(){panic("maybe")}};stop()`, callflow.Returns | callflow.Panics},
 		{"recursive stored closure", `var again func();again=func(){again()};again()`, callflow.UnknownExit},

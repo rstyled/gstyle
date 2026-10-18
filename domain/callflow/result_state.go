@@ -49,7 +49,7 @@ func (evaluation *exitEvaluation) callResult(point exitPoint, ref pdg.Ref) exitP
 	delete(nodes, ref)
 	delete(tuples, ref)
 	storeResult(nodes, tuples, ref, returned)
-	point.values = evaluation.internValues(exitValues{bindings: values.bindings, nodes: nodes, tuples: tuples})
+	point.values = evaluation.internValues(exitValues{bindings: values.bindings, nodes: nodes, tuples: tuples, cells: values.cells})
 	return point
 }
 
