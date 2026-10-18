@@ -35,6 +35,7 @@ type point struct {
 }
 
 type Query struct {
+	prepared   callflow.Queries
 	graph      *pdg.Graph
 	flow       *pdg.NormalFlow
 	paths      *bindingflow.Query
@@ -63,7 +64,7 @@ func newQuery(graph *pdg.Graph, flow *pdg.NormalFlow) (*Query, error) {
 		return nil, err
 	}
 	machine := deferflow.NewMachineWithIndex[bool](queries.Deferred)
-	query := &Query{graph: graph, flow: flow, paths: queries.Bindings, machine: machine, calls: queries.Calls, operations: queries.Operations, sites: make([]point, len(graph.Nodes)), facts: queries.Facts, methods: map[pdg.Ref]string{}}
+	query := &Query{prepared: queries, graph: graph, flow: flow, paths: queries.Bindings, machine: machine, calls: queries.Calls, operations: queries.Operations, sites: make([]point, len(graph.Nodes)), facts: queries.Facts, methods: map[pdg.Ref]string{}}
 	if err := query.index(); err != nil {
 		return nil, err
 	}
@@ -172,3 +173,6 @@ func (q *Query) indexSites() {
 		}
 	}
 }
+
+// CallQueries shares immutable indexes. Proof states remain local to each query.
+func (q *Query) CallQueries() callflow.Queries { return q.prepared }

@@ -14,22 +14,13 @@ const cyclicDefinitionDescription = "Least-fixed-point reaching definitions for 
 // iterating would grow the domain and make a loop invent unbounded new values.
 // The finite definition domain and monotone kill/gen transfer ensure convergence.
 func (a *reachingAnalysis) fixedPoint(flow *cfg.CFG, dom *executionDominators) {
-	queue := []int{0}
-	pending := make([]bool, len(flow.Blocks))
-	pending[0] = true
-	for len(queue) != 0 {
-		index := queue[len(queue)-1]
-		queue = queue[:len(queue)-1]
-		pending[index] = false
-		if !a.update(flow.Blocks[index]) {
-			continue
-		}
-		for _, next := range flow.Blocks[index].Succs {
-			if pending[next.Index] {
-				continue
+	changed := true
+	for changed {
+		changed = false
+		for _, index := range dom.order {
+			if a.update(flow.Blocks[index]) {
+				changed = true
 			}
-			pending[next.Index] = true
-			queue = append(queue, int(next.Index))
 		}
 	}
 	// Publish each source read once, after every incoming definition set is stable.

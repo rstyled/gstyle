@@ -105,6 +105,9 @@ func (q *Query) factory(helpers, isolated map[string]bool) factoryDescriptor {
 		return factoryDescriptor{}
 	}
 	analysis := factoryAnalysis{isolated: isolated, query: q, helpers: helpers, values: map[factoryValueKey]bindingflow.Origins{}, inputs: make([]factoryState, len(q.flow.Blocks))}
+	if !analysis.possibleReturns() {
+		return factoryDescriptor{}
+	}
 	analysis.solve()
 	return analysis.describe()
 }

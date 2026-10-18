@@ -9,16 +9,13 @@ import (
 	"github.com/rstyled/gstyle/domain/pdg"
 )
 
-func newExitBody(graph *pdg.Graph) (*exitBody, error) {
-	if graph == nil {
-		return nil, nil
+func exitBodyWithQueries(queries Queries) *exitBody {
+	if queries.Calls == nil {
+		return nil
 	}
-	queries, err := NewQueries(graph)
-	if err != nil {
-		return nil, err
-	}
+	graph := queries.Calls.graph
 	machine := deferflow.NewMachineWithIndex[struct{}](queries.Deferred)
-	return &exitBody{graph: graph, flow: pdg.ExitBodyFlow(graph), paths: queries.Bindings, calls: queries.Calls, machine: machine, facts: queries.Facts, operations: queries.Operations}, nil
+	return &exitBody{graph: graph, flow: pdg.ExitBodyFlow(graph), paths: queries.Bindings, calls: queries.Calls, machine: machine, facts: queries.Facts, operations: queries.Operations}
 }
 
 func decodeOperationEffect(value string) (operationEffect, error) {

@@ -16,10 +16,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/rstyled/gstyle/domain/bindingflow"
 	"github.com/rstyled/gstyle/domain/callflow"
 	"github.com/rstyled/gstyle/domain/interfacenil"
 	"github.com/rstyled/gstyle/domain/patterns"
 	"github.com/rstyled/gstyle/domain/pdg"
+	"github.com/rstyled/gstyle/domain/resourceflow"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -113,12 +115,13 @@ type Extraction struct {
 
 // extractCtx carries per-package maps for entity pairing.
 type extractCtx struct {
-	exits        callflow.ExitSummaries
-	fileSources  map[types.Object]bool
-	fileFailures map[types.Object]bool
-	helpers      map[types.Object]bool
-	structLocs   map[string]structLoc
-	mutated      map[string]bool
+	resourceQueries map[*pdg.Graph]*resourceflow.Query
+	exits           callflow.ExitSummaries
+	fileSources     map[types.Object]bool
+	fileFailures    map[types.Object]bool
+	helpers         map[types.Object]bool
+	structLocs      map[string]structLoc
+	mutated         map[string]bool
 }
 
 // newExtractCtx builds the struct location and mutation maps for pairing
@@ -466,6 +469,10 @@ func extractFunc(pkg *packages.Package, source functionGraph, ctx extractCtx) (F
 	if err != nil {
 		return FuncPdg{}, err
 	}
+	var bindings *bindingflow.Query
+	if query := ctx.resourceQueries[graph]; query != nil {
+		bindings = query.CallQueries().Bindings
+	}
 	return FuncPdg{
 		Name:            name,
 		Path:            path,
@@ -501,7 +508,7 @@ func extractFunc(pkg *packages.Package, source functionGraph, ctx extractCtx) (F
 		// SpecRules are boolean business-rule expressions (2+ conditions).
 		SpecRules: findSpecificationHits(fn, pkg.Fset, pkg.TypesInfo),
 		// NilErrHits are `if err != nil { return nil }` (gostaticanalysis).
-		NilErrHits: findNilErrGraphHits(fn, pkg.Fset, pkg.TypesInfo, graph),
+		NilErrHits: findNilErrGraphHits(fn, pkg.Fset, pkg.TypesInfo, graph, bindings),
 		// ForceTypeAssertHits are unchecked `x.(T)` (gostaticanalysis).
 		ForceTypeAssertHits: findForceTypeAssertHits(fn, pkg.Fset, pkg.TypesInfo),
 		// TypedNilHits are typed-nil comparisons (gostaticanalysis).

@@ -104,7 +104,7 @@ func fileObligationFacts(pkg *packages.Package, fn *ast.FuncDecl, ctx extractCtx
 }
 
 func resourceObligationFacts(pkg *packages.Package, fn *ast.FuncDecl, ctx extractCtx, graph *pdg.Graph) ([]int, []patterns.ResourceAcquisition, []int, error) {
-	facts, err := newReleaseGraph(graph, pkg.Fset)
+	facts, err := releaseGraphForContext(graph, pkg.Fset, ctx)
 	if err != nil {
 		return nil, nil, nil, err
 	}

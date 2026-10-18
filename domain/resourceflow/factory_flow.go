@@ -118,3 +118,35 @@ func joinFactorySet(target, source map[pdg.Ref]bool) bool {
 	}
 	return changed
 }
+
+// Reject return origins that describeReturn must reject, before computing any
+// ownership state. Origin queries do not depend on that state.
+func (a *factoryAnalysis) possibleReturns() bool {
+	for _, block := range a.query.flow.Blocks {
+		if !block.Reachable {
+			continue
+		}
+		for _, ref := range block.Operations {
+			if a.query.graph.Nodes[ref-1].Category == pdg.Return && !a.possibleReturn(ref) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (a *factoryAnalysis) possibleReturn(ref pdg.Ref) bool {
+	origins := a.origins(ref, 1)
+	if !origins.Known || len(origins.Sources) == 0 {
+		return false
+	}
+	for _, source := range origins.Sources {
+		if a.query.emptySource(source) {
+			continue
+		}
+		if _, known := a.query.sourceRequirement(source, factoryState{}); !known {
+			return false
+		}
+	}
+	return true
+}

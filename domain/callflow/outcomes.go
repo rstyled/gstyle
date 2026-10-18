@@ -169,13 +169,23 @@ func externalExitOutcomes(name string) Outcomes {
 // call outcomes to a monotone fixed point. It does not execute foreign code or
 // resolve closure bodies, callback arguments, heap state or recovered payloads.
 func ExitEffects(graphs map[string]*pdg.Graph) (ExitSummaries, error) {
-	bodies := map[string]*exitBody{}
+	prepared := make(map[string]Queries, len(graphs))
 	for name, graph := range graphs {
-		body, err := newExitBody(graph)
+		queries, err := NewQueries(graph)
 		if err != nil {
 			return nil, fmt.Errorf("exit summary %s: %w", name, err)
 		}
-		if graph != nil && graph.Tables.Text(graph.Function.ID) != name {
+		prepared[name] = queries
+	}
+	return ExitEffectsWithQueries(prepared)
+}
+
+// ExitEffectsWithQueries reuses the immutable indexes prepared by NewQueries.
+func ExitEffectsWithQueries(prepared map[string]Queries) (ExitSummaries, error) {
+	bodies := make(map[string]*exitBody, len(prepared))
+	for name, queries := range prepared {
+		body := exitBodyWithQueries(queries)
+		if body != nil && body.graph.Tables.Text(body.graph.Function.ID) != name {
 			return nil, fmt.Errorf("exit summary identity mismatch: %s", name)
 		}
 		bodies[name] = body

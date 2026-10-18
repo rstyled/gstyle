@@ -62,3 +62,11 @@ func releaseSourceNodes(graph *pdg.Graph) map[outputSpan]pdg.Ref {
 	}
 	return nodes
 }
+
+func releaseGraphForContext(graph *pdg.Graph, fset *token.FileSet, ctx extractCtx) (*releaseGraph, error) {
+	query := ctx.resourceQueries[graph]
+	if query == nil {
+		return newReleaseGraph(graph, fset)
+	}
+	return &releaseGraph{graph: graph, query: query, nodes: releaseSourceNodes(graph), fset: fset}, nil
+}

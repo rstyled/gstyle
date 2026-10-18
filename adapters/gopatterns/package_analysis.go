@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/rstyled/gstyle/domain/pdg"
+	"github.com/rstyled/gstyle/domain/resourceflow"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -68,6 +69,10 @@ func (p *packageAnalysis) summarize() error {
 		return err
 	}
 	p.context = newExtractCtx(p.pkg, p.root, facts)
+	p.context.resourceQueries = make(map[*pdg.Graph]*resourceflow.Query, len(functions))
+	for _, function := range functions {
+		p.context.resourceQueries[function.graph] = function.query
+	}
 	return nil
 }
 func (p *packageAnalysis) analyze() error {

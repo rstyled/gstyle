@@ -89,21 +89,6 @@ func miningNode(g *pdg.Graph, n pdg.Node) PdgNode {
 	return miningLabel(g.Tables, g.Tables.MatchLabels[n.MatchLabel-1], int(n.Line))
 }
 
-func appendMiningEdge(g *pdg.Graph, view *MiningGraph, indexes []int, e pdg.Edge) {
-	from, to := indexes[e.Source-1], indexes[e.Target-1]
-	if from < 0 || to < 0 {
-		return
-	}
-	kind := Data
-	if e.Kind == pdg.ControlEdge {
-		kind = Ctrl
-	}
-	if e.Kind == pdg.Execution {
-		kind = Exec
-	}
-	view.Edges = append(view.Edges, PdgEdge{From: from, To: to, Kind: kind, ArgPos: int(e.Position) - 1})
-}
-
 func matchingNodeCount(g *pdg.Graph) int {
 	count := 0
 	for _, node := range g.Nodes {

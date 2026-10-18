@@ -34,6 +34,8 @@ type reachingAnalysis struct {
 	outputs          []reachingState
 	predecessors     [][]int
 	remaining        []int
+	joins            map[uint64][]definitionJoin
+	joinPairs        map[[2]pdg.Ref]pdg.Ref
 	nextEdgeID       int
 	evidence, origin pdg.Ref
 }

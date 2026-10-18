@@ -21,11 +21,11 @@ type nilErrGraph struct {
 	valueLocations map[bindingflow.PathKey][]pdg.Ref
 }
 
-func newNilErrGraph(fn *ast.FuncDecl, fset *token.FileSet, graph *pdg.Graph) *nilErrGraph {
+func newNilErrGraph(fn *ast.FuncDecl, fset *token.FileSet, graph *pdg.Graph, prepared ...*bindingflow.Query) *nilErrGraph {
 	if graph == nil || graph.ValueFlow == nil || pdg.ReachableProjection(graph) == nil {
 		return nil
 	}
-	copies, err := bindingflow.New(graph)
+	copies, err := nilErrBindings(graph, prepared)
 	if err != nil {
 		return nil
 	}
@@ -230,12 +230,12 @@ func (c *nilErrCollector) graphGuardContext(ref pdg.Ref, scope nilErrEvidence) (
 	return context, check
 }
 
-func findNilErrGraphHits(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info, graph *pdg.Graph) []patterns.NilErrHit {
+func findNilErrGraphHits(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info, graph *pdg.Graph, prepared ...*bindingflow.Query) []patterns.NilErrHit {
 	positions := errorResultPositions(fn, info)
 	if len(positions) == 0 {
 		return nil
 	}
-	query := newNilErrGraph(fn, fset, graph)
+	query := newNilErrGraph(fn, fset, graph, prepared...)
 	if query == nil {
 		return nil
 	}
@@ -280,4 +280,11 @@ func splitNilErrStates(state nilErrGraphState, block pdg.FlowBlock) []nilErrGrap
 		next = append(next, branch)
 	}
 	return next
+}
+
+func nilErrBindings(graph *pdg.Graph, prepared []*bindingflow.Query) (*bindingflow.Query, error) {
+	if len(prepared) > 0 && prepared[0] != nil {
+		return prepared[0], nil
+	}
+	return bindingflow.New(graph)
 }

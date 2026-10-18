@@ -128,11 +128,19 @@ func factoryErrorSecond(signature *types.Signature) bool {
 }
 
 func resourceExits(functions map[string]resourceFunction) (callflow.ExitSummaries, error) {
-	graphs := map[string]*pdg.Graph{}
+	prepared := map[string]callflow.Queries{}
 	for identity, function := range functions {
-		graphs[identity] = function.graph
+		if function.query != nil {
+			prepared[identity] = function.query.CallQueries()
+			continue
+		}
+		queries, err := callflow.NewQueries(function.graph)
+		if err != nil {
+			return nil, err
+		}
+		prepared[identity] = queries
 	}
-	return callflow.ExitEffects(graphs)
+	return callflow.ExitEffectsWithQueries(prepared)
 }
 func resourceFactories(functions map[string]resourceFunction, helpers map[string]bool) map[string]resourceflow.FactorySummary {
 	queries := make(map[string]*resourceflow.Query, len(functions))

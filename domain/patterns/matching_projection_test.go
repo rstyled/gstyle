@@ -46,3 +46,23 @@ func TestSemanticTaintUsesSharedOperationReachability(t *testing.T) {
 		t.Fatalf("sink kind=%s, want unreachable", got)
 	}
 }
+
+func TestMatchingProjectionCollapsesRepeatedDependencyPaths(t *testing.T) {
+	graph := semanticFlowFixture(t)
+	original := MiningView(graph).Edges
+	graph.Edges = append(graph.Edges, graph.Edges...)
+	if got := MiningView(graph).Edges; !reflect.DeepEqual(got, original) {
+		t.Fatalf("repeated paths change abstract dependencies: %v, want %v", got, original)
+	}
+}
+
+func TestMatchingProjectionCacheSeparatesDependencyKinds(t *testing.T) {
+	graph := semanticFlowFixture(t)
+	want := MiningView(graph).Edges
+	edge := graph.Edges[len(graph.Edges)-1]
+	edge.Kind = pdg.Execution
+	graph.Edges = append(graph.Edges, edge)
+	if got := MiningView(graph).Edges; !reflect.DeepEqual(got, want) {
+		t.Fatalf("cache composes different dependencies: %v, want %v", got, want)
+	}
+}
