@@ -45,6 +45,9 @@ func summarizeResourcesWithExits(functions map[string]resourceFunction, exits ca
 func resourceFunctions(pkg *packages.Package, graphs []functionGraph) (map[string]resourceFunction, error) {
 	functions := make(map[string]resourceFunction, len(graphs))
 	for _, source := range graphs {
+		if source.closure {
+			continue
+		}
 		function, err := resourceFunctionQuery(pkg, source)
 		if err != nil {
 			return nil, err

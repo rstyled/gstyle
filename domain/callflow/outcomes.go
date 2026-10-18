@@ -169,7 +169,8 @@ func externalExitOutcomes(name string) Outcomes {
 
 // ExitEffects interprets canonical body/registration flow and composes local
 // call outcomes to a monotone fixed point. It does not execute foreign code or
-// resolve closure bodies, callback arguments, heap state or recovered payloads.
+// bind captured cells, callback arguments, heap state or recovered payloads.
+// Closure identities compose only when their canonical body graphs are supplied.
 func ExitEffects(graphs map[string]*pdg.Graph) (ExitSummaries, error) {
 	prepared := make(map[string]Queries, len(graphs))
 	for name, graph := range graphs {

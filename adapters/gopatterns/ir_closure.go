@@ -25,7 +25,7 @@ func (b *irBuilder) closureSourceFacts(fn *ast.FuncDecl) {
 
 func (b *irBuilder) closureValue(literal *ast.FuncLit) {
 	captures, globals := b.closureReferences(literal)
-	attrs := pdg.Attributes{Construct: b.pool.Text("closure"), Operator: b.pool.Known("closure"), Symbols: captures, Description: b.pool.Text("Closure value captures variable cells; body execution and resolved call summaries remain opaque."), Extensions: b.closureExtensions(literal, globals)}
+	attrs := pdg.Attributes{Construct: b.pool.Text("closure"), Operator: b.pool.Known("closure"), Symbols: captures, Description: b.pool.Text("Closure value captures variable cells; body execution belongs to a separate canonical callable graph."), Extensions: b.closureExtensions(literal, globals)}
 	b.addNode(literal, pdg.Other, attrs)
 	b.closureValues = true
 }

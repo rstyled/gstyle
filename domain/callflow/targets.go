@@ -54,17 +54,25 @@ func functionValue(graph *pdg.Graph, source bindingflow.ValueSource) (string, er
 	if source.Zero || source.Result != 0 {
 		return "", fmt.Errorf("function value is not a declaration")
 	}
-	return declarationIdentity(graph, graph.NodeAttributes(graph.Nodes[source.Node-1]).Extensions)
+	attrs := graph.NodeAttributes(graph.Nodes[source.Node-1])
+	if graph.Tables.Text(attrs.Construct) == "closure" {
+		return callableIdentity(graph, attrs.Extensions, "gstyle.closure:body-id")
+	}
+	return declarationIdentity(graph, attrs.Extensions)
 }
 func declarationIdentity(graph *pdg.Graph, extensions []pdg.Extension) (string, error) {
+	return callableIdentity(graph, extensions, "gstyle.go:function-value")
+}
+
+func callableIdentity(graph *pdg.Graph, extensions []pdg.Extension, key string) (string, error) {
 	var identity string
 	found := false
 	for _, extension := range extensions {
-		if graph.Tables.Text(extension.Name) != "gstyle.go:function-value" {
+		if graph.Tables.Text(extension.Name) != key {
 			continue
 		}
 		if found {
-			return "", fmt.Errorf("duplicate function declaration")
+			return "", fmt.Errorf("duplicate callable identity")
 		}
 		found = true
 		if err := json.Unmarshal([]byte(graph.Tables.Text(extension.Value)), &identity); err != nil {
@@ -72,7 +80,7 @@ func declarationIdentity(graph *pdg.Graph, extensions []pdg.Extension) (string, 
 		}
 	}
 	if identity == "" {
-		return "", fmt.Errorf("function declaration is unknown")
+		return "", fmt.Errorf("callable identity is unknown")
 	}
 	return identity, nil
 }

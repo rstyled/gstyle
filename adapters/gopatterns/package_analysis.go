@@ -14,21 +14,23 @@ import (
 // functionGraph owns one lowering of a compiler declaration. Summaries and
 // reports borrow its graph; neither consumer builds a replacement graph.
 type functionGraph struct {
+	closure     bool
 	inventory   *irBuilder
 	declaration *ast.FuncDecl
 	path        string
 	graph       *pdg.Graph
 }
 type packageAnalysis struct {
-	program *callflow.Program
-	exits   callflow.ExitSummaries
-	pkg     *packages.Package
-	root    string
-	pool    *pdg.Builder
-	sources map[string]string
-	graphs  []functionGraph
-	context extractCtx
-	result  []FuncPdg
+	closurePackageView *packages.Package
+	program            *callflow.Program
+	exits              callflow.ExitSummaries
+	pkg                *packages.Package
+	root               string
+	pool               *pdg.Builder
+	sources            map[string]string
+	graphs             []functionGraph
+	context            extractCtx
+	result             []FuncPdg
 }
 
 func (p *packageAnalysis) build() error {
@@ -53,16 +55,28 @@ func (p *packageAnalysis) fileGraphs(file *ast.File) ([]functionGraph, error) {
 		if !ok || fn.Body == nil {
 			continue
 		}
-		source, err := p.functionGraph(fn, filepath.ToSlash(rel), filename)
+		sources, err := p.declarationGraphs(fn, filepath.ToSlash(rel), filename)
 		if err != nil {
 			return nil, err
 		}
-		graphs = append(graphs, source)
+		graphs = append(graphs, sources...)
 	}
 	return graphs, nil
 }
-func (p *packageAnalysis) functionGraph(fn *ast.FuncDecl, path, filename string) (functionGraph, error) {
-	inventory, err := prepareGraph(p.pkg, fn, path, p.pool)
+func (p *packageAnalysis) declarationGraphs(fn *ast.FuncDecl, path, filename string) ([]functionGraph, error) {
+	source, err := p.typedFunctionGraph(p.pkg, fn, path, filename)
+	if err != nil {
+		return nil, err
+	}
+	closures, err := p.closureGraphs(source, filename)
+	if err != nil {
+		return nil, err
+	}
+	return append([]functionGraph{source}, closures...), nil
+}
+
+func (p *packageAnalysis) typedFunctionGraph(pkg *packages.Package, fn *ast.FuncDecl, path, filename string) (functionGraph, error) {
+	inventory, err := prepareGraph(pkg, fn, path, p.pool)
 	if err != nil {
 		return functionGraph{}, err
 	}
@@ -93,6 +107,9 @@ func (p *packageAnalysis) summarize() error {
 }
 func (p *packageAnalysis) analyze() error {
 	for _, source := range p.graphs {
+		if source.closure {
+			continue
+		}
 		result, err := extractFunc(p.pkg, source, p.context)
 		if err != nil {
 			return err
@@ -129,6 +146,7 @@ func (p *packageAnalysis) publishGraphs(exits callflow.ExitSummaries) error {
 			return err
 		}
 	}
+	p.closurePackageView = nil
 	return nil
 }
 
