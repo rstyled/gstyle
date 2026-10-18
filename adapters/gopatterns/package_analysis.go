@@ -143,11 +143,12 @@ func (source *functionGraph) finalize(exits callflow.ExitSummaries) error {
 	}
 	b := source.inventory
 	b.callExits = map[pdg.Ref]callflow.Outcomes{}
-	outcomes := callflow.OrdinaryCallOutcomes(queries, exits)
+	observations := callflow.OrdinaryObservations(queries, exits)
+	b.conditionValues = observations.Conditions
 	for node, ref := range b.nodes {
-		b.recordCallExit(node, ref, outcomes[ref])
+		b.recordCallExit(node, ref, observations.Calls[ref])
 	}
-	if len(b.callExits) == 0 {
+	if len(b.callExits)+len(b.conditionValues) == 0 {
 		source.inventory = nil
 		return nil
 	}

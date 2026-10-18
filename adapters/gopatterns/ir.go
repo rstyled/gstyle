@@ -15,6 +15,7 @@ import (
 )
 
 type irBuilder struct {
+	conditionValues                      map[pdg.Ref]pdg.BooleanFact
 	callExits                            map[pdg.Ref]callflow.Outcomes
 	typeQualifier                        types.Qualifier
 	sourceFilename                       string

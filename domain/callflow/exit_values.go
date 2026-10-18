@@ -80,6 +80,7 @@ func (evaluation *exitEvaluation) transferValues(point exitPoint, ref pdg.Ref) e
 
 func (evaluation *exitEvaluation) successors(point exitPoint, block pdg.FlowBlock) Outcomes {
 	truth, known := evaluation.body.paths.Evaluate(block.Condition, evaluation.valueContext(point)).Bool()
+	evaluation.observeCondition(block.Condition, truth, known)
 	var result Outcomes
 	for arm, successor := range block.Successors {
 		if known && len(block.Successors) == 2 && truth != (arm == 0) {

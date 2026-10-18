@@ -245,3 +245,16 @@ func logicalShortCircuit(operator string, truth, known bool) (bool, bool) {
 	}
 	return true, truth
 }
+
+// ConditionSource removes the canonical truth wrapper, retaining source
+// correspondence without exposing compiler syntax to the exit evaluator.
+func (q *Query) ConditionSource(ref pdg.Ref) pdg.Ref {
+	if q == nil || ref == 0 || int(ref) > len(q.graph.Nodes) {
+		return 0
+	}
+	attrs := q.graph.NodeAttributes(q.graph.Nodes[ref-1])
+	if subject := q.truthOperand(ref, attrs); subject != 0 {
+		return subject
+	}
+	return ref
+}

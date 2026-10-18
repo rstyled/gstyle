@@ -13,6 +13,7 @@ type exitPoint struct {
 }
 
 type exitEvaluation struct {
+	conditions   map[pdg.Ref]uint8
 	returned     string
 	callOutcomes map[pdg.Ref]Outcomes
 	values       map[string]exitValues

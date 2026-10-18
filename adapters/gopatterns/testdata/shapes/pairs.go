@@ -7,7 +7,10 @@ import (
 
 type DB struct{}
 
-func (db *DB) Exec(query string, args ...string) (int64, error) { return 0, nil }
+// An injectable error keeps both success and retry paths in the shape fixtures.
+var fixtureErr error
+
+func (db *DB) Exec(query string, args ...string) (int64, error) { return 0, fixtureErr }
 func (db *DB) Ping() error                                      { return nil }
 
 // CreateUser validates then inserts: the validate-then-act shape.
@@ -70,8 +73,8 @@ func LoadWithRetry(key string) (string, error) {
 	return "", lastErr
 }
 
-func fetchURL(url string) (string, error) { return "", nil }
-func loadKey(key string) (string, error)  { return "", nil }
+func fetchURL(url string) (string, error) { return "", fixtureErr }
+func loadKey(key string) (string, error)  { return "", fixtureErr }
 
 // NormalizeScores is unrelated to the validate-then-act pair: a negative
 // control for similarity.
