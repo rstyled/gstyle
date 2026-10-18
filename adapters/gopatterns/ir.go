@@ -15,6 +15,7 @@ import (
 )
 
 type irBuilder struct {
+	functionScope                        *types.Scope
 	conditionValues                      map[pdg.Ref]pdg.BooleanFact
 	callExits                            map[pdg.Ref]callflow.Outcomes
 	typeQualifier                        types.Qualifier
@@ -55,6 +56,7 @@ func newIRBuilder(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pd
 	b := &irBuilder{
 		pool: pool, info: pkg.TypesInfo, sizes: pkg.TypesSizes, fset: pkg.Fset, typeQualifier: callableQualifier(pkg, fn),
 		sourceFilename: pkg.Fset.PositionFor(fn.Pos(), false).Filename,
+		functionScope:  pkg.TypesInfo.Scopes[fn.Type],
 		symbols:        map[types.Object]pdg.Ref{}, nodes: map[ast.Node]pdg.Ref{},
 		writeTargets: map[ast.Node]bool{}, logicalPredicates: map[*ast.BinaryExpr]pdg.Ref{}, deferredCalls: map[*ast.CallExpr]pdg.Ref{},
 	}
@@ -141,15 +143,16 @@ func (b *irBuilder) symbol(id *ast.Ident, role pdg.Role) pdg.Ref {
 	if ref, ok := b.symbols[obj]; ok {
 		return ref
 	}
-	if obj.Pkg() != nil && obj.Parent() == obj.Pkg().Scope() {
-		role = pdg.GlobalRole
-	}
+	role = b.bindingRole(obj, role)
 	ref := pdg.Ref(len(b.graph.Symbols) + 1)
 	b.graph.Symbols = append(b.graph.Symbols, pdg.Symbol{
 		ID: b.pool.Text("s" + strconv.Itoa(int(ref))), Scope: b.scope(obj),
 		Name: b.pool.Known(obj.Name()), Type: b.pool.Known(irTypeString(obj.Type())), Role: role, Extensions: b.resolvedType(obj.Type()),
 	})
 	b.symbols[obj] = ref
+	if role == pdg.CaptureRole {
+		b.markCapturedSymbol(ref)
+	}
 	return ref
 }
 
@@ -177,8 +180,7 @@ func (b *irBuilder) sourceLine(node ast.Node) uint32 {
 }
 
 func (b *irBuilder) selectScalarLowering(fn *ast.FuncDecl) {
-	b.scalarOperations = b.selectScalarSource(fn)
-	b.bindingOperations = !b.scalarOperations && b.interfaceBindingSubset(fn)
+	b.selectLocalProfiles(fn)
 	b.generalBindings = !b.scalarOperations && !b.bindingOperations && b.exitOperationSubset(fn.Body)
 	b.runtimeOperations = b.generalBindings || runtimeRelevant(fn, b.info)
 	b.scalarOrderKnown = scalarOrderKnown(fn.Body) && len(b.graph.Function.Outputs) <= 1

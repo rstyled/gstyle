@@ -64,7 +64,7 @@ func (m *Model) collectPlaces() {
 		m.collectOperationPlaces(pdg.Ref(i+1), attrs)
 	}
 	for i, symbol := range m.graph.Symbols {
-		if symbol.Role == pdg.GlobalRole || m.addressed[i] {
+		if symbol.Role == pdg.GlobalRole || symbol.Role == pdg.CaptureRole || m.addressed[i] {
 			m.places, _ = union(m.places, []Place{{Symbol: pdg.Ref(i + 1)}})
 		}
 	}

@@ -76,7 +76,7 @@ func (b *irBuilder) closureReference(identifier *ast.Ident, captures, globals ma
 		globals[b.symbol(identifier, pdg.GlobalRole)] = true
 		return
 	}
-	ref := b.symbols[variable]
+	ref := b.captureSymbol(identifier, variable)
 	if ref == 0 || captures[ref] {
 		return
 	}

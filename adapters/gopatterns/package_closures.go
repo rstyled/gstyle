@@ -19,6 +19,9 @@ func (p *packageAnalysis) closurePackage(literal *ast.FuncLit, identity string) 
 	if !ok {
 		return nil, nil, fmt.Errorf("closure %s has no compiler signature", identity)
 	}
+	if pkg.TypesInfo.Scopes[literal.Type] == nil {
+		return nil, nil, fmt.Errorf("closure %s has no compiler scope", identity)
+	}
 	name := &ast.Ident{Name: strings.TrimPrefix(identity, pkg.PkgPath+"."), NamePos: literal.Pos()}
 	declaration := &ast.FuncDecl{Name: name, Type: literal.Type, Body: literal.Body}
 	if p.closurePackageView == nil {
@@ -45,6 +48,9 @@ func (p *packageAnalysis) closureGraphs(parent functionGraph, filename string) (
 			return nil, err
 		}
 		source.closure = true
+		if err := p.captureEnvironment(parent, &source); err != nil {
+			return nil, err
+		}
 		nested, err := p.closureGraphs(source, filename)
 		if err != nil {
 			return nil, err
