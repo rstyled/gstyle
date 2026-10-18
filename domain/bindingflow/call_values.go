@@ -65,15 +65,22 @@ func (q *Query) variadicValue(owner pdg.Ref, shape CallShape, context Evaluation
 	return Value{Nil: count == uint64(shape.Fixed), NonNil: count > uint64(shape.Fixed)}
 }
 
-func (q *Query) tupleInputValue(owner pdg.Ref, position pdg.Position) Value {
+func (q *Query) tupleInputValue(owner pdg.Ref, position pdg.Position, context Evaluation) Value {
 	tuple := q.tupleProducer(owner)
-	if uint64(position) > uint64(q.tupleArities[tuple]) {
+	if position == 0 || uint64(position) > uint64(q.tupleArities[tuple]) {
 		return Value{}
 	}
 	if q.inputRepresentation(owner, position) == BoxedRepresentation {
 		return Value{NonNil: true}
 	}
-	return Value{}
+	if q.inputRepresentation(owner, position) != UnchangedRepresentation {
+		return Value{}
+	}
+	values := context.Results[tuple]
+	if len(values) != int(q.tupleArities[tuple]) {
+		return Value{}
+	}
+	return shapeValue(values[position-1])
 }
 
 func (q *Query) callOperands(owner pdg.Ref) ([]pdg.Ref, bool) {

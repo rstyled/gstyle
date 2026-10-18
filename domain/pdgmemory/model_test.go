@@ -169,3 +169,22 @@ func TestClosureCapturesCreateAddressableCells(t *testing.T) {
 		t.Fatal("invalid capture reference accepted")
 	}
 }
+
+func TestCapturedBindingsAreExternalAddressableStorage(t *testing.T) {
+	f := newFixture(1)
+	f.graph.Symbols[0].Role = pdg.CaptureRole
+	f.graph.Symbols[1].Role = pdg.CaptureRole
+	load := f.load(f.read(1, true))
+	model, err := Analyze(&f.graph, f.lookup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, symbol := range []pdg.Ref{1, 2} {
+		if !slices.Contains(model.Places(), Place{Symbol: symbol}) {
+			t.Fatalf("captured cell %d has no storage", symbol)
+		}
+	}
+	if !slices.Contains(model.Targets(load), Place{}) {
+		t.Fatal("captured pointer loses its unknown external referent")
+	}
+}

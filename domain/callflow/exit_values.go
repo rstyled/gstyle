@@ -2,7 +2,7 @@ package callflow
 
 import (
 	"cmp"
-	"fmt"
+	"encoding/json"
 	"github.com/rstyled/gstyle/domain/bindingflow"
 	"github.com/rstyled/gstyle/domain/pdg"
 	"go/constant"
@@ -12,33 +12,58 @@ import (
 	"strings"
 )
 
-type exitValue uint8
+type exitValue string
 
 const (
-	unknownValue exitValue = iota
-	nilValue
-	nonNilValue
-	falseValue
-	trueValue
+	unknownValue exitValue = ""
+	nilValue     exitValue = "n"
+	nonNilValue  exitValue = "p"
+	falseValue   exitValue = "f"
+	trueValue    exitValue = "t"
 )
 
-type exitValues struct{ bindings, nodes map[pdg.Ref]exitValue }
+type exitValues struct {
+	heap            environmentHeap
+	locations       map[pdg.Ref]string
+	bindings, nodes map[pdg.Ref]exitValue
+	cells           map[pdg.Ref]exitValue
+	tuples          map[pdg.Ref]string
+	unorderedReads  map[pdg.Ref]bool
+}
 
 type valueEntry struct {
-	ref   pdg.Ref
-	value exitValue
+	Ref   pdg.Ref
+	Value exitValue
 }
 
 func (evaluation *exitEvaluation) valueContext(point exitPoint) bindingflow.Evaluation {
+	if context, found := evaluation.contexts[point.values]; found {
+		return context
+	}
 	values := evaluation.values[point.values]
-	return bindingflow.Evaluation{Bindings: concreteValues(values.bindings), Nodes: concreteValues(values.nodes), Facts: evaluation.body.facts}
+	context := bindingflow.Evaluation{Captures: evaluation.callCellValues(values), ClosureCells: evaluation.concreteHeap(values), RepeatedCells: values.repeatedHeap(), Bindings: evaluation.concreteValues(values.liveBindings()), Nodes: evaluation.concreteValues(values.nodes), Facts: evaluation.body.facts, Results: evaluation.concreteResults(values.tuples)}
+	if evaluation.contexts == nil {
+		evaluation.contexts = map[string]bindingflow.Evaluation{}
+	}
+	evaluation.contexts[point.values] = context
+	return context
 }
 
 func (evaluation *exitEvaluation) internValues(values exitValues) string {
-	if len(values.bindings)+len(values.nodes) == 0 {
+	if len(values.heap)+len(values.locations)+len(values.bindings)+len(values.nodes)+len(values.tuples)+len(values.cells)+len(values.unorderedReads) == 0 {
 		return ""
 	}
-	key := fmt.Sprint(valueEntries(values.bindings), "/", valueEntries(values.nodes))
+	record := struct {
+		Bindings, Nodes, Cells []valueEntry
+		Tuples                 []tupleEntry
+		Unordered              []pdg.Ref
+		Heap                   []heapEntry
+		Locations              []cellLink
+	}{
+		valueEntries(values.bindings), valueEntries(values.nodes), valueEntries(values.cells), tupleEntries(values.tuples), slices.Sorted(maps.Keys(values.unorderedReads)), heapEntries(values.heap), locationEntries(values.locations),
+	}
+	data, _ := json.Marshal(record)
+	key := string(data)
 	evaluation.values[key] = values
 	return key
 }
@@ -59,32 +84,36 @@ func (evaluation *exitEvaluation) recoveryValue(point exitPoint, ref pdg.Ref) ex
 	} else {
 		nodes[ref] = value
 	}
-	next := exitValues{bindings: values.bindings, nodes: nodes}
+	next := values
+	next.nodes = nodes
 	point.values = evaluation.internValues(next)
 	return point
 }
 
 func (evaluation *exitEvaluation) transferValues(point exitPoint, ref pdg.Ref) exitPoint {
-	writes := evaluation.body.paths.WriteValues(ref, evaluation.valueContext(point))
-	if len(writes) == 0 {
+	point, transferred := evaluation.transferCall(point, ref)
+	if transferred {
 		return point
 	}
-	values := evaluation.values[point.values]
-	next := exitValues{bindings: nextValueBindings(values.bindings, writes), nodes: values.nodes}
-	point.values = evaluation.internValues(next)
-	return point
+	point = evaluation.captureValues(point, ref)
+	point = evaluation.bindClosure(point, ref)
+	return evaluation.rawValueTransfer(point, ref)
 }
 
-func (evaluation *exitEvaluation) successors(point exitPoint, block pdg.FlowBlock) Outcomes {
+func (evaluation *exitEvaluation) successors(point exitPoint, block pdg.FlowBlock) completions {
 	truth, known := evaluation.body.paths.Evaluate(block.Condition, evaluation.valueContext(point)).Bool()
-	var result Outcomes
+	evaluation.observeCondition(block.Condition, truth, known)
+	result := completions{}
 	for arm, successor := range block.Successors {
 		if known && len(block.Successors) == 2 && truth != (arm == 0) {
 			continue
 		}
 		next := point
+		if len(block.Successors) == 2 {
+			next = evaluation.assumeCondition(next, block.Condition, arm == 0)
+		}
 		next.block, next.offset = successor, 0
-		result |= evaluation.visit(next)
+		result.add(evaluation.visit(next))
 	}
 	return result
 }
@@ -99,14 +128,6 @@ func (body *exitBody) nonNilRecovery() bool {
 	return version.IsValid(target) && version.Compare(target, "go1.21") >= 0
 }
 
-func concreteValues(values map[pdg.Ref]exitValue) map[pdg.Ref]bindingflow.Value {
-	result := make(map[pdg.Ref]bindingflow.Value, len(values))
-	for ref, value := range values {
-		result[ref] = concreteValue(value)
-	}
-	return result
-}
-
 func concreteValue(value exitValue) bindingflow.Value {
 	switch value {
 	case nilValue:
@@ -116,11 +137,15 @@ func concreteValue(value exitValue) bindingflow.Value {
 	case falseValue, trueValue:
 		return bindingflow.Value{Scalar: constant.MakeBool(value == trueValue)}
 	default:
-		return bindingflow.Value{}
+		set := callableSet(value)
+		return bindingflow.Value{Callables: set, NonNil: set.Known()}
 	}
 }
 
 func abstractValue(value bindingflow.Value) exitValue {
+	if value.Callables.Known() {
+		return callableValue(value.Callables)
+	}
 	if value.Nil {
 		return nilValue
 	}
@@ -141,7 +166,7 @@ func valueEntries(values map[pdg.Ref]exitValue) []valueEntry {
 	for ref, value := range values {
 		entries = append(entries, valueEntry{ref, value})
 	}
-	slices.SortFunc(entries, func(a, b valueEntry) int { return cmp.Compare(a.ref, b.ref) })
+	slices.SortFunc(entries, func(a, b valueEntry) int { return cmp.Compare(a.Ref, b.Ref) })
 	return entries
 }
 

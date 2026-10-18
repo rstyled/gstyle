@@ -47,9 +47,9 @@ func describeFrames(graph *pdg.Graph) (frameDescriptor, error) {
 		if node.Category != pdg.Call {
 			continue
 		}
-		targets, known := frameTargets(graph, query, pdg.Ref(i+1))
-		description.local.Unknown = description.local.Unknown || !known
-		description.targets = append(description.targets, targets...)
+		targets := frameTargets(graph, query, pdg.Ref(i+1))
+		description.local.Unknown = description.local.Unknown || !targets.known
+		description.targets = append(description.targets, targets.names...)
 	}
 	return description, nil
 }

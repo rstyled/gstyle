@@ -488,6 +488,9 @@ noncomputable def bodyValueFlow [FfiSyntax] [GoGlobalContext] : GoString :=
 noncomputable def ExitBodyFlow [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/pdg.ExitBodyFlow"
 
+noncomputable def unrefinedExitBodyFlow [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/pdg.unrefinedExitBodyFlow"
+
 noncomputable def Compact [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/pdg.Compact"
 
@@ -556,6 +559,9 @@ noncomputable def validateFlowSites [FfiSyntax] [GoGlobalContext] : GoString :=
 
 noncomputable def validateOperationFlow [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/pdg.validateOperationFlow"
+
+noncomputable def validateExecutableFlow [FfiSyntax] [GoGlobalContext] : GoString :=
+  go!"github.com/rstyled/gstyle/domain/pdg.validateExecutableFlow"
 
 noncomputable def operationBlockReferences [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/pdg.operationBlockReferences"

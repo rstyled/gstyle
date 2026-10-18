@@ -3,11 +3,13 @@ package bindingflow
 import (
 	"github.com/rstyled/gstyle/domain/pdg"
 	"go/constant"
+	"slices"
 )
 
-// Value contains exact scalar facts or a symbolic boolean from one binding.
+// Value contains scalar facts, a symbolic Boolean or an immutable callable set.
 // Unknown is the zero value. Nil and NonNil describe whole-value nilness.
 type Value struct {
+	Callables          CallableSet
 	Scalar             constant.Value
 	Boolean            pdg.Ref
 	Negated            bool
@@ -58,8 +60,10 @@ type Fact struct {
 
 // Facts contain no AST or source dependency graph.
 type Facts struct {
-	Nodes          map[pdg.Ref]Fact
-	BooleanSymbols map[pdg.Ref]bool
+	SingleCellSymbols map[pdg.Ref]bool
+	CapturedSymbols   map[pdg.Ref]bool
+	Nodes             map[pdg.Ref]Fact
+	BooleanSymbols    map[pdg.Ref]bool
 }
 
 func (facts Facts) NilConstant(ref pdg.Ref) bool {
@@ -68,6 +72,12 @@ func (facts Facts) NilConstant(ref pdg.Ref) bool {
 }
 
 type Evaluation struct {
+	ClosureCells  map[string]Value
+	RepeatedCells map[string]bool
+	// Captures holds call-time cell facts: current values for proved single
+	// cells, otherwise family invariants. Deferred invocation supplies live cells.
+	Captures map[pdg.Ref]Value
+	Results  map[pdg.Ref][]Value
 	Bindings map[pdg.Ref]Value
 	Truths   map[pdg.Ref]bool
 	Nodes    map[pdg.Ref]Value
@@ -99,7 +109,7 @@ func (e *evaluation) value(ref pdg.Ref) Value {
 
 func (e *evaluation) compute(ref pdg.Ref) Value {
 	if fact := e.context.Facts.Nodes[ref]; fact.Known {
-		return fact.Value
+		return refinedCallableFact(fact.Value, e.context.Nodes[ref])
 	}
 	if value, known := e.context.Nodes[ref]; known {
 		return value
@@ -243,4 +253,27 @@ func logicalShortCircuit(operator string, truth, known bool) (bool, bool) {
 		return false, !truth
 	}
 	return true, truth
+}
+
+// ConditionSource removes the canonical truth wrapper, retaining source
+// correspondence without exposing compiler syntax to the exit evaluator.
+func (q *Query) ConditionSource(ref pdg.Ref) pdg.Ref {
+	if q == nil || ref == 0 || int(ref) > len(q.graph.Nodes) {
+		return 0
+	}
+	attrs := q.graph.NodeAttributes(q.graph.Nodes[ref-1])
+	if subject := q.truthOperand(ref, attrs); subject != 0 {
+		return subject
+	}
+	return ref
+}
+
+func refinedCallableFact(fact, runtime Value) Value {
+	if !fact.Callables.Known() || !runtime.Callables.Known() {
+		return fact
+	}
+	if !slices.Equal(fact.Callables.Names(), runtime.Callables.Names()) {
+		return fact
+	}
+	return runtime
 }

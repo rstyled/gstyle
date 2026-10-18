@@ -113,6 +113,7 @@ func GetReport(ctx context.Context, args []string) (*patterns.PatternsReport, er
 	// that large temporary phase before allocating the mining graphs.
 	runtime.GC()
 	report := patterns.Run(toFacts(pdgs.Funcs), patterns.Options{
+		Callables:         pdgs.Callables,
 		DeclarationOrders: pdgs.DeclarationOrders,
 		OffsetFallbacks:   pdgs.OffsetFallbacks,
 		NilGuards:         pdgs.NilGuards,

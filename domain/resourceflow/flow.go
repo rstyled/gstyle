@@ -14,6 +14,7 @@ type stateKey struct {
 }
 
 type proof struct {
+	ordinary  map[pdg.Ref]callflow.Outcomes
 	query     *Query
 	policy    Policy
 	active    map[point]bool
@@ -188,7 +189,7 @@ func (q *Query) proveWithMachine(start point, policy Policy, machine deferflow.M
 	if policy.aliases == nil {
 		policy.aliases = map[pdg.Ref]bool{policy.Resource: true}
 	}
-	proof := proof{query: q, policy: policy, active: map[point]bool{}, completed: map[stateKey]bool{}}
+	proof := proof{query: q, policy: policy, ordinary: callflow.OrdinaryCallOutcomes(q.prepared, policy.Exits), active: map[point]bool{}, completed: map[stateKey]bool{}}
 	return proof.walk(start, machine)
 }
 

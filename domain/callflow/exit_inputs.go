@@ -6,18 +6,30 @@ import (
 )
 
 type exitInvocationContext struct {
+	key       string
+	keyReady  bool
+	target    bindingflow.Callable
 	ref       pdg.Ref
 	inherited bool
 	values    bindingflow.Evaluation
 }
 
-type exitInvocation struct{ Ordinary, DeferredPanic Outcomes }
+type exitInvocation struct {
+	heaps                   [2]heapEffects
+	memory                  memoryProof
+	Ordinary, DeferredPanic Outcomes
+	returned                string
+	captured                [2]captureEffects
+}
 
 type exitInvocations struct {
-	inputs   []pdg.Parameter
-	states   map[string]exitInvocation
-	pass     exitPass
-	building bool
+	graph        *pdg.Graph
+	captures     []pdg.Ref
+	environments map[*pdg.Graph]map[pdg.Ref]pdg.Ref
+	inputs       []pdg.Parameter
+	states       map[string]exitInvocation
+	pass         exitPass
+	building     bool
 }
 
 func newExitInvocations(body *exitBody) *exitInvocations {
@@ -26,10 +38,10 @@ func newExitInvocations(body *exitBody) *exitInvocations {
 	}
 	inputs := body.graph.Function.Inputs
 	_, _, known := bindingflow.CallSignature(inputs)
-	if len(inputs) == 0 || !known {
+	if len(inputs)+len(body.captures) == 0 || !known {
 		return nil
 	}
-	return &exitInvocations{inputs: inputs, states: map[string]exitInvocation{}, building: true}
+	return &exitInvocations{graph: body.graph, captures: body.captures, environments: map[*pdg.Graph]map[pdg.Ref]pdg.Ref{}, inputs: inputs, states: map[string]exitInvocation{}, building: true}
 }
 
 func (invocations *exitInvocations) lookup(key string) (exitInvocation, bool) {
@@ -43,7 +55,7 @@ func (invocations *exitInvocations) lookup(key string) (exitInvocation, bool) {
 	if invocations.pass == infinitePass {
 		seed = Diverges
 	}
-	state := exitInvocation{Ordinary: seed, DeferredPanic: seed}
+	state := exitInvocation{memory: memoryProof{preserves: true, confined: true}, Ordinary: seed, DeferredPanic: seed}
 	invocations.states[key] = state
 	return state, true
 }
@@ -57,7 +69,10 @@ func (calls *CallSites) defaultValues() bindingflow.Evaluation {
 
 func (calls *CallSites) targetWithValues(name string, summaries ExitSummaries, invocation exitInvocationContext) Outcomes {
 	summary := summaries[name]
-	key := calls.inputKey(summary.invocations, invocation.ref, invocation.values)
+	if !calls.validTargetEnvironment(summary, invocation) {
+		return UnknownExit
+	}
+	key := calls.inputKey(summary.invocations, invocation)
 	if key == "" {
 		return targetOutcomes(name, summaries, invocation.inherited)
 	}
@@ -68,45 +83,54 @@ func (calls *CallSites) targetWithValues(name string, summaries ExitSummaries, i
 	return (ExitSummary{Ordinary: state.Ordinary, DeferredPanic: state.DeferredPanic, Receiver: summary.Receiver}).outcomes(invocation.inherited)
 }
 
-func (calls *CallSites) inputKey(invocations *exitInvocations, ref pdg.Ref, context bindingflow.Evaluation) string {
+func (calls *CallSites) inputKey(invocations *exitInvocations, invocation exitInvocationContext) string {
+	if invocation.keyReady {
+		return invocation.key
+	}
 	if invocations == nil || calls.paths == nil {
 		return ""
 	}
-	values, known := calls.paths.CallValues(ref, invocations.inputs, context)
-	if !known {
-		return ""
-	}
-	return calls.knownInputKey(invocations.inputs, values)
+	return calls.environmentKey(invocations, invocation)
 }
 
 func (calls *CallSites) knownInputKey(inputs []pdg.Parameter, arguments []bindingflow.Value) string {
-	values := make([]byte, len(inputs))
+	values := make([]exitValue, len(inputs))
 	known := false
 	for i, input := range inputs {
 		if input.Symbol == 0 {
 			continue
 		}
 		value := abstractValue(arguments[i])
-		values[i] = byte(value)
+		values[i] = value
 		known = known || value != unknownValue
 	}
 	if !known {
 		return ""
 	}
-	return string(values)
+	return encodeTuple(values)
 }
 
 func inputBindings(body *exitBody, key string) map[pdg.Ref]exitValue {
 	bindings := map[pdg.Ref]exitValue{}
-	if len(key) != len(body.graph.Function.Inputs) {
+	values := readEnvironmentInput(key).Values
+	symbols := invocationSymbols(body)
+	if len(values) != len(symbols) {
 		return bindings
 	}
-	for i, input := range body.graph.Function.Inputs {
-		if key[i] != 0 && input.Symbol != 0 {
-			bindings[input.Symbol] = exitValue(key[i])
+	for i, symbol := range symbols {
+		if values[i] != unknownValue && symbol != 0 {
+			bindings[symbol] = values[i]
 		}
 	}
 	return bindings
+}
+
+func invocationSymbols(body *exitBody) []pdg.Ref {
+	symbols := make([]pdg.Ref, 0, len(body.graph.Function.Inputs)+len(body.captures))
+	for _, input := range body.graph.Function.Inputs {
+		symbols = append(symbols, input.Symbol)
+	}
+	return append(symbols, body.captures...)
 }
 
 func invocationCount(summaries ExitSummaries) int {
@@ -125,9 +149,15 @@ func solveInputPass(body *exitBody, summaries ExitSummaries, invocations *exitIn
 	}
 	changed := false
 	for key, old := range invocations.states {
+		ordinary := evaluateBodyResult(body, summaries, false, key)
+		inherited := evaluateBodyResult(body, summaries, true, key)
 		next := exitInvocation{
-			Ordinary:      pass.update(old.Ordinary, evaluateBodyInputs(body, summaries, false, key)),
-			DeferredPanic: pass.update(old.DeferredPanic, evaluateBodyInputs(body, summaries, true, key)),
+			heaps:         [2]heapEffects{pass.heapEffects(old.heaps[0], ordinary.heaps), pass.heapEffects(old.heaps[1], inherited.heaps)},
+			memory:        old.memory.meet(ordinary.memory).meet(inherited.memory),
+			captured:      [2]captureEffects{pass.captureEffects(old.captured[0], ordinary.captured), pass.captureEffects(old.captured[1], inherited.captured)},
+			returned:      pass.returned(old.returned, ordinary.returned),
+			Ordinary:      pass.update(old.Ordinary, ordinary.outcomes),
+			DeferredPanic: pass.update(old.DeferredPanic, inherited.outcomes),
 		}
 		if old == next {
 			continue
@@ -144,7 +174,9 @@ func seedInputDivergence(invocations *exitInvocations) {
 	}
 	invocations.pass = infinitePass
 	for key, state := range invocations.states {
-		invocations.states[key] = exitInvocation{Ordinary: state.Ordinary | Diverges, DeferredPanic: state.DeferredPanic | Diverges}
+		state.Ordinary |= Diverges
+		state.DeferredPanic |= Diverges
+		invocations.states[key] = state
 	}
 }
 

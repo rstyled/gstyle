@@ -92,6 +92,9 @@ type FuncPdg struct {
 // plus package-level type findings (anemic models).
 type Extraction struct {
 	Sources *pdg.SourceContext
+	// Callables retains canonical declaration and lexical closure body graphs.
+	// Funcs contains declaration-level diagnostics and source edit candidates.
+	Callables []*pdg.Graph
 	// PackageNames contains only declaration spellings, not compiler objects.
 	// It lets helper extraction avoid collisions with declarations in other files.
 	PackageNames      map[string][]string
@@ -280,6 +283,7 @@ func extractNormalPackages(ctx context.Context, abs string, paths []string, opti
 	}
 	collectSourceReferences(sources, productionPatternPackages(pkgs))
 	var funcsOut []FuncPdg
+	var callables []*pdg.Graph
 	var orders []patterns.Candidate
 	var ranges []patterns.Candidate
 	var anemic []patterns.AnemicModelHit
@@ -288,11 +292,13 @@ func extractNormalPackages(ctx context.Context, abs string, paths []string, opti
 	pool := pdg.NewBuilder()
 	pool.Tables.Sources = sources
 	internSourceMetadata(pool)
-	for _, pkg := range productionPatternPackages(pkgs) {
+	program := callflow.NewProgram()
+	for _, pkg := range orderedSourcePackages(productionPatternPackages(pkgs)) {
 		// Validation visits shared tables; bound them to this package.
 		packagePool := pdg.NewBuilder()
 		packagePool.Tables.Sources = sources
-		funcs, err := packagePdgsWithSources(pkg, abs, packagePool, sourceIdentities)
+		analysis := packageAnalysis{pkg: pkg, root: abs, pool: packagePool, sources: sourceIdentities, program: program}
+		funcs, err := analysis.run()
 		if err != nil {
 			return nil, err
 		}
@@ -300,12 +306,15 @@ func extractNormalPackages(ctx context.Context, abs string, paths []string, opti
 		ranges = append(ranges, findOffsetFallbacks(pkg, abs, paths, sources)...)
 		projectSourceParameterFlow(sources, funcs)
 		funcsOut = append(funcsOut, funcs...)
+		for _, source := range analysis.graphs {
+			callables = append(callables, source.graph)
+		}
 		anemic = append(anemic, findAnemicModels(pkg, abs)...)
 		missing = append(missing, findMissingIdentities(pkg, abs)...)
 		services = append(services, findDomainServices(pkg, abs)...)
 	}
 	populateInterfaceNilHits(funcsOut)
-	result := &Extraction{Sources: sources, PackageNames: packageBindingNames(pkgs), Funcs: funcsOut, DeclarationOrders: orders, OffsetFallbacks: ranges, AnemicModels: anemic, MissingIdentities: missing, DomainServices: services}
+	result := &Extraction{Sources: sources, Callables: callables, PackageNames: packageBindingNames(pkgs), Funcs: funcsOut, DeclarationOrders: orders, OffsetFallbacks: ranges, AnemicModels: anemic, MissingIdentities: missing, DomainServices: services}
 	if err := populateRuntimeGuards(result, abs, paths); err != nil {
 		return nil, err
 	}
@@ -386,6 +395,10 @@ func packagePdgs(pkg *packages.Package, root string, pool *pdg.Builder) ([]FuncP
 
 func packagePdgsWithSources(pkg *packages.Package, root string, pool *pdg.Builder, sources map[string]string) ([]FuncPdg, error) {
 	analysis := packageAnalysis{pkg: pkg, root: root, pool: pool, sources: sources}
+	return analysis.run()
+}
+
+func (analysis *packageAnalysis) run() ([]FuncPdg, error) {
 	if err := analysis.build(); err != nil {
 		return nil, err
 	}

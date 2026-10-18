@@ -11,7 +11,10 @@ import (
 
 // ValueFacts reads compiler-owned values without source syntax or dependencies.
 func (q *Query) ValueFacts() (Facts, error) {
-	facts := Facts{Nodes: map[pdg.Ref]Fact{}}
+	facts, err := q.symbolValueFacts()
+	if err != nil {
+		return Facts{}, err
+	}
 	for i, node := range q.graph.Nodes {
 		fact, found, err := q.nodeValueFact(q.graph.NodeAttributes(node))
 		if err != nil {
@@ -24,7 +27,44 @@ func (q *Query) ValueFacts() (Facts, error) {
 	return facts, nil
 }
 
+func (q *Query) symbolValueFacts() (Facts, error) {
+	if err := q.validateParameterTypes(); err != nil {
+		return Facts{}, err
+	}
+	booleans, err := q.booleanSymbols()
+	if err != nil {
+		return Facts{}, err
+	}
+	captures, err := q.capturedSymbols()
+	if err != nil {
+		return Facts{}, err
+	}
+	single, err := q.singleCellSymbols()
+	if err != nil {
+		return Facts{}, err
+	}
+	return Facts{Nodes: map[pdg.Ref]Fact{}, BooleanSymbols: booleans, CapturedSymbols: captures, SingleCellSymbols: single}, nil
+}
+
 func (q *Query) nodeValueFact(attrs pdg.Attributes) (Fact, bool, error) {
+	scalar, found, err := q.scalarNodeValueFact(attrs)
+	if err != nil {
+		return Fact{}, false, err
+	}
+	callable, known, err := q.callableValueFact(attrs)
+	if err != nil {
+		return Fact{}, false, err
+	}
+	if !known {
+		return scalar, found, nil
+	}
+	if found && !scalar.Value.NonNil {
+		return Fact{}, false, fmt.Errorf("conflicting callable value fact")
+	}
+	return callable, true, nil
+}
+
+func (q *Query) scalarNodeValueFact(attrs pdg.Attributes) (Fact, bool, error) {
 	var fact Fact
 	found := false
 	for _, extension := range attrs.Extensions {

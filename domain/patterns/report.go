@@ -6,6 +6,7 @@ package patterns
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/rstyled/gstyle/domain/pdg"
 	"reflect"
 	"slices"
 	"sort"
@@ -27,7 +28,9 @@ type PatternsReport struct {
 
 // Options selects what to show and what to pretend.
 type Options struct {
-	semantic *semanticResults
+	// Callables supplies canonical closure bodies for semantic queries, separate from matching declarations.
+	Callables []*pdg.Graph
+	semantic  *semanticResults
 	// DeclarationOrders are file-level source-order proposals.
 	DeclarationOrders []Candidate
 	// OffsetFallbacks are guarded suffix-slice findings from typed source analysis.

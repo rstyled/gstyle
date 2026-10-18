@@ -48,7 +48,7 @@ func (b *irBuilder) canonicalConversion(call *ast.CallExpr) string {
 	if b.info.Types[call.Args[0]].IsNil() {
 		return "nil"
 	}
-	if types.Identical(source, target) {
+	if types.Identical(source, target) || booleanConversion(source, target) || callableConversion(source, target) {
 		return "identity"
 	}
 	return conversionNilness(memoryTypeKind(source), memoryTypeKind(target))
@@ -79,4 +79,22 @@ func canonicalConstantFact(value types.TypeAndValue) string {
 		return `{"boolean":` + value.Value.ExactString() + `}`
 	}
 	return ""
+}
+
+// Boolean conversions preserve the complete two-value domain, including named
+// types. Other scalar conversions can change values and keep their old contract.
+func booleanConversion(source, target types.Type) bool {
+	from, ok := source.Underlying().(*types.Basic)
+	if !ok || from.Info()&types.IsBoolean == 0 {
+		return false
+	}
+	to, ok := target.Underlying().(*types.Basic)
+	return ok && to.Info()&types.IsBoolean != 0
+}
+
+// Function type conversions preserve the selected code and captured cells.
+func callableConversion(source, target types.Type) bool {
+	_, from := source.Underlying().(*types.Signature)
+	_, to := target.Underlying().(*types.Signature)
+	return from && to
 }

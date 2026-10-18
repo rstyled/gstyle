@@ -37,7 +37,15 @@ func validateFlowSites(flow *NormalFlow) error {
 
 // The shared executable-flow profile also excludes value-only entities.
 func validateOperationFlow(g *Graph) error {
-	flow := ExitBodyFlow(g)
+	for _, flow := range []*NormalFlow{BodyFlow(g), ExitBodyFlow(g)} {
+		if err := validateExecutableFlow(g, flow); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateExecutableFlow(g *Graph, flow *NormalFlow) error {
 	if flow == nil {
 		return nil
 	}

@@ -1,6 +1,7 @@
 package gopatterns
 
 import (
+	"encoding/json"
 	"go/ast"
 	"strconv"
 
@@ -42,6 +43,10 @@ func (b *irBuilder) returnSlots(ret *ast.ReturnStmt, evidence, origin pdg.Ref) {
 	if len(ret.Results) == 0 {
 		b.namedReturnReads(ret, node)
 	}
+	positions := b.returnInputPositions(ret)
+	data, _ := json.Marshal(positions)
+	attrs := &b.attributes[b.graph.Nodes[node-1].Attributes-1]
+	attrs.Extensions = append(attrs.Extensions, b.pool.SingletonExtension("gstyle.go:value-operands", string(data))...)
 	for position, output := range b.outputs {
 		b.graph.Edges = append(b.graph.Edges, pdg.Edge{
 			ID:     b.pool.Text("e" + strconv.Itoa(len(b.graph.Edges)+1)),
@@ -66,4 +71,23 @@ func (b *irBuilder) namedReturnReads(ret *ast.ReturnStmt, node pdg.Ref) {
 		}
 		attrs.Reads = append(attrs.Reads, read)
 	}
+}
+
+// Return slots use the same operand inventory as calls and expressions. Bare
+// scalar/binding returns have explicit implicit-read producers; general bare
+// returns instead carry direct read slots on the return record.
+func (b *irBuilder) returnInputPositions(ret *ast.ReturnStmt) []pdg.Position {
+	if len(ret.Results) != 0 {
+		return b.valuePositions(ret.Results, 0)
+	}
+	if !b.scalarOperations && !b.bindingOperations {
+		return []pdg.Position{}
+	}
+	positions := []pdg.Position{}
+	for i, output := range b.graph.Function.Outputs {
+		if output.Symbol != 0 {
+			positions = append(positions, pdg.Position(i+1))
+		}
+	}
+	return positions
 }

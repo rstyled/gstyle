@@ -16,7 +16,7 @@ func (e *evaluation) comparison(ref pdg.Ref, operator string) Value {
 		return Value{Scalar: constant.MakeBool(truth)}
 	}
 	if !comparableScalars(kind, left.Scalar, right.Scalar) {
-		return Value{}
+		return booleanComparison(kind, left, right)
 	}
 	return Value{Scalar: constant.MakeBool(constant.Compare(left.Scalar, kind, right.Scalar))}
 }
@@ -206,4 +206,29 @@ func numericComparison(operator token.Token, left, right constant.Kind) bool {
 		return true
 	}
 	return left != constant.Complex && right != constant.Complex
+}
+
+// Equality with an exact Boolean preserves one symbolic binding's identity.
+// Other operators and two unknown operands establish no relation here.
+func booleanComparison(operator token.Token, left, right Value) Value {
+	switch operator {
+	case token.EQL, token.NEQ:
+		return symbolicBooleanEquality(left, right, operator == token.NEQ)
+	default:
+		return Value{}
+	}
+}
+
+func symbolicBooleanEquality(left, right Value, negated bool) Value {
+	if left.Boolean == 0 {
+		left, right = right, left
+	}
+	truth, known := right.Bool()
+	if left.Boolean == 0 || !known {
+		return Value{}
+	}
+	if truth == negated {
+		return negateValue(left)
+	}
+	return left
 }

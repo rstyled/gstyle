@@ -5,6 +5,9 @@ import "github.com/rstyled/gstyle/domain/pdg"
 // A variadic formal receives the union of its actual elements. This is a
 // collection summary, not an index-sensitive slice-content proof.
 func (e *evaluation) actual(call pdg.Ref, position pdg.Position) value {
+	if item, found := e.arguments[position]; found {
+		return item
+	}
 	callee := e.catalog[e.target(call)]
 	if !variadicPosition(callee, position) {
 		return e.input(call, position)

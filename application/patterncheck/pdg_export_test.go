@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rstyled/gstyle/adapters/gopatterns"
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 func TestPDGJSONExport(t *testing.T) {
@@ -49,7 +49,7 @@ func TestPDGExportWriterAndCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	var output strings.Builder
-	if err := writePDGArray(ctx, &output, []gopatterns.FuncPdg{{}}); !errors.Is(err, context.Canceled) {
+	if err := writePDGArray(ctx, &output, []*pdg.Graph{{}}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancellation: %v", err)
 	}
 	output.Reset()
@@ -66,7 +66,10 @@ func TestPDGExportRejectsCacheAndInvalidGraphs(t *testing.T) {
 	if _, err := parseOptions([]string{"--format", "pdg-json", "--cache"}); err == nil {
 		t.Fatal("export accepted a mining cache option")
 	}
-	if err := validateExport([]gopatterns.FuncPdg{{Name: "invalid"}}); err == nil {
+	if err := validateExport([]*pdg.Graph{nil}); err == nil {
+		t.Fatal("nil graph accepted")
+	}
+	if err := validateExport([]*pdg.Graph{{}}); err == nil {
 		t.Fatal("invalid graph accepted")
 	}
 }

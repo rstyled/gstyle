@@ -24,6 +24,13 @@ func bodyValueFlow(g *Graph) *NormalFlow {
 // ExitBodyFlow includes sequential recovery operations. Its consumers must
 // interpret recovery and unwind separately from ordinary control dependencies.
 func ExitBodyFlow(g *Graph) *NormalFlow {
+	if g.ValueFlow != nil && g.ValueFlow.ExitContext != nil {
+		return g.ValueFlow.ExitContext
+	}
+	return unrefinedExitBodyFlow(g)
+}
+
+func unrefinedExitBodyFlow(g *Graph) *NormalFlow {
 	if flow := BodyFlow(g); flow != nil {
 		return flow
 	}

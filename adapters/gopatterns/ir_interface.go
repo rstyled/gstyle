@@ -64,7 +64,7 @@ func (b *irBuilder) parameterFacts(field *ast.Field, name *ast.Ident, role pdg.R
 	p := pdg.Parameter{
 		Position: position, Role: role, Name: b.pool.Known(""), Type: b.typeFact(field.Type),
 		Variadic:   pdg.BooleanFact{Status: pdg.Known, Value: variadic},
-		Extensions: b.resolvedType(b.info.TypeOf(field.Type)),
+		Extensions: append(b.resolvedType(b.info.TypeOf(field.Type)), b.memoryType(b.info.TypeOf(field.Type))...),
 	}
 	if name != nil {
 		p.Name = b.pool.Known(name.Name)

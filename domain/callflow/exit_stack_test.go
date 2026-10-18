@@ -1,6 +1,7 @@
 package callflow
 
 import (
+	"github.com/rstyled/gstyle/domain/bindingflow"
 	"github.com/rstyled/gstyle/domain/pdg"
 	"testing"
 )
@@ -21,12 +22,14 @@ func TestDeferredContinuationComposition(t *testing.T) {
 func TestUnwindContinuationOrder(t *testing.T) {
 	calls := &CallSites{targets: map[pdg.Ref]callTargets{1: {names: []string{"recoverer"}, known: true}, 2: {names: []string{"panic"}, known: true}}}
 	summaries := ExitSummaries{"recoverer": {Ordinary: Returns, DeferredPanic: RecoversInherited}}
-	olderRecovery := identityExitStack().push(calls, summaries, 1).push(calls, summaries, 2)
-	olderPanic := identityExitStack().push(calls, summaries, 2).push(calls, summaries, 1)
-	if got := olderRecovery.apply(Returns); got != Returns {
+	evaluation := newExitEvaluation(&exitBody{calls: calls}, summaries)
+	base := completions{{mode: Returns}: true}
+	olderRecovery := evaluation.applyDeferred(evaluation.applyDeferred(base, 2, bindingflow.Evaluation{}), 1, bindingflow.Evaluation{})
+	olderPanic := evaluation.applyDeferred(evaluation.applyDeferred(base, 1, bindingflow.Evaluation{}), 2, bindingflow.Evaluation{})
+	if got := olderRecovery.outcomes(); got != Returns {
 		t.Fatalf("older recoverer must consume newer panic: %v", got)
 	}
-	if got := olderPanic.apply(Returns); got != Panics {
+	if got := olderPanic.outcomes(); got != Panics {
 		t.Fatalf("earlier recovery cannot consume later panic: %v", got)
 	}
 }
