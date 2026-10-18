@@ -105,9 +105,41 @@ an opaque call on one branch could hide a returning state and make pruning
 unsound. The summary solver retains its existing terminal UnknownExit
 abstraction when observation is disabled.
 
+## Condition-derived caller facts
+
+At `4b03f2b`, `if flag { stop(flag) }` still gives the selected stop call
+`Returns | Panics`, although `stop(value bool)` panics when value is true.
+The negated Boolean arm and direct nil/non-nil pointer tests have the same gap.
+Four source assertions fail with `selected-arm call outcomes=5 want 4`.
+
+Selected binary CFG edges now add direct whole-binding Boolean or nilness facts
+to the exit evaluator's path state. Later writes use its existing transfers and
+invalidation. Joined paths retain their own state; heap fields and unknown
+conditions acquire no guessed facts. The final normal dependencies now show the
+false-arm control of `println` after `if flag { stop(flag) }`.
+
+Symbolic Boolean reads use the existing compiler-owned
+`gstyle.go.scalar-normal:resolved-type` primitive record. Type spellings alone
+establish nothing. Named Boolean conversions preserve values, and the existing
+canonical conversion fact now records that identity. Duplicate, malformed,
+extra-field, null and wrong-shape primitive records fail the query; absent or
+non-Boolean primitive evidence grants no Boolean identity.
+
+Source cases cover true/negated guards, nil/non-nil guards, named Booleans,
+subsequent stores, alias writes, unknown writes and joins. A separate concrete
+finite-value oracle checks 24 Boolean/nil programs across guard polarity,
+callee polarity and three possible stores. Metadata boundary tests reject
+malformed records and distinguish resolved types from original spelling.
+Four valid single-change Go overlay mutants fail their specific assertions:
+missing selected-edge facts, inverted Boolean truth, inverted nil truth and an
+incorrect primitive tag. Full Go checks, complexity/lint, the quality gate and
+affected race checks pass. The baseline is regenerated for 4,338 functions;
+non-density excess counts stay the same and transitive effect density rises.
+No quality-metric improvement or new formal proof is claimed.
+
 ## Remaining work
 
-Predicate-derived assumptions beyond the existing evaluator, cross-package
+Compound predicate relations beyond direct Boolean/nil bindings, cross-package
 call composition and receiver/closure execution still need broader integration.
 General call results, heap execution, complete implicit
 panic lowering, arbitrary operand-order flow, exceptional/deferred state writes,

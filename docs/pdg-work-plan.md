@@ -34,8 +34,9 @@ complete required behavior has direct evidence. Package-local summaries now remo
 before the final dependency solve; [evidence and boundaries](pdg-call-continuations.md).
 The existing exit evaluator now joins per-call outcomes from caller assignments
 and selected paths. Unknown or possibly returning paths retain continuation.
-Predicate-derived assumptions beyond that evaluator, cross-package call
-composition, general call results and arbitrary operand-order flow remain incomplete.
+Selected edges now supply direct Boolean/nil binding facts; ordinary writes
+invalidate them. Compound predicate relations, cross-package call composition,
+general call results and arbitrary operand-order flow remain incomplete.
 
 Then complete closure/callback/receiver execution, general result and heap
 state, full exceptional/deferred dependencies, concurrent/blocking flow, and

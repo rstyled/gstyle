@@ -11,7 +11,11 @@ import (
 
 // ValueFacts reads compiler-owned values without source syntax or dependencies.
 func (q *Query) ValueFacts() (Facts, error) {
-	facts := Facts{Nodes: map[pdg.Ref]Fact{}}
+	booleans, err := q.booleanSymbols()
+	if err != nil {
+		return Facts{}, err
+	}
+	facts := Facts{Nodes: map[pdg.Ref]Fact{}, BooleanSymbols: booleans}
 	for i, node := range q.graph.Nodes {
 		fact, found, err := q.nodeValueFact(q.graph.NodeAttributes(node))
 		if err != nil {

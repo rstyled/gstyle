@@ -83,6 +83,9 @@ func (evaluation *exitEvaluation) successors(point exitPoint, block pdg.FlowBloc
 			continue
 		}
 		next := point
+		if len(block.Successors) == 2 {
+			next = evaluation.assumeCondition(next, block.Condition, arm == 0)
+		}
 		next.block, next.offset = successor, 0
 		result |= evaluation.visit(next)
 	}
