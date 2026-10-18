@@ -9,14 +9,15 @@ import (
 )
 
 func (e *sourceExtraction) collectFamilies(pkgs []*packages.Package) error {
-	order, grouped := groupSourcePackages(pkgs)
+	order, grouped := groupSourcePackages(orderedFamilyPackages(pkgs))
 	for _, name := range order {
 		sources := e.result.Sources
 		functionStart, referenceStart := len(sources.Functions), len(sources.References)
-		family := &sourceExtraction{root: e.root, paths: e.paths, pool: e.pool, identities: e.identities, result: Extraction{Sources: sources, PackageNames: make(map[string][]string)}}
+		family := &sourceExtraction{program: e.program, root: e.root, paths: e.paths, pool: e.pool, identities: e.identities, result: Extraction{Sources: sources, PackageNames: make(map[string][]string)}}
 		if err := family.collectBatch(grouped[name]); err != nil {
 			return err
 		}
+		e.program = family.program
 		e.records[name] = recordSourcePackage(grouped[name], family.result, sources.Functions[functionStart:], sources.References[referenceStart:])
 		e.order = append(e.order, name)
 	}
@@ -69,4 +70,14 @@ func sourcePackageInputs(pkgs []*packages.Package) (paths, dependencies []string
 		dependencies = append(dependencies, name)
 	}
 	return paths, dependencies
+}
+
+// Keep test variants in their family while ordering production imports first.
+func orderedFamilyPackages(pkgs []*packages.Package) []*packages.Package {
+	_, grouped := groupSourcePackages(pkgs)
+	var result []*packages.Package
+	for _, pkg := range orderedSourcePackages(productionPatternPackages(pkgs)) {
+		result = append(result, grouped[pkg.PkgPath]...)
+	}
+	return result
 }

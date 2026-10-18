@@ -137,10 +137,58 @@ affected race checks pass. The baseline is regenerated for 4,338 functions;
 non-density excess counts stay the same and transitive effect density rises.
 No quality-metric improvement or new formal proof is claimed.
 
+## Loaded cross-package call exits
+
+At `68c5bb9`, a caller of an imported `stop.Now` that always panics still marks
+its following `println` reachable. The combined `callflow.ExitEffects` query
+already proves the imported callee panics. Extraction solves each package alone,
+so that fact never reaches its final dependency solve.
+
+`callflow.Program` now owns source-free indexes for finalized functions. A
+package solve includes its current functions and the transitive loaded callees
+selected by canonical call targets. It reuses the existing finite-exit,
+divergence and argument-state solver. Unrelated registered roots are omitted;
+missing targets remain unknown. Each graph keeps its own intern tables.
+
+Normal extraction, bounded compiler batches and cached fix families process
+resolved imports before their callers. Ordering precedes batch packing, so it
+also holds when a package exceeds the batch budget and stands alone. Compiler
+syntax/type maps are still released per batch. The program catalog retains no
+compiler objects. Provisional inventories never replace finalized registrations.
+
+Cached revisions register unaffected inventories from the existing source
+records. Changed dependencies and reverse importers rebuild in dependency order.
+A caller-only edit keeps its imported argument contexts; a returning dependency
+revision cannot retain an old nonreturning summary. Unchanged revisions skip
+catalog reconstruction. Resource consumers receive the same exit scope used by
+the graph finalizer, rather than recomputing package-only exits.
+
+Source regressions cover normal, bounded and cached extraction through a
+three-package argument-forwarding chain; caller/dependency overlay revisions;
+a real compiler-batch boundary; and unloaded-body uncertainty. Exit cases cover
+panic, divergence, recursion, Goexit, abort, callee recovery and unknown calls.
+Consumer regressions prove a non-nil runtime guard after an imported panic and
+deferred resource release through that panic. Selected-callee solving agrees
+with whole-inventory solving for the source fixture and excludes an unrelated
+root. Public query-boundary and resolved-import-order tests also pass.
+
+Five valid Go overlay mutants fail specific assertions: missing imported scope,
+missing ordering in the pure batch policy, discarded unaffected cache entries,
+one-level-only callee traversal and package-only resource exit summaries. The
+batch-policy assertion does not depend on incidental package-loader ordering.
+Planning preserves borrowed import metadata. Full Go checks, complexity/lint,
+the quality gate and affected race suites pass. The quality baseline is refreshed
+for 4,354 functions. The new traversal owner and query registration need local
+state updates; raw aggregate/mutation/effect counts rise. No suppression or
+quality-metric improvement is claimed.
+
 ## Remaining work
 
-Compound predicate relations beyond direct Boolean/nil bindings, cross-package
-call composition and receiver/closure execution still need broader integration.
+Compound predicate relations beyond direct Boolean/nil bindings, imported
+frame/factory contracts and receiver/closure execution still need broader
+integration. Cross-package exits cover resolved targets in the loaded scope;
+callbacks and unresolved or unloaded bodies retain unknown evidence. Package
+initialization execution is outside this contract.
 General call results, heap execution, complete implicit
 panic lowering, arbitrary operand-order flow, exceptional/deferred state writes,
 concurrency and transformation safety remain open in the full PDG work plan.

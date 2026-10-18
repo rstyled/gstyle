@@ -20,6 +20,8 @@ type functionGraph struct {
 	graph       *pdg.Graph
 }
 type packageAnalysis struct {
+	program *callflow.Program
+	exits   callflow.ExitSummaries
 	pkg     *packages.Package
 	root    string
 	pool    *pdg.Builder
@@ -78,7 +80,7 @@ func (p *packageAnalysis) summarize() error {
 	if err != nil {
 		return err
 	}
-	facts, err := summarizeResources(functions)
+	facts, err := summarizeResourcesWithExits(functions, p.exits)
 	if err != nil {
 		return err
 	}
@@ -107,12 +109,23 @@ func (p *packageAnalysis) finalizeGraphs() error {
 	for _, source := range p.graphs {
 		graphs[source.graph.Tables.Text(source.graph.Function.ID)] = source.graph
 	}
-	exits, err := callflow.ExitEffects(graphs)
+	if p.program == nil {
+		p.program = callflow.NewProgram()
+	}
+	exits, err := p.program.ExitEffects(graphs)
 	if err != nil {
 		return err
 	}
+	p.exits = exits
+	return p.publishGraphs(exits)
+}
+
+func (p *packageAnalysis) publishGraphs(exits callflow.ExitSummaries) error {
 	for i := range p.graphs {
 		if err := p.graphs[i].finalize(exits); err != nil {
+			return err
+		}
+		if err := p.program.Add(p.graphs[i].graph); err != nil {
 			return err
 		}
 	}

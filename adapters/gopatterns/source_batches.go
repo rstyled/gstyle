@@ -13,15 +13,16 @@ import (
 const sourceBatchBytes int64 = 8 << 20
 
 type sourceFamily struct {
-	name  string
-	files []string
-	query string
-	bytes int64
+	imports []string
+	name    string
+	files   []string
+	query   string
+	bytes   int64
 }
 
 func sourcePackageBatches(config *packages.Config, query []string, request sourceVisit) ([][]string, error) {
 	metadata := *config
-	metadata.Mode = packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles
+	metadata.Mode = packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports
 	metadata.ParseFile = nil
 	pkgs, err := packages.Load(&metadata, batchSourceQueries(&metadata, query)...)
 	if err != nil {
@@ -34,7 +35,7 @@ func sourcePackageBatches(config *packages.Config, query []string, request sourc
 	if err := verifySourceFamilies(families, request); err != nil {
 		return nil, err
 	}
-	return packSourceFamilies(selectSourceFamilies(families, request.selected)), nil
+	return planSourceBatches(families, request.selected), nil
 }
 
 func packageSourceFamilies(pkgs []*packages.Package) []sourceFamily {
@@ -46,7 +47,7 @@ func packageSourceFamilies(pkgs []*packages.Package) []sourceFamily {
 		}
 		query := sourceFamilyQuery(pkg)
 		indexes[pkg.PkgPath] = len(families)
-		families = append(families, sourceFamily{name: pkg.PkgPath, query: query})
+		families = append(families, sourceFamily{name: pkg.PkgPath, query: query, imports: packageImportPaths(pkg)})
 	}
 	for _, pkg := range pkgs {
 		index, ok := indexes[sourceFamilyPath(pkg)]
@@ -101,4 +102,10 @@ func packSourceFamilies(families []sourceFamily) [][]string {
 		batches = append(batches, batch)
 	}
 	return batches
+}
+
+// Keep ordering, selection and packing one policy even when loader metadata
+// arrives in a different order. The loader itself need not retain compiler data.
+func planSourceBatches(families []sourceFamily, selected map[string]bool) [][]string {
+	return packSourceFamilies(selectSourceFamilies(orderedSourceFamilies(families), selected))
 }

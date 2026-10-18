@@ -27,6 +27,10 @@ func summarizeResources(functions map[string]resourceFunction) (packageResourceF
 	if err != nil {
 		return packageResourceFacts{}, err
 	}
+	return summarizeResourcesWithExits(functions, exits)
+}
+
+func summarizeResourcesWithExits(functions map[string]resourceFunction, exits callflow.ExitSummaries) (packageResourceFacts, error) {
 	helpers := cleanupSummaries(functions, exits)
 	summaries := resourceFactories(functions, helpers)
 	facts := packageResourceFacts{exits: exits, sources: map[types.Object]bool{}, failures: map[types.Object]bool{}, helpers: map[types.Object]bool{}}
