@@ -109,10 +109,10 @@ func reachableContextHeap(context bindingflow.Evaluation, roots []string) enviro
 	return heap
 }
 
-func (calls *CallSites) targetInvocation(summaries ExitSummaries, invocation exitInvocationContext, target bindingflow.Callable) exitInvocationContext {
+func (calls *CallSites) targetInvocation(summaries exitSummaryReader, invocation exitInvocationContext, target bindingflow.Callable) exitInvocationContext {
 	invocation.target = target
 	invocation.keyReady = false
-	invocation.key = calls.inputKey(summaries[target.Name].invocations, invocation)
+	invocation.key = calls.targetInputKey(summaries, target.Name, invocation)
 	invocation.keyReady = true
 	return invocation
 }
@@ -125,4 +125,9 @@ func (calls *CallSites) validTargetEnvironment(summary ExitSummary, invocation e
 		return false
 	}
 	return calls.boundCaptures(summary.invocations, invocation) != nil
+}
+
+func (calls *CallSites) targetInputKey(summaries exitSummaryReader, name string, invocation exitInvocationContext) string {
+	summary, _ := readExitSummary(summaries, name)
+	return calls.inputKey(summary.invocations, invocation)
 }

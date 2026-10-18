@@ -55,7 +55,7 @@ func (evaluation *exitEvaluation) regionHasWriter(ref pdg.Ref) bool {
 		if evaluation.body.graph.Nodes[candidate-1].Category != pdg.Call {
 			continue
 		}
-		if !evaluation.body.calls.PreservesCallerMemory(evaluation.summaries, candidate) {
+		if !evaluation.body.calls.preservesCallerMemory(evaluation.summaries, candidate) {
 			return true
 		}
 	}

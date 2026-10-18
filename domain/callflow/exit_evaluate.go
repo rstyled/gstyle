@@ -27,15 +27,17 @@ type exitEvaluation struct {
 	operationOutcomes map[pdg.Ref]Outcomes
 	values            map[valueStateID]exitValues
 	body              *exitBody
-	summaries         ExitSummaries
+	summaries         exitSummaryReader
 	seen              map[exitPoint]bool
 	changed           bool
+	cyclic            bool
 	active            map[exitPoint]bool
 	results           map[exitPoint]completions
 }
 
 func (evaluation *exitEvaluation) visit(point exitPoint) completions {
 	if evaluation.active[point] {
+		evaluation.cyclic = true
 		result := terminalCompletion(Diverges)
 		result.add(evaluation.results[point])
 		return result
@@ -48,16 +50,10 @@ func (evaluation *exitEvaluation) visit(point exitPoint) completions {
 	result := evaluation.step(point)
 	delete(evaluation.active, point)
 	old := evaluation.results[point]
-	if old == nil {
-		old = completions{}
-		evaluation.results[point] = old
+	if old.add(result) {
+		evaluation.changed = true
 	}
-	for value := range result {
-		if !old[value] {
-			old[value] = true
-			evaluation.changed = true
-		}
-	}
+	evaluation.results[point] = old
 	return old
 }
 
@@ -153,7 +149,7 @@ type evaluatedBody struct {
 	captured captureEffects
 }
 
-func evaluateBodyResult(body *exitBody, summaries ExitSummaries, inherited bool, inputs string) evaluatedBody {
+func evaluateBodyResult(body *exitBody, summaries exitSummaryReader, inherited bool, inputs string) evaluatedBody {
 	if body == nil || body.flow == nil {
 		return evaluatedBody{outcomes: UnknownExit}
 	}
@@ -162,7 +158,7 @@ func evaluateBodyResult(body *exitBody, summaries ExitSummaries, inherited bool,
 	return evaluatedBody{outcomes: outcomes, returned: evaluation.returned, captured: evaluation.captured, memory: evaluation.memory, heaps: evaluation.heapResults}
 }
 
-func newExitEvaluation(body *exitBody, summaries ExitSummaries) *exitEvaluation {
+func newExitEvaluation(body *exitBody, summaries exitSummaryReader) *exitEvaluation {
 	return &exitEvaluation{memory: memoryProof{preserves: true, confined: true}, values: map[valueStateID]exitValues{}, body: body, summaries: summaries, active: map[exitPoint]bool{}, results: map[exitPoint]completions{}}
 }
 

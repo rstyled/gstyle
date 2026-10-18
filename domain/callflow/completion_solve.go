@@ -5,7 +5,9 @@ func (evaluation *exitEvaluation) solveCompletions(point exitPoint) Outcomes {
 		evaluation.seen = map[exitPoint]bool{}
 		evaluation.changed = false
 		result := evaluation.visit(point)
-		if !evaluation.changed {
+		// Acyclic suffixes are complete after their first depth-first traversal.
+		// Back edges require the monotone fixed point to propagate later results.
+		if !evaluation.cyclic || !evaluation.changed {
 			return evaluation.publishCompletions(result)
 		}
 	}
@@ -13,7 +15,7 @@ func (evaluation *exitEvaluation) solveCompletions(point exitPoint) Outcomes {
 
 func (evaluation *exitEvaluation) publishCompletions(result completions) Outcomes {
 	var outcomes Outcomes
-	for value := range result {
+	for value := range result.all() {
 		mode := value.mode
 		if mode == Returns && value.recovered {
 			mode = RecoversInherited

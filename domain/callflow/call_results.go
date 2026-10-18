@@ -5,7 +5,7 @@ import (
 	"github.com/rstyled/gstyle/domain/pdg"
 )
 
-func (calls *CallSites) returnedValues(summaries ExitSummaries, ref pdg.Ref, context bindingflow.Evaluation) string {
+func (calls *CallSites) returnedValues(summaries exitSummaryReader, ref pdg.Ref, context bindingflow.Evaluation) string {
 	targets := calls.invocationTargets(ref, context)
 	if !targets.known {
 		return ""
@@ -23,8 +23,8 @@ func (calls *CallSites) returnedValues(summaries ExitSummaries, ref pdg.Ref, con
 	return returned
 }
 
-func (calls *CallSites) targetReturned(name string, summaries ExitSummaries, invocation exitInvocationContext) (string, bool) {
-	summary, found := summaries[name]
+func (calls *CallSites) targetReturned(name string, summaries exitSummaryReader, invocation exitInvocationContext) (string, bool) {
+	summary, found := readExitSummary(summaries, name)
 	outcomes := calls.targetWithValues(name, summaries, invocation)
 	if !found || outcomes&UnknownExit != 0 {
 		return "", true

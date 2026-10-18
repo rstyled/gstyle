@@ -69,7 +69,7 @@ type environmentProjection struct {
 	known    bool
 }
 
-func (calls *CallSites) projectEnvironment(summaries ExitSummaries, invocation exitInvocationContext, mode Outcomes) environmentProjection {
+func (calls *CallSites) projectEnvironment(summaries exitSummaryReader, invocation exitInvocationContext, mode Outcomes) environmentProjection {
 	result := environmentProjection{heap: environmentHeap{}, fresh: map[string]bool{}, known: true}
 	targets := calls.invocationTargets(invocation.ref, invocation.values)
 	if !targets.known {
@@ -103,15 +103,15 @@ func (projection *environmentProjection) completeUnknownResult() {
 		projection.returned = unknownReturned(len(decodeTuple(projection.returned)))
 	}
 }
-func (calls *CallSites) projectTarget(summaries ExitSummaries, invocation exitInvocationContext, mode Outcomes) environmentProjection {
-	summary := summaries[invocation.target.Name]
+func (calls *CallSites) projectTarget(summaries exitSummaryReader, invocation exitInvocationContext, mode Outcomes) environmentProjection {
+	summary, _ := readExitSummary(summaries, invocation.target.Name)
 	heap := calls.contextHeap(summary, invocation, mode)
 	returned := ""
 	complete := true
 	if mode == Returns {
 		var missing bool
 		returned, missing = calls.targetReturned(invocation.target.Name, summaries, invocation)
-		_, loaded := summaries[invocation.target.Name]
+		_, loaded := readExitSummary(summaries, invocation.target.Name)
 		complete = !missing || (loaded && summary.arity == 0)
 	}
 	entry := readEnvironmentInput(calls.inputKey(summary.invocations, invocation))

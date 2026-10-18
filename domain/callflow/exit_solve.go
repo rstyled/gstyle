@@ -21,12 +21,13 @@ const (
 func solveExitBodies(bodies map[string]*exitBody) ExitSummaries {
 	summaries := seedExitSummaries(bodies)
 	seedCallInputs(bodies, summaries)
+	cache := bodyEvaluationCache{}
 	for {
 		setInputPass(summaries, finitePass)
-		solveExitPass(bodies, summaries, finitePass)
+		solveExitPass(bodies, summaries, finitePass, cache)
 		seedPossibleDivergence(bodies, summaries)
 		count := invocationCount(summaries)
-		solveExitPass(bodies, summaries, infinitePass)
+		solveExitPass(bodies, summaries, infinitePass, cache)
 		if invocationCount(summaries) == count {
 			break
 		}
@@ -35,32 +36,43 @@ func solveExitBodies(bodies map[string]*exitBody) ExitSummaries {
 	return summaries
 }
 
-func solveExitPass(bodies map[string]*exitBody, summaries ExitSummaries, pass exitPass) {
+type exitPassSolver struct {
+	summaries ExitSummaries
+	pass      exitPass
+	cache     bodyEvaluationCache
+}
+
+func solveExitPass(bodies map[string]*exitBody, summaries ExitSummaries, pass exitPass, cache bodyEvaluationCache) {
+	solver := exitPassSolver{summaries: summaries, pass: pass, cache: cache}
 	for changed := true; changed; {
 		changed = false
 		count := invocationCount(summaries)
 		for name, body := range bodies {
-			old := summaries[name]
-			ordinary := evaluateBodyResult(body, summaries, false, "")
-			inherited := evaluateBodyResult(body, summaries, true, "")
-			next := ExitSummary{
-				heaps:                 [2]heapEffects{pass.heapEffects(old.heaps[0], ordinary.heaps), pass.heapEffects(old.heaps[1], inherited.heaps)},
-				frameConfined:         old.frameConfined,
-				captureArity:          old.captureArity,
-				captured:              [2]captureEffects{pass.captureEffects(old.captured[0], ordinary.captured), pass.captureEffects(old.captured[1], inherited.captured)},
-				PreservesCallerMemory: old.PreservesCallerMemory,
-				returned:              pass.returned(old.returned, ordinary.returned), arity: old.arity,
-				Ordinary:      pass.update(old.Ordinary, ordinary.outcomes),
-				DeferredPanic: pass.update(old.DeferredPanic, inherited.outcomes),
-				Receiver:      old.Receiver,
-				invocations:   old.invocations,
-			}
-			summaries[name] = next
-			inputChanged := solveInputPass(body, summaries, old.invocations, pass)
-			changed = changed || old != next || inputChanged
+			changed = solver.solveBody(name, body) || changed
 		}
 		changed = changed || invocationCount(summaries) != count
 	}
+}
+
+func (solver exitPassSolver) solveBody(name string, body *exitBody) bool {
+	old := solver.summaries[name]
+	ordinary := solver.cache.evaluate(bodyEvaluationKey{body: body}, solver.summaries)
+	inherited := solver.cache.evaluate(bodyEvaluationKey{body: body, inherited: true}, solver.summaries)
+	next := ExitSummary{
+		heaps:                 [2]heapEffects{solver.pass.heapEffects(old.heaps[0], ordinary.heaps), solver.pass.heapEffects(old.heaps[1], inherited.heaps)},
+		frameConfined:         old.frameConfined,
+		captureArity:          old.captureArity,
+		captured:              [2]captureEffects{solver.pass.captureEffects(old.captured[0], ordinary.captured), solver.pass.captureEffects(old.captured[1], inherited.captured)},
+		PreservesCallerMemory: old.PreservesCallerMemory,
+		returned:              solver.pass.returned(old.returned, ordinary.returned), arity: old.arity,
+		Ordinary:      solver.pass.update(old.Ordinary, ordinary.outcomes),
+		DeferredPanic: solver.pass.update(old.DeferredPanic, inherited.outcomes),
+		Receiver:      old.Receiver,
+		invocations:   old.invocations,
+	}
+	solver.summaries[name] = next
+	inputChanged := solver.solveInputs(body, old.invocations)
+	return old != next || inputChanged
 }
 
 func seedExitSummaries(bodies map[string]*exitBody) ExitSummaries {
