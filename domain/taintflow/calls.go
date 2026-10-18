@@ -3,17 +3,16 @@ package taintflow
 import "github.com/rstyled/gstyle/domain/pdg"
 
 func (e *evaluation) call(ref pdg.Ref) {
+	if item, known := e.callableConversion(ref, e.expressionInputs(ref)); known {
+		e.store(slot{Node: ref}, item)
+		return
+	}
 	e.directSinks(ref)
 	if e.query.models.Source != nil && e.query.models.Source(e.query.graph, ref) {
 		e.sourceCall(ref)
 		return
 	}
-	target := e.target(ref)
-	if callee := e.catalog[target]; callee != nil {
-		e.localCall(ref, callee, e.summaries[target])
-		return
-	}
-	e.store(slot{Node: ref}, e.externalCall(ref))
+	e.invoke(ref)
 }
 func (e *evaluation) target(ref pdg.Ref) string {
 	attrs := e.query.graph.NodeAttributes(e.query.graph.Nodes[ref-1])

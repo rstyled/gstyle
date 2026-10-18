@@ -1,6 +1,9 @@
 package patterns
 
-import "slices"
+import (
+	"github.com/rstyled/gstyle/domain/pdg"
+	"slices"
+)
 
 // Native analyses run once per function before matching. Their compact results
 // let matching release canonical graph records instead of pinning a second corpus.
@@ -19,9 +22,13 @@ func (r *semanticResults) candidates(kind CandidateKind) []Candidate {
 	return out
 }
 
-func nativeSemanticResults(facts []*MiningFacts) *semanticResults {
-	flows, err := QueryTaintFlows(facts)
-	findings := TaintFlowCandidates(flows, facts)
+func nativeSemanticResults(facts []*MiningFacts, graphs []*pdg.Graph) *semanticResults {
+	catalog, err := semanticCatalog(facts, graphs)
+	var flows []TaintFlow
+	if err == nil {
+		flows, err = QueryTaintFlows(catalog)
+	}
+	findings := TaintFlowCandidates(flows, catalog)
 	for _, original := range facts {
 		f := semanticFact(original)
 		if f == nil || f.Pdg == nil {
@@ -29,7 +36,7 @@ func nativeSemanticResults(facts []*MiningFacts) *semanticResults {
 		}
 		findings = append(findings, semanticFunctionCandidates(f)...)
 	}
-	return &semanticResults{findings: findings, coverage: taintQueryCoverage(facts, err)}
+	return &semanticResults{findings: findings, coverage: taintQueryCoverage(catalog, err)}
 }
 
 func semanticFunctionCandidates(f *MiningFacts) []Candidate {

@@ -46,15 +46,20 @@ func (e *evaluation) externalArgument(ref pdg.Ref, position pdg.Position, encodi
 		return item
 	}
 	result := encodeValue(item, "")
+	result.Opaque = true
 	result.Objects = item.Objects
 	return result
 }
 
 func (e *evaluation) expressionEncoding(ref pdg.Ref, item value) value {
+	if converted, known := e.callableConversion(ref, item); known {
+		return converted
+	}
 	if e.query.models.PreservesValueEncoding != nil && e.query.models.PreservesValueEncoding(e.query.graph, ref) {
 		return item
 	}
 	result := encodeValue(item, "")
+	result.Opaque = true
 	result.Objects = item.Objects
 	return result
 }

@@ -25,3 +25,24 @@ func TestImmutableMemoryKindRequiresUnambiguousCompilerFact(t *testing.T) {
 		})
 	}
 }
+
+func TestMemoryKindRetainsExactCompilerKind(t *testing.T) {
+	for _, kind := range []string{"function", "interface", "immutable", "pointer"} {
+		pool := pdg.NewBuilder()
+		facts := []pdg.Extension{{Name: pool.Text("gstyle.memory:kind"), Value: pool.Text(`"` + kind + `"`)}}
+		if got := sourceMemoryKind(pool.Tables, facts); got != kind {
+			t.Fatalf("got %q want %q", got, kind)
+		}
+		if got := sourceMemoryKind(pool.Tables, append(facts, facts...)); got != "" {
+			t.Fatalf("duplicate fact established %q", got)
+		}
+	}
+	var absent *Query
+	for _, q := range []*Query{absent, {}} {
+		for _, ref := range []pdg.Ref{0, 1} {
+			if q.MemoryKind(ref) != "" || q.ImmutableValue(ref) || q.ImmutableSymbol(ref) {
+				t.Fatal("missing graph established memory kind")
+			}
+		}
+	}
+}

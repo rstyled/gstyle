@@ -5,6 +5,11 @@ import "strings"
 // A widened suffix reads all reachable stored descendants. It cannot be used
 // to justify a strong update or to discard an existing concrete dependency.
 func wildcardValue(store state, base value) value {
+	result := reachableStore(store, base)
+	result.Objects = map[object]bool{}
+	return result
+}
+func reachableStore(store state, base value) value {
 	result := emptyValue()
 	queue := make([]object, 0, len(base.Objects))
 	for root := range base.Objects {
@@ -17,6 +22,7 @@ func wildcardValue(store state, base value) value {
 			continue
 		}
 		seen[root] = true
+		result.Objects[root] = true
 		if root.Input != 0 {
 			result.Data[atom{Input: root.Input, Fields: appendFields(root.Fields, "*")}] = true
 		}
@@ -28,6 +34,9 @@ func wildcardChildren(store state, root object, deps dependencies, queue []objec
 	prefix := root.Fields
 	root.Fields = ""
 	for key, item := range store.Memory {
+		if callbackMarker(key.Fields) {
+			continue
+		}
 		if key.Object != root || !fieldPrefix(prefix, key.Fields) {
 			continue
 		}
@@ -43,12 +52,20 @@ func fieldPrefix(prefix, fields string) bool {
 }
 func wildcardWrites(store state, key cell, item value) value {
 	for candidate, stored := range store.Memory {
-		if candidate.Object != key.Object || !strings.HasSuffix(candidate.Fields, "/*") {
+		if candidate.Object != key.Object || !wildcardField(candidate.Fields) {
 			continue
 		}
-		if fieldPrefix(strings.TrimSuffix(candidate.Fields, "/*"), key.Fields) {
+		if fieldPrefix(wildcardPrefix(candidate.Fields), key.Fields) {
 			item = joinValue(item, stored)
 		}
 	}
 	return item
+}
+
+func wildcardField(fields string) bool { return fields == "*" || strings.HasSuffix(fields, "/*") }
+func wildcardPrefix(fields string) string {
+	if fields == "*" {
+		return ""
+	}
+	return strings.TrimSuffix(fields, "/*")
 }

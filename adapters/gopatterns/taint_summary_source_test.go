@@ -38,10 +38,10 @@ func moduleTaintFlows(t *testing.T, files map[string]string) []patterns.TaintFlo
 		t.Fatal(err)
 	}
 	var facts []*patterns.MiningFacts
-	for _, fn := range extraction.Funcs {
-		graph := fn.Pdg
-		facts = append(facts, &patterns.MiningFacts{ID: graph.Tables.Text(graph.Function.ID), Name: fn.Name, Path: fn.Path, Canonical: &graph})
+	for _, graph := range extraction.Callables {
+		facts = append(facts, &patterns.MiningFacts{ID: graph.Tables.Text(graph.Function.ID), Name: graph.Tables.Text(graph.Function.ID), Canonical: graph})
 	}
+
 	flows, err := patterns.QueryTaintFlows(facts)
 	if err != nil {
 		t.Fatal(err)

@@ -43,3 +43,19 @@ func (calls *CallSites) invocationTargets(ref pdg.Ref, context bindingflow.Evalu
 	}
 	return calls.targets[ref]
 }
+
+// InvocationTargets resolves an invocation from canonical callable values and
+// the caller's current bindings. The result owns its target slice. A false
+// known flag requires callers to retain an unknown-target alternative.
+func (calls *CallSites) InvocationTargets(ref pdg.Ref, context bindingflow.Evaluation) ([]bindingflow.Callable, bool) {
+	targets := calls.invocationTargets(ref, context)
+	return targets.callables(), targets.known
+}
+
+// TargetOperand is the canonical callee-value operand, or zero for a direct call.
+func (calls *CallSites) TargetOperand(ref pdg.Ref) pdg.Ref {
+	if calls == nil {
+		return 0
+	}
+	return calls.targets[ref].source
+}

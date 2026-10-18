@@ -3,6 +3,7 @@
 package taintflow
 
 import (
+	"github.com/rstyled/gstyle/domain/callflow"
 	"github.com/rstyled/gstyle/domain/pdg"
 	"maps"
 )
@@ -41,6 +42,8 @@ type atom struct {
 }
 type dependencies map[atom]bool
 type object struct {
+	Captured   bool
+	History    callflow.AllocationHistory
 	Input      int
 	Node       pdg.Ref
 	Allocation string
@@ -51,8 +54,11 @@ type cell struct {
 	Fields string
 }
 type value struct {
-	Data    dependencies
-	Objects map[object]bool
+	Functions map[string]bool
+	Opaque    bool
+	Nil       bool
+	Data      dependencies
+	Objects   map[object]bool
 }
 type slot struct {
 	Node   pdg.Ref
@@ -63,22 +69,26 @@ type sinkKey struct {
 	Kind string
 }
 type summary struct {
-	Results map[pdg.Position]value
-	Writes  map[cell]value
-	Sinks   map[sinkKey]dependencies
+	Repeated map[object]bool
+	Results  map[pdg.Position]value
+	Writes   map[cell]value
+	Sinks    map[sinkKey]dependencies
 }
 type state struct {
+	Repeated map[object]bool
 	Bindings map[pdg.Ref]value
 	Memory   map[cell]value
 	Nodes    map[slot]value
 }
 
-func emptyValue() value { return value{Data: dependencies{}, Objects: map[object]bool{}} }
+func emptyValue() value {
+	return value{Data: dependencies{}, Objects: map[object]bool{}, Functions: map[string]bool{}}
+}
 func emptyState() state {
-	return state{Bindings: map[pdg.Ref]value{}, Memory: map[cell]value{}, Nodes: map[slot]value{}}
+	return state{Repeated: map[object]bool{}, Bindings: map[pdg.Ref]value{}, Memory: map[cell]value{}, Nodes: map[slot]value{}}
 }
 func emptySummary() summary {
-	return summary{Results: map[pdg.Position]value{}, Writes: map[cell]value{}, Sinks: map[sinkKey]dependencies{}}
+	return summary{Repeated: map[object]bool{}, Results: map[pdg.Position]value{}, Writes: map[cell]value{}, Sinks: map[sinkKey]dependencies{}}
 }
 func joinDependencies(to, from dependencies) {
 	for item := range from {
@@ -93,18 +103,19 @@ func joinValue(to, from value) value {
 		return from
 	}
 	result := emptyValue()
+	result.Opaque = to.Opaque || from.Opaque
+	result.Nil = to.Nil || from.Nil
+	maps.Copy(result.Functions, to.Functions)
+	maps.Copy(result.Functions, from.Functions)
 	joinDependencies(result.Data, to.Data)
 	joinDependencies(result.Data, from.Data)
-	for item := range to.Objects {
-		result.Objects[item] = true
-	}
-	for item := range from.Objects {
-		result.Objects[item] = true
-	}
+	maps.Copy(result.Objects, to.Objects)
+	maps.Copy(result.Objects, from.Objects)
 	return result
 }
 func cloneState(old state) state {
 	result := emptyState()
+	maps.Copy(result.Repeated, old.Repeated)
 	for key, item := range old.Bindings {
 		result.Bindings[key] = item
 	}
@@ -129,14 +140,18 @@ func setContains[K comparable](to, from map[K]bool) bool {
 	return true
 }
 func valueContains(to, from value) bool {
-	return setContains(to.Data, from.Data) && setContains(to.Objects, from.Objects)
+	return containsCallable(to, from) && setContains(to.Data, from.Data) && setContains(to.Objects, from.Objects)
 }
 func valueEqual(left, right value) bool {
-	return maps.Equal(left.Data, right.Data) && maps.Equal(left.Objects, right.Objects)
+	return left.Nil == right.Nil && left.Opaque == right.Opaque && maps.Equal(left.Functions, right.Functions) && maps.Equal(left.Data, right.Data) && maps.Equal(left.Objects, right.Objects)
 }
 func stateEqual(left, right state) bool {
-	return maps.EqualFunc(left.Bindings, right.Bindings, valueEqual) && maps.EqualFunc(left.Memory, right.Memory, valueEqual) && maps.EqualFunc(left.Nodes, right.Nodes, valueEqual)
+	return maps.Equal(left.Repeated, right.Repeated) && maps.EqualFunc(left.Bindings, right.Bindings, valueEqual) && maps.EqualFunc(left.Memory, right.Memory, valueEqual) && maps.EqualFunc(left.Nodes, right.Nodes, valueEqual)
 }
 func summaryEqual(left, right summary) bool {
-	return maps.EqualFunc(left.Results, right.Results, valueEqual) && maps.EqualFunc(left.Writes, right.Writes, valueEqual) && maps.EqualFunc(left.Sinks, right.Sinks, maps.Equal[dependencies, dependencies])
+	return maps.Equal(left.Repeated, right.Repeated) && maps.EqualFunc(left.Results, right.Results, valueEqual) && maps.EqualFunc(left.Writes, right.Writes, valueEqual) && maps.EqualFunc(left.Sinks, right.Sinks, maps.Equal[dependencies, dependencies])
+}
+
+func containsCallable(to, from value) bool {
+	return (!from.Nil || to.Nil) && (!from.Opaque || to.Opaque) && setContains(to.Functions, from.Functions)
 }

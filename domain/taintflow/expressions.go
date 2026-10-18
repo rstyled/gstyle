@@ -32,10 +32,12 @@ func (e *evaluation) input(owner pdg.Ref, position pdg.Position) value {
 }
 func (e *evaluation) origin(source bindingflow.ValueSource) value {
 	if source.Zero {
-		return emptyValue()
+		item := emptyValue()
+		item.Nil = e.query.paths.ZeroValue(source.Symbol).Nil
+		return item
 	}
 	if source.Symbol != 0 {
-		return e.state.Bindings[source.Symbol]
+		return e.symbolValue(source.Symbol)
 	}
 	return e.node(source.Node, source.Result)
 }
@@ -54,17 +56,19 @@ func (e *evaluation) node(ref pdg.Ref, result pdg.Position) value {
 }
 func (e *evaluation) expression(ref pdg.Ref) value {
 	attrs := e.query.graph.NodeAttributes(e.query.graph.Nodes[ref-1])
-	if e.query.paths.IsAllocation(ref) {
-		return e.allocation(ref)
+	if item, known := e.constructedValue(ref); known {
+		return item
 	}
 	if attrs.Literal.Status == pdg.Known {
-		return emptyValue()
+		item := emptyValue()
+		item.Nil = e.query.facts.Nodes[ref].Value.Nil
+		return item
 	}
 	if len(attrs.Reads) == 1 && attrs.Reads[0].DirectSymbol() {
-		return e.state.Bindings[attrs.Reads[0].Symbol]
+		return e.symbolValue(attrs.Reads[0].Symbol)
 	}
-	if e.query.graph.Tables.Text(attrs.Operator.Value) == "field" {
-		return e.fieldValue(ref)
+	if item, found := e.memoryValue(ref, attrs); found {
+		return item
 	}
 	return e.expressionEncoding(ref, e.expressionInputs(ref))
 }
@@ -92,6 +96,10 @@ func (e *evaluation) write(ref pdg.Ref, write bindingflow.Write) {
 		return
 	}
 	item := e.input(ref, write.Position)
+	if write.Zero {
+		item = emptyValue()
+		item.Nil = e.query.paths.ZeroValue(write.Symbol).Nil
+	}
 	if write.UnknownTarget() {
 		return
 	}
@@ -100,6 +108,7 @@ func (e *evaluation) write(ref pdg.Ref, write bindingflow.Write) {
 		return
 	}
 	e.state.Bindings[write.Symbol] = e.bindingObject(write.Symbol, item)
+	e.writeCapture(write.Symbol, item)
 }
 func (e *evaluation) bindingObject(symbol pdg.Ref, item value) value {
 	if e.query.paths.ImmutableSymbol(symbol) {
@@ -110,7 +119,7 @@ func (e *evaluation) bindingObject(symbol pdg.Ref, item value) value {
 		return item
 	}
 	result := item
-	result.Objects = map[object]bool{{Node: symbol}: true}
+	result.Objects = map[object]bool{{Node: symbol, Allocation: allocationIdentity(e.query.name+":binding", symbol)}: true}
 	return result
 }
 func (e *evaluation) writeField(ref pdg.Ref, position pdg.Position, item value) {
@@ -132,7 +141,9 @@ func (e *evaluation) writeField(ref pdg.Ref, position pdg.Position, item value) 
 
 func (e *evaluation) allocation(ref pdg.Ref) value {
 	result := emptyValue()
-	result.Objects[object{Node: ref, Allocation: e.query.name}] = true
+	attrs := e.query.graph.NodeAttributes(e.query.graph.Nodes[ref-1])
+	result.Opaque = e.query.graph.Tables.Text(attrs.Construct) == "closure"
+	result.Objects[object{Node: ref, Allocation: allocationIdentity(e.query.name, ref)}] = true
 	return result
 }
 
@@ -141,4 +152,14 @@ func (e *evaluation) store(key slot, item value) {
 		item.Objects = map[object]bool{}
 	}
 	e.state.Nodes[key] = item
+}
+
+func (e *evaluation) constructedValue(ref pdg.Ref) (value, bool) {
+	if item, known := e.functionValue(ref); known {
+		return item, true
+	}
+	if e.query.paths.IsAllocation(ref) {
+		return e.allocation(ref), true
+	}
+	return value{}, false
 }

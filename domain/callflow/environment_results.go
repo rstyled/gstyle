@@ -159,10 +159,7 @@ func rebasedAddresses(heap, entry environmentHeap, site string) (map[string]stri
 			continue
 		}
 		next := readOwnedJSON[environmentAddress](address)
-		repeated[address] = slices.Contains(next.Sites, site)
-		next.Sites = append(next.Sites, site)
-		slices.Sort(next.Sites)
-		next.Sites = slices.Compact(next.Sites)
+		next.Sites, repeated[address] = extendAllocationSites(next.Sites, site)
 		renames[address] = ownedJSON(next)
 	}
 	return renames, repeated
