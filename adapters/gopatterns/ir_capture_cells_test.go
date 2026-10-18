@@ -165,6 +165,22 @@ func TestCaptureBindingsRejectMalformedOrMismatchedCells(t *testing.T) {
 	if _, err := bindingflow.CaptureBindings(body, &changed); err == nil {
 		t.Fatal("mixed source revisions accepted")
 	}
+	emptyBody, emptyOwner := *body, *owner
+	emptyBody.Sources = slices.Clone(body.Sources)
+	emptyOwner.Sources = slices.Clone(owner.Sources)
+	emptyBody.Sources[0].Snapshot = 0
+	emptyOwner.Sources[0].Snapshot = 0
+	emptyBody.Sources[0].ContentIdentity = p.pool.Known("")
+	emptyOwner.Sources[0].ContentIdentity = p.pool.Known("")
+	if err := pdg.Validate(&emptyBody); err != nil {
+		t.Fatal(err)
+	}
+	if err := pdg.Validate(&emptyOwner); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bindingflow.CaptureBindings(&emptyBody, &emptyOwner); err == nil {
+		t.Fatal("empty known revisions certify a capture link")
+	}
 	changed.Sources[0].ContentIdentity = p.pool.Missing(pdg.Unknown, "no snapshot")
 	if _, err := bindingflow.CaptureBindings(body, &changed); err == nil {
 		t.Fatal("unknown source revision accepted")

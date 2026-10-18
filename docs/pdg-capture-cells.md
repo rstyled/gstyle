@@ -24,7 +24,7 @@ chain through the enclosing body. IDs are lexical cell families; they do not
 identify runtime allocations or individual loop iterations.
 
 The source-free `bindingflow.CaptureBindings` query validates both graphs,
-owner identity, known matching source revisions, names, types, scopes, roles,
+owner identity, known nonempty matching source revisions, names, types, scopes, roles,
 complete capture inventories and one-to-one cell bindings. It compares text
 across intern pools. Absent metadata yields no evidence; an explicit empty
 inventory yields a nonnil empty map. Empty maps do not establish purity or
@@ -35,7 +35,7 @@ environment. Returned maps own their data; borrowed graphs remain unchanged.
 `TestLexicalCaptureCells` covers fourteen cases, including shadowing, receivers,
 named outputs, generic parameters, range cells, nested relays and pointer writes.
 Boundary cases reject missing/duplicate cells, shadowed same-name variables,
-mixed or unknown source revisions, duplicate environments and invalid graphs.
+mixed, empty or unknown source revisions, duplicate environments and invalid graphs.
 The cross-pool case checks representation independence. Memory-model evidence
 checks addressable captured storage and unknown external pointer referents.
 

@@ -120,7 +120,7 @@ func sameCapturedSymbol(body *pdg.Graph, inner pdg.Ref, owner *pdg.Graph, outer 
 }
 
 func sameCaptureFact(left *pdg.Graph, a pdg.Fact, right *pdg.Graph, b pdg.Fact) bool {
-	return a.Status == pdg.Known && b.Status == pdg.Known && left.Tables.Text(a.Value) == right.Tables.Text(b.Value)
+	return a.Status == pdg.Known && b.Status == pdg.Known && left.Tables.Text(a.Value) != "" && left.Tables.Text(a.Value) == right.Tables.Text(b.Value)
 }
 
 func captureCellRole(role pdg.Role) bool {
