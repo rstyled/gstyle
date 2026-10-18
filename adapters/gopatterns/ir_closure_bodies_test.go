@@ -145,3 +145,55 @@ func TestLoadedClosureBodiesComposeAcrossPackages(t *testing.T) {
 		}
 	}
 }
+
+func TestClosureCatalogAcrossExtractionModes(t *testing.T) {
+	for _, mode := range []string{"normal", "bounded", "cached"} {
+		t.Run(mode, func(t *testing.T) {
+			root := crossPackageModule(t, `package stop;func Now(flag bool){func(value bool){if value{panic("stop")}}(flag)}`)
+			var extraction *Extraction
+			var err error
+			switch mode {
+			case "normal":
+				extraction, err = Extract(context.Background(), root, []string{"."})
+			case "bounded":
+				extraction, err = ExtractForFix(context.Background(), root, []string{"."})
+			default:
+				extraction, err = (&FixExtractor{}).Extract(context.Background(), root, []string{"."}, SourceOverlay{})
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(extraction.Callables) <= len(extraction.Funcs) {
+				t.Fatal("lexical closure catalog is missing")
+			}
+			if afterCallReachable(t, extraction, "example.f") || !afterCallReachable(t, extraction, "example.g") {
+				t.Fatal("loaded closure loses its argument-specific continuation")
+			}
+		})
+	}
+}
+
+func TestClosureCatalogSurvivesCallerAndDependencyRevisions(t *testing.T) {
+	root := crossPackageModule(t, `package stop;func Now(flag bool){func(value bool){if value{panic("stop")}}(flag)}`)
+	cache := &FixExtractor{}
+	first, err := cache.Extract(context.Background(), root, []string{"."}, SourceOverlay{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := map[string][]byte{filepath.Join(root, "caller.go"): []byte(`package example;import "example/middle";func f(){middle.Stop(true);println("after");_=0};func g(){middle.Stop(false);println("after")}`)}
+	second, err := cache.Extract(context.Background(), root, []string{"."}, SourceOverlay{Files: files, Disk: first.Sources.EvidenceOnly()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(second.Callables) <= len(second.Funcs) || afterCallReachable(t, second, "example.f") {
+		t.Fatal("caller revision loses unaffected closure bodies")
+	}
+	files[filepath.Join(root, "stop/stop.go")] = []byte(`package stop;func Now(flag bool){func(value bool){}(flag)}`)
+	third, err := cache.Extract(context.Background(), root, []string{"."}, SourceOverlay{Files: files, Disk: second.Sources.EvidenceOnly()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !afterCallReachable(t, third, "example.f") {
+		t.Fatal("dependency revision retains a stale closure panic")
+	}
+}

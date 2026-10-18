@@ -33,7 +33,9 @@ capture uncertainty, capture writes and target joins. The continuation probe
 checks reachability and dependency removal. The inventory test checks private
 compiler information, nested inventory, source ownership and declaration report
 storage. A loaded-package case checks transitive closure exits and caller reachability
-across package boundaries. These are finite tests, not a new closure semantics proof.
+across package boundaries. Normal, bounded and cached extraction retain the catalog;
+caller-only and dependency revision cases check cached body retention and replacement.
+These are finite tests, not a new closure semantics proof.
 
 Captured cells remain unknown inputs to closure bodies. Their writes keep the
 existing conservative caller invalidation. Binding closure environments, recursive

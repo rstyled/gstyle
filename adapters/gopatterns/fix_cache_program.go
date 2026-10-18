@@ -21,8 +21,8 @@ func (e *FixExtractor) programQueries(affected map[string]bool) (*callflow.Progr
 }
 
 func (e *FixExtractor) registerProgramRecord(program *callflow.Program, record sourcePackageRecord) error {
-	for _, function := range record.facts.Funcs {
-		graph := function.Pdg
+	for _, source := range record.facts.Callables {
+		graph := *source
 		graph.Tables = e.pool.Tables
 		if err := program.Add(&graph); err != nil {
 			return err

@@ -54,6 +54,9 @@ func (e *sourceExtraction) collectPackage(pkg *packages.Package) error {
 	}
 	projectSourceParameterFlow(e.result.Sources, funcs)
 	e.result.Funcs = append(e.result.Funcs, funcs...)
+	for _, source := range analysis.graphs {
+		e.result.Callables = append(e.result.Callables, source.graph)
+	}
 	e.result.DeclarationOrders = append(e.result.DeclarationOrders, findDeclarationOrders(pkg, e.root, e.paths, e.result.Sources)...)
 	e.result.OffsetFallbacks = append(e.result.OffsetFallbacks, findOffsetFallbacks(pkg, e.root, e.paths, e.result.Sources)...)
 	e.result.AnemicModels = append(e.result.AnemicModels, findAnemicModels(pkg, e.root)...)

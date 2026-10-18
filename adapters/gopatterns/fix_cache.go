@@ -130,6 +130,11 @@ type sourcePackageRecord struct {
 
 func (result *Extraction) appendPackageExtraction(facts Extraction, tables *pdg.Tables) {
 	maps.Copy(result.PackageNames, facts.PackageNames)
+	for _, source := range facts.Callables {
+		graph := *source
+		graph.Tables = tables
+		result.Callables = append(result.Callables, &graph)
+	}
 	for _, fn := range facts.Funcs {
 		fn.Pdg.Tables = tables
 		fn.TypedNilHits = slices.Clone(fn.TypedNilHits)
