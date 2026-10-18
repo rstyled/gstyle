@@ -22,8 +22,9 @@ ordinary flow are removed too. Operations outside that flow, including unwind
 invocations, and data dependencies are preserved. An operation appearing in any
 reachable block remains live.
 
-Evidence includes seventeen source exit cases and six shared-graph cases:
-nil/non-nil dereferences and fields, parameter/result/capture transfer, branch
+Evidence includes twenty-two source exit cases and six shared-graph cases:
+nil/non-nil dereferences and fields, method-value binding, boxed nil interfaces,
+parameter/result/capture transfer, branch
 assumptions, nested pointers, recovery, defers, mixed paths and mutating sibling
 calls. Domain checks enumerate nil/non-nil/unknown inputs with independent
 panic/block alternatives and reject refinement with incomplete or call-bearing
