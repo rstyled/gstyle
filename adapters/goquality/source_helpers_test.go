@@ -65,7 +65,7 @@ func Identity(v string)string{return v}
 		complete bool
 	}{
 		{"PureCaller", quality.None, true}, {"GeneratedCaller", quality.None, true},
-		{"IOCaller", quality.UnknownEffect, false}, {"GlobalCaller", quality.UnknownEffect, false}, {"MutationCaller", quality.UnknownEffect, false},
+		{"IOCaller", quality.UnknownEffect, false}, {"GlobalCaller", quality.UnknownEffect, false}, {"MutationCaller", quality.MutationEffect, true},
 		{"RecursiveCaller", quality.UnknownEffect, false}, {"DynamicCaller", quality.UnknownEffect, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

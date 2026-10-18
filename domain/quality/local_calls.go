@@ -9,6 +9,8 @@ const localDepthLimit = 32
 
 const localEffectLimit = 4096
 
+const localContextLimit = 4096
+
 type callSummary struct {
 	effects      []Effect
 	unclassified int
@@ -53,15 +55,20 @@ func (r *callResolver) call(call Call) callSummary {
 	if !ok {
 		return call.classifiedCall(UnknownEffect)
 	}
-	return call.atCall(r.helper(name, helper))
+	return call.atCall(r.helper(name, helper, call))
 }
 
-func (r *callResolver) helper(name string, helper Helper) callSummary {
-	if summary, ok := r.cache[name]; ok {
+func (r *callResolver) helper(name string, helper Helper, call Call) callSummary {
+	key := call.storageKey(name)
+	if summary, ok := r.cache[key]; ok {
 		return summary
+	}
+	if len(r.cache) >= localContextLimit {
+		return (Call{Callee: name + " (local context limit)", Line: 1}).classifiedCall(UnknownEffect)
 	}
 	r.active[name] = true
 	defer delete(r.active, name)
+	helper = call.bindHelper(helper)
 	calls := r.calls(helper.Calls)
 	effects := append(calls.effects, helper.Effects...)
 	effects = append(effects, mutationEffects(helper.Mutations)...)
@@ -69,7 +76,9 @@ func (r *callResolver) helper(name string, helper Helper) callSummary {
 	if len(summary.effects) > localEffectLimit {
 		summary = limitedSummary(name, summary)
 	}
-	r.cache[name] = summary
+	if len(r.cache) < localContextLimit {
+		r.cache[key] = summary
+	}
 	return summary
 }
 
@@ -99,7 +108,7 @@ func (call Call) atCall(summary callSummary) callSummary {
 func (call Call) staticLocal() bool { return call.Local && !call.Dynamic }
 
 func localCalls(f Function, prefixes []Prefix) ([]Effect, int) {
-	helpers := map[string]Helper{NormalizeCallee(f.Name): {Name: f.Name, Mutations: f.Mutations, Calls: f.Calls, Effects: f.Effects}}
+	helpers := map[string]Helper{NormalizeCallee(f.Name): {Name: f.Name, Params: f.Params, HasSelf: f.HasSelf, Mutations: f.Mutations, Calls: f.Calls, Effects: f.Effects}}
 	for _, helper := range f.Helpers {
 		helpers[NormalizeCallee(helper.Name)] = helper
 	}

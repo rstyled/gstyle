@@ -115,7 +115,7 @@ func (x *extractor) mutate(place ast.Expr, pos token.Pos, storage bool) {
 	}
 	provenance := x.mutationProvenance(place, storage)
 	x.fact.Mutations = append(x.fact.Mutations, quality.Mutation{
-		Root: object.Name(), RootID: x.objectID(object), FieldPath: strings.Join(fields, "."), Line: x.line(pos), Provenance: provenance,
+		Parameter: x.observableParameter(place, storage, provenance), Root: object.Name(), RootID: x.objectID(object), FieldPath: strings.Join(fields, "."), Line: x.line(pos), Provenance: provenance,
 	})
 }
 
@@ -137,7 +137,7 @@ func (x *extractor) placeRoot(place ast.Expr) (types.Object, []string) {
 func (x *extractor) temporaryMutation(place ast.Expr, pos token.Pos, storage bool, fields []string) {
 	provenance := x.mutationProvenance(place, storage)
 	position := physicalPosition(x.pkg.Fset, pos)
-	x.fact.Mutations = append(x.fact.Mutations, quality.Mutation{Root: "<temporary>", RootID: fmt.Sprintf("%d:%d", position.Line, position.Column), FieldPath: strings.Join(fields, "."), Line: position.Line, Provenance: provenance})
+	x.fact.Mutations = append(x.fact.Mutations, quality.Mutation{Parameter: x.observableParameter(place, storage, provenance), Root: "<temporary>", RootID: fmt.Sprintf("%d:%d", position.Line, position.Column), FieldPath: strings.Join(fields, "."), Line: position.Line, Provenance: provenance})
 }
 
 func (x *extractor) mutationProvenance(place ast.Expr, storage bool) quality.Provenance {
@@ -222,6 +222,9 @@ func (x *extractor) constructedOrigin(value ast.Expr, seen map[types.Object]bool
 
 func (x *extractor) addressOrigin(value *ast.UnaryExpr) quality.Provenance {
 	if value.Op == token.AND {
+		if _, literal := ast.Unparen(value.X).(*ast.CompositeLit); literal {
+			return quality.Local
+		}
 		return x.placeProvenance(value.X)
 	}
 	return quality.Unknown

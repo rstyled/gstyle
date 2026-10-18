@@ -10,7 +10,7 @@ import (
 func (loc Location) validPosition() bool { return loc.Line >= 1 && loc.Column >= 1 && loc.Name != "" }
 
 func validateFact(f Function) error {
-	for _, validate := range []func(Function) error{validateLocation, validateCounts, validateMutations, validateEffects, validateCalls, validateHelpers} {
+	for _, validate := range []func(Function) error{validateLocation, validateCounts, validateMutations, validateEffects, validateCalls, validateStorage, validateHelpers} {
 		if err := validate(f); err != nil {
 			return err
 		}

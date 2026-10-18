@@ -31,7 +31,7 @@ func (x *extractor) call(call *ast.CallExpr) {
 	default:
 		fact = quality.Call{Line: line, Callee: "<dynamic>", Dynamic: true, Args: args}
 	}
-	x.fact.Calls = append(x.fact.Calls, fact)
+	x.fact.Calls = append(x.fact.Calls, x.bindCallStorage(call, fact))
 }
 
 func (x *extractor) containerMutationTarget(function *types.Func, args []ast.Expr) quality.Provenance {
