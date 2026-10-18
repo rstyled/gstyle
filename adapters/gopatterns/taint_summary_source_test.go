@@ -139,11 +139,11 @@ func TestTaintBuilderAgainstTwoObjectOracle(t *testing.T) {
 
 func TestTaintRecursiveFieldWideningRetainsDeepSource(t *testing.T) {
 	var source strings.Builder
-	source.WriteString(`type Builder struct{q string;next *Builder};func walk(b *Builder,stop bool)string{if stop{return b.q};return walk(b.next,stop)};func handler(r *http.Request,stop bool){root:=&Builder{};node:=root;`)
+	source.WriteString(`type Builder struct{q string;next *Builder};func walk(b *Builder,depth int)string{if depth==0{return b.q};return walk(b.next,depth-1)};func handler(r *http.Request){root:=&Builder{};node:=root;`)
 	for i := 0; i < 12; i++ {
 		source.WriteString(`node.next=&Builder{};node=node.next;`)
 	}
-	source.WriteString(`node.q=r.FormValue("q");db.Exec(walk(root,stop))}`)
+	source.WriteString(`node.q=r.FormValue("q");db.Exec(walk(root,12))}`)
 	if flows := sourceTaintFlows(t, source.String()); len(flows) != 1 {
 		t.Fatalf("deep source lost: %+v", flows)
 	}
