@@ -63,10 +63,7 @@ func (b *irBuilder) branchCFGSelection(statement ast.Stmt) ast.Stmt {
 		out.Body = b.branchCFGBlock(node.Body)
 		return &out
 	case *ast.TypeSwitchStmt:
-		out := *node
-		b.nodes[&out] = b.nodes[node]
-		out.Body = b.branchCFGBlock(node.Body)
-		return &out
+		return b.branchCFGTypeSwitch(node)
 	case *ast.SelectStmt:
 		out := *node
 		b.nodes[&out] = b.nodes[node]

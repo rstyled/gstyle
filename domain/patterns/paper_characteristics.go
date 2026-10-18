@@ -11,7 +11,7 @@ type PaperCharacteristics struct {
 }
 
 func nativeCharacteristics(g *pdg.Graph) *PaperCharacteristics {
-	return nativeCharacteristicsFor(g, pdg.NormalProjection(g))
+	return nativeCharacteristicsFor(g, pdg.ReachableProjection(g))
 }
 
 func nativeCharacteristicsFor(g *pdg.Graph, kept []bool) *PaperCharacteristics {

@@ -7,27 +7,70 @@ import (
 	"strconv"
 )
 
-const runtimeFlowDescription = "Typed binding operands and normal CFG outcomes; local non-escaped values, assignments and joins. Memory aliases, call results and concurrency remain unknown."
+const runtimeFlowDescription = "Typed binding operands and normal CFG outcomes; local non-escaped values, assignments and joins. Memory aliases, call results and concurrency remain unknown. Deferred inputs evaluate at registration; invocation and exit effects are outside this flow."
 
-func (b *irBuilder) runtimeFlow(fn *ast.FuncDecl, flow *cfg.CFG) {
+func (b *irBuilder) runtimeFlow(body *ast.BlockStmt, flow *cfg.CFG) error {
 	if !b.runtimeOperations {
-		return
+		return b.bindingValueFlow(body, flow)
 	}
 	for _, block := range flow.Blocks {
 		for _, source := range block.Nodes {
 			b.runtimeOperationsFor(source)
 		}
 	}
-	b.runtimeControlEdges(fn.Body)
-	b.runtimeLoopWrites(flow)
-	flow = b.scalarCFG(fn.Body, flow)
+	b.runtimeControlEdges(body)
+	flow, err := b.runtimeFlowCFG(body, flow)
+	if err != nil {
+		return err
+	}
 	context := &pdg.NormalFlow{Entry: 1, Blocks: make([]pdg.FlowBlock, len(flow.Blocks))}
 	for i, block := range flow.Blocks {
 		context.Blocks[i] = b.runtimeBlock(block)
 	}
+	b.publishRuntimeFlow(body, context)
+	return nil
+}
+
+func (b *irBuilder) publishRuntimeFlow(body *ast.BlockStmt, context *pdg.NormalFlow) {
 	context.RefreshReachability()
 	b.graph.ValueFlow = context
-	b.graph.Extensions = append(b.graph.Extensions, b.pool.SingletonExtension("gstyle.runtime:flow", `"0.1.0"`)...)
+	b.graph.Extensions = append(b.graph.Extensions, b.runtimeFlowExtensions(body)...)
+}
+func (b *irBuilder) runtimeFlowExtensions(body *ast.BlockStmt) []pdg.Extension {
+	exitFamily := ""
+	if b.exitOperationSubset(body) {
+		exitFamily = "gstyle.pdg:exit-body-flow"
+	}
+	families := [3]string{b.bodyFlowFamily(body), exitFamily, "gstyle.runtime:flow"}
+	var extensions []pdg.Extension
+	for _, family := range families {
+		if family == "" {
+			continue
+		}
+		version := `"0.1.0"`
+		if family == "gstyle.runtime:flow" {
+			version = `"0.2.0"`
+		}
+		extensions = append(extensions, b.pool.SingletonExtension(family, version)...)
+	}
+	return extensions
+}
+func (b *irBuilder) bodyFlowFamily(body *ast.BlockStmt) string {
+	if b.semanticControlSubset(body) {
+		return "gstyle.pdg:operation-flow"
+	}
+	if b.registrationFlowSubset(body) {
+		return "gstyle.pdg:registration-flow"
+	}
+	return ""
+}
+
+func (b *irBuilder) runtimeFlowCFG(body *ast.BlockStmt, flow *cfg.CFG) (*cfg.CFG, error) {
+	if b.exitOperationSubset(body) {
+		return b.semanticControlCFG(body, flow)
+	}
+	b.runtimeLoopWrites(flow)
+	return b.scalarCFG(body, flow), nil
 }
 
 func (b *irBuilder) runtimeBlock(block *cfg.Block) pdg.FlowBlock {
@@ -43,7 +86,7 @@ func (b *irBuilder) runtimeBlock(block *cfg.Block) pdg.FlowBlock {
 	}
 	if len(out.Successors) == 2 && len(block.Nodes) != 0 {
 		source := block.Nodes[len(block.Nodes)-1]
-		out.Condition = b.runtimeCondition(b.nodes[source])
+		out.Condition = b.nodes[source]
 	}
 	return out
 }
@@ -53,9 +96,17 @@ func (b *irBuilder) runtimeOperationsFor(source ast.Node) []pdg.Ref {
 	var stack []ast.Node
 	ast.Inspect(source, func(node ast.Node) bool {
 		if _, closure := node.(*ast.FuncLit); closure {
+			ref := b.nodes[node]
+			out = append(out, ref)
+			b.runtimeParentEdge(ref, stack, node)
 			return false
 		}
 		if node != nil {
+			for _, read := range b.implicitReads[node] {
+				attrs := b.attributes[b.graph.Nodes[read-1].Attributes-1]
+				b.runtimeValueEdge(read, b.nodes[node], attrs.Reads[0].Position)
+				out = append(out, read)
+			}
 			stack = append(stack, node)
 			return true
 		}
@@ -74,7 +125,7 @@ func (b *irBuilder) runtimeOperationsFor(source ast.Node) []pdg.Ref {
 func (b *irBuilder) runtimeParentEdge(source pdg.Ref, stack []ast.Node, child ast.Node) {
 	for i := len(stack) - 1; i >= 0; i-- {
 		if target := b.nodes[stack[i]]; target != 0 {
-			position := runtimeOperandPosition(stack[i], child)
+			position := b.runtimeOperandPosition(stack[i], child)
 			b.runtimeValueEdge(source, target, position)
 			return
 		}
@@ -91,23 +142,6 @@ func (b *irBuilder) runtimeValueEdge(source, target pdg.Ref, position pdg.Positi
 		Kind: pdg.Data, Position: position, Subkind: b.pool.Text("source-value"),
 		Evidence: b.pool.Evidence(pdg.Supported, runtimeFlowDescription), Provenance: b.pool.Origin(pdg.SourceOrigin, runtimeFlowDescription),
 	})
-}
-
-func (b *irBuilder) runtimeCondition(ref pdg.Ref) pdg.Ref {
-	if ref == 0 {
-		return 0
-	}
-	node := b.graph.Nodes[ref-1]
-	if node.Category != pdg.Control {
-		return ref
-	}
-	for i := len(b.graph.Edges) - 1; i >= 0; i-- {
-		edge := b.graph.Edges[i]
-		if runtimeConditionEdge(edge, ref) {
-			return edge.Source
-		}
-	}
-	return 0
 }
 
 func (b *irBuilder) runtimeControlEdges(body *ast.BlockStmt) {
@@ -135,7 +169,7 @@ func (b *irBuilder) runtimeLoopWrites(flow *cfg.CFG) {
 	}
 }
 
-func runtimeOperandPosition(parent, child ast.Node) pdg.Position {
+func (b *irBuilder) runtimeOperandPosition(parent, child ast.Node) pdg.Position {
 	switch parent := parent.(type) {
 	case *ast.StarExpr:
 		return operandIndex([]ast.Expr{parent.X}, child)
@@ -144,12 +178,40 @@ func runtimeOperandPosition(parent, child ast.Node) pdg.Position {
 	case *ast.IndexExpr:
 		return operandIndex([]ast.Expr{parent.X, parent.Index}, child)
 	case *ast.CallExpr:
-		return operandIndex(parent.Args, child)
+		return b.callOperandPosition(parent, child)
 	default:
 		return sourceOperandPosition(parent, child)
 	}
 }
 
-func runtimeConditionEdge(edge pdg.Edge, target pdg.Ref) bool {
-	return edge.Target == target && edge.Kind == pdg.Data && edge.Position == 1
+func (b *irBuilder) callOperandPosition(call *ast.CallExpr, child ast.Node) pdg.Position {
+	position := operandIndex(call.Args, child)
+	if !b.implicitReceiver(call.Fun) {
+		return position
+	}
+	if child == call.Fun {
+		return 1
+	}
+	if position != 0 {
+		return position + 1
+	}
+	return 0
+}
+
+// Binding-only functions retain canonical sites without adding a second set of
+// value operands. Their binding-value edges remain the typed interface facts.
+func (b *irBuilder) bindingValueFlow(body *ast.BlockStmt, flow *cfg.CFG) error {
+	if !b.bindingOperations && !b.exitOperationSubset(body) {
+		return nil
+	}
+	shared, err := b.semanticControlCFG(body, flow)
+	if err != nil {
+		return err
+	}
+	context := &pdg.NormalFlow{Entry: 1, Blocks: make([]pdg.FlowBlock, len(shared.Blocks))}
+	for index, block := range shared.Blocks {
+		context.Blocks[index] = b.runtimeBlock(block)
+	}
+	b.publishRuntimeFlow(body, context)
+	return nil
 }

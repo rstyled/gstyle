@@ -26,6 +26,8 @@ type irBuilder struct {
 	symbols                              map[types.Object]pdg.Ref
 	nodes                                map[ast.Node]pdg.Ref
 	logicalPredicates                    map[*ast.BinaryExpr]pdg.Ref
+	deferredCalls                        map[*ast.CallExpr]pdg.Ref
+	rangeBounds                          map[pdg.Ref]pdg.Ref
 	writeTargets                         map[ast.Node]bool
 	stack                                []ast.Node
 	policy, sourceEvidence, sourceOrigin pdg.Ref
@@ -34,6 +36,12 @@ type irBuilder struct {
 	runtimeOperations                    bool
 	scalarDefinitions                    bool
 	scalarOperations                     bool
+	extendedScalar                       bool
+	generalBindings                      bool
+	closureValues                        bool
+	weakDefinitions                      map[pdg.Ref]bool
+	controlFlow                          *cfg.CFG
+	controlOutcomes                      map[int][]pdg.Position
 	implicitReads                        map[ast.Node][]pdg.Ref
 	semanticControl                      bool
 	normalDependencies                   bool
@@ -45,9 +53,9 @@ func newIRBuilder(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pd
 		pool: pool, info: pkg.TypesInfo, sizes: pkg.TypesSizes, fset: pkg.Fset, typeQualifier: callableQualifier(pkg, fn),
 		sourceFilename: pkg.Fset.PositionFor(fn.Pos(), false).Filename,
 		symbols:        map[types.Object]pdg.Ref{}, nodes: map[ast.Node]pdg.Ref{},
-		writeTargets: map[ast.Node]bool{}, logicalPredicates: map[*ast.BinaryExpr]pdg.Ref{},
+		writeTargets: map[ast.Node]bool{}, logicalPredicates: map[*ast.BinaryExpr]pdg.Ref{}, deferredCalls: map[*ast.CallExpr]pdg.Ref{},
 	}
-	b.policy = pool.Policy("gstyle.abstraction", "0.3.0")
+	b.policy = pool.Policy("gstyle.abstraction", "0.4.0")
 	b.sourceEvidence = pool.Evidence(pdg.Approximated, "Operation identified in typed source; dependency completeness is separate.")
 	b.sourceOrigin = pool.Origin(pdg.SourceOrigin, "Go source operation; abstraction lowering is approximate.")
 	b.header(pkg, fn, path)
@@ -65,7 +73,7 @@ func (b *irBuilder) header(pkg *packages.Package, fn *ast.FuncDecl, path string)
 	b.graph = pdg.Graph{
 		Tables: p.Tables, Profile: b.policy,
 		Producer: pdg.Producer{
-			Name: p.Text("gstyle"), Version: p.Text("pdg-ir-0.3.0"), Language: p.Text("go"),
+			Name: p.Text("gstyle"), Version: p.Text("pdg-ir-0.4.0"), Language: p.Text("go"),
 			LanguageVersion: p.Missing(pdg.Unknown, "Compiler language version is not recorded."), Configuration: p.Text("{}"),
 		},
 		Sources: []pdg.Source{{ID: p.Text(path), Path: p.Text(path), ContentIdentity: p.Missing(pdg.Unknown, "Source content digest is not computed.")}},
@@ -147,12 +155,15 @@ func (b *irBuilder) definition(node, symbol pdg.Ref) {
 	if symbol == 0 {
 		return
 	}
+	b.storageDefinition(node, symbol, 0)
+}
+
+func (b *irBuilder) storageDefinition(node, symbol, location pdg.Ref) pdg.Ref {
 	id := pdg.Ref(len(b.graph.Definitions) + 1)
-	b.graph.Definitions = append(b.graph.Definitions, pdg.Definition{
-		ID: b.pool.Text("d" + strconv.Itoa(int(id))), Node: node, Symbol: symbol,
-	})
+	b.graph.Definitions = append(b.graph.Definitions, pdg.Definition{ID: b.pool.Text("d" + strconv.Itoa(int(id))), Node: node, Symbol: symbol, Location: location})
 	attrs := &b.attributes[b.graph.Nodes[node-1].Attributes-1]
 	attrs.Defines = append(attrs.Defines, id)
+	return id
 }
 
 func (b *irBuilder) sourceLine(node ast.Node) uint32 {
@@ -163,10 +174,22 @@ func (b *irBuilder) sourceLine(node ast.Node) uint32 {
 }
 
 func (b *irBuilder) selectScalarLowering(fn *ast.FuncDecl) {
-	b.scalarOperations = b.scalarInterface(fn) && b.reachingSubset(fn.Body)
+	b.scalarOperations = b.selectScalarSource(fn)
 	b.bindingOperations = !b.scalarOperations && b.interfaceBindingSubset(fn)
-	b.runtimeOperations = runtimeRelevant(fn, b.info)
+	b.generalBindings = !b.scalarOperations && !b.bindingOperations && b.exitOperationSubset(fn.Body)
+	b.runtimeOperations = b.generalBindings || runtimeRelevant(fn, b.info)
 	b.scalarOrderKnown = scalarOrderKnown(fn.Body) && len(b.graph.Function.Outputs) <= 1
+}
+
+func (b *irBuilder) selectScalarSource(fn *ast.FuncDecl) bool {
+	if !b.scalarInterface(fn) {
+		return false
+	}
+	if b.reachingSubset(fn.Body) {
+		return true
+	}
+	b.extendedScalar = b.extendedReachingSubset(fn.Body)
+	return b.extendedScalar
 }
 
 // buildGraph is the sole production graph construction path.
@@ -182,20 +205,24 @@ func buildGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pdg.
 	b.ir.selectScalarLowering(fn)
 	b.ir.implicitReads = map[ast.Node][]pdg.Ref{}
 	b.ir.enrich(fn.Body)
+	b.ir.closureSourceFacts(fn)
+	b.ir.functionValueFacts(fn.Body)
+	b.ir.callTargetFacts(fn.Body)
+	b.ir.bindingSourceFacts(fn)
 	b.ir.interfaceValueFacts()
 	b.ir.runtimeValueFacts(fn)
+	b.ir.memorySourceFacts(fn)
+	b.ir.representationFacts(fn)
+	b.ir.deferredSourceFacts(fn.Body)
+	b.ir.operationEffectFacts(fn.Body)
+	b.ir.evaluationRegionFacts(fn.Body)
 	b.ir.returnValues(fn.Body)
 	b.ir.references()
-	flow, dom := b.ir.execution(fn.Body)
-	b.ir.runtimeFlow(fn, flow)
-	flow, dom = b.ir.reachingDefinitions(fn.Body, flow, dom)
-	b.ir.normalDependenciesFor(flow, dom)
-	// Control lowering starts from source flow, independently of value/reaching
-	// lowering, which can already contain operation markers and logical joins.
-	controlFlow := cfg.New(b.ir.branchCFGBlock(fn.Body), b.ir.mayReturn)
-	if err := b.ir.semanticControlFor(fn.Body, controlFlow); err != nil {
+	if err := b.ir.dependencies(fn.Body); err != nil {
 		return pdg.Graph{}, err
 	}
+
+	b.ir.canonicalValueFacts(fn)
 	b.ir.capabilities()
 	if err := b.ir.pack(); err != nil {
 		return pdg.Graph{}, err

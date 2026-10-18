@@ -634,7 +634,7 @@ noncomputable def booleanContradiction.impl [FfiSyntax] [GoGlobalContext] : val 
   (App (Val doExecute)
   (Val #())))))))))
 
-/-- go: flow.go:127:21 -/
+/-- go: flow.go:138:21 -/
 noncomputable def graphView.join.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "previous"
@@ -718,7 +718,7 @@ noncomputable def graphView.join.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (Val #())))))))))))
 
-/-- go: flow.go:146:21 -/
+/-- go: flow.go:157:21 -/
 noncomputable def graphView.assignmentValue.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "symbol"
@@ -749,7 +749,7 @@ noncomputable def graphView.assignmentValue.impl [FfiSyntax] [GoGlobalContext] :
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore Value.ty))) (Pair (Var "base") (Var "$r0"))))))))))))))
 
-/-- go: flow.go:195:6 -/
+/-- go: flow.go:206:6 -/
 noncomputable def singleValueWrite.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "category"
   (Lam "form"
@@ -802,24 +802,7 @@ noncomputable def graphView.attrs.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (Val #())))))))))
 
-/-- go: graph.go:59:6 -/
-noncomputable def operatorText.impl [FfiSyntax] [GoGlobalContext] : val :=
-  (LamV "tables"
-  (Lam "fact"
-  (App (Val exceptionDo)
-  (Let "fact" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Fact.ty))) (Var "fact"))
-  (Let "tables" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Tables.ty)))) (Var "tables"))
-  (App (App (Val exceptionSeq) (Lam BAnon
-  (App (Val doReturn)
-  (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Text.ty))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Fact.ty go!"Value"))) (Var "fact")))
-  (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Tables.ty) go!"Text"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Tables.ty)))) (Var "tables"))) (Var "$a0"))))))
-  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoOp GoEquals _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status.ty))) (Pair (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Status.ty))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Fact.ty go!"Status"))) (Var "fact"))) (Val _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Known)))))
-  (App (Val doReturn)
-  (Val #(go!"")))
-  (App (Val doExecute)
-  (Val #())))))))))
-
-/-- go: graph.go:66:21 -/
+/-- go: graph.go:59:21 -/
 noncomputable def graphView.fact.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "ref"
@@ -840,7 +823,7 @@ noncomputable def graphView.fact.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Graph.ty)))) (Pair (Var "_order1") (Var "$r0"))))))))))))))
 
-/-- go: graph.go:70:21 -/
+/-- go: graph.go:63:21 -/
 noncomputable def graphView.symbol.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "ref"
@@ -904,7 +887,7 @@ noncomputable def graphView.symbol.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (Val #())))))))))
 
-/-- go: graph.go:92:21 -/
+/-- go: graph.go:85:21 -/
 noncomputable def graphView.base.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "symbol"
@@ -929,7 +912,7 @@ noncomputable def graphView.base.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (Val #())))))))))
 
-/-- go: graph.go:102:21 -/
+/-- go: graph.go:95:21 -/
 noncomputable def graphView.binding.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "symbol"
@@ -987,7 +970,7 @@ noncomputable def graphView.binding.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (Val #())))))))))))
 
-/-- go: graph.go:119:21 -/
+/-- go: graph.go:112:21 -/
 noncomputable def graphView.value.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "ref"
@@ -1065,7 +1048,7 @@ noncomputable def graphView.value.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (Val #())))))))))))
 
-/-- go: graph.go:139:21 -/
+/-- go: graph.go:132:21 -/
 noncomputable def graphView.lengthValue.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "ref"
@@ -1106,7 +1089,7 @@ noncomputable def graphView.lengthValue.impl [FfiSyntax] [GoGlobalContext] : val
   (App (Val doExecute)
   (Val #())))))))))))))
 
-/-- go: graph.go:150:21 -/
+/-- go: graph.go:143:21 -/
 noncomputable def graphView.constantValue.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "ref"
@@ -1204,7 +1187,7 @@ noncomputable def graphView.constantValue.impl [FfiSyntax] [GoGlobalContext] : v
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore Value.ty))) (Pair (Var "value") (Var "$r0"))))))))))))
 
-/-- go: graph.go:162:21 -/
+/-- go: graph.go:155:21 -/
 noncomputable def graphView.conversionValue.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
   (Lam "ref"
@@ -1247,6 +1230,23 @@ noncomputable def graphView.conversionValue.impl [FfiSyntax] [GoGlobalContext] :
   (App (Val (GoInstruction (GoLoad Value.ty))) (Var "constant")))
   (App (Val doExecute)
   (Val #())))))))))))))
+
+/-- go: graph.go:170:6 -/
+noncomputable def operatorText.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "tables"
+  (Lam "fact"
+  (App (Val exceptionDo)
+  (Let "fact" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Fact.ty))) (Var "fact"))
+  (Let "tables" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Tables.ty)))) (Var "tables"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Text.ty))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Fact.ty go!"Value"))) (Var "fact")))
+  (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Tables.ty) go!"Text"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Tables.ty)))) (Var "tables"))) (Var "$a0"))))))
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoOp GoEquals _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Status.ty))) (Pair (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Status.ty))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Fact.ty go!"Status"))) (Var "fact"))) (Val _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Known)))))
+  (App (Val doReturn)
+  (Val #(go!"")))
+  (App (Val doExecute)
+  (Val #())))))))))
 
 /-- go: graph.go:191:6 -/
 noncomputable def extension.impl [FfiSyntax] [GoGlobalContext] : val :=

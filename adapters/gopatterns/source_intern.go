@@ -2,7 +2,7 @@ package gopatterns
 
 import "github.com/rstyled/gstyle/domain/pdg"
 
-// Source metadata uses the same interned strings as graph facts. The builder's
+// Source metadata retains interned strings. The builder's
 // construction maps disappear after extraction; source bytes stay file-local.
 func internSourceMetadata(pool *pdg.Builder) {
 	internSourceMetadataFrom(pool, 0, 0)

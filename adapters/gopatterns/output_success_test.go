@@ -3,6 +3,13 @@ package gopatterns
 import (
 	"errors"
 	"fmt"
+	"github.com/rstyled/gstyle/domain/outputflow"
+	"github.com/rstyled/gstyle/domain/patterns"
+	"github.com/rstyled/gstyle/domain/pdg"
+	"go/ast"
+	"go/token"
+	"go/types"
+	"golang.org/x/tools/go/packages"
 	"io"
 	"testing"
 )
@@ -26,8 +33,8 @@ func TestOutputSuccessEvidence(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			src := `package fixture;import("fmt";"io");func other(){};func f(w io.Writer,err error)error{` + tc.body + `}`
-			file, fset, info, _ := typeCheck(t, src)
-			sites, success := findErrorCheckFacts(findFunc(file, "f"), fset, info)
+			file, fset, info, pkg := typeCheck(t, src)
+			sites, success := graphErrorCheckFacts(t, findFunc(file, "f"), fset, info, pkg)
 			discarded := 0
 			for _, site := range sites {
 				if site.DiscardedOutput {
@@ -59,8 +66,8 @@ func TestOutputSuccessReturnShapes(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			file, fset, info, _ := typeCheck(t, `package fixture;import("fmt";"io");`+tc.source)
-			_, success := findErrorCheckFacts(findFunc(file, "f"), fset, info)
+			file, fset, info, pkg := typeCheck(t, `package fixture;import("fmt";"io");`+tc.source)
+			_, success := graphErrorCheckFacts(t, findFunc(file, "f"), fset, info, pkg)
 			if (len(success) == 1) != tc.report {
 				t.Fatalf("success sites=%v,want report=%v", success, tc.report)
 			}
@@ -80,11 +87,19 @@ func diagnosticThenFailure(w io.Writer, err error) error {
 }
 func outputThenSuccess(w io.Writer) error { fmt.Fprintln(w, "result"); return nil }
 
+func outputArithmeticThenSuccess(w io.Writer, n int) error {
+	fmt.Fprintln(w, n+1)
+	return nil
+}
 func TestFailedWriteBehavior(t *testing.T) {
 	cause := errors.New("read failed")
 	diagnostic := &failedDiagnosticWriter{}
 	if got := diagnosticThenFailure(diagnostic, cause); diagnostic.writes != 1 || !errors.Is(got, cause) {
 		t.Fatalf("diagnostic writes=%d,result=%v", diagnostic.writes, got)
+	}
+	arithmetic := &failedDiagnosticWriter{}
+	if got := outputArithmeticThenSuccess(arithmetic, 3); arithmetic.writes != 1 || got != nil {
+		t.Fatalf("arithmetic writes=%d,result=%v", arithmetic.writes, got)
 	}
 	output := &failedDiagnosticWriter{}
 	if got := outputThenSuccess(output); output.writes != 1 || got != nil {
@@ -97,5 +112,73 @@ func TestRuntimeTypeParameterIsNotAnInterfaceValue(t *testing.T) {
 	parameter := findFunc(file, "f").Type.TypeParams.List[0].Names[0]
 	if got := runtimeTypeKind(info.Defs[parameter].Type()); got != "" {
 		t.Fatalf("type parameter classified as runtime %q", got)
+	}
+}
+
+func graphErrorCheckFacts(t *testing.T, fn *ast.FuncDecl, fset *token.FileSet, info *types.Info, pkg *types.Package) ([]patterns.ErrorCheckSite, []int) {
+	t.Helper()
+	loaded := &packages.Package{Fset: fset, TypesInfo: info, Types: pkg, PkgPath: pkg.Path()}
+	graph, err := buildGraph(loaded, fn, "test.go", pdg.NewBuilder())
+	if err != nil {
+		t.Fatal(err)
+	}
+	sites, success, err := reachableErrorCheckFacts(fn, fset, info, &graph)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return sites, success
+}
+
+func TestOutputSuccessUsesCanonicalContinuations(t *testing.T) {
+	cases := []struct {
+		name, body string
+		want       bool
+	}{
+		{"all branches succeed", `fmt.Fprintln(w,err);if c{return nil};return nil`, true},
+		{"one branch fails", `fmt.Fprintln(w,err);if c{return err};return nil`, false},
+		{"type switch completes", `fmt.Fprintln(w,err);switch v:=a.(type){case int:_=v;return nil;default:return nil}`, true},
+		{"goto return", `fmt.Fprintln(w,err);goto done;done:return nil`, true},
+		{"possible infinite path", `fmt.Fprintln(w,err);for c{};return nil`, false},
+		{"normal local work", `fmt.Fprintln(w,err);x:=n+1;_=x;return nil`, true},
+		{"interface comparison may panic", `fmt.Fprintln(w,err);_=a==b;return nil`, false},
+		{"interface switch may panic", `fmt.Fprintln(w,err);switch a{case b:return nil};return nil`, false},
+		{"nil interface comparison is safe", `fmt.Fprintln(w,err);_=a==nil;return nil`, true},
+		{"field address may panic", `fmt.Fprintln(w,err);var p *struct{value int};_=&p.value;return nil`, false},
+		{"index address may panic", `fmt.Fprintln(w,err);var p *[1]int;_=&p[0];return nil`, false},
+		{"division may panic", `fmt.Fprintln(w,err);_=1/n;return nil`, false},
+		{"negative shift may panic", `fmt.Fprintln(w,err);_=1<<n;return nil`, false},
+		{"unreachable write", `return nil;fmt.Fprintln(w,err);return nil`, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			source := `package p;import("fmt";"io");func f(w io.Writer,err error,c bool,a,b any,n int)error{` + tc.body + `}`
+			file, fset, info, pkg := typeCheck(t, source)
+			_, sites := graphErrorCheckFacts(t, findFunc(file, "f"), fset, info, pkg)
+			if (len(sites) == 1) != tc.want {
+				t.Fatalf("success sites=%v, want %v", sites, tc.want)
+			}
+		})
+	}
+}
+
+func TestOutputCompletionRejectsInvalidContext(t *testing.T) {
+	source := `package p;func f(run func(),p *int)error{run();_=*p;return nil}`
+	for _, slot := range []pdg.Position{0, 2} {
+		graph := parseIR(t, source, pdg.NewBuilder())
+		if _, err := outputflow.NewSuccessFlow(&graph, slot); err == nil {
+			t.Fatal("invalid error-result slot accepted")
+		}
+	}
+	graph := parseIR(t, source, pdg.NewBuilder())
+	proof, err := outputflow.NewSuccessFlow(&graph, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if proof.After(0) || proof.After(pdg.Ref(len(graph.Nodes)+1)) {
+		t.Fatal("invalid call site accepted")
+	}
+	graph.ValueFlow.Blocks[0].Successors = []pdg.Ref{pdg.Ref(len(graph.ValueFlow.Blocks) + 1)}
+	if _, err := outputflow.NewSuccessFlow(&graph, 1); err == nil {
+		t.Fatal("invalid operation-flow successor accepted")
 	}
 }

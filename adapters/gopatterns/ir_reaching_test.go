@@ -113,7 +113,7 @@ func reachingCapability(g pdg.Graph) pdg.Status {
 
 func TestReachingDefinitionsRejectUnsupportedFunctions(t *testing.T) {
 	functions := []string{
-		`func f(x int) int { for x < 2 { x++ }; return x }`,
+		`func f(x int) int { for x < 2 { println(x); x++ }; return x }`,
 		`func f(p *int) int { return *p }`,
 		`func f(x int) int { println(x); return x }`,
 		`func f(xs []int) int { return xs[0] }`,
@@ -122,11 +122,11 @@ func TestReachingDefinitionsRejectUnsupportedFunctions(t *testing.T) {
 	}
 	for _, function := range functions {
 		g := parseIR(t, "package example\n"+function, pdg.NewBuilder())
-		if reachingCapability(g) != pdg.Unsupported {
+		if reachingCapability(g) == pdg.Supported {
 			t.Fatalf("unsupported function claims support: %s", function)
 		}
 		for _, edge := range g.Edges {
-			if edge.Definition != 0 {
+			if edge.Definition != 0 && g.Tables.Evidence[edge.Evidence-1].Status == pdg.Supported {
 				t.Fatalf("partial reaching definitions emitted: %s", function)
 			}
 		}

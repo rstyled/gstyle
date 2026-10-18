@@ -128,7 +128,7 @@ func TestUncheckedOutputRenamedImport(t *testing.T) {
 func f(w io.Writer)error{print.Fprintln(w,"text");return nil}`
 	file, fs, info, _ := typeCheck(t, source)
 	sites := findErrorCheckSites(findFunc(file, "f"), fs, info)
-	if len(sites) != 1 || !sites[0].DiscardedOutput || sites[0].Callee != "print.Fprintln" {
+	if len(sites) != 1 || !sites[0].DiscardedOutput || sites[0].Callee != "fmt.Fprintln" {
 		t.Fatalf("renamed stdlib import loses identity: %+v", sites)
 	}
 }

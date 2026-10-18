@@ -7,6 +7,14 @@ import (
 )
 
 func (b *irBuilder) reachingSubset(body *ast.BlockStmt) bool {
+	return b.reachingSourceSubset(body, false)
+}
+
+func (b *irBuilder) extendedReachingSubset(body *ast.BlockStmt) bool {
+	return b.reachingSourceSubset(body, true)
+}
+
+func (b *irBuilder) reachingSourceSubset(body *ast.BlockStmt, extended bool) bool {
 	for object := range b.symbols {
 		if !scalarBinding(object) {
 			return false
@@ -17,7 +25,7 @@ func (b *irBuilder) reachingSubset(body *ast.BlockStmt) bool {
 		if !supported {
 			return false
 		}
-		supported = scalarSource(node) && b.scalarSourceBinding(node) && b.scalarSourceType(node)
+		supported = reachingSource(node, extended) && b.scalarSourceBinding(node) && b.scalarSourceType(node)
 		return supported
 	})
 	return supported
@@ -90,5 +98,19 @@ func scalarStatement(statement ast.Stmt) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// Extended scalar flow admits local loops and transfers, with no memory or call
+// effects. It is separate from the frozen acyclic matching profile.
+func reachingSource(node ast.Node, extended bool) bool {
+	if !extended {
+		return scalarSource(node)
+	}
+	switch node.(type) {
+	case *ast.ForStmt, *ast.BranchStmt, *ast.LabeledStmt, *ast.SwitchStmt, *ast.CaseClause:
+		return true
+	default:
+		return scalarSource(node)
 	}
 }

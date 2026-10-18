@@ -14,6 +14,7 @@ import (
 func (b *irBuilder) execution(body *ast.BlockStmt) (*cfg.CFG, *executionDominators) {
 	b.executionMetadata()
 	flow := cfg.New(b.branchCFGBlock(body), b.mayReturn)
+	b.implicitReturnFacts(flow)
 	dom := newExecutionDominators(flow)
 	anchors := make([][]pdg.Ref, len(flow.Blocks))
 	controls := b.executionControls(body)
@@ -31,15 +32,7 @@ func (b *irBuilder) execution(body *ast.BlockStmt) (*cfg.CFG, *executionDominato
 }
 
 func (b *irBuilder) mayReturn(call *ast.CallExpr) bool {
-	callee := b.callee(call.Fun)
-	if builtin, ok := callee.(*types.Builtin); ok {
-		return builtin.Name() != "panic"
-	}
-	function, ok := callee.(*types.Func)
-	if !ok || function.Pkg() == nil {
-		return true
-	}
-	return !terminalFunction(function.Pkg().Path(), function.Name())
+	return normalCallReturns(b.callee(call.Fun))
 }
 
 func (b *irBuilder) executionAnchors(block *cfg.Block, controls map[ast.Node]pdg.Ref) []pdg.Ref {
@@ -118,6 +111,17 @@ func (d *executionDominators) previousAnchor(index int, anchors [][]pdg.Ref) pdg
 	return 0
 }
 
+func normalCallReturns(callee types.Object) bool {
+	if builtin, ok := callee.(*types.Builtin); ok {
+		return builtin.Name() != "panic"
+	}
+	function, ok := callee.(*types.Func)
+	if !ok || function.Pkg() == nil {
+		return true
+	}
+	return !terminalFunction(function.Pkg().Path(), function.Name())
+}
+
 func executionCondition(node ast.Node) ast.Node {
 	switch node := node.(type) {
 	case *ast.IfStmt:
@@ -126,6 +130,8 @@ func executionCondition(node ast.Node) ast.Node {
 		return node.Cond
 	case *ast.SwitchStmt:
 		return node.Tag
+	case *ast.TypeSwitchStmt:
+		return node.Assign
 	default:
 		return nil
 	}
@@ -133,5 +139,17 @@ func executionCondition(node ast.Node) ast.Node {
 
 // Resolved package identity is required; same-spelled user calls remain unknown.
 func terminalFunction(path, name string) bool {
+	if path == "log" {
+		return terminalLogName(name)
+	}
 	return (path == "os" && name == "Exit") || (path == "runtime" && name == "Goexit")
+}
+
+func terminalLogName(name string) bool {
+	switch name {
+	case "Fatal", "Fatalf", "Fatalln", "Panic", "Panicf", "Panicln":
+		return true
+	default:
+		return false
+	}
 }

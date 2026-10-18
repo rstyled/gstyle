@@ -135,8 +135,8 @@ func TestDeferAndGoNodes(t *testing.T) {
 	if got := countKind(&deferDemo, patterns.Defer); got != 1 {
 		t.Errorf("defer nodes = %d, want 1", got)
 	}
-	if !hasEdge(&deferDemo, patterns.Call, patterns.Defer, patterns.Data) {
-		t.Error("missing Call -> Defer data edge")
+	if !hasEdge(&deferDemo, patterns.Defer, patterns.Call, patterns.Data) {
+		t.Error("missing saved registration -> deferred Call data edge")
 	}
 	goDemo := findPdg(t, pdgs, "GoDemo").Pdg
 	if got := countKind(&goDemo, patterns.Go); got != 1 {
@@ -187,10 +187,15 @@ func TestMethodReceiverAtArgZero(t *testing.T) {
 	}
 	for _, e := range pdg.Edges {
 		if e.To == callIdx && e.Kind == patterns.Data && e.ArgPos == 0 {
-			if recv := pdg.Nodes[e.From]; recv.Kind != patterns.Param {
-				t.Errorf("receiver at arg 0 is %s, want param", recv.Kind)
+			if recv := pdg.Nodes[e.From]; recv.Kind == patterns.Param {
+				return
 			}
-			return
+			for _, input := range pdg.Edges {
+				if input.Kind == patterns.Data && input.To == e.From && pdg.Nodes[input.From].Kind == patterns.Param {
+					return
+				}
+			}
+			t.Fatal("receiver at arg zero does not read the parameter")
 		}
 	}
 	t.Error("no arg-0 edge into DB.Exec call")

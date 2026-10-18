@@ -24,7 +24,7 @@ func semanticFact(f *MiningFacts) *MiningFacts {
 // slots remain as nonsemantic placeholders; incident edges are omitted. Callers
 // can resolve binding, definition, memory, and evidence facts through Canonical.
 func semanticView(graph *pdg.Graph) *MiningGraph {
-	kept := pdg.NormalProjection(graph)
+	kept := pdg.ReachableProjection(graph)
 	view := &MiningGraph{Nodes: make([]PdgNode, len(graph.Nodes)), Edges: make([]PdgEdge, 0, len(graph.Edges))}
 	for i, node := range graph.Nodes {
 		if normalNodeRemoved(kept, i) {

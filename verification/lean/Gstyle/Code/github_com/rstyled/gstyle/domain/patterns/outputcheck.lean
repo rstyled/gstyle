@@ -78,7 +78,7 @@ noncomputable def Report [FfiSyntax] [GoGlobalContext] : GoString :=
 noncomputable def Classify [FfiSyntax] [GoGlobalContext] : GoString :=
   go!"github.com/rstyled/gstyle/domain/patterns/outputcheck.Classify"
 
-/-- go: output.go:12:6 -/
+/-- go: output.go:52:6 -/
 noncomputable def Discards.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "input"
   (App (Val exceptionDo)
@@ -99,7 +99,7 @@ noncomputable def Discards.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (Val #()))))))))
 
-/-- go: output.go:30:6 -/
+/-- go: output.go:62:6 -/
 noncomputable def Select.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "sites"
   (Lam "suppressed"
@@ -142,7 +142,7 @@ noncomputable def Select.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (Val #()))))))))))
 
-/-- go: output.go:44:6 -/
+/-- go: output.go:76:6 -/
 noncomputable def Formatted.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "pkg"
   (Lam "name"
@@ -152,7 +152,7 @@ noncomputable def Formatted.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doReturn)
   (If (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "pkg")) (Val #(go!"fmt")))) (If (If (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "name")) (Val #(go!"Fprint")))) (Val #true) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "name")) (Val #(go!"Fprintf"))))) (Val #true) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "name")) (Val #(go!"Fprintln"))))) (Val #false))))))))
 
-/-- go: output.go:48:6 -/
+/-- go: output.go:80:6 -/
 noncomputable def Memory.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "pkg"
   (Lam "name"
@@ -162,7 +162,7 @@ noncomputable def Memory.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doReturn)
   (If (If (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "pkg")) (Val #(go!"bytes")))) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "name")) (Val #(go!"Buffer")))) (Val #false)) (Val #true) (If (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "pkg")) (Val #(go!"strings")))) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "name")) (Val #(go!"Builder")))) (Val #false)))))))))
 
-/-- go: output.go:52:6 -/
+/-- go: output.go:84:6 -/
 noncomputable def hasSuppression.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "kinds"
   (App (Val exceptionDo)
@@ -187,7 +187,7 @@ noncomputable def hasSuppression.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore go.int))) (Pair (Var "i") (Var "$r0")))))))))))
 
-/-- go: output.go:61:6 -/
+/-- go: output.go:93:6 -/
 noncomputable def Find.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "sites"
   (Lam "suppressions"
@@ -200,7 +200,7 @@ noncomputable def Find.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (App (Val (GoInstruction (FuncResolve hasSuppression []))) (Val #())) (Var "$a0")))
   (App (App (App (Val (GoInstruction (FuncResolve Select []))) (Val #())) (Var "$a0")) (Var "$a1"))))))))))
 
-/-- go: output.go:84:6 -/
+/-- go: output.go:97:6 -/
 noncomputable def describe.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "function"
   (Lam "site"
@@ -220,7 +220,7 @@ noncomputable def describe.impl [FfiSyntax] [GoGlobalContext] : val :=
   (Let "$v9" (Val #(go!"best-effort output may deliberately ignore failures; no automatic fix"))
   (App (Val (GoInstruction (CompositeLiteral Advisory.ty))) (LiteralValue [(KeyedElement (some (KeyField go!"Path")) (ElementExpression go.string (Var "$v0"))), (KeyedElement (some (KeyField go!"Line")) (ElementExpression go.int (Var "$v1"))), (KeyedElement (some (KeyField go!"EndLine")) (ElementExpression go.int (Var "$v2"))), (KeyedElement (some (KeyField go!"ID")) (ElementExpression go.string (Var "$v3"))), (KeyedElement (some (KeyField go!"Name")) (ElementExpression go.string (Var "$v4"))), (KeyedElement (some (KeyField go!"Kind")) (ElementExpression go.string (Var "$v5"))), (KeyedElement (some (KeyField go!"ScoreMilli")) (ElementExpression go.uint32 (Var "$v6"))), (KeyedElement (some (KeyField go!"Observation")) (ElementExpression go.string (Var "$v7"))), (KeyedElement (some (KeyField go!"Inference")) (ElementExpression go.string (Var "$v8"))), (KeyedElement (some (KeyField go!"CounterEvidence")) (ElementExpression go.string (Var "$v9")))]))))))))))))))))))
 
-/-- go: output.go:95:6 -/
+/-- go: output.go:108:6 -/
 noncomputable def Report.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "function"
   (Lam "sites"
@@ -260,7 +260,7 @@ noncomputable def Report.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore (go.GoType.SliceType Site.ty)))) (Pair (Var "selected") (Var "$r0"))))))))))))))
 
-/-- go: output.go:116:6 -/
+/-- go: output.go:117:6 -/
 noncomputable def Classify.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "callee"
   (Lam "writer"
@@ -362,16 +362,18 @@ structure Site [FfiSyntax] where
   Line' : w64
   Callee' : GoString
   Checked' : Bool
+  CheckUnknown' : Bool
   DiscardedOutput' : Bool
 
 instance Site.zero_val [FfiSyntax] : ZeroVal Site :=
-  ⟨Site.mk zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef⟩
+  ⟨Site.mk zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef⟩
 
 @[reducible] def Site.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
   [(go.field_decl.FieldDecl go!"FuncID" go.string),
 (go.field_decl.FieldDecl go!"Line" go.int),
 (go.field_decl.FieldDecl go!"Callee" go.string),
 (go.field_decl.FieldDecl go!"Checked" go.bool),
+(go.field_decl.FieldDecl go!"CheckUnknown" go.bool),
 (go.field_decl.FieldDecl go!"DiscardedOutput" go.bool)]
 
 @[irreducible] def Site.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
@@ -387,7 +389,7 @@ instance equals_unfold_Site [FfiSyntax] [GoGlobalContext] :
 class Site.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying Site.underlying Site
   underlying : go.UnderlyingDirectedEq Site.ty Site.underlying
-  layout : go.StructLayout Site [(go!"FuncID", typeSize GoString, typeAlign GoString), (go!"Line", typeSize w64, typeAlign w64), (go!"Callee", typeSize GoString, typeAlign GoString), (go!"Checked", typeSize Bool, typeAlign Bool), (go!"DiscardedOutput", typeSize Bool, typeAlign Bool)]
+  layout : go.StructLayout Site [(go!"FuncID", typeSize GoString, typeAlign GoString), (go!"Line", typeSize w64, typeAlign w64), (go!"Callee", typeSize GoString, typeAlign GoString), (go!"Checked", typeSize Bool, typeAlign Bool), (go!"CheckUnknown", typeSize Bool, typeAlign Bool), (go!"DiscardedOutput", typeSize Bool, typeAlign Bool)]
   get_FuncID : ∀ (x : Site), go.IsGoStepPureDetTagged under (StructFieldGet Site.underlying go!"FuncID") #x (Val #(x.FuncID'))
   set_FuncID : ∀ (x : Site) (y : GoString), go.IsGoStepPureDetTagged under (StructFieldSet Site.underlying go!"FuncID") (PairV #x #y) (Val #(({ x with FuncID' := y } : Site)))
   get_Line : ∀ (x : Site), go.IsGoStepPureDetTagged under (StructFieldGet Site.underlying go!"Line") #x (Val #(x.Line'))
@@ -396,6 +398,8 @@ class Site.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSem
   set_Callee : ∀ (x : Site) (y : GoString), go.IsGoStepPureDetTagged under (StructFieldSet Site.underlying go!"Callee") (PairV #x #y) (Val #(({ x with Callee' := y } : Site)))
   get_Checked : ∀ (x : Site), go.IsGoStepPureDetTagged under (StructFieldGet Site.underlying go!"Checked") #x (Val #(x.Checked'))
   set_Checked : ∀ (x : Site) (y : Bool), go.IsGoStepPureDetTagged under (StructFieldSet Site.underlying go!"Checked") (PairV #x #y) (Val #(({ x with Checked' := y } : Site)))
+  get_CheckUnknown : ∀ (x : Site), go.IsGoStepPureDetTagged under (StructFieldGet Site.underlying go!"CheckUnknown") #x (Val #(x.CheckUnknown'))
+  set_CheckUnknown : ∀ (x : Site) (y : Bool), go.IsGoStepPureDetTagged under (StructFieldSet Site.underlying go!"CheckUnknown") (PairV #x #y) (Val #(({ x with CheckUnknown' := y } : Site)))
   get_DiscardedOutput : ∀ (x : Site), go.IsGoStepPureDetTagged under (StructFieldGet Site.underlying go!"DiscardedOutput") #x (Val #(x.DiscardedOutput'))
   set_DiscardedOutput : ∀ (x : Site) (y : Bool), go.IsGoStepPureDetTagged under (StructFieldSet Site.underlying go!"DiscardedOutput") (PairV #x #y) (Val #(({ x with DiscardedOutput' := y } : Site)))
 
@@ -410,6 +414,8 @@ attribute [instance] Site.TypeAssumptions.type_repr
   Site.TypeAssumptions.set_Callee
   Site.TypeAssumptions.get_Checked
   Site.TypeAssumptions.set_Checked
+  Site.TypeAssumptions.get_CheckUnknown
+  Site.TypeAssumptions.set_CheckUnknown
   Site.TypeAssumptions.get_DiscardedOutput
   Site.TypeAssumptions.set_DiscardedOutput
 

@@ -1,23 +1,23 @@
 package gopatterns
 
 import (
-	"github.com/rstyled/gstyle/domain/runtimeguard"
 	"go/ast"
 	"go/token"
 	"go/types"
 
+	"github.com/rstyled/gstyle/domain/errorflow"
 	"github.com/rstyled/gstyle/domain/patterns"
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 type errorCheckWalker struct {
-	reachable          map[outputSpan]runtimeguard.Value
-	function           *ast.FuncDecl
+	successOutput      func(*ast.CallExpr) bool
+	checks             *errorUseFacts
 	successReturnSites []int
 	fset               *token.FileSet
 	info               *types.Info
 	sites              *[]patterns.ErrorCheckSite
 	stack              []ast.Node // Parent stack
-	body               ast.Node
 }
 
 func (w *errorCheckWalker) Visit(n ast.Node) ast.Visitor {
@@ -39,40 +39,43 @@ func (w *errorCheckWalker) Visit(n ast.Node) ast.Visitor {
 }
 
 func (w *errorCheckWalker) visitCall(call *ast.CallExpr) {
-	callee := calleeName(call, w.info)
-	if callee == "" {
-		return
-	}
 	if !returnsError(call, w.info) {
 		return
 	}
 	checked := w.isChecked(call)
+	callee := w.checks.callee(call)
+	if callee == "" {
+		callee = calleeName(call, w.info)
+		checked.Known = false
+	}
 	line := w.fset.PositionFor(call.Pos(), false).Line
 	discarded := w.discardsOutput(call)
 	*w.sites = append(*w.sites, patterns.ErrorCheckSite{
 		Line:            line,
 		Callee:          callee,
-		Checked:         checked,
+		Checked:         checked.Used,
+		CheckUnknown:    !checked.Known,
 		DiscardedOutput: discarded,
 		// FuncID is set by the caller (needs the full ID).
 	})
-	if discarded && w.successReturnOutput(call) {
+	if discarded && w.successOutput != nil && w.successOutput(call) {
 		w.successReturnSites = append(w.successReturnSites, len(*w.sites)-1)
 	}
 }
 
 // isChecked determines if the error from a call was checked.
 // Returns false if assigned to `_` or result ignored, true otherwise.
-func (w *errorCheckWalker) isChecked(call *ast.CallExpr) bool {
+func (w *errorCheckWalker) isChecked(call *ast.CallExpr) errorflow.Result {
+	if !w.checks.known(call) {
+		return errorflow.Result{}
+	}
 	switch parent := w.callParent().(type) {
-	case *ast.ReturnStmt:
-		return true
-	case *ast.BinaryExpr:
-		return parent.Op == token.EQL || parent.Op == token.NEQ
 	case *ast.AssignStmt:
-		return w.assignedErrorChecked(call, parent)
+		return w.errorTargetsChecked(parent, parent.Lhs, errorCallPositions(w.info.TypeOf(call)), errorAssignmentOffset(parent, call))
+	case *ast.ValueSpec:
+		return w.errorTargetsChecked(parent, memoryDeclaredTargets(parent.Names), errorCallPositions(w.info.TypeOf(call)), errorValueOffset(parent.Values, call))
 	default:
-		return false
+		return w.checks.valueUsed(call)
 	}
 }
 
@@ -86,24 +89,41 @@ func (w *errorCheckWalker) callParent() ast.Node {
 	return nil
 }
 
-func (w *errorCheckWalker) assignedErrorChecked(call *ast.CallExpr, assign *ast.AssignStmt) bool {
-	positions := errorCallPositions(w.info.TypeOf(call))
-	offset := errorAssignmentOffset(assign, call)
-	for _, pos := range positions {
-		pos += offset
-		if pos >= len(assign.Lhs) {
-			return false
-		}
-		if !w.errorBindingUsed(assign.Lhs[pos], call.End()) {
-			return false
+func (w *errorCheckWalker) errorTargetsChecked(owner ast.Node, targets []ast.Expr, positions []int, offset int) errorflow.Result {
+	result := errorflow.Result{Used: len(positions) > 0, Known: true}
+	for _, position := range positions {
+		result = result.All(w.errorTargetUse(owner, targets, position+offset))
+		if result.Unused() {
+			return result
 		}
 	}
-	return len(positions) > 0
+	return result
 }
 
-func (w *errorCheckWalker) errorBindingUsed(expr ast.Expr, after token.Pos) bool {
-	id, ok := expr.(*ast.Ident)
-	return ok && id.Name != "_" && meaningfulErrorUse(w.body, w.info.ObjectOf(id), w.info, after)
+func (w *errorCheckWalker) errorTargetUse(owner ast.Node, targets []ast.Expr, position int) errorflow.Result {
+	if position >= len(targets) {
+		return errorflow.Result{}
+	}
+	identifier, ok := unparen(targets[position]).(*ast.Ident)
+	if !ok {
+		return errorflow.Result{}
+	}
+	if identifier.Name == "_" {
+		return errorflow.Result{Known: true}
+	}
+	return w.checks.assignmentUsed(owner, pdg.Position(position+1))
+}
+
+func (w errorCheckWalker) scan(fn *ast.FuncDecl) ([]patterns.ErrorCheckSite, []int) {
+	if fn.Body == nil {
+		return nil, nil
+	}
+	var sites []patterns.ErrorCheckSite
+	w.sites = &sites
+	w.stack = nil
+	w.successReturnSites = nil
+	ast.Walk(&w, fn.Body)
+	return sites, w.successReturnSites
 }
 
 func errorCallPositions(t types.Type) []int {
@@ -120,66 +140,6 @@ func errorCallPositions(t types.Type) []int {
 		return []int{0}
 	}
 	return nil
-}
-
-func meaningfulErrorUse(body ast.Node, object types.Object, info *types.Info, after token.Pos) bool {
-	if object == nil {
-		return false
-	}
-	found := false
-	ast.Inspect(body, func(n ast.Node) bool {
-		if _, ok := n.(*ast.FuncLit); ok {
-			return false
-		}
-		for _, expr := range errorUseOperands(n) {
-			if errorUseMatches(expr, object, info, after) {
-				found = true
-			}
-		}
-		return true
-	})
-	return found
-}
-
-func errorUseOperands(n ast.Node) []ast.Expr {
-	switch n := n.(type) {
-	case *ast.BinaryExpr:
-		return []ast.Expr{n.X, n.Y}
-	case *ast.CallExpr:
-		return n.Args
-	case *ast.ReturnStmt:
-		return n.Results
-	}
-	return nil
-}
-
-// findErrorCheckSites finds call sites and tracks whether the error was checked.
-// Used for deviant_behavior mining (Engler et al., SOSP 2001).
-func findErrorCheckSites(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info) []patterns.ErrorCheckSite {
-	sites, _ := findErrorCheckFacts(fn, fset, info)
-	return sites
-}
-
-func findErrorCheckFacts(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info) ([]patterns.ErrorCheckSite, []int) {
-	return scanErrorCheckFacts(fn, fset, info, nil)
-}
-
-func scanErrorCheckFacts(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info, reachable map[outputSpan]runtimeguard.Value) ([]patterns.ErrorCheckSite, []int) {
-	if fn.Body == nil {
-		return nil, nil
-	}
-	var sites []patterns.ErrorCheckSite
-	// Use a custom walker that tracks parents.
-	w := &errorCheckWalker{
-		reachable: reachable,
-		function:  fn,
-		fset:      fset,
-		info:      info,
-		sites:     &sites,
-		body:      fn.Body,
-	}
-	ast.Walk(w, fn.Body)
-	return sites, w.successReturnSites
 }
 
 // calleeName extracts the called function name from a call expression.
@@ -201,18 +161,11 @@ func returnsError(call *ast.CallExpr, info *types.Info) bool {
 	if info == nil {
 		return false
 	}
-	tv, ok := info.Types[call]
-	if !ok {
+	if info.Types[call.Fun].IsType() {
 		return false
 	}
-	if tup, ok := tv.Type.(*types.Tuple); ok {
-		for i := 0; i < tup.Len(); i++ {
-			if isErrorTypeCheck(tup.At(i).Type()) {
-				return true
-			}
-		}
-	}
-	return isErrorTypeCheck(tv.Type)
+	value, known := info.Types[call]
+	return known && len(errorCallPositions(value.Type)) > 0
 }
 
 // isErrorTypeCheck checks if a type is the error interface.
@@ -225,18 +178,17 @@ func isErrorTypeCheck(t types.Type) bool {
 }
 
 func errorAssignmentOffset(assign *ast.AssignStmt, call *ast.CallExpr) int {
-	if len(assign.Rhs) == 1 {
-		return 0
-	}
-	for i, expr := range assign.Rhs {
-		if specUnwrapParens(expr) == call {
-			return i
-		}
-	}
-	return len(assign.Lhs)
+	return errorValueOffset(assign.Rhs, call)
 }
 
-func errorUseMatches(expr ast.Expr, object types.Object, info *types.Info, after token.Pos) bool {
-	id, ok := specUnwrapParens(expr).(*ast.Ident)
-	return ok && id.Pos() > after && info.ObjectOf(id) == object
+func errorValueOffset(values []ast.Expr, call *ast.CallExpr) int {
+	if len(values) == 1 {
+		return 0
+	}
+	for index, expression := range values {
+		if specUnwrapParens(expression) == call {
+			return index
+		}
+	}
+	return len(values)
 }

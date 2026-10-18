@@ -37,9 +37,13 @@ func TestExecutionMustPrecedeBranchesLoopsAndTransfers(t *testing.T) {
 				if source[from.Start:from.End] == tc.from && source[to.Start:to.End] == tc.to {
 					got = true
 				}
-				if g.Tables.Text(edge.Subkind) != "must-precede" {
-					t.Fatal("missing execution policy")
+				if g.Tables.Text(edge.Subkind) != "chosen-order-dominator" {
+					t.Fatal("missing shared operation-order policy")
 				}
+				if g.Tables.Evidence[edge.Evidence-1].Status != pdg.Approximated {
+					t.Fatal("general chosen order claims exact language ordering")
+				}
+
 			}
 			if got != tc.want {
 				t.Fatalf("edge %s -> %s=%t want %t", tc.from, tc.to, got, tc.want)

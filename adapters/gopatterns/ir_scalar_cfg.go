@@ -9,15 +9,17 @@ import (
 )
 
 type scalarCFGBuilder struct {
-	builder    *irBuilder
-	graph      *cfg.CFG
-	current    *cfg.Block
-	controls   map[ast.Node]pdg.Ref
-	maximal    bool
-	outcomes   map[int][]pdg.Position
-	conditions map[ast.Node]bool
-	selections map[ast.Expr]controlSelection
-	selectors  map[*ast.CaseClause]int
+	builder      *irBuilder
+	graph        *cfg.CFG
+	current      *cfg.Block
+	controls     map[ast.Node]pdg.Ref
+	maximal      bool
+	outcomes     map[int][]pdg.Position
+	conditions   map[ast.Node]bool
+	selections   map[ast.Expr]controlSelection
+	selectors    map[*ast.CaseClause]int
+	rangeTargets map[ast.Node]bool
+	rangeBounds  map[ast.Node]pdg.Ref
 }
 
 func (a *scalarCFGBuilder) block() *cfg.Block {
@@ -57,6 +59,9 @@ func (a *scalarCFGBuilder) walk(source ast.Node) {
 }
 
 func (a *scalarCFGBuilder) finish(source ast.Node) {
+	if a.builder.deferredInvocation(source) {
+		return
+	}
 	if node := a.builder.nodes[source]; node != 0 {
 		a.operation(node)
 	}
@@ -77,13 +82,12 @@ func (a *scalarCFGBuilder) logical(binary *ast.BinaryExpr) {
 	a.walk(binary.X)
 	predicate := a.logicalPredicate(binary)
 	a.operation(predicate)
-	branch := a.current
 	rhs, join := a.block(), a.block()
-	a.current = branch
 	a.transfer(binary.X, logicalSuccessors(binary.Op, rhs, join))
 	a.current = rhs
 	a.walk(binary.Y)
-	a.current.Succs = append(a.current.Succs, join)
+	// Expression walking leaves one open tail; its sole successor is the join.
+	a.current.Succs = []*cfg.Block{join}
 	a.current = join
 	a.logicalValue(binary)
 }
@@ -120,8 +124,18 @@ func (a *scalarCFGBuilder) predicateValue(expression ast.Expr, target pdg.Ref) {
 	if source == 0 {
 		source = b.nodes[unparen(expression)]
 	}
+	b.predicateDependencyFacts(source, target)
 	description := "Value tested by a short-circuit decision; the right operand is evaluated only on its selected outcome."
 	b.graph.Edges = append(b.graph.Edges, pdg.Edge{ID: b.pool.Text("logical-e" + strconv.Itoa(len(b.graph.Edges)+1)), Source: source, Target: target, Kind: pdg.Data, Position: 1, Subkind: b.pool.Text("scalar-value"), Evidence: b.pool.Evidence(pdg.Supported, description), Provenance: b.pool.Origin(pdg.Analysis, description)})
+}
+
+func (a *scalarCFGBuilder) skipClosure(node ast.Node) bool {
+	_, closure := node.(*ast.FuncLit)
+	if !closure {
+		return false
+	}
+	a.operation(a.builder.nodes[node])
+	return true
 }
 
 // Expand typed scalar expressions into operation sites. Logical operators split
@@ -143,6 +157,19 @@ func (b *irBuilder) scalarCFG(body *ast.BlockStmt, original *cfg.CFG) *cfg.CFG {
 	return a.graph
 }
 
+// Synthetic decisions keep the same canonical operand and evaluation context
+// as their source value. They are created after the ordinary source-fact pass.
+func (b *irBuilder) predicateDependencyFacts(source, target pdg.Ref) {
+	extensions := b.pool.SingletonExtension("gstyle.go:value-operands", "[1]")
+	for _, extension := range b.attributes[b.graph.Nodes[source-1].Attributes-1].Extensions {
+		if b.pool.Tables.Text(extension.Name) == "gstyle.go:evaluation-region" {
+			extensions = append(extensions, extension)
+		}
+	}
+	attrs := &b.attributes[b.graph.Nodes[target-1].Attributes-1]
+	attrs.Extensions = append(attrs.Extensions, extensions...)
+}
+
 func logicalExpression(node ast.Node) (*ast.BinaryExpr, bool) {
 	binary, ok := node.(*ast.BinaryExpr)
 	return binary, ok && (binary.Op == token.LAND || binary.Op == token.LOR)
@@ -153,9 +180,4 @@ func logicalSuccessors(operator token.Token, rhs, join *cfg.Block) []*cfg.Block 
 		return []*cfg.Block{join, rhs}
 	}
 	return []*cfg.Block{rhs, join}
-}
-
-func (a *scalarCFGBuilder) skipClosure(node ast.Node) bool {
-	_, closure := node.(*ast.FuncLit)
-	return closure && (a.builder.runtimeOperations || a.maximal)
 }

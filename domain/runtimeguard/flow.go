@@ -124,6 +124,17 @@ func (a *analysis) pointerIndex(ref pdg.Ref, state State, report *Report) {
 	report.Accesses = append(report.Accesses, a.view.publicAccess(site, state))
 }
 
+func (a *analysis) call(ref pdg.Ref, state State, report *Report) {
+	if a.view.graph.Nodes[ref-1].Category != pdg.Call {
+		return
+	}
+	position := 0
+	if a.view.fact(ref, "implicit-receiver") == "true" {
+		position = 1
+	}
+	report.Calls = append(report.Calls, Call{Node: ref, FirstArgument: a.view.value(a.view.operand(ref, position), state)})
+}
+
 func (v *graphView) join(previous, next State) State {
 	if previous == nil {
 		return copyState(next)
@@ -215,11 +226,4 @@ func pointerGuardContext(site Access, state State) []pdg.Ref {
 		return nil
 	}
 	return activePointerGuards(state, site.Symbol)
-}
-
-func (a *analysis) call(ref pdg.Ref, state State, report *Report) {
-	if a.view.graph.Nodes[ref-1].Category != pdg.Call {
-		return
-	}
-	report.Calls = append(report.Calls, Call{Node: ref, FirstArgument: a.view.value(a.view.operand(ref, 0), state)})
 }

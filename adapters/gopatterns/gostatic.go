@@ -6,6 +6,7 @@ import (
 	"go/types"
 	"strings"
 
+	"github.com/rstyled/gstyle/domain/bindingflow"
 	"github.com/rstyled/gstyle/domain/patterns"
 )
 
@@ -13,25 +14,10 @@ import (
 
 var errorType = types.Universe.Lookup("error").Type().Underlying().(*types.Interface)
 
-// nilErrCheck holds the parsed `if err != nil` / `if err == nil` condition.
+// nilErrCheck holds the typed subject and outcome of a canonical nil predicate.
 type nilErrCheck struct {
-	errVal   ast.Expr
+	path     bindingflow.Path
 	isNotNil bool
-}
-
-// findNilErrHits finds `if err != nil { return nil }` and
-// the equivalent `if err == nil { ... } else { return nil }` pattern.
-func findNilErrHits(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info) []patterns.NilErrHit {
-	if fn.Body == nil {
-		return nil
-	}
-	positions := errorResultPositions(fn, info)
-	if len(positions) == 0 {
-		return nil
-	}
-	collector := nilErrCollector{fn: fn, fset: fset, info: info, positions: positions, scope: nilErrEvidence{info: info, values: map[types.Object]nilErrValue{}, truths: map[types.Object]bool{}}, remaining: nilErrPathBudget, seen: map[token.Pos]bool{}}
-	collector.sequence(fn.Body.List)
-	return collector.hits
 }
 
 // errorResultPositions returns every error result, including named results.
@@ -92,83 +78,6 @@ func isNilErrErrorType(t types.Type) bool {
 func isErrorASTType(e ast.Expr) bool {
 	ident, ok := e.(*ast.Ident)
 	return ok && ident.Name == "error"
-}
-
-// finding checks one if statement using the current predecessor facts.
-func (c *nilErrCollector) finding(ifStmt *ast.IfStmt, rest []ast.Stmt, context nilErrEvidence) *patterns.NilErrHit {
-	check := parseNilErrCond(ifStmt.Cond, c.info)
-	if check == nil {
-		return nil
-	}
-	branch := nilErrBranch(ifStmt, check.isNotNil)
-	statements := nilErrStatements(branch)
-	if branch == nil {
-		statements = rest
-	}
-	if !c.lostPath(statements, check.errVal, context) {
-		return nil
-	}
-	return &patterns.NilErrHit{
-		Line:     c.fset.Position(ifStmt.Pos()).Line,
-		CondText: condText(c.fset, ifStmt.Cond),
-		Kind:     "returns nil when err != nil",
-	}
-}
-
-// parseNilErrCond parses `err != nil` or `err == nil`, returning the error
-// value and whether it's the != form.
-func parseNilErrCond(cond ast.Expr, info *types.Info) *nilErrCheck {
-	cond = specUnwrapParens(cond)
-	if unary, ok := cond.(*ast.UnaryExpr); ok && unary.Op == token.NOT {
-		check := parseNilErrCond(unary.X, info)
-		if check != nil {
-			check.isNotNil = !check.isNotNil
-		}
-		return check
-	}
-	return binaryNilErrCheck(cond, info)
-}
-
-func binaryNilErrCheck(cond ast.Expr, info *types.Info) *nilErrCheck {
-	bin, ok := cond.(*ast.BinaryExpr)
-	if !ok {
-		return nil
-	}
-	if bin.Op == token.NEQ {
-		if errVal := nilErrOperand(bin, info); errVal != nil {
-			return &nilErrCheck{errVal: errVal, isNotNil: true}
-		}
-	} else if bin.Op == token.EQL {
-		if errVal := nilErrOperand(bin, info); errVal != nil {
-			return &nilErrCheck{errVal: errVal, isNotNil: false}
-		}
-	}
-	return nil
-}
-
-// nilErrOperand returns the error-valued side of `err != nil` / `err == nil`.
-func nilErrOperand(bin *ast.BinaryExpr, info *types.Info) ast.Expr {
-	if typedNilExpr(bin.Y, info) && isErrorExpr(info, bin.X) {
-		return bin.X
-	}
-	if typedNilExpr(bin.X, info) && isErrorExpr(info, bin.Y) {
-		return bin.Y
-	}
-	return nil
-}
-
-// nilErrBranch returns the branch to check: Body for !=, Else for ==.
-func nilErrBranch(ifStmt *ast.IfStmt, isNotNil bool) ast.Stmt {
-	if isNotNil {
-		return ifStmt.Body
-	}
-	return ifStmt.Else
-}
-
-// isNil reports whether e is the nil identifier.
-func isNilIdent(e ast.Expr) bool {
-	id, ok := e.(*ast.Ident)
-	return ok && id.Name == "nil"
 }
 
 // isErrorType reports whether e has an error type.
@@ -348,24 +257,4 @@ func isPatternKind(s string) bool {
 		return true
 	}
 	return false
-}
-
-func typedNilExpr(expr ast.Expr, info *types.Info) bool {
-	expr = specUnwrapParens(expr)
-	if info == nil {
-		return isNilIdent(expr)
-	}
-	return info.Types[expr].IsNil()
-}
-
-func nilErrorResults(ret *ast.ReturnStmt, positions []int, info *types.Info) bool {
-	if len(positions) == 0 {
-		return false
-	}
-	for _, pos := range positions {
-		if pos >= len(ret.Results) || !typedNilExpr(ret.Results[pos], info) {
-			return false
-		}
-	}
-	return true
 }

@@ -16,9 +16,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/rstyled/gstyle/domain/bindingflow"
+	"github.com/rstyled/gstyle/domain/callflow"
 	"github.com/rstyled/gstyle/domain/interfacenil"
 	"github.com/rstyled/gstyle/domain/patterns"
 	"github.com/rstyled/gstyle/domain/pdg"
+	"github.com/rstyled/gstyle/domain/resourceflow"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -26,6 +29,8 @@ import (
 type FuncPdg struct {
 	// SuccessReturnOutputSites are zero-based ErrorCheckSites indices followed directly by a nil error return.
 	SuccessReturnOutputSites []int
+	// DeferredReleaseLines have explicit cleanup on modeled exits, with foreign calls unproved.
+	DeferredReleaseLines []int
 	// ReleasedFileLines are typed file acquisitions closed or returned on every normal success path.
 	ReleasedFileLines   []int
 	FileObligationSites []patterns.ResourceAcquisition
@@ -110,17 +115,18 @@ type Extraction struct {
 
 // extractCtx carries per-package maps for entity pairing.
 type extractCtx struct {
-	fileSources      map[types.Object]bool
-	helpers          map[types.Object]bool
-	sourceIdentities map[string]string
-	pool             *pdg.Builder
-	structLocs       map[string]structLoc
-	mutated          map[string]bool
+	resourceQueries map[*pdg.Graph]*resourceflow.Query
+	exits           callflow.ExitSummaries
+	fileSources     map[types.Object]bool
+	fileFailures    map[types.Object]bool
+	helpers         map[types.Object]bool
+	structLocs      map[string]structLoc
+	mutated         map[string]bool
 }
 
 // newExtractCtx builds the struct location and mutation maps for pairing
 // missing_identity with entity_identity.
-func newExtractCtx(pkg *packages.Package, root string) extractCtx {
+func newExtractCtx(pkg *packages.Package, root string, resources packageResourceFacts) extractCtx {
 	structLocs := map[string]structLoc{}
 	for _, sd := range collectStructs(pkg, root) {
 		if _, ok := structLocs[sd.name]; !ok {
@@ -128,10 +134,12 @@ func newExtractCtx(pkg *packages.Package, root string) extractCtx {
 		}
 	}
 	return extractCtx{
-		fileSources: returnedFileSources(pkg),
-		helpers:     helperReleases(pkg),
-		structLocs:  structLocs,
-		mutated:     collectMutatedStructs(pkg),
+		fileSources:  resources.sources,
+		exits:        resources.exits,
+		fileFailures: resources.failures,
+		helpers:      resources.helpers,
+		structLocs:   structLocs,
+		mutated:      collectMutatedStructs(pkg),
 	}
 }
 
@@ -281,7 +289,10 @@ func extractNormalPackages(ctx context.Context, abs string, paths []string, opti
 	pool.Tables.Sources = sources
 	internSourceMetadata(pool)
 	for _, pkg := range productionPatternPackages(pkgs) {
-		funcs, err := packagePdgsWithSources(pkg, abs, pool, sourceIdentities)
+		// Validation visits shared tables; bound them to this package.
+		packagePool := pdg.NewBuilder()
+		packagePool.Tables.Sources = sources
+		funcs, err := packagePdgsWithSources(pkg, abs, packagePool, sourceIdentities)
 		if err != nil {
 			return nil, err
 		}
@@ -374,42 +385,17 @@ func packagePdgs(pkg *packages.Package, root string, pool *pdg.Builder) ([]FuncP
 }
 
 func packagePdgsWithSources(pkg *packages.Package, root string, pool *pdg.Builder, sources map[string]string) ([]FuncPdg, error) {
-	var out []FuncPdg
-	ctx := newExtractCtx(pkg, root)
-	ctx.pool = pool
-	ctx.sourceIdentities = sources
-	for _, file := range pkg.Syntax {
-		funcs, err := filePdgs(pkg, file, root, ctx)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, funcs...)
+	analysis := packageAnalysis{pkg: pkg, root: root, pool: pool, sources: sources}
+	if err := analysis.build(); err != nil {
+		return nil, err
 	}
-	return out, nil
-}
-
-func filePdgs(pkg *packages.Package, file *ast.File, root string, ctx extractCtx) ([]FuncPdg, error) {
-	filename := pkg.Fset.PositionFor(file.Pos(), false).Filename
-	rel, err := filepath.Rel(root, filename)
-	if err != nil {
-		return nil, fmt.Errorf("PDG source path: %w", err)
+	if err := analysis.summarize(); err != nil {
+		return nil, err
 	}
-	identity := pdgSourceIdentity(ctx.pool, ctx.sourceIdentities[filename])
-	var out []FuncPdg
-	for _, decl := range file.Decls {
-		fn, ok := decl.(*ast.FuncDecl)
-		if !ok || fn.Body == nil {
-			continue
-		}
-		graph, err := extractFunc(pkg, fn, filepath.ToSlash(rel), ctx)
-		if err != nil {
-			return nil, err
-		}
-		graph.Pdg.Sources[0].ContentIdentity = identity
-		graph.Pdg.Sources[0].Snapshot = sourceSnapshotReference(ctx.pool.Tables.Sources, filename)
-		out = append(out, graph)
+	if err := analysis.analyze(); err != nil {
+		return nil, err
 	}
-	return out, nil
+	return analysis.result, nil
 }
 
 func patternsQuery(root string, paths []string) ([]string, error) {
@@ -468,7 +454,8 @@ func SigKeyOf(fp FuncPdg) string {
 	return "fn(" + strings.Join(params, ",") + ")"
 }
 
-func extractFunc(pkg *packages.Package, fn *ast.FuncDecl, path string, ctx extractCtx) (FuncPdg, error) {
+func extractFunc(pkg *packages.Package, source functionGraph, ctx extractCtx) (FuncPdg, error) {
+	fn, path, graph := source.declaration, source.path, source.graph
 	name := fn.Name.Name
 	selfTy := ""
 	if object, ok := pkg.TypesInfo.Defs[fn.Name].(*types.Func); ok {
@@ -477,22 +464,25 @@ func extractFunc(pkg *packages.Package, fn *ast.FuncDecl, path string, ctx extra
 	}
 	pos := pkg.Fset.PositionFor(fn.Pos(), false)
 	end := pkg.Fset.PositionFor(fn.End(), false)
-	graph, err := buildGraph(pkg, fn, path, ctx.pool)
+	sites, successReturnSites, err := reachableErrorCheckFacts(fn, pkg.Fset, pkg.TypesInfo, graph)
 	if err != nil {
 		return FuncPdg{}, err
 	}
-	sites, successReturnSites, err := reachableErrorCheckFacts(fn, pkg.Fset, pkg.TypesInfo, &graph)
+	releasedFiles, fileSites, deferredLines, err := resourceObligationFacts(pkg, fn, ctx, graph)
 	if err != nil {
 		return FuncPdg{}, err
 	}
-	releasedFiles, fileSites := fileObligationFacts(pkg, fn, ctx)
+	var bindings *bindingflow.Query
+	if query := ctx.resourceQueries[graph]; query != nil {
+		bindings = query.CallQueries().Bindings
+	}
 	return FuncPdg{
 		Name:            name,
 		Path:            path,
 		Line:            pos.Line,
 		EndLine:         end.Line,
 		SuppressedKinds: findSuppressedKinds(fn),
-		Pdg:             graph,
+		Pdg:             *graph,
 		AstTypes:        patterns.AstNodeMultiset(fn),
 		SelfTy:          selfTy,
 		GuardClauses:    findGuardClauses(fn, pkg.Fset),
@@ -521,7 +511,7 @@ func extractFunc(pkg *packages.Package, fn *ast.FuncDecl, path string, ctx extra
 		// SpecRules are boolean business-rule expressions (2+ conditions).
 		SpecRules: findSpecificationHits(fn, pkg.Fset, pkg.TypesInfo),
 		// NilErrHits are `if err != nil { return nil }` (gostaticanalysis).
-		NilErrHits: findNilErrHits(fn, pkg.Fset, pkg.TypesInfo),
+		NilErrHits: findNilErrGraphHits(fn, pkg.Fset, pkg.TypesInfo, graph, bindings),
 		// ForceTypeAssertHits are unchecked `x.(T)` (gostaticanalysis).
 		ForceTypeAssertHits: findForceTypeAssertHits(fn, pkg.Fset, pkg.TypesInfo),
 		// TypedNilHits are typed-nil comparisons (gostaticanalysis).
@@ -531,6 +521,7 @@ func extractFunc(pkg *packages.Package, fn *ast.FuncDecl, path string, ctx extra
 		ReleasedFileLines:   releasedFiles,
 		FileObligationSites: fileSites,
 
+		DeferredReleaseLines:     deferredLines,
 		SuccessReturnOutputSites: successReturnSites,
 	}, nil
 }

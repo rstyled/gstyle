@@ -8,6 +8,8 @@ import (
 	"golang.org/x/tools/go/cfg"
 )
 
+const generalExecutionDescription = "Nearest operation dominators on the shared semantic CFG under selected source-order evaluation. Unspecified operand orders, implicit panics and concurrent/deferred execution are not complete language-order guarantees."
+
 const normalExecutionDescription = "Nearest dominators under deterministic source-order scalar lowering; Go leaves some operand evaluation orders unspecified. These edges are not a complete language-mandated ordering proof."
 
 const orderedExecutionDescription = "Nearest semantic-operation dominators for acyclic scalar normal flow with independently evaluated sibling operands excluded by a whole-body source check. Short-circuit operands retain language-defined conditional order."
@@ -20,6 +22,7 @@ type normalFlowAnalysis struct {
 	post                                *executionDominators
 	evidence, executionEvidence, origin pdg.Ref
 	nextEdge                            int
+	ordered                             bool
 }
 
 func (a *normalFlowAnalysis) execution(dom *executionDominators) {
@@ -59,7 +62,7 @@ func (a *normalFlowAnalysis) edge(source, target pdg.Ref, kind pdg.EdgeKind, pos
 	}
 	a.nextEdge++
 	subkind := "chosen-order-dominator"
-	if a.builder.scalarOrderKnown {
+	if a.ordered {
 		subkind = "nearest-operation-dominator"
 	}
 	b := a.builder
@@ -82,6 +85,7 @@ func (b *irBuilder) normalDependenciesFor(flow *cfg.CFG, dom *executionDominator
 		evidence: b.pool.Evidence(pdg.Supported, normalDependencyDescription), origin: b.pool.Origin(pdg.Analysis, normalDependencyDescription), executionEvidence: b.pool.Evidence(pdg.Approximated, normalExecutionDescription), nextEdge: len(b.graph.Edges)}
 	if b.scalarOrderKnown {
 		a.executionEvidence = b.pool.Evidence(pdg.Supported, orderedExecutionDescription)
+		a.ordered = true
 	}
 	for index, block := range flow.Blocks {
 		a.operations[index] = b.normalOperations(block)
@@ -102,6 +106,16 @@ func (b *irBuilder) normalOperations(block *cfg.Block) []pdg.Ref {
 		}
 	}
 	return operations
+}
+
+func (b *irBuilder) controlOutcomeName(source pdg.Ref, position pdg.Position) pdg.Text {
+	if source <= pdg.Ref(len(b.graph.Nodes)) && position > 0 {
+		outcomes := b.attributes[b.graph.Nodes[source-1].Attributes-1].Outcomes
+		if int(position) <= len(outcomes) {
+			return outcomes[position-1]
+		}
+	}
+	return b.pool.Text("successor:" + strconv.Itoa(int(position)))
 }
 
 // Reverse the reachable CFG, adding one analysis-only exit for all normal exits.
@@ -126,14 +140,4 @@ func reverseNormalBlock(reverse *cfg.CFG, block *cfg.Block) {
 	for _, next := range block.Succs {
 		reverse.Blocks[next.Index+1].Succs = append(reverse.Blocks[next.Index+1].Succs, current)
 	}
-}
-
-func (b *irBuilder) controlOutcomeName(source pdg.Ref, position pdg.Position) pdg.Text {
-	if source <= pdg.Ref(len(b.graph.Nodes)) && position > 0 {
-		outcomes := b.attributes[b.graph.Nodes[source-1].Attributes-1].Outcomes
-		if int(position) <= len(outcomes) {
-			return outcomes[position-1]
-		}
-	}
-	return b.pool.Text("successor:" + strconv.Itoa(int(position)))
 }

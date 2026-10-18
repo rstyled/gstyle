@@ -27,90 +27,6 @@ func emptyNilErrResult(expr ast.Expr, info *types.Info) bool {
 	}
 }
 
-func (e nilErrEvidence) mentions(node ast.Node) bool {
-	found := false
-	ast.Inspect(node, func(node ast.Node) bool {
-		if _, closure := node.(*ast.FuncLit); closure {
-			return false
-		}
-		if expr, ok := node.(ast.Expr); ok && sameNilErrValue(expr, e.checked, e.info) {
-			found = true
-		}
-		return !found
-	})
-	return found
-}
-
-func (e nilErrEvidence) unknownHandling(node ast.Node) bool {
-	if node == nil {
-		return false
-	}
-	unknown := false
-	ast.Inspect(node, func(node ast.Node) bool {
-		if _, closure := node.(*ast.FuncLit); closure {
-			return false
-		}
-		unknown = unknown || e.unknownOperation(node)
-		return !unknown
-	})
-	return unknown
-}
-
-func (e nilErrEvidence) unknownOperation(node ast.Node) bool {
-	switch node := node.(type) {
-	case *ast.CallExpr:
-		return !nilErrBuiltinPrintCall(node, e.info) && !e.info.Types[node.Fun].IsType()
-	case *ast.AssignStmt:
-		return e.unknownAssignment(node)
-	case *ast.ValueSpec:
-		return e.mentions(node)
-	default:
-		return false
-	}
-}
-
-func (e nilErrEvidence) replacesCheckedValue(targets []ast.Expr) bool {
-	for _, target := range targets {
-		if replacesNilErrValue(target, e.checked, e.info) {
-			return true
-		}
-	}
-	return false
-}
-
-// Built-in print calls do not invoke formatting methods, writers or handlers.
-// Standard-library logging calls can run user code and remain unknown.
-func nilErrBuiltinPrintCall(call *ast.CallExpr, info *types.Info) bool {
-	name, ok := ast.Unparen(call.Fun).(*ast.Ident)
-	if !ok {
-		return false
-	}
-	builtin, ok := info.ObjectOf(name).(*types.Builtin)
-	return ok && (builtin.Name() == "print" || builtin.Name() == "println")
-}
-
-func (e nilErrEvidence) copiesCheckedValue(assign *ast.AssignStmt) bool {
-	for i, value := range assign.Rhs {
-		if i >= len(assign.Lhs) || !e.mentions(value) {
-			continue
-		}
-		target, ok := ast.Unparen(assign.Lhs[i]).(*ast.Ident)
-		if !ok || target.Name != "_" {
-			return true
-		}
-	}
-	return false
-}
-
-func nilErrNamedTargets(targets []ast.Expr) bool {
-	for _, target := range targets {
-		if _, ok := ast.Unparen(target).(*ast.Ident); !ok {
-			return false
-		}
-	}
-	return true
-}
-
 func emptyNilErrLiteral(literal *ast.CompositeLit, info *types.Info) bool {
 	if len(literal.Elts) == 0 {
 		return true
@@ -129,7 +45,7 @@ func emptyNilErrElements(literal *ast.CompositeLit, info *types.Info) bool {
 		if pair, ok := element.(*ast.KeyValueExpr); ok {
 			element = pair.Value
 		}
-		value := nilErrValue{empty: emptyNilErrResult(ast.Unparen(element), info), nilValue: info.Types[ast.Unparen(element)].IsNil()}
+		value := nilErrValue{Empty: emptyNilErrResult(ast.Unparen(element), info), Nil: info.Types[ast.Unparen(element)].IsNil()}
 		if !nilErrAssignableZero(value, typ) {
 			return false
 		}
@@ -150,8 +66,4 @@ func nilErrElementType(literal *ast.CompositeLit, element ast.Expr, index int, i
 	default:
 		return info.TypeOf(element)
 	}
-}
-
-func (e nilErrEvidence) unknownAssignment(statement *ast.AssignStmt) bool {
-	return !nilErrNamedTargets(statement.Lhs) || e.replacesCheckedValue(statement.Lhs) || e.copiesCheckedValue(statement)
 }

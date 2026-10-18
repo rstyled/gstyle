@@ -82,9 +82,9 @@ func (b *irBuilder) otherStatement(n ast.Node) {
 	case *ast.GoStmt:
 		b.addNode(n, pdg.Other, pdg.Attributes{Description: b.pool.Text("Goroutine spawn; scheduling dependencies are unknown.")})
 	case *ast.DeferStmt:
-		b.addNode(n, pdg.Other, pdg.Attributes{Description: b.pool.Text("Deferred call; exit-time dependencies are unknown.")})
+		b.addNode(n, pdg.Other, b.deferredAttributes(nil))
 	case *ast.BranchStmt:
-		b.addNode(n, pdg.Other, pdg.Attributes{Description: b.pool.Text("Branch transfer; execution dependencies are unknown.")})
+		b.addNode(n, pdg.Other, pdg.Attributes{Construct: b.pool.Text(n.Tok.String()), Description: b.pool.Text("Branch transfer; execution dependencies are unknown.")})
 	default:
 		b.expressionOperation(n)
 	}
@@ -120,16 +120,22 @@ func (b *irBuilder) accessOperation(n ast.Node) {
 		b.selector(n)
 	case *ast.IndexExpr:
 		b.memoryRead(n, "index")
-	case *ast.SliceExpr:
-		b.addNode(n, pdg.Computation, pdg.Attributes{Operator: b.pool.Known("slice")})
-	case *ast.CompositeLit:
-		b.addNode(n, pdg.Computation, pdg.Attributes{Operator: b.pool.Known("composite")})
-	case *ast.TypeAssertExpr:
-		b.addNode(n, pdg.Computation, pdg.Attributes{Operator: b.pool.Known("type-assert")})
+	default:
+		if operator := constructionOperator(n); operator != "" {
+			b.addNode(n, pdg.Computation, pdg.Attributes{Operator: b.pool.Known(operator)})
+		}
 	}
 }
 
 func (b *irBuilder) assignment(n *ast.AssignStmt) {
+	if b.typeSwitchGuard(n) {
+		b.addNode(n, pdg.Computation, pdg.Attributes{Construct: b.pool.Text("type-switch-guard"), Extensions: b.pool.SingletonExtension("gstyle.runtime:normal-completion", "true")})
+		return
+	}
+	b.bindingAssignment(n)
+}
+
+func (b *irBuilder) bindingAssignment(n *ast.AssignStmt) {
 	attrs := pdg.Attributes{WriteForm: b.pool.Text(n.Tok.String())}
 	category := pdg.Assignment
 	if n.Tok == token.DEFINE {
@@ -223,7 +229,7 @@ func (b *irBuilder) variableWrite(id *ast.Ident) pdg.Access {
 }
 
 func (b *irBuilder) read(id *ast.Ident) {
-	if b.writeTargets[id] || b.selectorName(id) {
+	if b.writeTargets[id] || b.nonValueIdentifier(id) {
 		return
 	}
 	obj, ok := b.info.Uses[id].(*types.Var)
@@ -240,12 +246,18 @@ func (b *irBuilder) read(id *ast.Ident) {
 	attrs.Reads = append(attrs.Reads, pdg.Access{Symbol: symbol, Position: b.readPosition(node, id)})
 }
 
-func (b *irBuilder) selectorName(id *ast.Ident) bool {
+func (b *irBuilder) nonValueIdentifier(id *ast.Ident) bool {
 	if len(b.stack) == 0 {
 		return false
 	}
-	selector, ok := b.stack[len(b.stack)-1].(*ast.SelectorExpr)
-	return ok && selector.Sel == id
+	switch parent := b.stack[len(b.stack)-1].(type) {
+	case *ast.SelectorExpr:
+		return parent.Sel == id
+	case *ast.KeyValueExpr:
+		return parent.Key == id && literalFieldIdentifier(id, b.info)
+	default:
+		return false
+	}
 }
 
 func (b *irBuilder) memoryRead(n ast.Node, operator string) {
@@ -261,7 +273,18 @@ func (b *irBuilder) memoryRead(n ast.Node, operator string) {
 func (b *irBuilder) selector(n *ast.SelectorExpr) {
 	if selection := b.info.Selections[n]; selection != nil && selection.Kind() == types.FieldVal {
 		b.memoryRead(n, "field")
+		return
 	}
+	b.packageVariableRead(n)
+}
+
+func (b *irBuilder) packageVariableRead(selector *ast.SelectorExpr) {
+	variable, ok := b.info.Uses[selector.Sel].(*types.Var)
+	if !ok || !packageVariable(variable) {
+		return
+	}
+	symbol := b.symbol(selector.Sel, pdg.GlobalRole)
+	b.addNode(selector, pdg.Read, pdg.Attributes{Reads: []pdg.Access{{Symbol: symbol}}, Symbols: []pdg.Ref{symbol}})
 }
 
 func (b *irBuilder) call(n *ast.CallExpr) {
@@ -271,6 +294,9 @@ func (b *irBuilder) call(n *ast.CallExpr) {
 	}
 	attrs := b.callAttributes(n.Fun)
 	attrs.Extensions = b.callableExtensions(n.Fun)
+	if b.implicitReceiver(n.Fun) {
+		b.runtimeExtension(&attrs, "implicit-receiver", "true")
+	}
 	b.addNode(n, pdg.Call, attrs)
 }
 
@@ -297,6 +323,10 @@ func (b *irBuilder) callee(expr ast.Expr) types.Object {
 		return b.info.ObjectOf(expr)
 	case *ast.SelectorExpr:
 		return b.info.ObjectOf(expr.Sel)
+	case *ast.IndexExpr:
+		return b.callee(expr.X)
+	case *ast.IndexListExpr:
+		return b.callee(expr.X)
 	default:
 		return nil
 	}
@@ -305,4 +335,24 @@ func (b *irBuilder) callee(expr ast.Expr) types.Object {
 func (b *irBuilder) typeSyntax(n ast.Node) bool {
 	expr, ok := n.(ast.Expr)
 	return ok && b.info.Types[expr].IsType()
+}
+
+func constructionOperator(node ast.Node) string {
+	switch node.(type) {
+	case *ast.SliceExpr:
+		return "slice"
+	case *ast.CompositeLit:
+		return "composite"
+	case *ast.TypeAssertExpr:
+		return "type-assert"
+	case *ast.KeyValueExpr:
+		return "key-value"
+	default:
+		return ""
+	}
+}
+
+func literalFieldIdentifier(identifier *ast.Ident, info *types.Info) bool {
+	field, ok := info.ObjectOf(identifier).(*types.Var)
+	return ok && field.IsField()
 }

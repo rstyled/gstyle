@@ -66,7 +66,9 @@ func MineErrorBeliefs(sites []ErrorCheckSite) []CallBelief {
 func groupByCallee(sites []ErrorCheckSite) map[string][]ErrorCheckSite {
 	out := map[string][]ErrorCheckSite{}
 	for _, s := range sites {
-		out[s.Callee] = append(out[s.Callee], s)
+		if !s.CheckUnknown {
+			out[s.Callee] = append(out[s.Callee], s)
+		}
 	}
 	return out
 }
@@ -110,7 +112,7 @@ func FindBeliefViolations(sites []ErrorCheckSite, beliefs []CallBelief) []Belief
 	var out []BeliefViolation
 	for _, s := range sites {
 		b, ok := beliefByCallee[s.Callee]
-		if !ok || s.Checked {
+		if !ok || s.Checked || s.CheckUnknown {
 			continue
 		}
 		// Site does not check the error, but the belief says it should.

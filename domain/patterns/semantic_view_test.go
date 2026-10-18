@@ -34,8 +34,8 @@ func semanticFlowFixture(t *testing.T) *pdg.Graph {
 func TestCanonicalFlowSurvivesUnlabelledOperations(t *testing.T) {
 	graph := semanticFlowFixture(t)
 	matching := MiningView(graph)
-	if len(matching.Nodes) != 2 || len(matching.Edges) != 0 {
-		t.Fatal("clone matching view changed")
+	if len(matching.Nodes) != 2 || len(matching.Edges) != 1 {
+		t.Fatal("compact matching view lost the canonical dependency path")
 	}
 	fact := &MiningFacts{ID: "flow", Path: "flow.go", Pdg: matching, Canonical: graph}
 	semantic := semanticFact(fact)

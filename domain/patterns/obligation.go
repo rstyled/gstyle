@@ -133,7 +133,7 @@ func violationsInFunc(f *MiningFacts) []ObligationViolation {
 	var out []ObligationViolation
 	acquisitions := findAcquisitions(pdg, f.ID)
 	for _, acq := range acquisitions {
-		if dischargedFile(f.ReleasedFileLines, acquisitions, acq) {
+		if dischargedFile(f.ReleasedFileLines, acquisitions, acq) || dischargedLine(f.DeferredReleaseLines, acquisitions, acq) {
 			continue
 		}
 		if hasDeferredRelease(pdg, acq, deferred, fwd) {
@@ -153,7 +153,14 @@ func violationsInFunc(f *MiningFacts) []ObligationViolation {
 
 // Line-only evidence must never discharge a second acquisition on the same line.
 func dischargedFile(lines []int, acquisitions []acquisition, target acquisition) bool {
-	if target.Resource != "file" || !slices.Contains(lines, target.Line) {
+	if target.Resource != "file" {
+		return false
+	}
+	return dischargedLine(lines, acquisitions, target)
+}
+
+func dischargedLine(lines []int, acquisitions []acquisition, target acquisition) bool {
+	if !slices.Contains(lines, target.Line) {
 		return false
 	}
 	count := 0
@@ -330,4 +337,17 @@ func ObligationCandidates(violations []ObligationViolation, facts []*MiningFacts
 		})
 	}
 	return out
+}
+
+// AcquisitionRelease identifies the existing detector's cleanup protocol.
+// Only the HTTP response rule follows a field rather than the whole result.
+func AcquisitionRelease(callee string) (method, field string, receiver bool) {
+	rule, ok := matchAcquisition(callee)
+	if !ok {
+		return "", "", false
+	}
+	if rule.resource == "http response body" {
+		field = "Body"
+	}
+	return rule.release, field, rule.receiverIsResource
 }

@@ -2,6 +2,7 @@ package gopatterns
 
 import (
 	"fmt"
+	"github.com/rstyled/gstyle/domain/callflow"
 	"github.com/rstyled/gstyle/domain/patterns"
 	"github.com/rstyled/gstyle/domain/pdg"
 	"go/token"
@@ -13,6 +14,7 @@ type parameterizationAttempt struct {
 }
 
 type parameterizationVerifier struct {
+	frames   map[string]callflow.FrameEffect
 	fset     *token.FileSet
 	graphs   map[string]*pdg.Graph
 	files    map[string]*parameterizationSource
@@ -68,7 +70,7 @@ func (v *parameterizationVerifier) pair(candidate patterns.Candidate) (patterns.
 	key := parameterizationPairKey(first.ID, second.ID)
 	attempt, ok := v.attempts[key]
 	if !ok {
-		verified, err := verifyParameterization(candidate, v.graphs, v.files, v.names, v.fset)
+		verified, err := v.verifyParameterization(candidate)
 		if err != nil {
 			return candidate, err
 		}
@@ -83,7 +85,7 @@ func (v *parameterizationVerifier) pair(candidate patterns.Candidate) (patterns.
 		v.names[packageName] = append(append([]string(nil), v.names[packageName]...), attempt.spec.Params["helper_name"])
 		candidate.Observation = fmt.Sprintf("%s and %s share a complete body under verified callable substitutions", attempt.spec.Params["pair_a"], attempt.spec.Params["pair_b"])
 		candidate.Breakdown.Support = 2
-		candidate.Inference = "complete source bodies match under substitutions with compatible PDG callable types"
+		candidate.Inference = "complete source bodies match under callable substitutions with compatible PDG types and dependencies"
 		candidate.PossibleRefactor = "extract the verified pair into a shared helper with the differing callables as parameters"
 	}
 	return candidate, nil
