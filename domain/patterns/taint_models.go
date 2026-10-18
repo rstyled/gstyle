@@ -34,10 +34,12 @@ var taintSinks = []taintSink{
 	{"database/sql.Tx.Prepare", []int{1}, "SQL injection"},
 	{"database/sql.Tx.PrepareContext", []int{2}, "SQL injection"},
 	{"database/sql.Conn.PrepareContext", []int{2}, "SQL injection"},
-	{"os/exec.Command", nil, "command injection"},
-	{"os/exec.CommandContext", nil, "command injection"},
-	{"html/template.Template.Execute", []int{2}, "XSS"},
-	{"text/template.Template.Execute", []int{2}, "XSS"},
+	{"os/exec.Command", []int{0}, "command injection"},
+	{"os/exec.CommandContext", []int{1}, "command injection"},
+	// Data passed to html/template.Execute is escaped. The template source
+	// itself must be trusted for both template packages.
+	{"html/template.Template.Parse", []int{1}, "template injection"},
+	{"text/template.Template.Parse", []int{1}, "template injection"},
 	{"os.Open", []int{0}, "path traversal"},
 	{"os.OpenFile", []int{0}, "path traversal"},
 	{"os.Create", []int{0}, "path traversal"},
@@ -53,10 +55,10 @@ type SecurityFinding struct {
 }
 
 var securityRules = map[string]SecurityFinding{
-	"SQL injection":     {"go/sql-injection", "CWE-89"},
-	"command injection": {"go/command-injection", "CWE-78"},
-	"XSS":               {"go/xss", "CWE-79"},
-	"path traversal":    {"go/path-traversal", "CWE-22"},
+	"SQL injection":      {"go/sql-injection", "CWE-89"},
+	"command injection":  {"go/command-injection", "CWE-78"},
+	"template injection": {"go/template-injection", "CWE-1336"},
+	"path traversal":     {"go/path-traversal", "CWE-22"},
 }
 
 func securityForRisk(risk string) *SecurityFinding {

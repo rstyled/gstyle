@@ -2,10 +2,10 @@
   "version": 1,
   "summary": {
     "unsafe": 33,
-    "detected_unsafe": 26,
+    "detected_unsafe": 28,
     "safe": 17,
-    "flagged_safe": 4,
-    "known_gaps": 11
+    "flagged_safe": 1,
+    "known_gaps": 6
   },
   "analysis_coverage": {
     "analysis": "taint_flow",
@@ -129,16 +129,22 @@
     {
       "function": "HTMLSource",
       "label": "unsafe",
-      "expected": [],
-      "gap": "Untrusted template source is not modeled.",
-      "observed": []
+      "expected": [
+        "go/template-injection"
+      ],
+      "observed": [
+        "go/template-injection"
+      ]
     },
     {
       "function": "TextSource",
       "label": "unsafe",
-      "expected": [],
-      "gap": "Untrusted template source is not modeled.",
-      "observed": []
+      "expected": [
+        "go/template-injection"
+      ],
+      "observed": [
+        "go/template-injection"
+      ]
     },
     {
       "function": "PathOpen",
@@ -193,35 +199,20 @@
     {
       "function": "CommandData",
       "label": "safe",
-      "expected": [
-        "go/command-injection"
-      ],
-      "gap": "Ordinary argv data is mistaken for shell code.",
-      "observed": [
-        "go/command-injection"
-      ]
+      "expected": [],
+      "observed": []
     },
     {
       "function": "CommandContextData",
       "label": "safe",
-      "expected": [
-        "go/command-injection"
-      ],
-      "gap": "Ordinary argv data is mistaken for shell code.",
-      "observed": [
-        "go/command-injection"
-      ]
+      "expected": [],
+      "observed": []
     },
     {
       "function": "HTMLData",
       "label": "safe",
-      "expected": [
-        "go/xss"
-      ],
-      "gap": "Automatic HTML escaping is not modeled.",
-      "observed": [
-        "go/xss"
-      ]
+      "expected": [],
+      "observed": []
     },
     {
       "function": "TextConstant",

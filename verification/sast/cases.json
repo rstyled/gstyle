@@ -85,14 +85,16 @@
     {
       "function": "HTMLSource",
       "label": "unsafe",
-      "expected": [],
-      "gap": "Untrusted template source is not modeled."
+      "expected": [
+        "go/template-injection"
+      ]
     },
     {
       "function": "TextSource",
       "label": "unsafe",
-      "expected": [],
-      "gap": "Untrusted template source is not modeled."
+      "expected": [
+        "go/template-injection"
+      ]
     },
     {
       "function": "PathOpen",
@@ -136,26 +138,17 @@
     {
       "function": "CommandData",
       "label": "safe",
-      "expected": [
-        "go/command-injection"
-      ],
-      "gap": "Ordinary argv data is mistaken for shell code."
+      "expected": []
     },
     {
       "function": "CommandContextData",
       "label": "safe",
-      "expected": [
-        "go/command-injection"
-      ],
-      "gap": "Ordinary argv data is mistaken for shell code."
+      "expected": []
     },
     {
       "function": "HTMLData",
       "label": "safe",
-      "expected": [
-        "go/xss"
-      ],
-      "gap": "Automatic HTML escaping is not modeled."
+      "expected": []
     },
     {
       "function": "TextConstant",

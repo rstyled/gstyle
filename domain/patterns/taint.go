@@ -5,27 +5,13 @@ import (
 	"strings"
 )
 
-// Taint analysis: track untrusted data from sources → through propagators
-// → to sinks. Flag when tainted data reaches a dangerous sink without
-// sanitization.
-//
-// The three abstractions (from SAST engineering):
-//   - Sources: entry points of untrusted input (HTTP params, CLI args, ...)
-//   - Propagators: operations that carry taint (string concat, assignment, ...)
-//   - Sinks: sensitive operations that must not receive tainted input
-//     (SQL queries, shell commands, ...)
-// Sanitizers break the chain: their output is clean even with tainted input.
-//
-// For gstyle: v1 is intraprocedural. We walk the PDG's data edges forward
-// from sources, marking tainted nodes to a fixpoint. A sink whose dangerous
-// argument receives tainted data is a finding. Detection-only: the fix
-// depends on context (parameterize the query? escape the output? validate
-// the path?), so the LLM judges.
+// Taint follows typed sources through per-function PDG value dependencies to
+// modeled dangerous arguments. Context is part of each sink model: query
+// parameters and ordinary argv data are not query text or shell code. A path
+// is advisory; sanitization, feasibility and incomplete graph evidence need review.
 
 type taintPropagation struct {
-	graph   *MiningGraph
 	tainted map[int]bool
-	risk    string
 }
 
 func (p taintPropagation) spread(from int, tos []int) bool {
@@ -34,7 +20,7 @@ func (p taintPropagation) spread(from int, tos []int) bool {
 	}
 	spread := false
 	for _, to := range tos {
-		if p.tainted[to] || p.graph.Nodes[to].sanitizesRisk(p.risk) {
+		if p.tainted[to] {
 			continue
 		}
 		p.tainted[to] = true
@@ -85,25 +71,13 @@ func (n PdgNode) matchTaintSink() *taintSink {
 	return nil
 }
 
-func (n PdgNode) sanitizesRisk(risk string) bool {
-	if n.Kind != Call {
-		return false
-	}
-	if risk == "XSS" {
-		return n.CalleeID == "html.EscapeString" || n.CalleeID == "html/template.HTMLEscapeString"
-	}
-	// URL escaping is not SQL, shell or filesystem validation. Numeric parse
-	// results are typed numbers; error/string outputs require result-position proof.
-	return false
-}
-
-// Propagate separately for each sink risk: escaping in one context must not
-// clear taint for an unrelated context.
-func propagateTaintForRisk(pdg *MiningGraph, risk string) map[int]bool {
+// No generic sanitizer clears all risks. Parameterized operations avoid
+// dangerous argument positions; validation requires its own context model.
+func propagateTaint(pdg *MiningGraph) map[int]bool {
 	tainted := seedTaintSources(pdg)
 	succ := dataSuccessors(pdg)
 	for changed := true; changed; {
-		changed = propagateTaintRiskStep(pdg, succ, tainted, risk)
+		changed = propagateTaintStep(succ, tainted)
 	}
 	return tainted
 }
@@ -130,9 +104,9 @@ func dataSuccessors(pdg *MiningGraph) [][]int {
 	return succ
 }
 
-func propagateTaintRiskStep(pdg *MiningGraph, succ [][]int, tainted map[int]bool, risk string) bool {
+func propagateTaintStep(succ [][]int, tainted map[int]bool) bool {
 	changed := false
-	propagation := taintPropagation{graph: pdg, tainted: tainted, risk: risk}
+	propagation := taintPropagation{tainted: tainted}
 	for from, tos := range succ {
 		if propagation.spread(from, tos) {
 			changed = true
@@ -229,18 +203,13 @@ func taintFlowsForFunction(f *MiningFacts) []TaintFlow {
 	copy.Pdg = taintView(f)
 	f = &copy
 	var out []TaintFlow
-	taintByRisk := map[string]map[int]bool{}
+	tainted := propagateTaint(f.Pdg)
 	for i, n := range f.Pdg.Nodes {
 		sink := n.matchTaintSink()
 		if sink == nil {
 			continue
 		}
-		tainted := taintByRisk[sink.desc]
-		if tainted == nil {
-			tainted = propagateTaintForRisk(f.Pdg, sink.desc)
-			taintByRisk[sink.desc] = tainted
-		}
-		if !sinkArgTainted(f.Pdg, i, sink, tainted) {
+		if !sinkArgTainted(f.Pdg, i, commandSink(f, i, sink), tainted) {
 			continue
 		}
 		sourceNode := findTaintSourceNode(f.Pdg, tainted, i)
