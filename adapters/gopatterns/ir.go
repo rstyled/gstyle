@@ -17,7 +17,7 @@ import (
 type irBuilder struct {
 	functionScope                        *types.Scope
 	conditionValues                      map[pdg.Ref]pdg.BooleanFact
-	callExits                            map[pdg.Ref]callflow.Outcomes
+	operationExits                       map[pdg.Ref]callflow.Outcomes
 	typeQualifier                        types.Qualifier
 	sourceFilename                       string
 	attributes                           []pdg.Attributes

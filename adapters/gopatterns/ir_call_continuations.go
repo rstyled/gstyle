@@ -5,14 +5,14 @@ import (
 	"golang.org/x/tools/go/cfg"
 )
 
-// applyCallContinuations runs before all dependency passes use the shared CFG.
+// applyOperationContinuations runs before dependency passes use the shared CFG.
 // A self edge retains infinite paths for divergence-sensitive post-dominance.
-func (b *irBuilder) applyCallContinuations(flow *cfg.CFG) {
+func (b *irBuilder) applyOperationContinuations(flow *cfg.CFG) {
 	for _, block := range flow.Blocks {
 		if len(block.Nodes) != 1 {
 			continue
 		}
-		outcomes := b.callExits[b.nodes[block.Nodes[0]]]
+		outcomes := b.operationExits[b.nodes[block.Nodes[0]]]
 		if outcomes == 0 {
 			continue
 		}

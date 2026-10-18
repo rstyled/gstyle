@@ -88,13 +88,13 @@ func (b *irBuilder) runtimeBlock(block *cfg.Block) pdg.FlowBlock {
 	return out
 }
 
-// Synthetic call-exit alternatives are not Boolean source conditions.
+// Synthetic operation-exit alternatives are not Boolean source conditions.
 func (b *irBuilder) runtimeCondition(block *cfg.Block) pdg.Ref {
 	if len(block.Succs) != 2 || len(block.Nodes) == 0 {
 		return 0
 	}
 	ref := b.nodes[block.Nodes[len(block.Nodes)-1]]
-	if b.callExits[ref] != 0 {
+	if b.operationExits[ref] != 0 {
 		return 0
 	}
 	return ref

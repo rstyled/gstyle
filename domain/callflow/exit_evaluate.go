@@ -13,14 +13,15 @@ type exitPoint struct {
 }
 
 type exitEvaluation struct {
-	conditions   map[pdg.Ref]uint8
-	returned     string
-	callOutcomes map[pdg.Ref]Outcomes
-	values       map[string]exitValues
-	body         *exitBody
-	summaries    ExitSummaries
-	active       map[exitPoint]bool
-	results      map[exitPoint]Outcomes
+	conditions        map[pdg.Ref]uint8
+	returned          string
+	callOutcomes      map[pdg.Ref]Outcomes
+	operationOutcomes map[pdg.Ref]Outcomes
+	values            map[string]exitValues
+	body              *exitBody
+	summaries         ExitSummaries
+	active            map[exitPoint]bool
+	results           map[exitPoint]Outcomes
 }
 
 func (evaluation *exitEvaluation) visit(point exitPoint) Outcomes {
@@ -65,7 +66,14 @@ func (evaluation *exitEvaluation) operation(point exitPoint, ref pdg.Ref) Outcom
 	if node.Category == pdg.Call {
 		return evaluation.call(point, ref)
 	}
-	return evaluation.outcomes(point, ref, body.operations.Outcomes(ref))
+	outcomes := body.operations.Outcomes(ref)
+	if body.operations.effect(ref).NilInput {
+		outcomes = body.operations.outcomesWithValues(ref, evaluation.valueContext(point))
+	}
+	if evaluation.operationOutcomes != nil {
+		evaluation.operationOutcomes[ref] |= outcomes
+	}
+	return evaluation.outcomes(point, ref, outcomes)
 }
 
 func (evaluation *exitEvaluation) call(point exitPoint, ref pdg.Ref) Outcomes {

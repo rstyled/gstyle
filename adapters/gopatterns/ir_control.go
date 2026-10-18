@@ -13,7 +13,7 @@ import (
 
 const controlVertexLimit = 16384
 
-const semanticControlDescription = "Operation-CFG dominance and divergence-sensitive post-dominator control dependence, including finite and infinite paths. Package-local summaries remove proven nonreturning call continuations; unresolved calls may return; built-in panic, os.Exit, runtime.Goexit and resolved log Fatal/Panic variants terminate paths. Implicit panics, recovery, deferred execution and concurrent control are not modeled."
+const semanticControlDescription = "Operation-CFG dominance and divergence-sensitive post-dominator control dependence, including finite and infinite paths. Package-local summaries and ordinary nil-input facts remove proven nonreturning continuations; unresolved calls may return; built-in panic, os.Exit, runtime.Goexit and resolved log Fatal/Panic variants terminate paths. Other implicit panics, recovery, deferred execution and concurrent control are not modeled."
 
 func (b *irBuilder) semanticControlFor(body *ast.BlockStmt, flow *cfg.CFG) error {
 	if b.normalDependencies || !b.semanticControlSubset(body) {
@@ -75,7 +75,7 @@ func (b *irBuilder) semanticControlCFG(body *ast.BlockStmt, original *cfg.CFG) (
 		return b.controlFlow, nil
 	}
 	flow, outcomes := b.controlCFG(body, original)
-	b.applyCallContinuations(flow)
+	b.applyOperationContinuations(flow)
 	if len(flow.Blocks) > controlVertexLimit {
 		return nil, fmt.Errorf("control dependence exceeds %d operation CFG vertices", controlVertexLimit)
 	}

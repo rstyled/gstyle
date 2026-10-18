@@ -16,6 +16,7 @@ func OrdinaryCallOutcomes(queries Queries, summaries ExitSummaries) map[pdg.Ref]
 // does not establish a constant; an unknown or conflicting value cannot prune.
 type Observations struct {
 	Calls      map[pdg.Ref]Outcomes
+	Operations map[pdg.Ref]Outcomes
 	Conditions map[pdg.Ref]pdg.BooleanFact
 }
 
@@ -26,9 +27,10 @@ func OrdinaryObservations(queries Queries, summaries ExitSummaries) Observations
 	}
 	evaluation := newExitEvaluation(body, summaries)
 	evaluation.callOutcomes = map[pdg.Ref]Outcomes{}
+	evaluation.operationOutcomes = map[pdg.Ref]Outcomes{}
 	evaluation.conditions = map[pdg.Ref]uint8{}
 	evaluation.run(false, "")
-	return Observations{Calls: evaluation.callOutcomes, Conditions: conditionFacts(evaluation.conditions)}
+	return Observations{Calls: evaluation.callOutcomes, Operations: evaluation.operationOutcomes, Conditions: conditionFacts(evaluation.conditions)}
 }
 
 func conditionFacts(values map[pdg.Ref]uint8) map[pdg.Ref]pdg.BooleanFact {

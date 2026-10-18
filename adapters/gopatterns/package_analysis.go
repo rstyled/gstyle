@@ -160,13 +160,8 @@ func (source *functionGraph) finalize(exits callflow.ExitSummaries) error {
 		return err
 	}
 	b := source.inventory
-	b.callExits = map[pdg.Ref]callflow.Outcomes{}
-	observations := callflow.OrdinaryObservations(queries, exits)
-	b.conditionValues = observations.Conditions
-	for node, ref := range b.nodes {
-		b.recordCallExit(node, ref, observations.Calls[ref])
-	}
-	if len(b.callExits)+len(b.conditionValues) == 0 {
+	b.recordExitObservations(callflow.OrdinaryObservations(queries, exits))
+	if len(b.operationExits)+len(b.conditionValues) == 0 {
 		source.inventory = nil
 		return nil
 	}
@@ -176,9 +171,22 @@ func (source *functionGraph) finalize(exits callflow.ExitSummaries) error {
 	}
 	graph.Sources = source.graph.Sources
 	graph.ValueFlow.ExitContext = pdg.ExitBodyFlow(source.graph)
+	pruneUnreachableDependencies(&graph)
 	*source.graph = graph
 	source.inventory = nil
 	return nil
+}
+
+// Translate joined domain observations into the adapter's refinement inputs.
+func (b *irBuilder) recordExitObservations(observations callflow.Observations) {
+	b.operationExits = map[pdg.Ref]callflow.Outcomes{}
+	b.conditionValues = observations.Conditions
+	for node, ref := range b.nodes {
+		b.recordCallExit(node, ref, observations.Calls[ref])
+	}
+	for ref, outcome := range observations.Operations {
+		b.recordOperationExit(ref, outcome)
+	}
 }
 
 func (b *irBuilder) recordCallExit(node ast.Node, ref pdg.Ref, outcome callflow.Outcomes) {
@@ -186,8 +194,12 @@ func (b *irBuilder) recordCallExit(node ast.Node, ref pdg.Ref, outcome callflow.
 	if !ok || b.deferredInvocation(call) || !b.mayReturn(call) {
 		return
 	}
+	b.recordOperationExit(ref, outcome)
+}
+
+func (b *irBuilder) recordOperationExit(ref pdg.Ref, outcome callflow.Outcomes) {
 	if outcome == 0 || outcome&(callflow.Returns|callflow.UnknownExit) != 0 {
 		return
 	}
-	b.callExits[ref] = outcome
+	b.operationExits[ref] = outcome
 }

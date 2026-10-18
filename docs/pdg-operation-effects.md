@@ -9,8 +9,9 @@ The boolean fields are `panic`, `nil_input`, `block` and `unknown`. A nil-input
 fault requires canonical operand one. The reader rejects absent operands,
 malformed objects, unknown fields, duplicate fields, null flags and duplicate
 fact records. Missing evidence for an unsupported operation remains unknown.
-Blocking retains a possible nontermination outcome. Known effects include
-possible normal completion; this is a may-outcome analysis.
+Blocking retains a possible nontermination outcome. Unrefined known effects include possible normal completion; this is a may-outcome
+analysis. [Known nil-input values](pdg-nil-input-exits.md) now refine ordinary
+exit evaluation and shared normal continuations in admitted call-free regions.
 
 `nil_input` is separate from other panic causes. The resource policy denotes a
 nonempty outstanding resource. Its exact canonical input path can discharge the
