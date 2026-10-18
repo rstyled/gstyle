@@ -39,20 +39,23 @@
     {
       "function": "SSRFGet",
       "label": "unsafe",
-      "expected": [],
-      "gap": "Outbound HTTP URL sinks are not modeled."
+      "expected": [
+        "go/ssrf"
+      ]
     },
     {
       "function": "SSRFClient",
       "label": "unsafe",
-      "expected": [],
-      "gap": "Outbound HTTP URL sinks are not modeled."
+      "expected": [
+        "go/ssrf"
+      ]
     },
     {
       "function": "SSRFPost",
       "label": "unsafe",
-      "expected": [],
-      "gap": "Outbound HTTP URL sinks are not modeled."
+      "expected": [
+        "go/ssrf"
+      ]
     },
     {
       "function": "CommandExecutable",
@@ -327,6 +330,37 @@
     },
     {
       "function": "SQLStatementParameter",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "SSRFPostForm",
+      "label": "unsafe",
+      "expected": [
+        "go/ssrf"
+      ]
+    },
+    {
+      "function": "SSRFClientPost",
+      "label": "unsafe",
+      "expected": [
+        "go/ssrf"
+      ]
+    },
+    {
+      "function": "SSRFClientPostForm",
+      "label": "unsafe",
+      "expected": [
+        "go/ssrf"
+      ]
+    },
+    {
+      "function": "SSRFBodyData",
+      "label": "safe",
+      "expected": []
+    },
+    {
+      "function": "SSRFFormData",
       "label": "safe",
       "expected": []
     }

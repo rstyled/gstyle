@@ -6,8 +6,10 @@ import (
 	"database/sql"
 	"html/template"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
+	"strings"
 	text "text/template"
 )
 
@@ -118,3 +120,15 @@ func SQLConnParameter(r *http.Request, conn *sql.Conn) {
 	_, _ = conn.ExecContext(r.Context(), "SELECT ?", r.FormValue("id"))
 }
 func SQLStatementParameter(r *http.Request, stmt *sql.Stmt) { _, _ = stmt.Exec(r.FormValue("id")) }
+
+func SSRFPostForm(r *http.Request) { _, _ = http.PostForm(r.FormValue("url"), nil) }
+func SSRFClientPost(r *http.Request, c *http.Client) {
+	_, _ = c.Post(r.FormValue("url"), "text/plain", nil)
+}
+func SSRFClientPostForm(r *http.Request, c *http.Client) { _, _ = c.PostForm(r.FormValue("url"), nil) }
+func SSRFBodyData(r *http.Request) {
+	_, _ = http.Post("https://example.com", "text/plain", strings.NewReader(r.FormValue("data")))
+}
+func SSRFFormData(r *http.Request, c *http.Client) {
+	_, _ = c.PostForm("https://example.com", url.Values{"data": {r.FormValue("data")}})
+}

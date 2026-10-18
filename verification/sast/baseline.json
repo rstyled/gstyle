@@ -1,16 +1,16 @@
 {
   "version": 1,
   "summary": {
-    "unsafe": 33,
-    "detected_unsafe": 28,
-    "safe": 17,
+    "unsafe": 36,
+    "detected_unsafe": 34,
+    "safe": 19,
     "flagged_safe": 1,
-    "known_gaps": 6
+    "known_gaps": 3
   },
   "analysis_coverage": {
     "analysis": "taint_flow",
     "complete": 0,
-    "partial": 53,
+    "partial": 58,
     "not_evaluated": 0,
     "unavailable": 0
   },
@@ -68,23 +68,32 @@
     {
       "function": "SSRFGet",
       "label": "unsafe",
-      "expected": [],
-      "gap": "Outbound HTTP URL sinks are not modeled.",
-      "observed": []
+      "expected": [
+        "go/ssrf"
+      ],
+      "observed": [
+        "go/ssrf"
+      ]
     },
     {
       "function": "SSRFClient",
       "label": "unsafe",
-      "expected": [],
-      "gap": "Outbound HTTP URL sinks are not modeled.",
-      "observed": []
+      "expected": [
+        "go/ssrf"
+      ],
+      "observed": [
+        "go/ssrf"
+      ]
     },
     {
       "function": "SSRFPost",
       "label": "unsafe",
-      "expected": [],
-      "gap": "Outbound HTTP URL sinks are not modeled.",
-      "observed": []
+      "expected": [
+        "go/ssrf"
+      ],
+      "observed": [
+        "go/ssrf"
+      ]
     },
     {
       "function": "CommandExecutable",
@@ -451,6 +460,48 @@
     },
     {
       "function": "SQLStatementParameter",
+      "label": "safe",
+      "expected": [],
+      "observed": []
+    },
+    {
+      "function": "SSRFPostForm",
+      "label": "unsafe",
+      "expected": [
+        "go/ssrf"
+      ],
+      "observed": [
+        "go/ssrf"
+      ]
+    },
+    {
+      "function": "SSRFClientPost",
+      "label": "unsafe",
+      "expected": [
+        "go/ssrf"
+      ],
+      "observed": [
+        "go/ssrf"
+      ]
+    },
+    {
+      "function": "SSRFClientPostForm",
+      "label": "unsafe",
+      "expected": [
+        "go/ssrf"
+      ],
+      "observed": [
+        "go/ssrf"
+      ]
+    },
+    {
+      "function": "SSRFBodyData",
+      "label": "safe",
+      "expected": [],
+      "observed": []
+    },
+    {
+      "function": "SSRFFormData",
       "label": "safe",
       "expected": [],
       "observed": []

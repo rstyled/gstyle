@@ -34,6 +34,12 @@ var taintSinks = []taintSink{
 	{"database/sql.Tx.Prepare", []int{1}, "SQL injection"},
 	{"database/sql.Tx.PrepareContext", []int{2}, "SQL injection"},
 	{"database/sql.Conn.PrepareContext", []int{2}, "SQL injection"},
+	{"net/http.Get", []int{0}, "SSRF"},
+	{"net/http.Post", []int{0}, "SSRF"},
+	{"net/http.PostForm", []int{0}, "SSRF"},
+	{"net/http.Client.Get", []int{1}, "SSRF"},
+	{"net/http.Client.Post", []int{1}, "SSRF"},
+	{"net/http.Client.PostForm", []int{1}, "SSRF"},
 	{"os/exec.Command", []int{0}, "command injection"},
 	{"os/exec.CommandContext", []int{1}, "command injection"},
 	// Data passed to html/template.Execute is escaped. The template source
@@ -56,6 +62,7 @@ type SecurityFinding struct {
 
 var securityRules = map[string]SecurityFinding{
 	"SQL injection":      {"go/sql-injection", "CWE-89"},
+	"SSRF":               {"go/ssrf", "CWE-918"},
 	"command injection":  {"go/command-injection", "CWE-78"},
 	"template injection": {"go/template-injection", "CWE-1336"},
 	"path traversal":     {"go/path-traversal", "CWE-22"},
