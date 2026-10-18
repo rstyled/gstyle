@@ -289,7 +289,10 @@ func extractNormalPackages(ctx context.Context, abs string, paths []string, opti
 	pool.Tables.Sources = sources
 	internSourceMetadata(pool)
 	for _, pkg := range productionPatternPackages(pkgs) {
-		funcs, err := packagePdgsWithSources(pkg, abs, pool, sourceIdentities)
+		// Validation visits shared tables; bound them to this package.
+		packagePool := pdg.NewBuilder()
+		packagePool.Tables.Sources = sources
+		funcs, err := packagePdgsWithSources(pkg, abs, packagePool, sourceIdentities)
 		if err != nil {
 			return nil, err
 		}

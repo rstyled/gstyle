@@ -1,6 +1,8 @@
 package gopatterns
 
 import (
+	"context"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -51,5 +53,48 @@ func TestPackageConsumersShareCanonicalGraphs(t *testing.T) {
 		if result.Pdg.Tables != source.Tables || &result.Pdg.Nodes[0] != &source.Nodes[0] {
 			t.Fatalf("consumer rebuilds graph %s", result.Name)
 		}
+	}
+}
+
+func TestExtractionOwnsTablesPerPackage(t *testing.T) {
+	root := t.TempDir()
+	files := map[string]string{
+		"go.mod":     "module example.com/tables\n\ngo 1.24\n",
+		"lib/lib.go": `package lib;func Read() string{return "value"}`,
+		"main.go":    `package tables;import "example.com/tables/lib";func Read()string{return lib.Read()};func Other()bool{return true}`,
+	}
+	for name, content := range files {
+		path := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	extraction, err := Extract(context.Background(), root, []string{"."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(extraction.Funcs) != 3 {
+		t.Fatalf("functions=%d; want 3", len(extraction.Funcs))
+	}
+	tables := map[string]*pdg.Tables{}
+	for _, function := range extraction.Funcs {
+		graph := function.Pdg
+		if err := pdg.Validate(&graph); err != nil {
+			t.Fatal(err)
+		}
+		if graph.Tables.Sources != extraction.Sources {
+			t.Fatal("source inventory is not shared")
+		}
+		pkg := filepath.Dir(function.Path)
+		if previous := tables[pkg]; previous != nil && previous != graph.Tables {
+			t.Fatal("package tables are not shared")
+		}
+		tables[pkg] = graph.Tables
+	}
+	if len(tables) != 2 || tables["."] == tables["lib"] {
+		t.Fatal("unrelated packages share validation tables")
 	}
 }
