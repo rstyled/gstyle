@@ -9,15 +9,22 @@ import (
 	"golang.org/x/tools/go/cfg"
 )
 
-// reachingState owns sorted definition sets by binding. Writes kill the old
-// set; joins union predecessor sets. It is temporary, never retained in the IR.
+// reachingState maps bindings to immutable sorted definition sets. Transfers
+// replace sets; joins share unchanged predecessors. It is temporary, never
+// retained in the IR.
 type reachingState map[pdg.Ref][]pdg.Ref
 
 func (state reachingState) merge(other reachingState) {
 	for symbol, definitions := range other {
-		values := append(state[symbol], definitions...)
-		slices.Sort(values)
-		state[symbol] = slices.Compact(values)
+		current := state[symbol]
+		if len(current) == 0 {
+			state[symbol] = definitions
+			continue
+		}
+		if sameDefinitions(current, definitions) {
+			continue
+		}
+		state[symbol] = mergeDefinitions(current, definitions)
 	}
 }
 
@@ -297,4 +304,55 @@ func reachingConsumers(flow *cfg.CFG) []int {
 		consumers[i] = len(block.Succs)
 	}
 	return consumers
+}
+
+// Equal sets need no union. Shared immutable storage also avoids an element scan.
+func sameDefinitions(left, right []pdg.Ref) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	return len(left) == 0 || &left[0] == &right[0] || slices.Equal(left, right)
+}
+
+// Both inputs are sorted, unique and immutable. Only genuinely new values need
+// a new set. Prefixes containing incoming values stay untouched.
+func mergeDefinitions(current, incoming []pdg.Ref) []pdg.Ref {
+	i, j := 0, 0
+	for i < len(current) && j < len(incoming) {
+		if current[i] < incoming[j] {
+			i++
+			continue
+		}
+		if current[i] == incoming[j] {
+			i++
+			j++
+			continue
+		}
+		return unionDefinitions(current, incoming, i, j)
+	}
+	if j == len(incoming) {
+		return current
+	}
+	return unionDefinitions(current, incoming, i, j)
+}
+
+func unionDefinitions(current, incoming []pdg.Ref, i, j int) []pdg.Ref {
+	merged := make([]pdg.Ref, i, len(current)+len(incoming)-j)
+	copy(merged, current[:i])
+	for i < len(current) && j < len(incoming) {
+		switch {
+		case current[i] < incoming[j]:
+			merged = append(merged, current[i])
+			i++
+		case incoming[j] < current[i]:
+			merged = append(merged, incoming[j])
+			j++
+		default:
+			merged = append(merged, current[i])
+			i++
+			j++
+		}
+	}
+	merged = append(merged, current[i:]...)
+	return append(merged, incoming[j:]...)
 }
