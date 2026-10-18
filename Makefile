@@ -172,7 +172,7 @@ verify-sarif:
 
 .PHONY: verify-sast sast-baseline
 verify-sast:
-	python3 -B verification/sast/verify.py
+	go test ./verification/sast -run TestSourceBaseline -count=1
 
 sast-baseline:
-	python3 -B verification/sast/verify.py --write
+	go test ./verification/sast -run TestSourceBaseline -count=1 -args -update

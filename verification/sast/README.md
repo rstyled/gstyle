@@ -2,8 +2,9 @@
 
 Run `make verify-sast` to build the real CLI, extract typed Go AST/PDG facts,
 and compare JSON and SARIF security results with the labeled corpus. The corpus
-is copied into a temporary module and is never executed. The test uses no new
-application or test dependencies.
+is copied into a temporary module and is never executed. The verifier is a Go
+integration test and uses only the standard library.
+It needs no Python runtime or new application or test dependencies.
 
 `cases.json` supplies reviewed source expectations, separate from the detector.
 `baseline.json` records observed rule IDs, safe/unsafe counts, known misses and
