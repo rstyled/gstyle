@@ -79,17 +79,24 @@ func (s selection) includes(file string) bool {
 }
 
 func extractPackages(pkgs []*packages.Package, root string, selected selection) ([]quality.Function, error) {
-	facts := []quality.Function{}
+	all := packageFacts{}
 	for _, pkg := range pkgs {
 		functions, err := extractPackage(pkg, root, selected)
 		if err != nil {
 			return nil, err
 		}
-		facts = append(facts, functions...)
+		all = packageFacts{
+			selected:  append(all.selected, functions.selected...),
+			available: append(all.available, functions.available...),
+		}
+	}
+	available, err := uniqueFacts(all.available)
+	if err != nil {
+		return nil, err
 	}
 	// Evaluation validates and deduplicates test variants. Extraction also emits
 	// one record per physical function for consumers saving raw facts.
-	return uniqueFacts(facts)
+	return uniqueFacts(attachHelpers(all.selected, available))
 }
 
 func uniqueFacts(facts []quality.Function) ([]quality.Function, error) {
@@ -170,7 +177,9 @@ func packageErrors(pkgs []*packages.Package, root string) error {
 	return nil
 }
 
-func extractPackage(pkg *packages.Package, root string, selected selection) ([]quality.Function, error) {
+type packageFacts struct{ selected, available []quality.Function }
+
+func extractPackage(pkg *packages.Package, root string, selected selection) (packageFacts, error) {
 	facts := []quality.Function{}
 	available := []quality.Function{}
 	for _, file := range pkg.Syntax {
@@ -181,14 +190,14 @@ func extractPackage(pkg *packages.Package, root string, selected selection) ([]q
 		}
 		functions, err := extractFile(pkg, file, path, filename)
 		if err != nil {
-			return nil, err
+			return packageFacts{}, err
 		}
 		available = append(available, functions...)
 		if selected.includes(filename) && !ast.IsGenerated(file) {
 			facts = append(facts, functions...)
 		}
 	}
-	return attachHelpers(facts, available), nil
+	return packageFacts{selected: facts, available: available}, nil
 }
 
 func extractFile(pkg *packages.Package, file *ast.File, path, filename string) ([]quality.Function, error) {
