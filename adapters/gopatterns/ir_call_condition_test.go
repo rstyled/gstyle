@@ -16,6 +16,12 @@ func TestCallContinuationConditionFacts(t *testing.T) {
 		{"true Boolean arm", `if flag{stop(flag)}`, `func stop(value bool){if value{panic("stop")}}`, callflow.Panics},
 		{"negated Boolean arm", `if !flag{stop(!flag)}`, `func stop(value bool){if value{panic("stop")}}`, callflow.Panics},
 		{"named Boolean", `type Flag bool;typed:=Flag(flag);if typed{stop(bool(typed))}`, `func stop(value bool){if value{panic("stop")}}`, callflow.Panics},
+		{"equality true", `if flag==true{stop(flag)}`, `func stop(value bool){if value{panic("stop")}}`, callflow.Panics},
+		{"reversed equality", `if true==flag{stop(flag)}`, `func stop(value bool){if value{panic("stop")}}`, callflow.Panics},
+		{"inequality false", `if flag!=false{stop(flag)}`, `func stop(value bool){if value{panic("stop")}}`, callflow.Panics},
+		{"reversed inequality", `if false!=flag{stop(flag)}`, `func stop(value bool){if value{panic("stop")}}`, callflow.Panics},
+		{"false equality arm", `if flag==false{stop(!flag)}`, `func stop(value bool){if value{panic("stop")}}`, callflow.Panics},
+		{"equality overwrite", `if flag==true{flag=false;stop(flag)}`, `func stop(value bool){if value{panic("stop")}}`, callflow.Returns},
 		{"nil arm", `if pointer==nil{stop(pointer)}`, `func stop(value *int){if value==nil{panic("stop")}}`, callflow.Panics},
 		{"nonnil arm", `if pointer!=nil{stop(pointer)}`, `func stop(value *int){if value!=nil{panic("stop")}}`, callflow.Panics},
 		{"Boolean overwrite", `if flag{flag=false;stop(flag)}`, `func stop(value bool){if value{panic("stop")}}`, callflow.Returns},
@@ -150,4 +156,16 @@ func conditionOracleSyntax(domain int, guard, panicsOn bool, store int) (string,
 		call = "stopNil(pointer)"
 	}
 	return condition, assignments[store], call
+}
+
+func TestBooleanEqualityControlsContinuation(t *testing.T) {
+	extraction, _ := proofExtraction(t, `package example;func stop(value bool){if value{panic("stop")}};func f(flag bool){if flag==true{stop(flag)};println("after")}`)
+	graph := continuationGraph(t, extraction, "example.f")
+	for _, edge := range graph.Edges {
+		attrs := graph.NodeAttributes(graph.Nodes[edge.Target-1])
+		if edge.Kind == pdg.ControlEdge && graph.Tables.Text(attrs.Callee.Value) == "println" && graph.Tables.Text(edge.Outcome) == "false" {
+			return
+		}
+	}
+	t.Fatal("Boolean equality guard does not control its continuation")
 }

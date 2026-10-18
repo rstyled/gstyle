@@ -182,9 +182,34 @@ for 4,354 functions. The new traversal owner and query registration need local
 state updates; raw aggregate/mutation/effect counts rise. No suppression or
 quality-metric improvement is claimed.
 
+## Boolean-constant equality
+
+At `961190a`, `if flag == true { stop(flag) }` still gives the selected call
+`Returns | Panics` when `stop(true)` panics. A source probe fails with
+`equality-guarded stop outcomes=5 want Panics`. Restoring the base comparison
+body in an isolated overlay reproduces that failure; the same probe passes
+with the new comparison body.
+
+Equality/inequality between one symbolic Boolean binding and one exact Boolean
+constant now preserves that binding's truth relation, including negation and
+reversed operands. Constant comparisons keep their existing exact path. Other
+operators, two unknown operands and non-Boolean constants grant no new fact.
+The selected-edge evaluator uses the relation through its existing assumption
+and write-invalidation rules; no new branch engine is added.
+
+A native Boolean oracle checks all 32 valuations across operator, input
+negation, operand order, constant and concrete input. Source regressions check
+true/false equality, inequality, operand reversal, later writes and the final
+false-arm control dependency. Four valid Go mutants fail their expected
+assertions: dropped symbolic transfer, inverted constant polarity, lost operand
+reversal and treating ordering as equality. Full Go gates, isolated quality
+checks and affected race suites pass; the baseline is refreshed for 4,356
+functions. No broader predicate or formal-proof claim follows from these cases.
+
 ## Remaining work
 
-Compound predicate relations beyond direct Boolean/nil bindings, imported
+Compound predicate relations beyond direct Boolean/nil bindings and Boolean-constant
+equality, imported
 frame/factory contracts and receiver/closure execution still need broader
 integration. Cross-package exits cover resolved targets in the loaded scope;
 callbacks and unresolved or unloaded bodies retain unknown evidence. Package

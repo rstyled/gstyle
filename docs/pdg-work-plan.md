@@ -36,8 +36,10 @@ The existing exit evaluator now joins per-call outcomes from caller assignments
 and selected paths. Unknown or possibly returning paths retain continuation.
 Selected edges now supply direct Boolean/nil binding facts; ordinary writes
 invalidate them. Loaded cross-package callees now compose through source-free query catalogs,
-including bounded compiler batches and cached revisions. Compound predicate
-relations, imported frame/factory contracts, general call results and arbitrary
+including bounded compiler batches and cached revisions. Boolean-constant
+equality/inequality also preserves symbolic guard facts, including reversed
+operands and negation. Broader predicate relations, imported frame/factory
+contracts, general call results and arbitrary
 operand-order flow remain incomplete.
 
 Then complete closure/callback/receiver execution, general result and heap
