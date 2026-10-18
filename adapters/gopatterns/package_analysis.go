@@ -124,14 +124,15 @@ func (source *functionGraph) finalize(exits callflow.ExitSummaries) error {
 		source.inventory = nil
 		return nil
 	}
-	calls, err := callflow.NewCallSites(source.graph)
+	queries, err := callflow.NewQueries(source.graph)
 	if err != nil {
 		return err
 	}
 	b := source.inventory
 	b.callExits = map[pdg.Ref]callflow.Outcomes{}
+	outcomes := callflow.OrdinaryCallOutcomes(queries, exits)
 	for node, ref := range b.nodes {
-		b.recordCallExit(node, ref, calls, exits)
+		b.recordCallExit(node, ref, outcomes[ref])
 	}
 	if len(b.callExits) == 0 {
 		source.inventory = nil
@@ -148,12 +149,11 @@ func (source *functionGraph) finalize(exits callflow.ExitSummaries) error {
 	return nil
 }
 
-func (b *irBuilder) recordCallExit(node ast.Node, ref pdg.Ref, calls *callflow.CallSites, exits callflow.ExitSummaries) {
+func (b *irBuilder) recordCallExit(node ast.Node, ref pdg.Ref, outcome callflow.Outcomes) {
 	call, ok := node.(*ast.CallExpr)
 	if !ok || b.deferredInvocation(call) || !b.mayReturn(call) {
 		return
 	}
-	outcome := calls.Outcomes(exits, ref, false)
 	if outcome == 0 || outcome&(callflow.Returns|callflow.UnknownExit) != 0 {
 		return
 	}

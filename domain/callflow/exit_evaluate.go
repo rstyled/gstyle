@@ -12,11 +12,12 @@ type exitPoint struct {
 }
 
 type exitEvaluation struct {
-	values    map[string]exitValues
-	body      *exitBody
-	summaries ExitSummaries
-	active    map[exitPoint]bool
-	results   map[exitPoint]Outcomes
+	callOutcomes map[pdg.Ref]Outcomes
+	values       map[string]exitValues
+	body         *exitBody
+	summaries    ExitSummaries
+	active       map[exitPoint]bool
+	results      map[exitPoint]Outcomes
 }
 
 func (evaluation *exitEvaluation) visit(point exitPoint) Outcomes {
@@ -72,12 +73,19 @@ func (evaluation *exitEvaluation) invocation(point exitPoint, ref pdg.Ref) Outco
 	if targets.known && len(targets.names) == 1 && targets.names[0] == "recover" {
 		return evaluation.recovery(point, ref)
 	}
-	return evaluation.outcomes(point, ref, evaluation.body.calls.outcomesWithValues(evaluation.summaries, ref, false, evaluation.valueContext(point)))
+	outcomes := evaluation.body.calls.outcomesWithValues(evaluation.summaries, ref, false, evaluation.valueContext(point))
+	if evaluation.callOutcomes != nil {
+		evaluation.callOutcomes[ref] |= outcomes
+	}
+	return evaluation.outcomes(point, ref, outcomes)
 }
 
 func (evaluation *exitEvaluation) outcomes(point exitPoint, ref pdg.Ref, outcomes Outcomes) Outcomes {
 	result := finishExit(point, outcomes&^Returns)
-	if outcomes&Returns != 0 {
+	// Unknown execution can return. Observation must visit that continuation
+	// so an opaque prefix cannot hide states at a later call-site join. The
+	// summary solver keeps its existing terminal UnknownExit abstraction.
+	if outcomes&Returns != 0 || (evaluation.callOutcomes != nil && outcomes&UnknownExit != 0) {
 		result |= evaluation.visit(evaluation.transferValues(point, ref))
 	}
 	return result
@@ -107,9 +115,17 @@ func evaluateBodyInputs(body *exitBody, summaries ExitSummaries, inherited bool,
 	if body == nil || body.flow == nil {
 		return UnknownExit
 	}
-	evaluation := exitEvaluation{values: map[string]exitValues{}, body: body, summaries: summaries, active: map[exitPoint]bool{}, results: map[exitPoint]Outcomes{}}
-	point := exitPoint{block: body.flow.Entry, stack: identityExitStack(), pending: inherited}
-	point.values = evaluation.internValues(exitValues{bindings: inputBindings(body, inputs)})
+	evaluation := newExitEvaluation(body, summaries)
+	return evaluation.run(inherited, inputs)
+}
+
+func newExitEvaluation(body *exitBody, summaries ExitSummaries) *exitEvaluation {
+	return &exitEvaluation{values: map[string]exitValues{}, body: body, summaries: summaries, active: map[exitPoint]bool{}, results: map[exitPoint]Outcomes{}}
+}
+
+func (evaluation *exitEvaluation) run(inherited bool, inputs string) Outcomes {
+	point := exitPoint{block: evaluation.body.flow.Entry, stack: identityExitStack(), pending: inherited}
+	point.values = evaluation.internValues(exitValues{bindings: inputBindings(evaluation.body, inputs)})
 	return evaluation.visit(point)
 }
 

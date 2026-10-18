@@ -70,12 +70,46 @@ quality metric improvements. No suppression or metric-only helper is added.
 The selected PDG translation gains declarations for the new context-selection
 and validation helpers; existing Graph layouts and proof claims stay the same.
 
+## Path-state call outcomes
+
+At `bb4502f`, these three source regressions still leave `println` reachable:
+
+```go
+flag := true; stop(flag); println("after")
+flag := false; flag = true; stop(flag); println("after")
+flag := false; if choose { flag = true } else { flag = true }; stop(flag); println("after")
+```
+
+Here `stop(flag bool)` panics when flag is true. The source tests fail with
+`after call reachable=true want false`. Literal-only/default argument facts
+cannot read the current caller binding state.
+
+`callflow.OrdinaryCallOutcomes` now observes invocations in the existing exit
+evaluator. It joins outcomes over reachable ordinary states at each call site.
+Assignments, selected paths, loop states and invalidated bindings use that
+solver's existing value semantics. Deferred registrations are not invocations;
+an absent map entry proves nothing. This adds no competing value propagation
+engine and does not change evaluation when observation is disabled.
+
+The finalizer uses the joined call-site outcomes. A Returns or UnknownExit bit
+on any observed path retains continuation. Tests cover both-branch assignments,
+one returning arm, zero-iteration loops, indirect overwrites and unknown call
+writes. An independent interpreter enumerates both concrete Boolean input
+paths for all 18 programs formed from two initial values and three possible
+stores on either branch. Its expected invocation outcomes agree with the query.
+Three valid Go mutants fail their specific assertions: replacing path-state
+outcomes with default argument queries, keeping only the last visited path
+instead of joining outcomes, and stopping observation at an unknown prefix.
+Observation follows the possible normal continuation of UnknownExit; otherwise
+an opaque call on one branch could hide a returning state and make pruning
+unsound. The summary solver retains its existing terminal UnknownExit
+abstraction when observation is disabled.
+
 ## Remaining work
 
-The initial integration uses the existing call query's default argument facts.
-Values learned only by executing earlier assignments or selecting a branch can
-still leave continuation conservative. A follow-up must use the exit solver's
-path state at each call. General call results, heap execution, complete implicit
+Predicate-derived assumptions beyond the existing evaluator, cross-package
+call composition and receiver/closure execution still need broader integration.
+General call results, heap execution, complete implicit
 panic lowering, arbitrary operand-order flow, exceptional/deferred state writes,
 concurrency and transformation safety remain open in the full PDG work plan.
 The selected source-order CFG and retained exit context do not establish full

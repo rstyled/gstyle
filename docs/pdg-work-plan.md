@@ -32,9 +32,10 @@ one bounded subset passes. Keep the baseline and source/golden reports current.
 The table above is the full requirement list. All rows remain open until their
 complete required behavior has direct evidence. Package-local summaries now remove proved nonreturning call continuations
 before the final dependency solve; [evidence and boundaries](pdg-call-continuations.md).
-Literal argument facts work. Values learned only from preceding assignments or
-branch selection still need path-sensitive call-site outcomes. General call
-results and arbitrary operand-order flow remain incomplete.
+The existing exit evaluator now joins per-call outcomes from caller assignments
+and selected paths. Unknown or possibly returning paths retain continuation.
+Predicate-derived assumptions beyond that evaluator, cross-package call
+composition, general call results and arbitrary operand-order flow remain incomplete.
 
 Then complete closure/callback/receiver execution, general result and heap
 state, full exceptional/deferred dependencies, concurrent/blocking flow, and
