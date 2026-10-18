@@ -303,13 +303,7 @@ func effectBits(kind quality.Kind) uint16 {
 }
 
 func unparen(e ast.Expr) ast.Expr {
-	if e == nil {
-		return nil
-	}
-	if p, ok := e.(*ast.ParenExpr); ok {
-		return unparen(p.X)
-	}
-	return e
+	return ast.Unparen(e)
 }
 
 func litKind(k token.Token) string {
