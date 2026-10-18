@@ -165,3 +165,7 @@ verify-shared-flow:
 verify-assume:
 	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
 	python3 -B verification/lean/verify.py --assume
+
+.PHONY: verify-sarif
+verify-sarif:
+	uv run --with jsonschema==4.26.0 python verification/sarif/verify.py
