@@ -44,6 +44,7 @@ func solveExitPass(bodies map[string]*exitBody, summaries ExitSummaries, pass ex
 			ordinary := evaluateBodyResult(body, summaries, false, "")
 			inherited := evaluateBodyResult(body, summaries, true, "")
 			next := ExitSummary{
+				heaps:                 [2]heapEffects{pass.heapEffects(old.heaps[0], ordinary.heaps), pass.heapEffects(old.heaps[1], inherited.heaps)},
 				frameConfined:         old.frameConfined,
 				captureArity:          old.captureArity,
 				captured:              [2]captureEffects{pass.captureEffects(old.captured[0], ordinary.captured), pass.captureEffects(old.captured[1], inherited.captured)},

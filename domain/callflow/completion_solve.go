@@ -20,6 +20,7 @@ func (evaluation *exitEvaluation) publishCompletions(result completions) Outcome
 		}
 		outcomes |= mode
 		evaluation.publishCapture(value, mode)
+		evaluation.publishHeap(value, mode)
 		if mode == Returns {
 			evaluation.returned = joinReturned(evaluation.returned, evaluation.completedReturn(value))
 		}

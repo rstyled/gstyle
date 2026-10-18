@@ -3,6 +3,7 @@ package bindingflow
 import (
 	"github.com/rstyled/gstyle/domain/pdg"
 	"go/constant"
+	"slices"
 )
 
 // Value contains scalar facts, a symbolic Boolean or an immutable callable set.
@@ -71,6 +72,8 @@ func (facts Facts) NilConstant(ref pdg.Ref) bool {
 }
 
 type Evaluation struct {
+	ClosureCells  map[string]Value
+	RepeatedCells map[string]bool
 	// Captures holds call-time cell facts: current values for proved single
 	// cells, otherwise family invariants. Deferred invocation supplies live cells.
 	Captures map[pdg.Ref]Value
@@ -106,7 +109,7 @@ func (e *evaluation) value(ref pdg.Ref) Value {
 
 func (e *evaluation) compute(ref pdg.Ref) Value {
 	if fact := e.context.Facts.Nodes[ref]; fact.Known {
-		return fact.Value
+		return refinedCallableFact(fact.Value, e.context.Nodes[ref])
 	}
 	if value, known := e.context.Nodes[ref]; known {
 		return value
@@ -263,4 +266,14 @@ func (q *Query) ConditionSource(ref pdg.Ref) pdg.Ref {
 		return subject
 	}
 	return ref
+}
+
+func refinedCallableFact(fact, runtime Value) Value {
+	if !fact.Callables.Known() || !runtime.Callables.Known() {
+		return fact
+	}
+	if !slices.Equal(fact.Callables.Names(), runtime.Callables.Names()) {
+		return fact
+	}
+	return runtime
 }

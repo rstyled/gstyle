@@ -8,18 +8,20 @@ import (
 )
 
 func callableValue(set bindingflow.CallableSet) exitValue {
-	data, _ := json.Marshal(set.Names())
-	return exitValue("c" + string(data))
+	if !set.Known() {
+		return unknownValue
+	}
+	return exitValue("c" + set.Encoding())
 }
 func callableSet(value exitValue) bindingflow.CallableSet {
 	if !strings.HasPrefix(string(value), "c") {
 		return bindingflow.CallableSet{}
 	}
-	var names []string
-	if err := json.Unmarshal([]byte(value[1:]), &names); err != nil {
+	var targets []bindingflow.Callable
+	if err := json.Unmarshal([]byte(value[1:]), &targets); err != nil {
 		panic(err)
 	}
-	return bindingflow.NewCallableSet(names...)
+	return bindingflow.NewBoundCallableSet(targets...)
 }
 func (calls *CallSites) invocationTargets(ref pdg.Ref, context bindingflow.Evaluation) callTargets {
 	if calls == nil {
@@ -37,7 +39,7 @@ func (calls *CallSites) invocationTargets(ref pdg.Ref, context bindingflow.Evalu
 		return callTargets{nilValue: true, known: true}
 	}
 	if value.Callables.Known() {
-		return callTargets{names: value.Callables.Names(), known: true}
+		return callTargets{names: value.Callables.Names(), bound: value.Callables.Targets(), known: true}
 	}
 	return calls.targets[ref]
 }

@@ -22,6 +22,8 @@ func (evaluation *exitEvaluation) deferredCompletion(value completion, ref pdg.R
 	// Only lexical cells are live. Explicit arguments keep their registration
 	// bindings, operand snapshots and tuple results.
 	saved.Captures = evaluation.callCellValues(evaluation.values[value.values])
+	saved.ClosureCells = evaluation.concreteHeap(evaluation.values[value.values])
+	saved.RepeatedCells = evaluation.values[value.values].repeatedHeap()
 	invocation := exitInvocationContext{ref: ref, inherited: value.mode == Panics || value.mode == PanicDuringGoexit, values: saved}
 	evaluation.observeInvocation(invocation)
 	outcomes := evaluation.body.calls.outcomesWithValues(evaluation.summaries, ref, invocation.inherited, saved)

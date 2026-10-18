@@ -9,7 +9,7 @@ func bodyCaptureCount(body *exitBody) int {
 
 func (evaluation *exitEvaluation) captureTuple(point exitPoint) string {
 	values := make([]exitValue, len(evaluation.body.captures))
-	bindings := evaluation.values[point.values].bindings
+	bindings := evaluation.values[point.values].liveBindings()
 	for i, symbol := range evaluation.body.captures {
 		values[i] = bindings[symbol]
 	}
@@ -21,7 +21,7 @@ func (calls *CallSites) contextCaptureEffects(summary ExitSummary, invocation ex
 	if invocation.inherited {
 		index = 1
 	}
-	key := calls.inputKey(summary.invocations, invocation.ref, invocation.values)
+	key := calls.inputKey(summary.invocations, invocation)
 	if key == "" {
 		return summary.captured[index]
 	}

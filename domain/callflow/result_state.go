@@ -2,7 +2,6 @@ package callflow
 
 import (
 	"cmp"
-	"github.com/rstyled/gstyle/domain/bindingflow"
 	"github.com/rstyled/gstyle/domain/pdg"
 	"maps"
 	"slices"
@@ -22,25 +21,7 @@ func tupleEntries(values map[pdg.Ref]string) []tupleEntry {
 	return entries
 }
 
-func concreteResults(values map[pdg.Ref]string) map[pdg.Ref][]bindingflow.Value {
-	result := make(map[pdg.Ref][]bindingflow.Value, len(values))
-	for ref, tuple := range values {
-		result[ref] = concreteTuple(tuple)
-	}
-	return result
-}
-
-func concreteTuple(tuple string) []bindingflow.Value {
-	values := decodeTuple(tuple)
-	result := make([]bindingflow.Value, len(values))
-	for i := range values {
-		result[i] = concreteValue(values[i])
-	}
-	return result
-}
-
-func (evaluation *exitEvaluation) callResult(point exitPoint, ref pdg.Ref) exitPoint {
-	returned := evaluation.body.calls.returnedValues(evaluation.summaries, ref, evaluation.valueContext(point))
+func (evaluation *exitEvaluation) storeCallResult(point exitPoint, ref pdg.Ref, returned string) exitPoint {
 	values := evaluation.values[point.values]
 	nodes := map[pdg.Ref]exitValue{}
 	maps.Copy(nodes, values.nodes)
@@ -49,7 +30,9 @@ func (evaluation *exitEvaluation) callResult(point exitPoint, ref pdg.Ref) exitP
 	delete(nodes, ref)
 	delete(tuples, ref)
 	storeResult(nodes, tuples, ref, returned)
-	point.values = evaluation.internValues(exitValues{bindings: values.bindings, nodes: nodes, tuples: tuples, cells: values.cells, unorderedReads: values.unorderedReads})
+	values.nodes = nodes
+	values.tuples = tuples
+	point.values = evaluation.internValues(values)
 	return point
 }
 

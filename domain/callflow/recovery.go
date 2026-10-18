@@ -41,3 +41,11 @@ func (evaluation *exitEvaluation) mayFollowRecovery(point exitPoint, candidate p
 	}
 	return !operations.mustBefore(candidate, point.recovery, operations.regions[point.recovery])
 }
+
+func (calls *CallSites) recoveryCall(ref pdg.Ref) bool {
+	if calls == nil {
+		return false
+	}
+	targets := calls.targets[ref]
+	return targets.known && len(targets.names) == 1 && targets.names[0] == "recover"
+}

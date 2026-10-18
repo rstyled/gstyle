@@ -23,6 +23,8 @@ const (
 )
 
 type exitValues struct {
+	heap            environmentHeap
+	locations       map[pdg.Ref]string
 	bindings, nodes map[pdg.Ref]exitValue
 	cells           map[pdg.Ref]exitValue
 	tuples          map[pdg.Ref]string
@@ -35,20 +37,30 @@ type valueEntry struct {
 }
 
 func (evaluation *exitEvaluation) valueContext(point exitPoint) bindingflow.Evaluation {
+	if context, found := evaluation.contexts[point.values]; found {
+		return context
+	}
 	values := evaluation.values[point.values]
-	return bindingflow.Evaluation{Captures: evaluation.callCellValues(values), Bindings: concreteValues(values.bindings), Nodes: concreteValues(values.nodes), Facts: evaluation.body.facts, Results: concreteResults(values.tuples)}
+	context := bindingflow.Evaluation{Captures: evaluation.callCellValues(values), ClosureCells: evaluation.concreteHeap(values), RepeatedCells: values.repeatedHeap(), Bindings: evaluation.concreteValues(values.liveBindings()), Nodes: evaluation.concreteValues(values.nodes), Facts: evaluation.body.facts, Results: evaluation.concreteResults(values.tuples)}
+	if evaluation.contexts == nil {
+		evaluation.contexts = map[string]bindingflow.Evaluation{}
+	}
+	evaluation.contexts[point.values] = context
+	return context
 }
 
 func (evaluation *exitEvaluation) internValues(values exitValues) string {
-	if len(values.bindings)+len(values.nodes)+len(values.tuples)+len(values.cells)+len(values.unorderedReads) == 0 {
+	if len(values.heap)+len(values.locations)+len(values.bindings)+len(values.nodes)+len(values.tuples)+len(values.cells)+len(values.unorderedReads) == 0 {
 		return ""
 	}
 	record := struct {
 		Bindings, Nodes, Cells []valueEntry
 		Tuples                 []tupleEntry
 		Unordered              []pdg.Ref
+		Heap                   []heapEntry
+		Locations              []cellLink
 	}{
-		valueEntries(values.bindings), valueEntries(values.nodes), valueEntries(values.cells), tupleEntries(values.tuples), slices.Sorted(maps.Keys(values.unorderedReads)),
+		valueEntries(values.bindings), valueEntries(values.nodes), valueEntries(values.cells), tupleEntries(values.tuples), slices.Sorted(maps.Keys(values.unorderedReads)), heapEntries(values.heap), locationEntries(values.locations),
 	}
 	data, _ := json.Marshal(record)
 	key := string(data)
@@ -72,7 +84,8 @@ func (evaluation *exitEvaluation) recoveryValue(point exitPoint, ref pdg.Ref) ex
 	} else {
 		nodes[ref] = value
 	}
-	next := exitValues{bindings: values.bindings, nodes: nodes, tuples: values.tuples, cells: values.cells, unorderedReads: values.unorderedReads}
+	next := values
+	next.nodes = nodes
 	point.values = evaluation.internValues(next)
 	return point
 }
@@ -83,6 +96,7 @@ func (evaluation *exitEvaluation) transferValues(point exitPoint, ref pdg.Ref) e
 		return point
 	}
 	point = evaluation.captureValues(point, ref)
+	point = evaluation.bindClosure(point, ref)
 	return evaluation.rawValueTransfer(point, ref)
 }
 
@@ -112,14 +126,6 @@ func (body *exitBody) nonNilRecovery() bool {
 	}
 	target := "go" + strings.TrimPrefix(body.graph.Tables.Text(producer.LanguageVersion.Value), "go")
 	return version.IsValid(target) && version.Compare(target, "go1.21") >= 0
-}
-
-func concreteValues(values map[pdg.Ref]exitValue) map[pdg.Ref]bindingflow.Value {
-	result := make(map[pdg.Ref]bindingflow.Value, len(values))
-	for ref, value := range values {
-		result[ref] = concreteValue(value)
-	}
-	return result
 }
 
 func concreteValue(value exitValue) bindingflow.Value {

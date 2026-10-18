@@ -6,10 +6,10 @@ import (
 )
 
 func (evaluation *exitEvaluation) callCellValues(values exitValues) map[pdg.Ref]bindingflow.Value {
-	result := concreteValues(values.cells)
+	result := evaluation.concreteValues(values.cells)
 	for symbol := range values.cells {
 		if evaluation.body.facts.SingleCellSymbols[symbol] {
-			result[symbol] = concreteValue(values.bindings[symbol])
+			result[symbol] = evaluation.concreteValue(values.liveBindings()[symbol])
 		}
 	}
 	return result

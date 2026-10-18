@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/rstyled/gstyle/domain/pdg"
@@ -12,36 +13,84 @@ import (
 // CallableSet is an immutable finite may-target set. Zero means unknown.
 type CallableSet struct{ key string }
 
+// CallableCell binds a body capture slot to a live abstract storage address.
+type CallableCell struct {
+	Symbol  pdg.Ref
+	Address string
+}
+type Callable struct {
+	Name, Revision string
+	Cells          []CallableCell
+}
+
 func NewCallableSet(names ...string) CallableSet {
-	if !validCallableNames(names) {
+	targets := make([]Callable, len(names))
+	for i, name := range names {
+		targets[i] = Callable{Name: name}
+	}
+	return NewBoundCallableSet(targets...)
+}
+func NewBoundCallableSet(targets ...Callable) CallableSet {
+	if len(targets) == 0 {
 		return CallableSet{}
 	}
-	ordered := slices.Clone(names)
-	slices.Sort(ordered)
-	data, _ := json.Marshal(slices.Compact(ordered))
-	return CallableSet{key: string(data)}
-}
-func validCallableNames(names []string) bool {
-	if len(names) == 0 {
-		return false
+	records := make([]string, 0, len(targets))
+	for _, target := range targets {
+		normalized, valid := canonicalCallable(target)
+		if !valid {
+			return CallableSet{}
+		}
+		data, _ := json.Marshal(normalized)
+		records = append(records, string(data))
 	}
-	for _, name := range names {
-		if name == "" || !utf8.ValidString(name) {
+	slices.Sort(records)
+	return CallableSet{key: "[" + strings.Join(slices.Compact(records), ",") + "]"}
+}
+func canonicalCallable(target Callable) (Callable, bool) {
+	if target.Name == "" || !utf8.ValidString(target.Name) {
+		return Callable{}, false
+	}
+	target.Cells = slices.Clone(target.Cells)
+	slices.SortFunc(target.Cells, func(a, b CallableCell) int { return int(a.Symbol) - int(b.Symbol) })
+	if !validCallableCells(target.Cells) || !validCallableRevision(target) {
+		return Callable{}, false
+	}
+	return target, true
+}
+func validCallableRevision(target Callable) bool {
+	return len(target.Cells) == 0 || (target.Revision != "" && utf8.ValidString(target.Revision))
+}
+func validCallableCells(cells []CallableCell) bool {
+	previous := pdg.Ref(0)
+	for _, cell := range cells {
+		if cell.Symbol == 0 || cell.Symbol == previous || cell.Address == "" || !utf8.ValidString(cell.Address) {
 			return false
 		}
+		previous = cell.Symbol
 	}
 	return true
 }
 func (set CallableSet) Known() bool { return set.key != "" }
-func (set CallableSet) Names() []string {
+
+// Encoding returns owned canonical JSON, or an empty string for unknown.
+func (set CallableSet) Encoding() string { return set.key }
+func (set CallableSet) Targets() []Callable {
 	if !set.Known() {
 		return nil
 	}
-	var names []string
-	if err := json.Unmarshal([]byte(set.key), &names); err != nil {
+	var targets []Callable
+	if err := json.Unmarshal([]byte(set.key), &targets); err != nil {
 		panic(err)
 	}
-	return names
+	return targets
+}
+func (set CallableSet) Names() []string {
+	var names []string
+	for _, target := range set.Targets() {
+		names = append(names, target.Name)
+	}
+	slices.Sort(names)
+	return slices.Compact(names)
 }
 
 // CallableIdentity reads the producer's exact declaration/body identity. It

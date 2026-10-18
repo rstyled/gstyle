@@ -15,7 +15,9 @@ func (calls *CallSites) captureModeWrites(summaries ExitSummaries, invocation ex
 		return nil, false
 	}
 	var alternatives []map[pdg.Ref]exitValue
-	for _, name := range calls.invocationTargets(invocation.ref, invocation.values).names {
+	for _, target := range calls.invocationTargets(invocation.ref, invocation.values).callables() {
+		invocation = calls.targetInvocation(summaries, invocation, target)
+		name := target.Name
 		outcomes := calls.targetWithValues(name, summaries, invocation)
 		if outcomes&(mode|UnknownExit) != 0 {
 			alternatives = append(alternatives, calls.targetCaptureModeWrites(name, summaries, captureProjection{invocation: invocation, outcomes: outcomes, mode: mode}))
@@ -30,15 +32,15 @@ type captureProjection struct {
 }
 
 func (calls *CallSites) targetCaptureModeWrites(name string, summaries ExitSummaries, projection captureProjection) map[pdg.Ref]exitValue {
-	invocation, outcomes, mode := projection.invocation, projection.outcomes, projection.mode
+	invocation := projection.invocation
 	summary := summaries[name]
 	result := map[pdg.Ref]exitValue{}
 	if calls.targetInvocationMemory(name, summaries, invocation).preserves || summary.captureArity == 0 {
 		return result
 	}
-	values := decodeTuple(calls.captureModeTuple(summary, invocation, mode))
-	if len(values) != summary.captureArity || outcomes&UnknownExit != 0 {
-		values = make([]exitValue, summary.captureArity)
+	values := calls.projectedCaptureValues(summary, projection)
+	if len(invocation.target.Cells) != 0 {
+		return result
 	}
 	links := summary.invocations.captureBindings(calls.graph)
 	for i, symbol := range summary.invocations.captures {
@@ -74,7 +76,10 @@ func joinedCaptureValue(alternatives []map[pdg.Ref]exitValue, symbol pdg.Ref, in
 
 func (evaluation *exitEvaluation) captureWriteback(point exitPoint, writes map[pdg.Ref]exitValue) exitPoint {
 	old := evaluation.values[point.values]
-	next := exitValues{bindings: maps.Clone(old.bindings), cells: maps.Clone(old.cells), nodes: old.nodes, tuples: old.tuples, unorderedReads: old.unorderedReads}
+	next := old
+	next.bindings = maps.Clone(old.liveBindings())
+	next.cells = maps.Clone(old.cells)
+	next.heap = maps.Clone(old.heap)
 	if next.cells == nil {
 		next.cells = map[pdg.Ref]exitValue{}
 	}
@@ -83,6 +88,9 @@ func (evaluation *exitEvaluation) captureWriteback(point exitPoint, writes map[p
 	}
 	for symbol, value := range writes {
 		next.cells[symbol] = joinCellValue(next.cells, symbol, value)
+		if address := next.locations[symbol]; address != "" {
+			writeEnvironmentCell(next.heap, address, value)
+		}
 		delete(next.bindings, symbol)
 		if evaluation.body.facts.SingleCellSymbols[symbol] {
 			next.bindings[symbol] = value
@@ -90,4 +98,12 @@ func (evaluation *exitEvaluation) captureWriteback(point exitPoint, writes map[p
 	}
 	point.values = evaluation.internValues(next)
 	return point
+}
+
+func (calls *CallSites) projectedCaptureValues(summary ExitSummary, projection captureProjection) []exitValue {
+	values := decodeTuple(calls.captureModeTuple(summary, projection.invocation, projection.mode))
+	if len(values) != summary.captureArity || projection.outcomes&UnknownExit != 0 {
+		return make([]exitValue, summary.captureArity)
+	}
+	return values
 }

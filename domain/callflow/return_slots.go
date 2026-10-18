@@ -4,7 +4,7 @@ func (evaluation *exitEvaluation) assignReturnSlots(point exitPoint, returned st
 	slots := decodeTuple(returned)
 	values := evaluation.values[point.values]
 	next := values
-	next.bindings = cloneValueMap(values.bindings)
+	next.bindings = cloneValueMap(values.liveBindings())
 	next.cells = cloneValueMap(values.cells)
 	for i, output := range evaluation.body.graph.Function.Outputs {
 		if output.Symbol == 0 {
@@ -16,6 +16,12 @@ func (evaluation *exitEvaluation) assignReturnSlots(point exitPoint, returned st
 			next.cells[output.Symbol] = joinCellValue(next.cells, output.Symbol, value)
 		}
 	}
+	next.heap = cloneEnvironmentHeap(next.heap)
+	for i, output := range evaluation.body.graph.Function.Outputs {
+		if address := next.locations[output.Symbol]; address != "" {
+			writeEnvironmentCell(next.heap, address, slots[i])
+		}
+	}
 	point.values = evaluation.internValues(next)
 	return point
 }
@@ -23,7 +29,7 @@ func (evaluation *exitEvaluation) assignReturnSlots(point exitPoint, returned st
 func (evaluation *exitEvaluation) completedReturn(value completion) string {
 	outputs := evaluation.body.graph.Function.Outputs
 	returned := make([]exitValue, len(outputs))
-	bindings := evaluation.values[value.values].bindings
+	bindings := evaluation.values[value.values].liveBindings()
 	for i, output := range outputs {
 		if output.Symbol != 0 {
 			returned[i] = bindings[output.Symbol]

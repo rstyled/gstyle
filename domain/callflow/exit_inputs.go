@@ -6,12 +6,16 @@ import (
 )
 
 type exitInvocationContext struct {
+	key       string
+	keyReady  bool
+	target    bindingflow.Callable
 	ref       pdg.Ref
 	inherited bool
 	values    bindingflow.Evaluation
 }
 
 type exitInvocation struct {
+	heaps                   [2]heapEffects
 	memory                  memoryProof
 	Ordinary, DeferredPanic Outcomes
 	returned                string
@@ -65,7 +69,10 @@ func (calls *CallSites) defaultValues() bindingflow.Evaluation {
 
 func (calls *CallSites) targetWithValues(name string, summaries ExitSummaries, invocation exitInvocationContext) Outcomes {
 	summary := summaries[name]
-	key := calls.inputKey(summary.invocations, invocation.ref, invocation.values)
+	if !calls.validTargetEnvironment(summary, invocation) {
+		return UnknownExit
+	}
+	key := calls.inputKey(summary.invocations, invocation)
 	if key == "" {
 		return targetOutcomes(name, summaries, invocation.inherited)
 	}
@@ -76,15 +83,14 @@ func (calls *CallSites) targetWithValues(name string, summaries ExitSummaries, i
 	return (ExitSummary{Ordinary: state.Ordinary, DeferredPanic: state.DeferredPanic, Receiver: summary.Receiver}).outcomes(invocation.inherited)
 }
 
-func (calls *CallSites) inputKey(invocations *exitInvocations, ref pdg.Ref, context bindingflow.Evaluation) string {
+func (calls *CallSites) inputKey(invocations *exitInvocations, invocation exitInvocationContext) string {
+	if invocation.keyReady {
+		return invocation.key
+	}
 	if invocations == nil || calls.paths == nil {
 		return ""
 	}
-	values, known := calls.paths.CallValues(ref, invocations.inputs, context)
-	if !known {
-		return ""
-	}
-	return calls.completeInputKey(invocations, values, context)
+	return calls.environmentKey(invocations, invocation)
 }
 
 func (calls *CallSites) knownInputKey(inputs []pdg.Parameter, arguments []bindingflow.Value) string {
@@ -106,7 +112,7 @@ func (calls *CallSites) knownInputKey(inputs []pdg.Parameter, arguments []bindin
 
 func inputBindings(body *exitBody, key string) map[pdg.Ref]exitValue {
 	bindings := map[pdg.Ref]exitValue{}
-	values := decodeTuple(key)
+	values := readEnvironmentInput(key).Values
 	symbols := invocationSymbols(body)
 	if len(values) != len(symbols) {
 		return bindings
@@ -146,6 +152,7 @@ func solveInputPass(body *exitBody, summaries ExitSummaries, invocations *exitIn
 		ordinary := evaluateBodyResult(body, summaries, false, key)
 		inherited := evaluateBodyResult(body, summaries, true, key)
 		next := exitInvocation{
+			heaps:         [2]heapEffects{pass.heapEffects(old.heaps[0], ordinary.heaps), pass.heapEffects(old.heaps[1], inherited.heaps)},
 			memory:        old.memory.meet(ordinary.memory).meet(inherited.memory),
 			captured:      [2]captureEffects{pass.captureEffects(old.captured[0], ordinary.captured), pass.captureEffects(old.captured[1], inherited.captured)},
 			returned:      pass.returned(old.returned, ordinary.returned),

@@ -74,3 +74,7 @@ still invalidates caller facts. Eighteen compiling fault controls detect lost id
 target unions, results, memory effects, barriers, snapshots, nil faults,
 comparison faults, catalog references, tuple slots and conversion facts.
 These finite checks add no full-Go proof.
+
+[Live closure environments](pdg-closure-environments.md) extend callable targets
+with captured-cell bindings and outcome-specific stores. The name-only limits
+above describe the earlier stage; general heap and dispatch limits remain open.

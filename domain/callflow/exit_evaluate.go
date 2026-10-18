@@ -1,6 +1,9 @@
 package callflow
 
-import "github.com/rstyled/gstyle/domain/pdg"
+import (
+	"github.com/rstyled/gstyle/domain/bindingflow"
+	"github.com/rstyled/gstyle/domain/pdg"
+)
 
 type exitPoint struct {
 	values             string
@@ -11,6 +14,10 @@ type exitPoint struct {
 }
 
 type exitEvaluation struct {
+	contexts          map[string]bindingflow.Evaluation
+	concrete          map[exitValue]bindingflow.Value
+	heapResults       heapEffects
+	incoming          environmentHeap
 	memory            memoryProof
 	conditions        map[pdg.Ref]uint8
 	returned          string
@@ -100,15 +107,13 @@ func (evaluation *exitEvaluation) call(point exitPoint, ref pdg.Ref) completions
 
 func (evaluation *exitEvaluation) invocation(point exitPoint, ref pdg.Ref) completions {
 	evaluation.observeInvocation(exitInvocationContext{ref: ref, values: evaluation.valueContext(point)})
-	targets := evaluation.body.calls.targets[ref]
-	if targets.known && len(targets.names) == 1 && targets.names[0] == "recover" {
+	if evaluation.body.calls.recoveryCall(ref) {
 		return evaluation.recovery(point, ref)
 	}
 	outcomes := evaluation.body.calls.outcomesWithValues(evaluation.summaries, ref, false, evaluation.valueContext(point))
 	if evaluation.callOutcomes != nil {
 		evaluation.callOutcomes[ref] |= outcomes
 	}
-	point = evaluation.callResult(point, ref)
 	return evaluation.callCompletions(point, ref, outcomes)
 }
 
@@ -140,6 +145,7 @@ func (evaluation *exitEvaluation) priorOutcomes(point exitPoint, ref pdg.Ref) co
 }
 
 type evaluatedBody struct {
+	heaps    heapEffects
 	memory   memoryProof
 	outcomes Outcomes
 	returned string
@@ -152,7 +158,7 @@ func evaluateBodyResult(body *exitBody, summaries ExitSummaries, inherited bool,
 	}
 	evaluation := newExitEvaluation(body, summaries)
 	outcomes := evaluation.run(inherited, inputs)
-	return evaluatedBody{outcomes: outcomes, returned: evaluation.returned, captured: evaluation.captured, memory: evaluation.memory}
+	return evaluatedBody{outcomes: outcomes, returned: evaluation.returned, captured: evaluation.captured, memory: evaluation.memory, heaps: evaluation.heapResults}
 }
 
 func newExitEvaluation(body *exitBody, summaries ExitSummaries) *exitEvaluation {
@@ -162,6 +168,12 @@ func newExitEvaluation(body *exitBody, summaries ExitSummaries) *exitEvaluation 
 func (evaluation *exitEvaluation) run(inherited bool, inputs string) Outcomes {
 	point := exitPoint{block: evaluation.body.flow.Entry, pending: inherited}
 	bindings := evaluation.initialBindings(inputs)
-	point.values = evaluation.internValues(exitValues{bindings: bindings, cells: evaluation.initialCellValues(bindings)})
+	input := readEnvironmentInput(inputs)
+	evaluation.incoming = heapFromEntries(input.Heap)
+	locations := map[pdg.Ref]string{}
+	for _, link := range input.Captures {
+		locations[link.Symbol] = link.Address
+	}
+	point.values = evaluation.internValues(exitValues{heap: evaluation.incoming, locations: locations, bindings: bindings, cells: evaluation.initialCellValues(bindings)})
 	return evaluation.solveCompletions(point)
 }

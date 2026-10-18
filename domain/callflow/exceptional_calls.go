@@ -11,14 +11,9 @@ func (calls *CallSites) captureModeTuple(summary ExitSummary, invocation exitInv
 }
 
 func (evaluation *exitEvaluation) transferInvocation(point exitPoint, invocation exitInvocationContext, mode Outcomes) exitPoint {
-	if evaluation.body.calls.invocationMemory(evaluation.summaries, invocation).preserves {
-		return point
-	}
-	writes, known := evaluation.body.calls.captureModeWrites(evaluation.summaries, invocation, mode)
-	if known {
-		return evaluation.captureWriteback(point, writes)
-	}
-	return evaluation.rawValueTransfer(point, invocation.ref)
+	projection := evaluation.body.calls.projectEnvironment(evaluation.summaries, invocation, mode)
+	proof := evaluation.body.calls.invocationMemory(evaluation.summaries, invocation)
+	return evaluation.applyEnvironmentProjection(point, invocationCompletion{invocation, projection, proof, true})
 }
 
 func (evaluation *exitEvaluation) callCompletions(point exitPoint, ref pdg.Ref, outcomes Outcomes) completions {

@@ -37,7 +37,7 @@ func joinValue(left, right exitValue) exitValue {
 	}
 	a, b := callableSet(left), callableSet(right)
 	if a.Known() && b.Known() {
-		return callableValue(bindingflow.NewCallableSet(append(a.Names(), b.Names()...)...))
+		return callableValue(bindingflow.NewBoundCallableSet(append(a.Targets(), b.Targets()...)...))
 	}
 	return unknownValue
 }

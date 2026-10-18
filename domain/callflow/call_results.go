@@ -12,8 +12,8 @@ func (calls *CallSites) returnedValues(summaries ExitSummaries, ref pdg.Ref, con
 	}
 	var returned string
 	unknown := false
-	for _, name := range targets.names {
-		values, missing := calls.targetReturned(name, summaries, exitInvocationContext{ref: ref, values: context})
+	for _, target := range targets.callables() {
+		values, missing := calls.targetReturned(target.Name, summaries, calls.targetInvocation(summaries, exitInvocationContext{ref: ref, values: context}, target))
 		returned = joinReturned(returned, values)
 		unknown = unknown || missing
 	}
@@ -43,7 +43,7 @@ func (calls *CallSites) targetReturned(name string, summaries ExitSummaries, inv
 }
 
 func (calls *CallSites) contextReturned(summary ExitSummary, invocation exitInvocationContext) string {
-	key := calls.inputKey(summary.invocations, invocation.ref, invocation.values)
+	key := calls.inputKey(summary.invocations, invocation)
 	if key == "" {
 		return summary.returned
 	}

@@ -10,18 +10,17 @@ func (evaluation *exitEvaluation) transferCall(point exitPoint, ref pdg.Ref) (ex
 	if body.graph.Nodes[ref-1].Category != pdg.Call {
 		return point, false
 	}
-	if body.calls.invocationMemory(evaluation.summaries, exitInvocationContext{ref: ref, values: evaluation.valueContext(point)}).preserves {
+	if body.calls.recoveryCall(ref) {
 		return point, true
 	}
-	point = evaluation.unorderedReadBarrier(point, ref)
-	if !body.operations.orderedRegion(ref) {
-		return point, false
+	invocation := exitInvocationContext{ref: ref, values: evaluation.valueContext(point)}
+	projection := body.calls.projectEnvironment(evaluation.summaries, invocation, Returns)
+	proof := body.calls.invocationMemory(evaluation.summaries, invocation)
+	if !proof.preserves {
+		point = evaluation.unorderedReadBarrier(point, ref)
 	}
-	writes, known := body.calls.capturedWrites(evaluation.summaries, ref, evaluation.valueContext(point))
-	if !known {
-		return point, false
-	}
-	return evaluation.captureWriteback(point, writes), true
+	point = evaluation.applyEnvironmentProjection(point, invocationCompletion{invocation, projection, proof, body.operations.orderedRegion(ref)})
+	return evaluation.storeCallResult(point, ref, projection.returned), true
 }
 
 func (evaluation *exitEvaluation) snapshotRead(point exitPoint, ref pdg.Ref) exitPoint {
@@ -33,6 +32,7 @@ func (evaluation *exitEvaluation) snapshotRead(point exitPoint, ref pdg.Ref) exi
 	value := unknownValue
 	if !values.unorderedReads[ref] {
 		context := evaluation.valueContext(point)
+		context.Nodes = maps.Clone(context.Nodes)
 		delete(context.Nodes, ref)
 		value = abstractValue(body.paths.Evaluate(ref, context))
 	}

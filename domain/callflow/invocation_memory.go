@@ -21,30 +21,31 @@ func (calls *CallSites) invocationMemory(summaries ExitSummaries, invocation exi
 		return memoryProof{}
 	}
 	proof := memoryProof{preserves: true, confined: true}
-	for _, name := range targets.names {
-		proof = proof.meet(calls.targetInvocationMemory(name, summaries, invocation))
+	for _, target := range targets.callables() {
+		invocation = calls.targetInvocation(summaries, invocation, target)
+		proof = proof.meet(calls.targetInvocationMemory(target.Name, summaries, invocation))
 	}
 	return proof
 }
 func (calls *CallSites) targetInvocationMemory(name string, summaries ExitSummaries, invocation exitInvocationContext) memoryProof {
+	summary := summaries[name]
+	if !calls.validTargetEnvironment(summary, invocation) {
+		return memoryProof{}
+	}
 	if targetPreservesMemory(name, summaries) {
 		return memoryProof{preserves: true, confined: true}
-	}
-	summary, found := summaries[name]
-	if !found {
-		return memoryProof{}
 	}
 	proof := calls.contextMemory(summary, invocation)
 	if proof.preserves {
 		return proof
 	}
-	if summary.captureArity != 0 && !calls.linkedFrame(summary) {
+	if summary.captureArity != 0 && !calls.linkedInvocation(summary, invocation) {
 		proof.confined = false
 	}
 	return proof
 }
 func (calls *CallSites) contextMemory(summary ExitSummary, invocation exitInvocationContext) memoryProof {
-	key := calls.inputKey(summary.invocations, invocation.ref, invocation.values)
+	key := calls.inputKey(summary.invocations, invocation)
 	if key != "" {
 		if state, found := summary.invocations.lookup(key); found {
 			return state.memory
@@ -71,4 +72,14 @@ func (evaluation *exitEvaluation) observeMemory(ref pdg.Ref) {
 		return
 	}
 	evaluation.memory = evaluation.memory.meet(memoryProof{preserves: body.privateWrites(ref), confined: body.frameWrites(ref)})
+}
+
+func (calls *CallSites) linkedInvocation(summary ExitSummary, invocation exitInvocationContext) bool {
+	if summary.invocations == nil {
+		return false
+	}
+	if calls.boundCaptures(summary.invocations, invocation) != nil {
+		return true
+	}
+	return calls.linkedFrame(summary)
 }

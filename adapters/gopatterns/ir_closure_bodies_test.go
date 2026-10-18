@@ -31,7 +31,7 @@ func TestClosureBodiesComposeExitEffects(t *testing.T) {
 		{"constant captured input", `flag:=true;func(){if flag{panic("maybe")}}()`, callflow.Panics},
 		{"captured write updates", `flag:=true;func(){flag=false}();if flag{panic("maybe")}`, callflow.Returns},
 		{"target join", `stop:=func(){};if choose{stop=func(){panic("maybe")}};stop()`, callflow.Returns | callflow.Panics},
-		{"recursive stored closure", `var again func();again=func(){again()};again()`, callflow.UnknownExit},
+		{"recursive stored closure", `var again func();again=func(){again()};again()`, callflow.Diverges},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			extraction, _ := proofExtraction(t, `package example;var choose bool;func f(){`+tc.body+`}`)

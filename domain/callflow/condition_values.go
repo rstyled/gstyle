@@ -47,7 +47,18 @@ func (evaluation *exitEvaluation) assumeBinding(point exitPoint, symbol pdg.Ref,
 	values := evaluation.values[point.values]
 	bindings := make(map[pdg.Ref]exitValue, len(values.bindings)+1)
 	maps.Copy(bindings, values.bindings)
+	if bound == nonNilValue && callableSet(values.liveBindings()[symbol]).Known() {
+		bound = values.liveBindings()[symbol]
+	}
 	bindings[symbol] = bound
-	point.values = evaluation.internValues(exitValues{bindings: bindings, nodes: values.nodes, tuples: values.tuples, cells: values.cells, unorderedReads: values.unorderedReads})
+	values.bindings = bindings
+	values.heap = maps.Clone(values.heap)
+	if address := values.locations[symbol]; address != "" {
+		if cell := values.heap[address]; !cell.Repeated {
+			cell.Value = bound
+			values.heap[address] = cell
+		}
+	}
+	point.values = evaluation.internValues(values)
 	return point
 }
