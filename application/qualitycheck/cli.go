@@ -23,7 +23,7 @@ const usage = `Usage: gstyle check [OPTIONS] [DIRECTORIES OR GO FILES...]
 
 Extract typed Go facts and evaluate code quality guardrails. Defaults to .
   --config PATH     TOML policy; unspecified values retain defaults
-  --format FORMAT   text (default), json, or facts (save extraction only)
+  --format FORMAT   text (default), json, sarif, or facts (save extraction only)
   --facts-in PATH   evaluate saved facts without loading Go packages
   --tests           include tests (default false)
   --tags TAGS       Go build tags
@@ -42,8 +42,8 @@ type options struct {
 }
 
 func (opts options) validate() error {
-	if !slices.Contains([]string{"text", "json", "facts"}, opts.format) {
-		return fmt.Errorf("format must be text, json, or facts")
+	if !slices.Contains([]string{"text", "json", "sarif", "facts"}, opts.format) {
+		return fmt.Errorf("format must be text, json, sarif, or facts")
 	}
 	if opts.factsIn != "" && opts.hasSourceOptions() {
 		return fmt.Errorf("facts-in cannot be combined with source paths, tests, tags, or facts export")
@@ -125,6 +125,9 @@ func onlyChanged(opts options, facts []quality.Function, report quality.Report, 
 }
 
 func writeReport(output io.Writer, report quality.Report, format string) error {
+	if format == "sarif" {
+		return writeSARIF(output, report)
+	}
 	if format == "json" {
 		return writeJSON(output, report)
 	}

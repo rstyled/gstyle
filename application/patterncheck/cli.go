@@ -24,7 +24,7 @@ functions that suggest interfaces, params structs, or generics, plus
 inverted conditionals that want to be guard clauses.
 Similarity, size and usage statistics alone do not produce findings.
 Informational only: always exits 0, never a quality gate.
-  --format FORMAT   text (default), json report, or pdg-json graph export
+  --format FORMAT   text (default), json report, sarif, or pdg-json graph export
   --threshold N     minimum WL similarity (0-1000) for clustering [default 600]
   --cache           reuse WL refinements from .gstyle/patterns-cache.json,
                     speeding up repeat runs on large repos
@@ -43,8 +43,8 @@ type options struct {
 }
 
 func (opts options) validate() error {
-	if !slices.Contains([]string{"text", "json", "pdg-json"}, opts.format) {
-		return fmt.Errorf("format must be text, json or pdg-json")
+	if !slices.Contains([]string{"text", "json", "sarif", "pdg-json"}, opts.format) {
+		return fmt.Errorf("format must be text, json, sarif or pdg-json")
 	}
 	if opts.format == "pdg-json" && opts.useCache {
 		return fmt.Errorf("--cache is not available for pdg-json export")
@@ -72,7 +72,14 @@ func Run(ctx context.Context, args []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if opts.format == "json" {
+	return writeReport(output, report, opts.format)
+}
+
+func writeReport(output io.Writer, report *patterns.PatternsReport, format string) error {
+	if format == "sarif" {
+		return writeSARIF(output, report)
+	}
+	if format == "json" {
 		out, err := patterns.JSON(report)
 		if err != nil {
 			return err
@@ -80,7 +87,7 @@ func Run(ctx context.Context, args []string, output io.Writer) error {
 		_, err = io.WriteString(output, out+"\n")
 		return err
 	}
-	_, err = io.WriteString(output, patterns.Text(report)+"\n")
+	_, err := io.WriteString(output, patterns.Text(report)+"\n")
 	return err
 }
 

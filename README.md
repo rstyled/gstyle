@@ -228,3 +228,17 @@ in the same package (up to eight summary passes), plus the standard `io/fs.FS.Op
 contract. Callers must close the handle or return it again on supported normal
 paths. Unresolved consumers, aliases and asynchronous handoffs stay unknown.
 External wrapper bodies and arbitrary interface implementations are not inferred.
+
+### SARIF reports
+
+Use `gstyle check --format sarif . > quality.sarif` or
+`gstyle patterns --format sarif . > patterns.sarif` to write SARIF 2.1.0.
+`check` exits 1 when it reports findings. `patterns` exits 0 on success.
+Both commands exit 2 for analysis or output errors.
+
+Reports include rule IDs, messages, URI-escaped file paths, and source positions.
+The first site is the primary location; other sites are related locations.
+Locations use line numbers. Columns are omitted because Go uses byte offsets,
+which SARIF does not support. Unknown line numbers are omitted.
+`check` also supports SARIF with `--facts-in` and `--changed`.
+See [SARIF verification](verification/sarif/README.md) for schema and test details.

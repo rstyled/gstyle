@@ -267,3 +267,14 @@ jobs:
         with:
           path: dist/mutation-cache
           key: lean-mutation-bundle-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}-${{ github.run_attempt }}
+
+  sarif:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - uses: astral-sh/setup-uv@v7
+      - name: Validate SARIF output against OASIS schema
+        run: make verify-sarif
