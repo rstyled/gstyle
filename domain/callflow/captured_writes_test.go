@@ -12,7 +12,7 @@ func TestCapturedWriteJoinAgainstTargetChoiceOracle(t *testing.T) {
 		for range count {
 			combinations *= 6
 		}
-		for initial := exitValue(0); initial < 5; initial++ {
+		for _, initial := range scalarValues() {
 			for encoded := 0; encoded < combinations; encoded++ {
 				var alternatives []map[pdg.Ref]exitValue
 				remaining := encoded
@@ -24,7 +24,7 @@ func TestCapturedWriteJoinAgainstTargetChoiceOracle(t *testing.T) {
 					writes := map[pdg.Ref]exitValue{}
 					concrete := initial
 					if code != 0 {
-						concrete = exitValue(code - 1)
+						concrete = scalarValues()[code-1]
 						writes[1] = concrete
 					}
 					alternatives = append(alternatives, writes)
@@ -46,7 +46,7 @@ func TestCapturedWriteJoinAgainstTargetChoiceOracle(t *testing.T) {
 					value = initial
 				}
 				if value != want {
-					t.Fatalf("targets=%d choices=%d initial=%d got %d want %d", count, encoded, initial, value, want)
+					t.Fatalf("targets=%d choices=%d initial=%q got %q want %q", count, encoded, initial, value, want)
 				}
 			}
 		}

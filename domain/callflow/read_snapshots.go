@@ -10,7 +10,7 @@ func (evaluation *exitEvaluation) transferCall(point exitPoint, ref pdg.Ref) (ex
 	if body.graph.Nodes[ref-1].Category != pdg.Call {
 		return point, false
 	}
-	if body.calls.PreservesCallerMemory(evaluation.summaries, ref) {
+	if body.calls.invocationMemory(evaluation.summaries, exitInvocationContext{ref: ref, values: evaluation.valueContext(point)}).preserves {
 		return point, true
 	}
 	point = evaluation.unorderedReadBarrier(point, ref)

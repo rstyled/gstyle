@@ -1,6 +1,7 @@
 package callflow
 
 func (evaluation *exitEvaluation) assignReturnSlots(point exitPoint, returned string) exitPoint {
+	slots := decodeTuple(returned)
 	values := evaluation.values[point.values]
 	next := values
 	next.bindings = cloneValueMap(values.bindings)
@@ -9,7 +10,7 @@ func (evaluation *exitEvaluation) assignReturnSlots(point exitPoint, returned st
 		if output.Symbol == 0 {
 			continue
 		}
-		value := exitValue(returned[i])
+		value := slots[i]
 		next.bindings[output.Symbol] = value
 		if _, tracked := next.cells[output.Symbol]; tracked {
 			next.cells[output.Symbol] = joinCellValue(next.cells, output.Symbol, value)
@@ -21,21 +22,22 @@ func (evaluation *exitEvaluation) assignReturnSlots(point exitPoint, returned st
 
 func (evaluation *exitEvaluation) completedReturn(value completion) string {
 	outputs := evaluation.body.graph.Function.Outputs
-	returned := make([]byte, len(outputs))
+	returned := make([]exitValue, len(outputs))
 	bindings := evaluation.values[value.values].bindings
 	for i, output := range outputs {
 		if output.Symbol != 0 {
-			returned[i] = byte(bindings[output.Symbol])
+			returned[i] = bindings[output.Symbol]
 			continue
 		}
-		returned[i] = byte(evaluation.unnamedReturn(value, i))
+		returned[i] = evaluation.unnamedReturn(value, i)
 	}
-	return string(returned)
+	return encodeTuple(returned)
 }
 
 func (evaluation *exitEvaluation) unnamedReturn(value completion, index int) exitValue {
-	if len(value.returned) == bodyResultCount(evaluation.body) {
-		return exitValue(value.returned[index])
+	slots := decodeTuple(value.returned)
+	if len(slots) == bodyResultCount(evaluation.body) {
+		return slots[index]
 	}
 	return abstractValue(evaluation.body.paths.ParameterZero(evaluation.body.graph.Function.Outputs[index]))
 }

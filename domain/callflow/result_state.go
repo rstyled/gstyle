@@ -6,20 +6,19 @@ import (
 	"github.com/rstyled/gstyle/domain/pdg"
 	"maps"
 	"slices"
-	"strings"
 )
 
 type tupleEntry struct {
-	ref    pdg.Ref
-	values string
+	Ref    pdg.Ref
+	Values string
 }
 
 func tupleEntries(values map[pdg.Ref]string) []tupleEntry {
 	entries := make([]tupleEntry, 0, len(values))
 	for ref, value := range values {
-		entries = append(entries, tupleEntry{ref: ref, values: value})
+		entries = append(entries, tupleEntry{Ref: ref, Values: value})
 	}
-	slices.SortFunc(entries, func(a, b tupleEntry) int { return cmp.Compare(a.ref, b.ref) })
+	slices.SortFunc(entries, func(a, b tupleEntry) int { return cmp.Compare(a.Ref, b.Ref) })
 	return entries
 }
 
@@ -32,9 +31,10 @@ func concreteResults(values map[pdg.Ref]string) map[pdg.Ref][]bindingflow.Value 
 }
 
 func concreteTuple(tuple string) []bindingflow.Value {
-	result := make([]bindingflow.Value, len(tuple))
-	for i := range tuple {
-		result[i] = concreteValue(exitValue(tuple[i]))
+	values := decodeTuple(tuple)
+	result := make([]bindingflow.Value, len(values))
+	for i := range values {
+		result[i] = concreteValue(values[i])
 	}
 	return result
 }
@@ -54,11 +54,12 @@ func (evaluation *exitEvaluation) callResult(point exitPoint, ref pdg.Ref) exitP
 }
 
 func storeResult(nodes map[pdg.Ref]exitValue, tuples map[pdg.Ref]string, ref pdg.Ref, returned string) {
-	if strings.Trim(returned, "\x00") == "" {
+	values := decodeTuple(returned)
+	if !knownTuple(values) {
 		return
 	}
-	if len(returned) == 1 {
-		nodes[ref] = exitValue(returned[0])
+	if len(values) == 1 {
+		nodes[ref] = values[0]
 		return
 	}
 	tuples[ref] = returned

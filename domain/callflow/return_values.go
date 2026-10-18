@@ -13,13 +13,13 @@ func (evaluation *exitEvaluation) returnAt(point exitPoint, ref pdg.Ref) complet
 
 func (evaluation *exitEvaluation) returnTuple(point exitPoint, ref pdg.Ref) string {
 	outputs := evaluation.body.graph.Function.Outputs
-	values := make([]byte, len(outputs))
+	values := make([]exitValue, len(outputs))
 	context := evaluation.valueContext(point)
 	for i, output := range outputs {
 		value := evaluation.returnSlot(ref, pdg.Position(i+1), output.Symbol, context)
-		values[i] = byte(abstractValue(value))
+		values[i] = abstractValue(value)
 	}
-	return string(values)
+	return encodeTuple(values)
 }
 
 func (evaluation *exitEvaluation) returnSlot(ref pdg.Ref, position pdg.Position, symbol pdg.Ref, context bindingflow.Evaluation) bindingflow.Value {

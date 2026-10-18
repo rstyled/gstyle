@@ -11,7 +11,7 @@ func (calls *CallSites) captureModeTuple(summary ExitSummary, invocation exitInv
 }
 
 func (evaluation *exitEvaluation) transferInvocation(point exitPoint, invocation exitInvocationContext, mode Outcomes) exitPoint {
-	if evaluation.body.calls.PreservesCallerMemory(evaluation.summaries, invocation.ref) {
+	if evaluation.body.calls.invocationMemory(evaluation.summaries, invocation).preserves {
 		return point
 	}
 	writes, known := evaluation.body.calls.captureModeWrites(evaluation.summaries, invocation, mode)

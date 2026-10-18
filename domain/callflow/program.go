@@ -74,5 +74,9 @@ func queryTargets(query Queries) []string {
 	for _, target := range query.Calls.targets {
 		names = append(names, target.names...)
 	}
+	for _, fact := range query.Calls.facts.Nodes {
+		names = append(names, fact.Value.Callables.Names()...)
+	}
+
 	return names
 }

@@ -2,7 +2,7 @@ package callflow
 
 import (
 	"cmp"
-	"fmt"
+	"encoding/json"
 	"github.com/rstyled/gstyle/domain/bindingflow"
 	"github.com/rstyled/gstyle/domain/pdg"
 	"go/constant"
@@ -12,14 +12,14 @@ import (
 	"strings"
 )
 
-type exitValue uint8
+type exitValue string
 
 const (
-	unknownValue exitValue = iota
-	nilValue
-	nonNilValue
-	falseValue
-	trueValue
+	unknownValue exitValue = ""
+	nilValue     exitValue = "n"
+	nonNilValue  exitValue = "p"
+	falseValue   exitValue = "f"
+	trueValue    exitValue = "t"
 )
 
 type exitValues struct {
@@ -30,8 +30,8 @@ type exitValues struct {
 }
 
 type valueEntry struct {
-	ref   pdg.Ref
-	value exitValue
+	Ref   pdg.Ref
+	Value exitValue
 }
 
 func (evaluation *exitEvaluation) valueContext(point exitPoint) bindingflow.Evaluation {
@@ -43,7 +43,15 @@ func (evaluation *exitEvaluation) internValues(values exitValues) string {
 	if len(values.bindings)+len(values.nodes)+len(values.tuples)+len(values.cells)+len(values.unorderedReads) == 0 {
 		return ""
 	}
-	key := fmt.Sprint(valueEntries(values.bindings), "/", valueEntries(values.nodes), "/", tupleEntries(values.tuples), "/", valueEntries(values.cells), "/", slices.Sorted(maps.Keys(values.unorderedReads)))
+	record := struct {
+		Bindings, Nodes, Cells []valueEntry
+		Tuples                 []tupleEntry
+		Unordered              []pdg.Ref
+	}{
+		valueEntries(values.bindings), valueEntries(values.nodes), valueEntries(values.cells), tupleEntries(values.tuples), slices.Sorted(maps.Keys(values.unorderedReads)),
+	}
+	data, _ := json.Marshal(record)
+	key := string(data)
 	evaluation.values[key] = values
 	return key
 }
@@ -123,11 +131,15 @@ func concreteValue(value exitValue) bindingflow.Value {
 	case falseValue, trueValue:
 		return bindingflow.Value{Scalar: constant.MakeBool(value == trueValue)}
 	default:
-		return bindingflow.Value{}
+		set := callableSet(value)
+		return bindingflow.Value{Callables: set, NonNil: set.Known()}
 	}
 }
 
 func abstractValue(value bindingflow.Value) exitValue {
+	if value.Callables.Known() {
+		return callableValue(value.Callables)
+	}
 	if value.Nil {
 		return nilValue
 	}
@@ -148,7 +160,7 @@ func valueEntries(values map[pdg.Ref]exitValue) []valueEntry {
 	for ref, value := range values {
 		entries = append(entries, valueEntry{ref, value})
 	}
-	slices.SortFunc(entries, func(a, b valueEntry) int { return cmp.Compare(a.ref, b.ref) })
+	slices.SortFunc(entries, func(a, b valueEntry) int { return cmp.Compare(a.Ref, b.Ref) })
 	return entries
 }
 

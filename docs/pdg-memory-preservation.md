@@ -53,3 +53,7 @@ write barrier, transfer discharge, or summary-proof retention. Each fails its
 intended semantic assertion. Full-language lowering, captured writeback,
 unwind-time state and concurrency remain open; these tests add no new full-Go
 proof.
+
+[Callable invocation contexts](pdg-callable-values.md) now carry separate
+input-specific memory and frame proofs. The public argument-independent summary
+keeps the contract above; explicit unknown-write barriers still apply.

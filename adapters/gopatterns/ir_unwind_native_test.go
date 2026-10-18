@@ -14,9 +14,12 @@ import (
 	"testing"
 )
 
-func TestNativeUnwindValueEvidence(t *testing.T) {
+func TestNativeUnwindValueEvidence(t *testing.T) { verifyNativeValueCases(t, unwindValueCases()) }
+
+func verifyNativeValueCases(t *testing.T, cases []unwindValueCase) {
+	t.Helper()
 	path := filepath.Join(t.TempDir(), "main.go")
-	if err := os.WriteFile(path, []byte(nativeUnwindProgram(t)), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(nativeValueProgram(t, cases)), 0644); err != nil {
 		t.Fatal(err)
 	}
 	output, err := exec.Command("go", "run", path).CombinedOutput()
@@ -24,7 +27,6 @@ func TestNativeUnwindValueEvidence(t *testing.T) {
 		t.Fatalf("native execution: %v\n%s", err, output)
 	}
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-	cases := unwindValueCases()
 	if len(lines) != len(cases) {
 		t.Fatalf("native traces=%d want %d", len(lines), len(cases))
 	}
@@ -40,19 +42,20 @@ func TestNativeUnwindValueEvidence(t *testing.T) {
 	}
 }
 
-func nativeUnwindProgram(t *testing.T) string {
+func nativeValueProgram(t *testing.T, cases []unwindValueCase) string {
 	t.Helper()
 	var source bytes.Buffer
 	source.WriteString(`package main
 import("fmt";"runtime")
 var choose bool
+var _ = runtime.Goexit
 func nativeRun(fn func())uint16{
  result:=make(chan uint16,1)
  go func(){completed:=false;defer func(){mode:=uint16(16);if recover()!=nil{mode=4}else if completed{mode=1};result<-mode}();fn();completed=true}()
  return <-result
 }
 `)
-	for i, tc := range unwindValueCases() {
+	for i, tc := range cases {
 		file, err := parser.ParseFile(token.NewFileSet(), "case.go", fmt.Sprintf("package main;func nativeCase%d(){%s};%s", i, tc.body, tc.helper), 0)
 		if err != nil {
 			t.Fatal(err)
@@ -82,7 +85,7 @@ func nativeRun(fn func())uint16{
 		}
 	}
 	source.WriteString("func main(){\n")
-	for i := range unwindValueCases() {
+	for i := range cases {
 		fmt.Fprintf(&source, "fmt.Printf(\"%%d %%d\\n\",%d,nativeRun(nativeCase%d))\n", i, i)
 	}
 	source.WriteString("}\n")

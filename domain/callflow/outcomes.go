@@ -55,8 +55,10 @@ func (summary ExitSummary) outcomes(inherited bool) Outcomes {
 type ExitSummaries map[string]ExitSummary
 
 type callTargets struct {
-	names []string
-	known bool
+	source   pdg.Ref
+	nilValue bool
+	names    []string
+	known    bool
 }
 
 type CallSites struct {
@@ -108,8 +110,7 @@ func (calls *CallSites) index(query *bindingflow.Query) error {
 		}
 		calls.entries[pdg.Ref(i+1)] = entry.kind
 		calls.resourceInputs[pdg.Ref(i+1)] = entry.inputs
-		names, known := frameTargets(graph, query, pdg.Ref(i+1))
-		calls.targets[pdg.Ref(i+1)] = callTargets{names: names, known: known}
+		calls.targets[pdg.Ref(i+1)] = frameTargets(graph, query, pdg.Ref(i+1))
 	}
 	return nil
 }
@@ -118,8 +119,11 @@ func (calls *CallSites) outcomesWithValues(summaries ExitSummaries, ref pdg.Ref,
 	if calls == nil {
 		return UnknownExit
 	}
-	targets, found := calls.targets[ref]
-	if !found || !targets.known || len(targets.names) == 0 {
+	targets := calls.invocationTargets(ref, context)
+	if targets.nilValue {
+		return Panics
+	}
+	if !targets.known || len(targets.names) == 0 {
 		return UnknownExit
 	}
 	var outcomes Outcomes
@@ -176,7 +180,8 @@ func externalExitOutcomes(name string) Outcomes {
 
 // ExitEffects interprets canonical body/registration flow and composes local
 // call outcomes to a monotone fixed point. It does not execute foreign code or
-// bind captured cells, callback arguments, heap state or recovered payloads.
+// model general closure environments, heap state or recovered payloads.
+// Admitted Boolean/nil/callable arguments and lexical cells use canonical facts.
 // Closure identities compose only when their canonical body graphs are supplied.
 func ExitEffects(graphs map[string]*pdg.Graph) (ExitSummaries, error) {
 	prepared := make(map[string]Queries, len(graphs))

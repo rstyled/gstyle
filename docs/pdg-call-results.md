@@ -1,6 +1,6 @@
 # Call-result facts for exit queries
 
-The callflow solver propagates Boolean and nil shapes from normal returns to
+The callflow solver propagates Boolean, nil and [callable sets](pdg-callable-values.md) from normal returns to
 caller exit queries. For example, `func disabled() bool { return false }` makes
 `if disabled() { panic("unreachable") }` return normally. Previously the caller
 summary also includes a panic outcome.

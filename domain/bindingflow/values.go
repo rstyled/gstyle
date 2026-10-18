@@ -5,9 +5,10 @@ import (
 	"go/constant"
 )
 
-// Value contains exact scalar facts or a symbolic boolean from one binding.
+// Value contains scalar facts, a symbolic Boolean or an immutable callable set.
 // Unknown is the zero value. Nil and NonNil describe whole-value nilness.
 type Value struct {
+	Callables          CallableSet
 	Scalar             constant.Value
 	Boolean            pdg.Ref
 	Negated            bool
@@ -71,7 +72,7 @@ func (facts Facts) NilConstant(ref pdg.Ref) bool {
 
 type Evaluation struct {
 	// Captures holds call-time cell facts: current values for proved single
-	// cells, otherwise family invariants. Deferred registration clears them.
+	// cells, otherwise family invariants. Deferred invocation supplies live cells.
 	Captures map[pdg.Ref]Value
 	Results  map[pdg.Ref][]Value
 	Bindings map[pdg.Ref]Value

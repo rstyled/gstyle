@@ -14,10 +14,10 @@ func TestCellHistoryJoinAgainstSequenceOracle(t *testing.T) {
 		for encoded := 0; encoded < combinations; encoded++ {
 			history := map[pdg.Ref]exitValue{}
 			remaining := encoded
-			first := exitValue(remaining % 5)
+			first := scalarValues()[remaining%5]
 			uniform := true
 			for range size {
-				value := exitValue(remaining % 5)
+				value := scalarValues()[remaining%5]
 				remaining /= 5
 				uniform = uniform && value == first
 				history[1] = joinCellValue(history, 1, value)

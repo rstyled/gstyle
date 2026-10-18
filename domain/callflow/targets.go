@@ -1,25 +1,24 @@
 package callflow
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/rstyled/gstyle/domain/bindingflow"
 	"github.com/rstyled/gstyle/domain/pdg"
 )
 
-func frameTargets(graph *pdg.Graph, query *bindingflow.Query, call pdg.Ref) ([]string, bool) {
+func frameTargets(graph *pdg.Graph, query *bindingflow.Query, call pdg.Ref) callTargets {
 	attrs := graph.NodeAttributes(graph.Nodes[call-1])
 	if attrs.CallForm == pdg.DirectCall && attrs.Callee.Status == pdg.Known {
-		return []string{graph.Tables.Text(attrs.Callee.Value)}, true
+		return callTargets{names: []string{graph.Tables.Text(attrs.Callee.Value)}, known: true}
 	}
 	target := callTarget(graph, call)
 	if target == 0 {
-		return nil, false
+		return callTargets{}
 	}
 	origins := query.OriginsOf(target, bindingflow.Facts{})
 	targets, known := functionOrigins(graph, origins)
-	return targets, origins.Known && known
+	return callTargets{source: target, names: targets, known: origins.Known && known}
 }
 func callTarget(graph *pdg.Graph, call pdg.Ref) pdg.Ref {
 	var source pdg.Ref
@@ -54,33 +53,5 @@ func functionValue(graph *pdg.Graph, source bindingflow.ValueSource) (string, er
 	if source.Zero || source.Result != 0 {
 		return "", fmt.Errorf("function value is not a declaration")
 	}
-	attrs := graph.NodeAttributes(graph.Nodes[source.Node-1])
-	if graph.Tables.Text(attrs.Construct) == "closure" {
-		return callableIdentity(graph, attrs.Extensions, "gstyle.closure:body-id")
-	}
-	return declarationIdentity(graph, attrs.Extensions)
-}
-func declarationIdentity(graph *pdg.Graph, extensions []pdg.Extension) (string, error) {
-	return callableIdentity(graph, extensions, "gstyle.go:function-value")
-}
-
-func callableIdentity(graph *pdg.Graph, extensions []pdg.Extension, key string) (string, error) {
-	var identity string
-	found := false
-	for _, extension := range extensions {
-		if graph.Tables.Text(extension.Name) != key {
-			continue
-		}
-		if found {
-			return "", fmt.Errorf("duplicate callable identity")
-		}
-		found = true
-		if err := json.Unmarshal([]byte(graph.Tables.Text(extension.Value)), &identity); err != nil {
-			return "", err
-		}
-	}
-	if identity == "" {
-		return "", fmt.Errorf("callable identity is unknown")
-	}
-	return identity, nil
+	return bindingflow.CallableIdentity(graph, source.Node)
 }

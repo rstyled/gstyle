@@ -11,6 +11,7 @@ type exitPoint struct {
 }
 
 type exitEvaluation struct {
+	memory            memoryProof
 	conditions        map[pdg.Ref]uint8
 	returned          string
 	captured          captureEffects
@@ -73,6 +74,7 @@ func (evaluation *exitEvaluation) operation(point exitPoint, ref pdg.Ref) comple
 		return evaluation.applyDeferred(evaluation.visit(point), site.Invocation, context)
 	}
 	node := body.graph.Nodes[ref-1]
+	evaluation.observeMemory(ref)
 	if node.Category == pdg.Return {
 		return evaluation.returnAt(point, ref)
 	}
@@ -97,6 +99,7 @@ func (evaluation *exitEvaluation) call(point exitPoint, ref pdg.Ref) completions
 }
 
 func (evaluation *exitEvaluation) invocation(point exitPoint, ref pdg.Ref) completions {
+	evaluation.observeInvocation(exitInvocationContext{ref: ref, values: evaluation.valueContext(point)})
 	targets := evaluation.body.calls.targets[ref]
 	if targets.known && len(targets.names) == 1 && targets.names[0] == "recover" {
 		return evaluation.recovery(point, ref)
@@ -137,6 +140,7 @@ func (evaluation *exitEvaluation) priorOutcomes(point exitPoint, ref pdg.Ref) co
 }
 
 type evaluatedBody struct {
+	memory   memoryProof
 	outcomes Outcomes
 	returned string
 	captured captureEffects
@@ -148,11 +152,11 @@ func evaluateBodyResult(body *exitBody, summaries ExitSummaries, inherited bool,
 	}
 	evaluation := newExitEvaluation(body, summaries)
 	outcomes := evaluation.run(inherited, inputs)
-	return evaluatedBody{outcomes: outcomes, returned: evaluation.returned, captured: evaluation.captured}
+	return evaluatedBody{outcomes: outcomes, returned: evaluation.returned, captured: evaluation.captured, memory: evaluation.memory}
 }
 
 func newExitEvaluation(body *exitBody, summaries ExitSummaries) *exitEvaluation {
-	return &exitEvaluation{values: map[string]exitValues{}, body: body, summaries: summaries, active: map[exitPoint]bool{}, results: map[exitPoint]completions{}}
+	return &exitEvaluation{memory: memoryProof{preserves: true, confined: true}, values: map[string]exitValues{}, body: body, summaries: summaries, active: map[exitPoint]bool{}, results: map[exitPoint]completions{}}
 }
 
 func (evaluation *exitEvaluation) run(inherited bool, inputs string) Outcomes {

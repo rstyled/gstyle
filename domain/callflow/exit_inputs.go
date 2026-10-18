@@ -12,6 +12,7 @@ type exitInvocationContext struct {
 }
 
 type exitInvocation struct {
+	memory                  memoryProof
 	Ordinary, DeferredPanic Outcomes
 	returned                string
 	captured                [2]captureEffects
@@ -50,7 +51,7 @@ func (invocations *exitInvocations) lookup(key string) (exitInvocation, bool) {
 	if invocations.pass == infinitePass {
 		seed = Diverges
 	}
-	state := exitInvocation{Ordinary: seed, DeferredPanic: seed}
+	state := exitInvocation{memory: memoryProof{preserves: true, confined: true}, Ordinary: seed, DeferredPanic: seed}
 	invocations.states[key] = state
 	return state, true
 }
@@ -87,31 +88,32 @@ func (calls *CallSites) inputKey(invocations *exitInvocations, ref pdg.Ref, cont
 }
 
 func (calls *CallSites) knownInputKey(inputs []pdg.Parameter, arguments []bindingflow.Value) string {
-	values := make([]byte, len(inputs))
+	values := make([]exitValue, len(inputs))
 	known := false
 	for i, input := range inputs {
 		if input.Symbol == 0 {
 			continue
 		}
 		value := abstractValue(arguments[i])
-		values[i] = byte(value)
+		values[i] = value
 		known = known || value != unknownValue
 	}
 	if !known {
 		return ""
 	}
-	return string(values)
+	return encodeTuple(values)
 }
 
 func inputBindings(body *exitBody, key string) map[pdg.Ref]exitValue {
 	bindings := map[pdg.Ref]exitValue{}
+	values := decodeTuple(key)
 	symbols := invocationSymbols(body)
-	if len(key) != len(symbols) {
+	if len(values) != len(symbols) {
 		return bindings
 	}
 	for i, symbol := range symbols {
-		if key[i] != 0 && symbol != 0 {
-			bindings[symbol] = exitValue(key[i])
+		if values[i] != unknownValue && symbol != 0 {
+			bindings[symbol] = values[i]
 		}
 	}
 	return bindings
@@ -144,6 +146,7 @@ func solveInputPass(body *exitBody, summaries ExitSummaries, invocations *exitIn
 		ordinary := evaluateBodyResult(body, summaries, false, key)
 		inherited := evaluateBodyResult(body, summaries, true, key)
 		next := exitInvocation{
+			memory:        old.memory.meet(ordinary.memory).meet(inherited.memory),
 			captured:      [2]captureEffects{pass.captureEffects(old.captured[0], ordinary.captured), pass.captureEffects(old.captured[1], inherited.captured)},
 			returned:      pass.returned(old.returned, ordinary.returned),
 			Ordinary:      pass.update(old.Ordinary, ordinary.outcomes),

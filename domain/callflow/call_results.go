@@ -6,7 +6,7 @@ import (
 )
 
 func (calls *CallSites) returnedValues(summaries ExitSummaries, ref pdg.Ref, context bindingflow.Evaluation) string {
-	targets := calls.targets[ref]
+	targets := calls.invocationTargets(ref, context)
 	if !targets.known {
 		return ""
 	}
@@ -18,7 +18,7 @@ func (calls *CallSites) returnedValues(summaries ExitSummaries, ref pdg.Ref, con
 		unknown = unknown || missing
 	}
 	if unknown {
-		return unknownReturned(len(returned))
+		return unknownReturned(len(decodeTuple(returned)))
 	}
 	return returned
 }
@@ -36,7 +36,7 @@ func (calls *CallSites) targetReturned(name string, summaries ExitSummaries, inv
 		return "", true
 	}
 	values := calls.contextReturned(summary, invocation)
-	if len(values) != summary.arity {
+	if len(decodeTuple(values)) != summary.arity {
 		return unknownReturned(summary.arity), false
 	}
 	return values, false

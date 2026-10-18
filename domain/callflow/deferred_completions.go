@@ -23,6 +23,7 @@ func (evaluation *exitEvaluation) deferredCompletion(value completion, ref pdg.R
 	// bindings, operand snapshots and tuple results.
 	saved.Captures = evaluation.callCellValues(evaluation.values[value.values])
 	invocation := exitInvocationContext{ref: ref, inherited: value.mode == Panics || value.mode == PanicDuringGoexit, values: saved}
+	evaluation.observeInvocation(invocation)
 	outcomes := evaluation.body.calls.outcomesWithValues(evaluation.summaries, ref, invocation.inherited, saved)
 	result := terminalCompletion(outcomes & (Aborts | Diverges | UnknownExit))
 	delete(result, completion{})

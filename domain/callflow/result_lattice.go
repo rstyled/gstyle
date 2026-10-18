@@ -1,9 +1,7 @@
 package callflow
 
-import "strings"
-
-// Empty is no finite return evidence. A nonempty tuple owns one nil/Boolean
-// shape per result; zero bytes are explicit unknown shapes, not bottom.
+// Empty is no finite return evidence. Encoded tuples retain explicit unknown
+// slots separately from bottom and can carry arbitrary canonical identities.
 func joinReturned(left, right string) string {
 	if left == "" {
 		return right
@@ -11,19 +9,16 @@ func joinReturned(left, right string) string {
 	if right == "" {
 		return left
 	}
-	if len(left) != len(right) {
-		return unknownReturned(max(len(left), len(right)))
+	a, b := decodeTuple(left), decodeTuple(right)
+	if len(a) != len(b) {
+		return unknownReturned(max(len(a), len(b)))
 	}
-	result := []byte(left)
-	for i := range result {
-		if result[i] != right[i] {
-			result[i] = byte(unknownValue)
-		}
+	for i := range a {
+		a[i] = joinValue(a[i], b[i])
 	}
-	return string(result)
+	return encodeTuple(a)
 }
-
-func unknownReturned(count int) string { return strings.Repeat("\x00", count) }
+func unknownReturned(count int) string { return encodeTuple(make([]exitValue, count)) }
 
 func (pass exitPass) returned(old, next string) string {
 	if pass != finitePass {

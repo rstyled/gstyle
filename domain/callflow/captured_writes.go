@@ -11,11 +11,11 @@ func (calls *CallSites) capturedWrites(summaries ExitSummaries, ref pdg.Ref, con
 }
 
 func (calls *CallSites) captureModeWrites(summaries ExitSummaries, invocation exitInvocationContext, mode Outcomes) (map[pdg.Ref]exitValue, bool) {
-	if !calls.confinedTargets(summaries, invocation.ref) {
+	if !calls.invocationMemory(summaries, invocation).confined {
 		return nil, false
 	}
 	var alternatives []map[pdg.Ref]exitValue
-	for _, name := range calls.targets[invocation.ref].names {
+	for _, name := range calls.invocationTargets(invocation.ref, invocation.values).names {
 		outcomes := calls.targetWithValues(name, summaries, invocation)
 		if outcomes&(mode|UnknownExit) != 0 {
 			alternatives = append(alternatives, calls.targetCaptureModeWrites(name, summaries, captureProjection{invocation: invocation, outcomes: outcomes, mode: mode}))
@@ -33,16 +33,16 @@ func (calls *CallSites) targetCaptureModeWrites(name string, summaries ExitSumma
 	invocation, outcomes, mode := projection.invocation, projection.outcomes, projection.mode
 	summary := summaries[name]
 	result := map[pdg.Ref]exitValue{}
-	if targetPreservesMemory(name, summaries) || summary.captureArity == 0 {
+	if calls.targetInvocationMemory(name, summaries, invocation).preserves || summary.captureArity == 0 {
 		return result
 	}
-	values := calls.captureModeTuple(summary, invocation, mode)
+	values := decodeTuple(calls.captureModeTuple(summary, invocation, mode))
 	if len(values) != summary.captureArity || outcomes&UnknownExit != 0 {
-		values = unknownReturned(summary.captureArity)
+		values = make([]exitValue, summary.captureArity)
 	}
 	links := summary.invocations.captureBindings(calls.graph)
 	for i, symbol := range summary.invocations.captures {
-		result[links[symbol]] = exitValue(values[i])
+		result[links[symbol]] = values[i]
 	}
 	return result
 }

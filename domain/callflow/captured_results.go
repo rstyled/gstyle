@@ -8,12 +8,12 @@ func bodyCaptureCount(body *exitBody) int {
 }
 
 func (evaluation *exitEvaluation) captureTuple(point exitPoint) string {
-	values := make([]byte, len(evaluation.body.captures))
+	values := make([]exitValue, len(evaluation.body.captures))
 	bindings := evaluation.values[point.values].bindings
 	for i, symbol := range evaluation.body.captures {
-		values[i] = byte(bindings[symbol])
+		values[i] = bindings[symbol]
 	}
-	return string(values)
+	return encodeTuple(values)
 }
 
 func (calls *CallSites) contextCaptureEffects(summary ExitSummary, invocation exitInvocationContext) captureEffects {

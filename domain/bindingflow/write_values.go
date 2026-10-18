@@ -84,6 +84,9 @@ func (q *Query) symbolKind(extensions []pdg.Extension) string {
 }
 
 func shapeValue(value Value) Value {
+	if value.Callables.Known() {
+		return Value{Callables: value.Callables, NonNil: true}
+	}
 	if value.Nil || value.NonNil {
 		return Value{Nil: value.Nil, NonNil: value.NonNil}
 	}
