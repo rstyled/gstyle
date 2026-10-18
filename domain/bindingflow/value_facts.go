@@ -28,6 +28,9 @@ func (q *Query) ValueFacts() (Facts, error) {
 }
 
 func (q *Query) symbolValueFacts() (Facts, error) {
+	if err := q.validateParameterTypes(); err != nil {
+		return Facts{}, err
+	}
 	booleans, err := q.booleanSymbols()
 	if err != nil {
 		return Facts{}, err

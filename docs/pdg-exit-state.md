@@ -131,3 +131,7 @@ Go callback test demonstrates this path. This is a correction of a normal-return
 assumption, not a general termination contract for io.WriteString. Admitted faults in the caller's own operations now use the shared
 operation-effect query and operand-region checks described in
 `docs/pdg-operation-effects.md`. Full exceptional state lowering remains open.
+
+Admitted live cells, exit-time result values and registration loops now use
+[value-aware suffix completions](pdg-unwind-values.md). The broader execution
+and dependency limits above still apply outside that admitted model.

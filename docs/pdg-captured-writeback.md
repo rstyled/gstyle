@@ -34,10 +34,10 @@ for incomplete catalogs.
 
 Writeback restores exact current bindings only for proved single cells. Other
 cells lose exact binding values and update their conservative family histories;
-an older retained loop cell cannot replace the latest binding. Callees with any
-registered defer publish unknown captured postconditions. Deferred registration
-still clears capture facts: it cannot freeze a live cell at registration time.
-Exceptional writeback and unwind-time stores are not modeled by this change.
+an older retained loop cell cannot replace the latest binding.
+[Unwind value analysis](pdg-unwind-values.md) extends these contracts to deferred
+live cells and outcome-specific exceptional postconditions. Explicit deferred
+arguments retain registration snapshots.
 
 ## Operand evaluation
 
@@ -67,7 +67,6 @@ value, a writer supplies definite panic, and a false store supplies definite
 return. No suppression or complexity-ceiling exception is added. Raw aggregate
 and mutation costs of the owned state records remain in the refreshed baseline.
 
-General runtime environments, heap/mod-ref refinement, callbacks, exceptional
-capture state, live deferred cells, deferred named-result writes and concurrent
-semantics remain required work. Finite tests do not establish full-Go lowering or
+General runtime environments, heap/mod-ref refinement, callbacks, general exceptional
+state and concurrent semantics remain required work. Finite tests do not establish full-Go lowering or
 add a new full-language proof.

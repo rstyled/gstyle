@@ -28,7 +28,7 @@ type ExitSummary struct {
 	// It does not certify purity, termination, or absence of I/O.
 	PreservesCallerMemory   bool
 	frameConfined           bool
-	captured                string
+	captured                [2]captureEffects
 	captureArity            int
 	returned                string
 	arity                   int

@@ -42,14 +42,15 @@ func solveExitPass(bodies map[string]*exitBody, summaries ExitSummaries, pass ex
 		for name, body := range bodies {
 			old := summaries[name]
 			ordinary := evaluateBodyResult(body, summaries, false, "")
+			inherited := evaluateBodyResult(body, summaries, true, "")
 			next := ExitSummary{
 				frameConfined:         old.frameConfined,
 				captureArity:          old.captureArity,
-				captured:              pass.returned(old.captured, ordinary.captured),
+				captured:              [2]captureEffects{pass.captureEffects(old.captured[0], ordinary.captured), pass.captureEffects(old.captured[1], inherited.captured)},
 				PreservesCallerMemory: old.PreservesCallerMemory,
 				returned:              pass.returned(old.returned, ordinary.returned), arity: old.arity,
 				Ordinary:      pass.update(old.Ordinary, ordinary.outcomes),
-				DeferredPanic: pass.update(old.DeferredPanic, evaluateBody(body, summaries, true)),
+				DeferredPanic: pass.update(old.DeferredPanic, inherited.outcomes),
 				Receiver:      old.Receiver,
 				invocations:   old.invocations,
 			}

@@ -7,27 +7,36 @@ import (
 )
 
 func (calls *CallSites) capturedWrites(summaries ExitSummaries, ref pdg.Ref, context bindingflow.Evaluation) (map[pdg.Ref]exitValue, bool) {
-	if !calls.confinedTargets(summaries, ref) {
+	return calls.captureModeWrites(summaries, exitInvocationContext{ref: ref, values: context}, Returns)
+}
+
+func (calls *CallSites) captureModeWrites(summaries ExitSummaries, invocation exitInvocationContext, mode Outcomes) (map[pdg.Ref]exitValue, bool) {
+	if !calls.confinedTargets(summaries, invocation.ref) {
 		return nil, false
 	}
 	var alternatives []map[pdg.Ref]exitValue
-	for _, name := range calls.targets[ref].names {
-		invocation := exitInvocationContext{ref: ref, values: context}
+	for _, name := range calls.targets[invocation.ref].names {
 		outcomes := calls.targetWithValues(name, summaries, invocation)
-		if outcomes&(Returns|UnknownExit) != 0 {
-			alternatives = append(alternatives, calls.targetCaptureWrites(name, summaries, invocation, outcomes))
+		if outcomes&(mode|UnknownExit) != 0 {
+			alternatives = append(alternatives, calls.targetCaptureModeWrites(name, summaries, captureProjection{invocation: invocation, outcomes: outcomes, mode: mode}))
 		}
 	}
-	return joinCaptureWrites(alternatives, context.Bindings), true
+	return joinCaptureWrites(alternatives, invocation.values.Bindings), true
 }
 
-func (calls *CallSites) targetCaptureWrites(name string, summaries ExitSummaries, invocation exitInvocationContext, outcomes Outcomes) map[pdg.Ref]exitValue {
+type captureProjection struct {
+	invocation     exitInvocationContext
+	outcomes, mode Outcomes
+}
+
+func (calls *CallSites) targetCaptureModeWrites(name string, summaries ExitSummaries, projection captureProjection) map[pdg.Ref]exitValue {
+	invocation, outcomes, mode := projection.invocation, projection.outcomes, projection.mode
 	summary := summaries[name]
 	result := map[pdg.Ref]exitValue{}
 	if targetPreservesMemory(name, summaries) || summary.captureArity == 0 {
 		return result
 	}
-	values := calls.contextCaptured(summary, invocation)
+	values := calls.captureModeTuple(summary, invocation, mode)
 	if len(values) != summary.captureArity || outcomes&UnknownExit != 0 {
 		values = unknownReturned(summary.captureArity)
 	}

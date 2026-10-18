@@ -23,7 +23,7 @@ not a new formal proof.
 
 This change improves exit queries. It does not publish inferred results as
 compiler constants or prune every result-controlled branch in the canonical
-normal graph. Named results with registered defers remain unknown. Deferred
-closures can retain UnknownExit; recovered returns without an explicit return
-have unknown results. Heap state, arbitrary values, tuple correlations and full
-deferred result-state execution remain open.
+normal graph. [Unwind value analysis](pdg-unwind-values.md) now handles admitted
+live captures, named result writes, saved unnamed results and recovered zeros.
+Missing closure catalogs still retain UnknownExit. Heap state, arbitrary values,
+tuple correlations and general deferred execution remain open.

@@ -14,7 +14,7 @@ type exitInvocationContext struct {
 type exitInvocation struct {
 	Ordinary, DeferredPanic Outcomes
 	returned                string
-	captured                string
+	captured                [2]captureEffects
 }
 
 type exitInvocations struct {
@@ -142,11 +142,12 @@ func solveInputPass(body *exitBody, summaries ExitSummaries, invocations *exitIn
 	changed := false
 	for key, old := range invocations.states {
 		ordinary := evaluateBodyResult(body, summaries, false, key)
+		inherited := evaluateBodyResult(body, summaries, true, key)
 		next := exitInvocation{
-			captured:      pass.returned(old.captured, ordinary.captured),
+			captured:      [2]captureEffects{pass.captureEffects(old.captured[0], ordinary.captured), pass.captureEffects(old.captured[1], inherited.captured)},
 			returned:      pass.returned(old.returned, ordinary.returned),
 			Ordinary:      pass.update(old.Ordinary, ordinary.outcomes),
-			DeferredPanic: pass.update(old.DeferredPanic, evaluateBodyInputs(body, summaries, true, key)),
+			DeferredPanic: pass.update(old.DeferredPanic, inherited.outcomes),
 		}
 		if old == next {
 			continue

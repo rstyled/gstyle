@@ -30,9 +30,9 @@ func TestCallResultFacts(t *testing.T) {
 		{"unnamed closure defer remains unknown", `if !value(){panic("bad")}`, `func value()bool{flag:=true;defer func(){flag=false}();return flag}`, callflow.UnknownExit},
 		{"named closure defer remains unknown", `if value(){panic("yes")}`, `func value()(flag bool){defer func(){flag=true}();return false}`, callflow.UnknownExit},
 		{"unnamed snapshot with defer", `if !value(){panic("bad")}`, `func value()bool{defer noop();return true};func noop(){}`, callflow.Returns},
-		{"named result with defer stays unknown", `if value(){panic("maybe")}`, `func value()(flag bool){defer noop();return false};func noop(){}`, callflow.Returns | callflow.Panics},
+		{"named result survives no-op defer", `if value(){panic("maybe")}`, `func value()(flag bool){defer noop();return false};func noop(){}`, callflow.Returns},
 		{"unknown prefix", `if value(){panic("maybe")}`, `var foreign func();func value()bool{foreign();return false}`, callflow.UnknownExit},
-		{"recovered panic stays unknown", `if value(){panic("maybe")}`, `func value()bool{defer absorb();panic("caught")};func absorb(){recover()}`, callflow.Returns | callflow.Panics},
+		{"recovered panic returns zero", `if value(){panic("maybe")}`, `func value()bool{defer absorb();panic("caught")};func absorb(){recover()}`, callflow.Returns},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			extraction, _ := proofExtraction(t, `package example;var choose bool;func f(){`+tc.body+`};`+tc.helpers)

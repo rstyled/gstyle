@@ -75,20 +75,13 @@ func (evaluation *exitEvaluation) transferValues(point exitPoint, ref pdg.Ref) e
 		return point
 	}
 	point = evaluation.captureValues(point, ref)
-	writes := evaluation.body.paths.WriteValues(ref, evaluation.valueContext(point))
-	if len(writes) == 0 {
-		return point
-	}
-	values := evaluation.values[point.values]
-	next := exitValues{bindings: nextValueBindings(values.bindings, writes), nodes: values.nodes, tuples: values.tuples, cells: evaluation.nextCellValues(values.cells, writes), unorderedReads: values.unorderedReads}
-	point.values = evaluation.internValues(next)
-	return point
+	return evaluation.rawValueTransfer(point, ref)
 }
 
-func (evaluation *exitEvaluation) successors(point exitPoint, block pdg.FlowBlock) Outcomes {
+func (evaluation *exitEvaluation) successors(point exitPoint, block pdg.FlowBlock) completions {
 	truth, known := evaluation.body.paths.Evaluate(block.Condition, evaluation.valueContext(point)).Bool()
 	evaluation.observeCondition(block.Condition, truth, known)
-	var result Outcomes
+	result := completions{}
 	for arm, successor := range block.Successors {
 		if known && len(block.Successors) == 2 && truth != (arm == 0) {
 			continue
@@ -98,7 +91,7 @@ func (evaluation *exitEvaluation) successors(point exitPoint, block pdg.FlowBloc
 			next = evaluation.assumeCondition(next, block.Condition, arm == 0)
 		}
 		next.block, next.offset = successor, 0
-		result |= evaluation.visit(next)
+		result.add(evaluation.visit(next))
 	}
 	return result
 }

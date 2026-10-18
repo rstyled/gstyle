@@ -113,6 +113,12 @@ func (calls *CallSites) resolvedSiteWrites(ref pdg.Ref) bool {
 }
 
 func targetPreservesMemory(name string, summaries ExitSummaries) bool {
+	// These canonical termination boundaries use the caller's
+	// explicit completion flow; their own bookkeeping does not store Go cells.
+	switch name {
+	case "runtime.Goexit", "os.Exit":
+		return true
+	}
 	if summary, found := summaries[name]; found {
 		return summary.PreservesCallerMemory
 	}

@@ -5,24 +5,10 @@ import (
 	"github.com/rstyled/gstyle/domain/pdg"
 )
 
-func (evaluation *exitEvaluation) returnAt(point exitPoint, ref pdg.Ref) Outcomes {
-	result := finishExit(point, Returns)
-	if result&Returns != 0 {
-		evaluation.returned = joinReturned(evaluation.returned, evaluation.returnTuple(point, ref))
-		evaluation.captured = joinReturned(evaluation.captured, evaluation.captureTuple(point))
-	}
-	return result
-}
-
-// Recovery/unmodeled unwinding can finish without an explicit return. Its
-// result state is not certified by a syntactic return expression.
-func (evaluation *exitEvaluation) finish(point exitPoint, outcomes Outcomes) Outcomes {
-	result := finishExit(point, outcomes)
-	if result&Returns != 0 {
-		evaluation.returned = joinReturned(evaluation.returned, unknownReturned(bodyResultCount(evaluation.body)))
-		evaluation.captured = joinReturned(evaluation.captured, unknownReturned(len(evaluation.body.captures)))
-	}
-	return result
+func (evaluation *exitEvaluation) returnAt(point exitPoint, ref pdg.Ref) completions {
+	returned := evaluation.returnTuple(point, ref)
+	point = evaluation.assignReturnSlots(point, returned)
+	return completions{{values: point.values, returned: returned, mode: Returns, recovered: point.recovered}: true}
 }
 
 func (evaluation *exitEvaluation) returnTuple(point exitPoint, ref pdg.Ref) string {
@@ -30,9 +16,6 @@ func (evaluation *exitEvaluation) returnTuple(point exitPoint, ref pdg.Ref) stri
 	values := make([]byte, len(outputs))
 	context := evaluation.valueContext(point)
 	for i, output := range outputs {
-		if point.deferred && output.Symbol != 0 {
-			continue
-		}
 		value := evaluation.returnSlot(ref, pdg.Position(i+1), output.Symbol, context)
 		values[i] = byte(abstractValue(value))
 	}

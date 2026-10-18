@@ -38,7 +38,7 @@ func TestCapturedWritesComposeNormalState(t *testing.T) {
 		{"unconfined global writer", `flag:=false;func(){global=true;flag=true}();if flag{panic("maybe")}`, "", callflow.Returns | callflow.Panics},
 		{"global storage cannot be private", `global=false;func(){global=true}();if !global{panic("bad")}`, "", callflow.Returns | callflow.Panics},
 		{"unconfined indirect writer", `flag:=false;func(){p:=&flag;*p=true}();if flag{panic("maybe")}`, "", callflow.Returns | callflow.Panics},
-		{"deferred state remains unknown", `flag:=false;func(){defer func(){flag=false}();flag=true}();if flag{panic("maybe")}`, "", callflow.Returns | callflow.Panics},
+		{"deferred state reaches caller", `flag:=false;func(){defer func(){flag=false}();flag=true}();if flag{panic("maybe")}`, "", callflow.Returns},
 		{"ordinary named output", `if !value(){panic("bad")}`, `func value()(flag bool){func(){flag=true}();return}`, callflow.Returns},
 		{"outer parameter cell", `outer(false)`, `func outer(flag bool){func(){flag=true}();if flag{panic("certain")}}`, callflow.Panics},
 		{"private nested cell", `flag:=false;helper();if flag{panic("bad")}`, `func helper(){local:=false;func(){local=true}();_=local}`, callflow.Returns},

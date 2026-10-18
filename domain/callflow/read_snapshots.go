@@ -69,7 +69,7 @@ func (evaluation *exitEvaluation) unorderedReadBarrier(point exitPoint, ref pdg.
 	}
 	values := evaluation.values[point.values]
 	next := values
-	next.nodes = cloneReadNodes(values.nodes)
+	next.nodes = cloneValueMap(values.nodes)
 	next.unorderedReads = cloneReadBarriers(values.unorderedReads)
 	for _, candidate := range operations.members[operations.regions[ref]] {
 		if !operations.unorderedRead(candidate, ref) {
@@ -90,7 +90,7 @@ func (operations *OperationEffects) unorderedRead(candidate, call pdg.Ref) bool 
 	return !operations.mustBefore(candidate, call, group) && !operations.mustAfter(candidate, call, group)
 }
 
-func cloneReadNodes(values map[pdg.Ref]exitValue) map[pdg.Ref]exitValue {
+func cloneValueMap(values map[pdg.Ref]exitValue) map[pdg.Ref]exitValue {
 	result := map[pdg.Ref]exitValue{}
 	maps.Copy(result, values)
 	return result
