@@ -274,6 +274,9 @@ func FindTaintFlows(facts []*MiningFacts) []TaintFlow {
 }
 
 func taintFlowsForFunction(f *MiningFacts) []TaintFlow {
+	copy := *f
+	copy.Pdg = taintView(f)
+	f = &copy
 	var out []TaintFlow
 	taintByRisk := map[string]map[int]bool{}
 	for i, n := range f.Pdg.Nodes {

@@ -7,9 +7,10 @@ import (
 )
 
 type stateKey struct {
-	aliases string
-	point   point
-	stack   deferflow.StateKey
+	errorSymbol pdg.Ref
+	aliases     string
+	point       point
+	stack       deferflow.StateKey
 }
 
 type proof struct {
@@ -21,9 +22,9 @@ type proof struct {
 
 func (p *proof) walk(site point, machine deferflow.Machine[bool]) bool {
 	if p.active[site] {
-		return false
+		return p.recognizesLoopCleanup(site, machine)
 	}
-	key := stateKey{point: site, stack: machine.StateKey(), aliases: aliasKey(p.policy.aliases)}
+	key := stateKey{point: site, stack: machine.StateKey(), aliases: aliasKey(p.policy.aliases), errorSymbol: p.policy.AcquisitionError}
 	if result, known := p.completed[key]; known {
 		return result
 	}
@@ -72,14 +73,13 @@ func (p *proof) successors(block pdg.FlowBlock, machine deferflow.Machine[bool],
 }
 
 func (p *proof) operation(ref pdg.Ref, machine *deferflow.Machine[bool], unstable *bool) int {
-	q := p.query
 	if !p.priorOperationEffects(ref, *machine) {
 		return -1
 	}
 	if step := p.actionStep(ref, *machine); step != 0 {
 		return step
 	}
-	if q.invalidates(ref, p.policy) {
+	if p.invalidated(ref, *machine) {
 		return -1
 	}
 	if site, registration := machine.Site(ref); registration {
@@ -124,10 +124,11 @@ func (p *proof) exitOperation(ref pdg.Ref, machine deferflow.Machine[bool], unst
 }
 
 func (p *proof) operationOutcomes(ref pdg.Ref) callflow.Outcomes {
-	if p.query.resource(p.query.paths.Operand(ref, 1), p.policy) {
-		return p.query.operations.OutcomesWithNonNilInput(ref)
+	input := p.query.paths.Operand(ref, 1)
+	if p.query.resource(input, p.policy) || p.nonNilCleanupOwner(input) {
+		return p.cleanupOutcomes(p.query.operations.OutcomesWithNonNilInput(ref))
 	}
-	return p.query.operations.Outcomes(ref)
+	return p.cleanupOutcomes(p.query.operations.Outcomes(ref))
 }
 
 func (p *proof) priorOperationEffects(ref pdg.Ref, machine deferflow.Machine[bool]) bool {
@@ -136,7 +137,8 @@ func (p *proof) priorOperationEffects(ref pdg.Ref, machine deferflow.Machine[boo
 	}
 	candidates, known := p.query.operations.PriorOperations(ref)
 	if !known {
-		return false
+		// Missing evaluation-region evidence cannot establish that a saved defer is absent.
+		return p.policy.recognizeDeferred
 	}
 	for _, candidate := range candidates {
 		if p.outcomeStep(p.operationOutcomes(candidate), machine) < 0 {
@@ -153,6 +155,10 @@ func (p *proof) advanceOperation(ref pdg.Ref, machine deferflow.Machine[bool], u
 		p.assignAliases(ref)
 	}
 	return result
+}
+
+func (p *proof) nonNilCleanupOwner(ref pdg.Ref) bool {
+	return p.policy.recognizeDeferred && len(p.policy.resourceFields) != 0 && ownedSymbol(p.query.symbol(ref), p.policy)
 }
 
 func (q *Query) After(owner pdg.Ref, policy Policy) bool {

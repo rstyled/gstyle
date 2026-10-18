@@ -54,6 +54,7 @@ func miningFacts(f *FuncFacts) *MiningFacts {
 		Params:              f.Params,
 		Pdg:                 MiningView(f.Pdg),
 
+		DeferredReleaseLines:     f.DeferredReleaseLines,
 		SuccessReturnOutputSites: f.SuccessReturnOutputSites,
 	}
 }

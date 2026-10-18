@@ -1,6 +1,8 @@
 package resourceflow
 
 import (
+	"strings"
+
 	"github.com/rstyled/gstyle/domain/deferflow"
 	"github.com/rstyled/gstyle/domain/pdg"
 )
@@ -39,7 +41,7 @@ func (p *proof) deferredAction(invocation deferflow.Invocation[bool]) bool {
 }
 
 func (q *Query) deferredRelease(invocation deferflow.Invocation[bool], policy Policy) bool {
-	if q.closeMethod(invocation.Node) {
+	if q.cleanupMethod(invocation.Node, policy) {
 		if q.methodExpression(invocation.Node) {
 			return savedSingleArgument(invocation.Captures)
 		}
@@ -67,6 +69,13 @@ func (q *Query) deferredReturns(ref pdg.Ref) bool {
 	}
 	name := q.graph.Tables.Text(attrs.Callee.Value)
 	return name == "print" || name == "println"
+}
+
+func (q *Query) cleanupMethod(ref pdg.Ref, policy Policy) bool {
+	if policy.recognizeDeferred {
+		return strings.HasSuffix(q.methods[ref], "."+policy.releaseMethod)
+	}
+	return q.closeMethod(ref)
 }
 
 func savedSingleArgument(captures []deferflow.SavedCapture[bool]) bool {

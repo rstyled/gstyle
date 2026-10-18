@@ -105,7 +105,7 @@ func (q *Query) carrierOperation(ref pdg.Ref) bool {
 }
 
 func (p *proof) actionStep(ref pdg.Ref, machine deferflow.Machine[bool]) int {
-	if p.query.releaseCall(ref, p.policy) {
+	if p.directRelease(ref) {
 		return 1
 	}
 	if !p.policy.TransferCalls {
@@ -121,6 +121,10 @@ func (p *proof) actionStep(ref pdg.Ref, machine deferflow.Machine[bool]) int {
 		return -1
 	}
 	return 1
+}
+
+func (p *proof) directRelease(ref pdg.Ref) bool {
+	return !p.policy.recognizeDeferred && p.query.releaseCall(ref, p.policy)
 }
 
 func capturedHandoff(capture deferflow.SavedCapture[bool], positions []pdg.Position) bool {

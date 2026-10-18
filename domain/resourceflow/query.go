@@ -6,6 +6,7 @@ package resourceflow
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/rstyled/gstyle/domain/bindingflow"
@@ -15,6 +16,10 @@ import (
 )
 
 type Policy struct {
+	// recognizeDeferred is advisory presence evidence, never a release proof.
+	recognizeDeferred          bool
+	releaseMethod              string
+	resourceFields             []uint32
 	aliases                    map[pdg.Ref]bool
 	Resource, AcquisitionError pdg.Ref
 	TransferReturn             bool
@@ -131,6 +136,10 @@ func (q *Query) symbol(ref pdg.Ref) pdg.Ref {
 }
 
 func (q *Query) resource(ref pdg.Ref, policy Policy) bool {
+	if policy.recognizeDeferred {
+		path := q.paths.Path(ref, q.facts)
+		return ownedSymbol(path.Root, policy) && slices.Equal(path.Fields, policy.resourceFields)
+	}
 	return ownedSymbol(q.symbol(ref), policy)
 }
 

@@ -158,7 +158,7 @@ func externalExitOutcomes(name string) Outcomes {
 	switch name {
 	case "recover", "len", "cap", "complex", "real", "imag", "min", "max", "print", "println", "errors.New", "strings.TrimSpace", "path.Clean":
 		return Returns
-	case "append", "clear", "close", "copy", "delete", "make", "new":
+	case "append", "clear", "close", "copy", "delete", "make", "new", "os.File.Close":
 		return Returns | Panics
 	default:
 		return UnknownExit

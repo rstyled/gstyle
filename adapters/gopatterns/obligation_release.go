@@ -99,13 +99,18 @@ func (a fileReleaseAnalysis) acquisitionError(ref pdg.Ref, call *ast.CallExpr) p
 }
 
 func fileObligationFacts(pkg *packages.Package, fn *ast.FuncDecl, ctx extractCtx, graph *pdg.Graph) ([]int, []patterns.ResourceAcquisition, error) {
+	released, sites, _, err := resourceObligationFacts(pkg, fn, ctx, graph)
+	return released, sites, err
+}
+
+func resourceObligationFacts(pkg *packages.Package, fn *ast.FuncDecl, ctx extractCtx, graph *pdg.Graph) ([]int, []patterns.ResourceAcquisition, []int, error) {
 	facts, err := newReleaseGraph(graph, pkg.Fset)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	analysis := fileReleaseAnalysis{exits: ctx.exits, sources: releaseHelperIdentities(ctx.fileSources), failures: releaseHelperIdentities(ctx.fileFailures), pkg: pkg, fn: fn, graph: facts, helpers: releaseHelperIdentities(ctx.helpers)}
 	released, sites := analysis.facts()
-	return released, sites, nil
+	return released, sites, recognizedDeferredLines(graph, facts.query, ctx.exits), nil
 }
 
 func releaseHelperIdentities(helpers map[types.Object]bool) map[string]bool {
@@ -116,4 +121,20 @@ func releaseHelperIdentities(helpers map[types.Object]bool) map[string]bool {
 		}
 	}
 	return identities
+}
+
+func recognizedDeferredLines(graph *pdg.Graph, query *resourceflow.Query, exits callflow.ExitSummaries) []int {
+	var lines []int
+	for i, node := range graph.Nodes {
+		if node.Category != pdg.Call {
+			continue
+		}
+		attrs := graph.NodeAttributes(node)
+		method, field, receiver := patterns.AcquisitionRelease(graph.Tables.Text(attrs.Callee.Value))
+		rule := resourceflow.CleanupRule{Method: method, Field: field, Receiver: receiver}
+		if method != "" && query.RecognizesDeferredCleanup(pdg.Ref(i+1), rule, exits) {
+			lines = append(lines, int(node.Line))
+		}
+	}
+	return lines
 }

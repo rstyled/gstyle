@@ -27,6 +27,8 @@ import (
 type FuncPdg struct {
 	// SuccessReturnOutputSites are zero-based ErrorCheckSites indices followed directly by a nil error return.
 	SuccessReturnOutputSites []int
+	// DeferredReleaseLines have explicit cleanup on modeled exits, with foreign calls unproved.
+	DeferredReleaseLines []int
 	// ReleasedFileLines are typed file acquisitions closed or returned on every normal success path.
 	ReleasedFileLines   []int
 	FileObligationSites []patterns.ResourceAcquisition
@@ -460,7 +462,7 @@ func extractFunc(pkg *packages.Package, source functionGraph, ctx extractCtx) (F
 	if err != nil {
 		return FuncPdg{}, err
 	}
-	releasedFiles, fileSites, err := fileObligationFacts(pkg, fn, ctx, graph)
+	releasedFiles, fileSites, deferredLines, err := resourceObligationFacts(pkg, fn, ctx, graph)
 	if err != nil {
 		return FuncPdg{}, err
 	}
@@ -509,6 +511,7 @@ func extractFunc(pkg *packages.Package, source functionGraph, ctx extractCtx) (F
 		ReleasedFileLines:   releasedFiles,
 		FileObligationSites: fileSites,
 
+		DeferredReleaseLines:     deferredLines,
 		SuccessReturnOutputSites: successReturnSites,
 	}, nil
 }

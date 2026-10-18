@@ -8,7 +8,7 @@ import (
 
 func (p *proof) callStep(ref pdg.Ref, machine deferflow.Machine[bool]) int {
 	outcomes := p.query.calls.Outcomes(p.policy.Exits, ref, false)
-	return p.outcomeStep(outcomes, machine)
+	return p.outcomeStep(p.cleanupOutcomes(outcomes), machine)
 }
 
 func (p *proof) outcomeStep(outcomes callflow.Outcomes, machine deferflow.Machine[bool]) int {
@@ -65,6 +65,16 @@ func (p *proof) deferredOutcomes(machine deferflow.Machine[bool], outcomes callf
 		}
 	}
 	return true
+}
+
+// Unknown foreign calls do not establish that a registered defer is absent.
+// Advisory recognition checks return/panic continuations, while known aborts,
+// divergence, and deferred unknown calls still block recognition.
+func (p *proof) cleanupOutcomes(outcomes callflow.Outcomes) callflow.Outcomes {
+	if p.policy.recognizeDeferred && outcomes&callflow.UnknownExit != 0 {
+		return outcomes&^callflow.UnknownExit | callflow.Returns | callflow.Panics
+	}
+	return outcomes
 }
 
 func usableOutcomes(outcomes callflow.Outcomes) bool {

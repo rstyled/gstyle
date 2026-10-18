@@ -75,7 +75,7 @@ func cleanup(f io.WriteCloser) error { ` + tc.helper + ` }
 			var facts []*patterns.FuncFacts
 			for i := range functions {
 				fp := &functions[i]
-				facts = append(facts, &patterns.FuncFacts{ID: fp.Name, Name: fp.Name, Path: fp.Path, Pdg: &fp.Pdg, ReleasedFileLines: fp.ReleasedFileLines})
+				facts = append(facts, &patterns.FuncFacts{ID: fp.Name, Name: fp.Name, Path: fp.Path, Pdg: &fp.Pdg, ReleasedFileLines: fp.ReleasedFileLines, DeferredReleaseLines: fp.DeferredReleaseLines})
 			}
 			report := patterns.Run(facts, patterns.Options{})
 			count := 0

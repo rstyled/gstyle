@@ -182,6 +182,7 @@ func funcFactsOf(fp gopatterns.FuncPdg) *patterns.FuncFacts {
 		SuppressedKinds:     fp.SuppressedKinds,
 		Params:              fp.Params,
 
+		DeferredReleaseLines:     fp.DeferredReleaseLines,
 		SuccessReturnOutputSites: fp.SuccessReturnOutputSites,
 	}
 }
