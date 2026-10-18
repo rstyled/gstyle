@@ -11,8 +11,9 @@ import (
 )
 
 type referenceBinding struct {
-	values  []ast.Expr
-	unknown bool
+	values   []ast.Expr
+	unknown  bool
+	appended bool
 }
 
 // Bindings retain all possible assignments. Provenance is conservative across
@@ -51,9 +52,30 @@ func (x *extractor) bindAssignments(places, values []ast.Expr) {
 		}
 		value := assignmentValue(values, index, len(places))
 		binding := x.bindings[object]
-		binding.values = append(binding.values, value)
+		if x.appendSelfAssignment(object, value) {
+			binding.appended = true
+		} else {
+			binding.values = append(binding.values, value)
+		}
 		x.bindings[object] = binding
 	}
+}
+
+func (x *extractor) appendSelfAssignment(object types.Object, value ast.Expr) bool {
+	call, ok := ast.Unparen(value).(*ast.CallExpr)
+	if !ok {
+		return false
+	}
+	id, ok := unwrappedCallee(call.Fun).(*ast.Ident)
+	if !ok {
+		return false
+	}
+	builtin, ok := x.pkg.TypesInfo.ObjectOf(id).(*types.Builtin)
+	if !ok || builtin.Name() != "append" {
+		return false
+	}
+	target, ok := ast.Unparen(call.Args[0]).(*ast.Ident)
+	return ok && x.pkg.TypesInfo.ObjectOf(target) == object
 }
 
 func (x *extractor) addressBinding(value *ast.UnaryExpr) {
@@ -179,18 +201,18 @@ func (x *extractor) origin(value ast.Expr, seen map[types.Object]bool) quality.P
 	case *ast.SliceExpr:
 		return x.sliceOrigin(value, seen)
 	default:
-		return x.constructedOrigin(value)
+		return x.constructedOrigin(value, seen)
 	}
 }
 
-func (x *extractor) constructedOrigin(value ast.Expr) quality.Provenance {
+func (x *extractor) constructedOrigin(value ast.Expr, seen map[types.Object]bool) quality.Provenance {
 	switch value := value.(type) {
 	case *ast.UnaryExpr:
 		return x.addressOrigin(value)
 	case *ast.CompositeLit:
 		return quality.Local
 	case *ast.CallExpr:
-		return x.allocationOrigin(value)
+		return x.allocationOrigin(value, seen)
 	case *ast.SelectorExpr:
 		return x.fieldOrigin(value)
 	default:
@@ -224,19 +246,27 @@ func (x *extractor) sliceOrigin(value *ast.SliceExpr, seen map[types.Object]bool
 	return x.origin(value.X, seen)
 }
 
-func (x *extractor) allocationOrigin(call *ast.CallExpr) quality.Provenance {
-	id, ok := unwrappedCallee(call.Fun).(*ast.Ident)
-	if !ok {
-		return quality.Unknown
-	}
-	builtin, ok := x.pkg.TypesInfo.ObjectOf(id).(*types.Builtin)
-	// append is locally owned: it either reuses the first argument's backing
-	// array (whose provenance is tracked separately through the binding values)
-	// or allocates a fresh one. It never introduces external sharing by itself.
-	if ok && (builtin.Name() == "make" || builtin.Name() == "new" || builtin.Name() == "append") {
-		return quality.Local
+func (x *extractor) allocationOrigin(call *ast.CallExpr, seen map[types.Object]bool) quality.Provenance {
+	switch object := x.calledObject(unwrappedCallee(call.Fun)).(type) {
+	case *types.Builtin:
+		return x.builtinAllocationOrigin(call, object.Name(), seen)
+	case *types.Func:
+		if quality.ContainerClone(resolvedName(object)) {
+			return quality.Local
+		}
 	}
 	return quality.Unknown
+}
+
+func (x *extractor) builtinAllocationOrigin(call *ast.CallExpr, name string, seen map[types.Object]bool) quality.Provenance {
+	switch name {
+	case "make", "new":
+		return quality.Local
+	case "append":
+		return appendOrigin(x.origin(call.Args[0], seen))
+	default:
+		return quality.Unknown
+	}
 }
 
 func (x *extractor) objectOrigin(object types.Object, seen map[types.Object]bool) quality.Provenance {
@@ -274,7 +304,19 @@ func (x *extractor) bindingOrigin(binding referenceBinding, seen map[types.Objec
 			return quality.Unknown
 		}
 	}
+	if binding.appended {
+		return appendOrigin(result)
+	}
 	return result
+}
+
+// An append result can reuse its input or allocate. Only local input proves
+// local output; shared or unknown input leaves the result's ownership unknown.
+func appendOrigin(input quality.Provenance) quality.Provenance {
+	if input == quality.Local {
+		return quality.Local
+	}
+	return quality.Unknown
 }
 
 func assignmentValue(values []ast.Expr, index, placeCount int) ast.Expr {
