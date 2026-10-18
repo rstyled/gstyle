@@ -242,3 +242,13 @@ Locations use line numbers. Columns are omitted because Go uses byte offsets,
 which SARIF does not support. Unknown line numbers are omitted.
 `check` also supports SARIF with `--facts-in` and `--changed`.
 See [SARIF verification](verification/sarif/README.md) for schema and test details.
+
+### Security flow checks
+
+`gstyle patterns` also reports advisory security data flows. The checks use typed
+Go call identities and per-function PDG dependencies. JSON candidates include a
+`security` rule ID and CWE; SARIF uses the security rule ID. A reported path needs
+review, and no findings do not establish that the code is secure.
+
+See the [labeled SAST baseline](verification/sast/README.md) for supported API
+boundaries, safe controls, and known gaps. Run `make verify-sast` to reproduce it.

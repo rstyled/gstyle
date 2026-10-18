@@ -22,55 +22,6 @@ import (
 // depends on context (parameterize the query? escape the output? validate
 // the path?), so the LLM judges.
 
-// taintSourceSuffixes are CalleeID suffixes whose result is tainted.
-var taintSourceSuffixes = []string{
-	// HTTP request input.
-	"(*url.Values).Get", // r.URL.Query().Get("x")
-	"(*http.Request).FormValue",
-	"(*http.Header).Get", // r.Header.Get("x")
-	// OS input.
-	"os.Getenv",
-	// I/O: result tainted (conservative: assume the reader is untrusted).
-	"io.ReadAll",
-	"ioutil.ReadAll",
-}
-
-// taintSink describes a dangerous operation and which argument positions
-// must not receive tainted data. A nil dangerousArgs means any argument.
-type taintSink struct {
-	// callee is a CalleeID suffix, e.g. "(*sql.DB).Exec".
-	callee string
-	// dangerousArgs are the ArgPos values that must be clean. Nil = any.
-	// Note: for method calls the receiver is ArgPos 0, so the first
-	// real argument is ArgPos 1.
-	dangerousArgs []int
-	// desc is the human-readable risk, e.g. "SQL injection".
-	desc string
-}
-
-// taintSinks is the hardcoded sink list.
-var taintSinks = []taintSink{
-	// SQL: only the query string is dangerous (ArgPos 1; ArgPos 0 is the
-	// receiver). Tainted query parameters (ArgPos 2+) are the safe
-	// parameterized pattern — do NOT flag those.
-	{callee: "(*sql.DB).Exec", dangerousArgs: []int{1}, desc: "SQL injection"},
-	{callee: "(*sql.DB).Query", dangerousArgs: []int{1}, desc: "SQL injection"},
-	{callee: "(*sql.DB).QueryRow", dangerousArgs: []int{1}, desc: "SQL injection"},
-	{callee: "(*sql.Tx).Exec", dangerousArgs: []int{1}, desc: "SQL injection"},
-	{callee: "(*sql.Tx).Query", dangerousArgs: []int{1}, desc: "SQL injection"},
-	{callee: "(*sql.Conn).Exec", dangerousArgs: []int{1}, desc: "SQL injection"},
-	// Shell: any tainted argument is dangerous.
-	{callee: "exec.Command", desc: "command injection"},
-	{callee: "exec.CommandContext", desc: "command injection"},
-	// Templates: the data argument (ArgPos 2; receiver 0, writer 1).
-	{callee: "(*template.Template).Execute", dangerousArgs: []int{2}, desc: "XSS"},
-	// File paths: the path argument.
-	{callee: "os.Open", dangerousArgs: []int{0}, desc: "path traversal"},
-	{callee: "os.Create", dangerousArgs: []int{0}, desc: "path traversal"},
-	{callee: "os.WriteFile", dangerousArgs: []int{0}, desc: "path traversal"},
-	{callee: "ioutil.WriteFile", dangerousArgs: []int{0}, desc: "path traversal"},
-}
-
 type taintPropagation struct {
 	graph   *MiningGraph
 	tainted map[int]bool
@@ -113,8 +64,8 @@ func (n PdgNode) isTaintSource() bool {
 	if n.Kind != Call {
 		return false
 	}
-	for _, s := range taintSourceSuffixes {
-		if taintCalleeMatches(n.CalleeID, s) {
+	for _, s := range taintSources {
+		if n.CalleeID == s {
 			return true
 		}
 	}
@@ -127,7 +78,7 @@ func (n PdgNode) matchTaintSink() *taintSink {
 		return nil
 	}
 	for i := range taintSinks {
-		if taintCalleeMatches(n.CalleeID, taintSinks[i].callee) {
+		if n.CalleeID == taintSinks[i].callee {
 			return &taintSinks[i]
 		}
 	}
@@ -139,7 +90,7 @@ func (n PdgNode) sanitizesRisk(risk string) bool {
 		return false
 	}
 	if risk == "XSS" {
-		return taintCalleeMatches(n.CalleeID, "html.EscapeString") || taintCalleeMatches(n.CalleeID, "template.HTMLEscapeString")
+		return n.CalleeID == "html.EscapeString" || n.CalleeID == "html/template.HTMLEscapeString"
 	}
 	// URL escaping is not SQL, shell or filesystem validation. Numeric parse
 	// results are typed numbers; error/string outputs require result-position proof.
@@ -322,6 +273,7 @@ func TaintFlowCandidates(flows []TaintFlow, facts []*MiningFacts) []Candidate {
 		}
 		out = append(out, Candidate{
 			Kind:       TaintFlowKind,
+			Security:   securityForRisk(fl.Risk),
 			Analysis:   analysisEvidence(f, TaintFlowKind, fl.SourceNode, fl.SinkNode),
 			ScoreMilli: 900, // Prioritize recorded source-to-sink paths for review.
 			Observation: fmt.Sprintf(
@@ -348,11 +300,6 @@ func shortCallee(id string) string {
 		return id
 	}
 	return strings.Join(parts[len(parts)-2:], ".")
-}
-
-func taintCalleeMatches(callee, pattern string) bool {
-	canonical := strings.ReplaceAll(strings.ReplaceAll(pattern, "(*", ""), ").", ".")
-	return strings.HasSuffix(callee, pattern) || strings.HasSuffix(callee, canonical)
 }
 
 func taintSourceLocation(graph *MiningGraph, index int) (int, string) {
