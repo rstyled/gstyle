@@ -74,7 +74,7 @@ func (r *callResolver) helper(name string, helper Helper) callSummary {
 }
 
 func (call Call) classifiedCall(kind Kind) callSummary {
-	if kind == None {
+	if kind == None || (kind == MutationEffect && call.HasLocalContainerTarget()) {
 		return callSummary{}
 	}
 	unknown := 0

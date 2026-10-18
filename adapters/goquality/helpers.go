@@ -99,7 +99,8 @@ func observableMutations(mutations []quality.Mutation) bool {
 }
 func readOnlyCalls(calls []quality.Call, proven map[string]bool) bool {
 	for _, call := range calls {
-		if call.Dynamic || !proven[quality.NormalizeCallee(call.Callee)] {
+		known := proven[quality.NormalizeCallee(call.Callee)] || quality.ContainerClone(call.Callee) || call.HasLocalContainerTarget()
+		if call.Dynamic || !known {
 			return false
 		}
 	}

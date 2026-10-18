@@ -25,13 +25,20 @@ func (x *extractor) call(call *ast.CallExpr) {
 	var fact quality.Call
 	switch object := object.(type) {
 	case *types.Func:
-		fact = quality.Call{Line: line, Callee: resolvedName(object), Local: object.Pkg() == x.pkg.Types, Dynamic: interfaceCall(x.pkg.TypesInfo, fun), Args: args}
+		fact = quality.Call{Line: line, Callee: resolvedName(object), Local: object.Pkg() == x.pkg.Types, Dynamic: interfaceCall(x.pkg.TypesInfo, fun), Args: args, MutationTarget: x.containerMutationTarget(object, call.Args)}
 	case *types.Var:
 		fact = quality.Call{Line: line, Callee: object.Name(), Dynamic: true, Args: args}
 	default:
 		fact = quality.Call{Line: line, Callee: "<dynamic>", Dynamic: true, Args: args}
 	}
 	x.fact.Calls = append(x.fact.Calls, fact)
+}
+
+func (x *extractor) containerMutationTarget(function *types.Func, args []ast.Expr) quality.Provenance {
+	if !quality.ContainerMutation(resolvedName(function)) {
+		return ""
+	}
+	return x.mutationProvenance(args[0], true)
 }
 
 // classifyArgs records each argument's provenance relative to the caller's

@@ -71,6 +71,9 @@ type Call struct {
 	Local bool `json:"local"`
 	// Args records each argument's provenance, relative to the caller.
 	Args []ArgSource `json:"args,omitempty"`
+	// MutationTarget is the storage provenance of a modeled container call's
+	// first argument. Empty means the saved facts contain no ownership proof.
+	MutationTarget Provenance `json:"mutation_target,omitempty"`
 }
 
 // ArgSourceKind classifies one call-site argument relative to the caller.

@@ -64,7 +64,7 @@ func validateEffects(f Function) error {
 
 func validateCalls(f Function) error {
 	for _, call := range f.Calls {
-		if call.Callee == "" || call.Line < 1 {
+		if call.Callee == "" || call.Line < 1 || !call.validMutationTarget() {
 			return fmt.Errorf("invalid call in %s:%d", f.Path, f.Line)
 		}
 	}
