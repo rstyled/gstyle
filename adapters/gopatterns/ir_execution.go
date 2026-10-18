@@ -13,7 +13,7 @@ import (
 // Successor links are analysis inputs; they are never exported as dependencies.
 func (b *irBuilder) execution(body *ast.BlockStmt) (*cfg.CFG, *executionDominators) {
 	b.executionMetadata()
-	flow := cfg.New(body, b.mayReturn)
+	flow := cfg.New(b.branchCFGBlock(body), b.mayReturn)
 	dom := newExecutionDominators(flow)
 	anchors := make([][]pdg.Ref, len(flow.Blocks))
 	controls := b.executionControls(body)
@@ -31,8 +31,15 @@ func (b *irBuilder) execution(body *ast.BlockStmt) (*cfg.CFG, *executionDominato
 }
 
 func (b *irBuilder) mayReturn(call *ast.CallExpr) bool {
-	builtin, ok := b.callee(call.Fun).(*types.Builtin)
-	return !ok || builtin.Name() != "panic"
+	callee := b.callee(call.Fun)
+	if builtin, ok := callee.(*types.Builtin); ok {
+		return builtin.Name() != "panic"
+	}
+	function, ok := callee.(*types.Func)
+	if !ok || function.Pkg() == nil {
+		return true
+	}
+	return !terminalFunction(function.Pkg().Path(), function.Name())
 }
 
 func (b *irBuilder) executionAnchors(block *cfg.Block, controls map[ast.Node]pdg.Ref) []pdg.Ref {
@@ -122,4 +129,9 @@ func executionCondition(node ast.Node) ast.Node {
 	default:
 		return nil
 	}
+}
+
+// Resolved package identity is required; same-spelled user calls remain unknown.
+func terminalFunction(path, name string) bool {
+	return (path == "os" && name == "Exit") || (path == "runtime" && name == "Goexit")
 }

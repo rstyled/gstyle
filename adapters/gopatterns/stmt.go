@@ -159,9 +159,9 @@ func (b *builder) ifStmt(s *ast.IfStmt) {
 	}
 	n := b.node(patterns.PdgNode{Kind: patterns.Branch, Line: b.line(s.Pos())})
 	b.data(b.expr(s.Cond), n, 0)
-	b.under(n, 0, func() { b.stmt(s.Body) })
+	b.stmt(s.Body)
 	if s.Else != nil {
-		b.under(n, 1, func() { b.stmt(s.Else) })
+		b.stmt(s.Else)
 	}
 }
 
@@ -207,20 +207,14 @@ func (b *builder) tryBody(s ast.Stmt, obj types.Object) bool {
 	return ok && b.info.ObjectOf(r) == obj
 }
 
-// tryNode emits the Try node plus its controlled `return err`, matching the
-// validated spike encoding: Try takes the error value at 0; the Return takes
-// it at 0 and is Ctrl-dependent on the Try (arm 0).
+// tryNode retains the source if/return with a Try matching label. The CFG
+// analysis computes control dependence; no synthetic return replaces source.
 func (b *builder) tryNode(s *ast.IfStmt, obj types.Object) {
 	n := b.node(patterns.PdgNode{Kind: patterns.Try, Line: b.line(s.Pos())})
 	if v, ok := b.lookup(obj); ok {
 		b.data(v, n, 0)
 	}
-	b.under(n, 0, func() {
-		r := b.node(patterns.PdgNode{Kind: patterns.Return, Line: b.line(s.Body.Pos())})
-		if v, ok := b.lookup(obj); ok {
-			b.data(v, r, 0)
-		}
-	})
+	b.stmt(s.Body.List[0])
 }
 
 // forStmt lowers for loops. Canonical counter loops
@@ -236,7 +230,7 @@ func (b *builder) forStmt(s *ast.ForStmt) {
 		b.data(collNode, n, 0)
 		b.bind(counter, n)
 		b.loops = append(b.loops, loopCtx{counter: counter, coll: collNode, iterate: n})
-		b.under(n, 0, func() { b.stmt(s.Body) })
+		b.stmt(s.Body)
 		b.loops = b.loops[:len(b.loops)-1]
 		return
 	}
@@ -244,7 +238,7 @@ func (b *builder) forStmt(s *ast.ForStmt) {
 	if s.Cond != nil {
 		b.data(b.expr(s.Cond), n, 0)
 	}
-	b.under(n, 0, func() { b.stmt(s.Body) })
+	b.stmt(s.Body)
 	if s.Post != nil {
 		b.stmt(s.Post)
 	}
@@ -312,12 +306,12 @@ func (b *builder) rangeStmt(s *ast.RangeStmt) {
 		counter = b.info.ObjectOf(id)
 	}
 	b.loops = append(b.loops, loopCtx{counter: counter, coll: collNode, iterate: n})
-	b.under(n, 0, func() { b.stmt(s.Body) })
+	b.stmt(s.Body)
 	b.loops = b.loops[:len(b.loops)-1]
 }
 
-// switchStmt lowers value switches to Match: scrutinee at 0, each case body
-// under its arm index.
+// switchStmt records a switch matching label and its source operations.
+// Separate case predicates and control dependencies come from CFG analysis.
 func (b *builder) switchStmt(s *ast.SwitchStmt) {
 	if s.Init != nil {
 		b.stmt(s.Init)
@@ -326,17 +320,14 @@ func (b *builder) switchStmt(s *ast.SwitchStmt) {
 	if s.Tag != nil {
 		b.data(b.expr(s.Tag), n, 0)
 	}
-	for i, stmt := range s.Body.List {
+	for _, stmt := range s.Body.List {
 		clause, ok := stmt.(*ast.CaseClause)
 		if !ok {
 			continue
 		}
-		arm := i
-		b.under(n, arm, func() {
-			for _, inner := range clause.Body {
-				b.stmt(inner)
-			}
-		})
+		for _, inner := range clause.Body {
+			b.stmt(inner)
+		}
 	}
 }
 
@@ -350,17 +341,14 @@ func (b *builder) typeSwitch(s *ast.TypeSwitchStmt) {
 	if bound := b.typeSwitchTarget(s, n); bound != nil {
 		b.bind(b.info.ObjectOf(bound), n)
 	}
-	for i, stmt := range s.Body.List {
+	for _, stmt := range s.Body.List {
 		clause, ok := stmt.(*ast.CaseClause)
 		if !ok {
 			continue
 		}
-		arm := i
-		b.under(n, arm, func() {
-			for _, inner := range clause.Body {
-				b.stmt(inner)
-			}
-		})
+		for _, inner := range clause.Body {
+			b.stmt(inner)
+		}
 	}
 }
 

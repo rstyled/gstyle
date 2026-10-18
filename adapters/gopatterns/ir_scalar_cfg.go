@@ -9,10 +9,15 @@ import (
 )
 
 type scalarCFGBuilder struct {
-	builder  *irBuilder
-	graph    *cfg.CFG
-	current  *cfg.Block
-	controls map[ast.Node]pdg.Ref
+	builder    *irBuilder
+	graph      *cfg.CFG
+	current    *cfg.Block
+	controls   map[ast.Node]pdg.Ref
+	maximal    bool
+	outcomes   map[int][]pdg.Position
+	conditions map[ast.Node]bool
+	selections map[ast.Expr]controlSelection
+	selectors  map[*ast.CaseClause]int
 }
 
 func (a *scalarCFGBuilder) block() *cfg.Block {
@@ -31,7 +36,7 @@ func (a *scalarCFGBuilder) source(source ast.Node) {
 func (a *scalarCFGBuilder) walk(source ast.Node) {
 	var stack []ast.Node
 	ast.Inspect(source, func(node ast.Node) bool {
-		if _, closure := node.(*ast.FuncLit); closure && a.builder.runtimeOperations {
+		if a.skipClosure(node) {
 			return false
 		}
 		if node == nil {
@@ -55,6 +60,9 @@ func (a *scalarCFGBuilder) finish(source ast.Node) {
 	if node := a.builder.nodes[source]; node != 0 {
 		a.operation(node)
 	}
+	if call, ok := source.(*ast.CallExpr); ok && a.maximal && !a.builder.mayReturn(call) {
+		a.current = a.block()
+	}
 }
 
 func (a *scalarCFGBuilder) operation(ref pdg.Ref) {
@@ -71,7 +79,8 @@ func (a *scalarCFGBuilder) logical(binary *ast.BinaryExpr) {
 	a.operation(predicate)
 	branch := a.current
 	rhs, join := a.block(), a.block()
-	branch.Succs = logicalSuccessors(binary.Op, rhs, join)
+	a.current = branch
+	a.transfer(binary.X, logicalSuccessors(binary.Op, rhs, join))
 	a.current = rhs
 	a.walk(binary.Y)
 	a.current.Succs = append(a.current.Succs, join)
@@ -81,8 +90,18 @@ func (a *scalarCFGBuilder) logical(binary *ast.BinaryExpr) {
 
 func (a *scalarCFGBuilder) logicalPredicate(binary *ast.BinaryExpr) pdg.Ref {
 	b := a.builder
-	ref := b.scalarEntity(b.scalarSourceSpan(binary.X), pdg.Control, pdg.Attributes{Construct: b.pool.Text("short-circuit"), Operator: b.pool.Known(binary.Op.String()), Outcomes: []pdg.Text{b.pool.Text("true"), b.pool.Text("false")}})
-	a.predicateValue(binary.X, ref)
+	ref := b.logicalPredicates[binary]
+	if ref == 0 {
+		ref = b.scalarEntity(b.scalarSourceSpan(binary.X), pdg.Control, pdg.Attributes{Construct: b.pool.Text("short-circuit"), Operator: b.pool.Known(binary.Op.String()), Outcomes: []pdg.Text{b.pool.Text("true"), b.pool.Text("false")}})
+		b.logicalPredicates[binary] = ref
+		a.predicateValue(binary.X, ref)
+	}
+	if !b.scalarOperations {
+		b.approximateControlNode(ref)
+	}
+	if a.maximal {
+		b.graph.Nodes[ref-1].MatchLabel = b.pool.MatchLabel(pdg.MatchLabel{Kind: b.pool.Text("branch"), Detail: b.pool.Text("short-circuit")})
+	}
 	return ref
 }
 
@@ -101,7 +120,7 @@ func (a *scalarCFGBuilder) predicateValue(expression ast.Expr, target pdg.Ref) {
 	if source == 0 {
 		source = b.nodes[unparen(expression)]
 	}
-	description := "Value tested by a short-circuit branch under the scalar normal-flow profile."
+	description := "Value tested by a short-circuit decision; the right operand is evaluated only on its selected outcome."
 	b.graph.Edges = append(b.graph.Edges, pdg.Edge{ID: b.pool.Text("logical-e" + strconv.Itoa(len(b.graph.Edges)+1)), Source: source, Target: target, Kind: pdg.Data, Position: 1, Subkind: b.pool.Text("scalar-value"), Evidence: b.pool.Evidence(pdg.Supported, description), Provenance: b.pool.Origin(pdg.Analysis, description)})
 }
 
@@ -134,4 +153,9 @@ func logicalSuccessors(operator token.Token, rhs, join *cfg.Block) []*cfg.Block 
 		return []*cfg.Block{join, rhs}
 	}
 	return []*cfg.Block{rhs, join}
+}
+
+func (a *scalarCFGBuilder) skipClosure(node ast.Node) bool {
+	_, closure := node.(*ast.FuncLit)
+	return closure && (a.builder.runtimeOperations || a.maximal)
 }

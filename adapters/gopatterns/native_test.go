@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/rstyled/gstyle/adapters/govalidation"
 	"github.com/rstyled/gstyle/domain/ccgraph"
 	"github.com/rstyled/gstyle/domain/pdg"
 )
@@ -114,5 +115,42 @@ func TestNativeContextPreservesSourceAndPairedGraphs(t *testing.T) {
 	}
 	if err := input.WriteContext(io.Discard); err == nil {
 		t.Fatal("stale source context is accepted")
+	}
+}
+
+func TestNativeControlRequiresSemanticDependencies(t *testing.T) {
+	seed := nativeFixture(t)
+	source := `package native
+func Branch(x int,a bool)int{if a{x=1}else{x=2};return x}
+func Early(x int,a bool)int{if a{return 1};return x}
+func Nested(x int,a,b bool)int{if a{if b{return x}};return 0}
+`
+	if err := os.WriteFile(filepath.Join(seed.root, "example.go"), []byte(source), 0600); err != nil {
+		t.Fatal(err)
+	}
+	input, err := ExtractMatching(context.Background(), seed.root, []string{"."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(input.Functions) != 3 || len(input.Ineligible) != 0 {
+		t.Fatalf("functions=%d excluded=%v", len(input.Functions), input.Ineligible)
+	}
+	for _, graph := range input.Graphs {
+		mutant := graph
+		mutant.Edges = nil
+		omitted := false
+		for _, edge := range graph.Edges {
+			if !omitted && edge.Kind == pdg.ControlEdge {
+				omitted = true
+				continue
+			}
+			mutant.Edges = append(mutant.Edges, edge)
+		}
+		if !omitted {
+			t.Fatal("fixture has no semantic control edge")
+		}
+		if err := govalidation.Ordering(&mutant); err == nil {
+			t.Fatal("missing semantic dependency passed independent validation")
+		}
 	}
 }

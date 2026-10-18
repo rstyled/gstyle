@@ -47,17 +47,20 @@ func TestMinerSmoke(t *testing.T) {
 	if len(report.Candidates) == 0 {
 		t.Fatal("expected candidates from parallel pairs, got none")
 	}
-	// The CreateUser/CreateOrder pair should produce a candidate.
+	// The retry pair has parallel operation/control graphs. The validate/insert
+	// examples differ in parameter types and call arity; lexical similarity alone
+	// is no longer sufficient evidence that they must form a candidate.
 	found := false
 	for _, c := range report.Candidates {
+		fetch, load := false, false
 		for _, s := range c.Sites {
-			if strings.Contains(s.Name, "CreateUser") || strings.Contains(s.Name, "CreateOrder") {
-				found = true
-			}
+			fetch = fetch || strings.HasSuffix(s.Name, ".FetchWithRetry")
+			load = load || strings.HasSuffix(s.Name, ".LoadWithRetry")
 		}
+		found = found || (fetch && load)
 		t.Logf("candidate: %s score=%d sites=%d", c.Kind, c.ScoreMilli, len(c.Sites))
 	}
 	if !found {
-		t.Fatal("expected candidate involving CreateUser/CreateOrder")
+		t.Fatal("expected candidate pairing FetchWithRetry and LoadWithRetry")
 	}
 }

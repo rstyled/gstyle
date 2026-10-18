@@ -7,9 +7,6 @@ import (
 )
 
 func (b *irBuilder) scalarConstant(id *ast.Ident) {
-	if !b.scalarOperations {
-		return
-	}
 	constant, ok := b.info.Uses[id].(*types.Const)
 	if !ok {
 		return

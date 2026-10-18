@@ -50,16 +50,12 @@ func (b *builder) markSynthetic(node *pdg.Node, kind patterns.NodeKind) {
 	node.Provenance = b.ir.pool.Origin(pdg.Desugaring, "Gstyle abstraction lowering of source operations.")
 }
 
-func (b *irBuilder) miningEdge(from, to, position int, kind pdg.EdgeKind) {
+func (b *irBuilder) miningValueEdge(from, to, position int) {
 	description := "Flow-insensitive first-binding or syntactic value dependence; not a reaching-definition assertion."
 	subkind := "mining-value"
-	if kind == pdg.ControlEdge {
-		description = "Lexical control nesting; not post-dominator control dependence."
-		subkind = "lexical-control"
-	}
 	b.graph.Edges = append(b.graph.Edges, pdg.Edge{
 		ID:     b.pool.Text("e" + strconv.Itoa(len(b.graph.Edges)+1)),
-		Source: pdg.Ref(from + 1), Target: pdg.Ref(to + 1), Kind: kind,
+		Source: pdg.Ref(from + 1), Target: pdg.Ref(to + 1), Kind: pdg.Data,
 		Subkind: b.pool.Text(subkind), Position: pdg.Position(position + 1),
 		Evidence:   b.pool.Evidence(pdg.Approximated, description),
 		Provenance: b.pool.Origin(pdg.Analysis, description),

@@ -65,7 +65,7 @@ func (b *irBuilder) controlOperation(n ast.Node) {
 	case *ast.IfStmt:
 		b.addNode(n, pdg.Control, pdg.Attributes{Construct: b.pool.Text("if"), Outcomes: []pdg.Text{b.pool.Text("true"), b.pool.Text("false")}})
 	case *ast.ForStmt:
-		b.addNode(n, pdg.Control, pdg.Attributes{Construct: b.pool.Text("for")})
+		b.addNode(n, pdg.Control, pdg.Attributes{Construct: b.pool.Text("for"), Outcomes: []pdg.Text{b.pool.Text("true"), b.pool.Text("false")}})
 	case *ast.SwitchStmt:
 		b.addNode(n, pdg.Control, pdg.Attributes{Construct: b.pool.Text("switch")})
 	case *ast.TypeSwitchStmt:
@@ -108,7 +108,7 @@ func (b *irBuilder) expressionOperation(n ast.Node) {
 }
 
 func (b *irBuilder) parenthesizedValue(n *ast.ParenExpr) {
-	if (!b.scalarOperations && !b.bindingOperations && !b.runtimeOperations) || b.writeTargets[n] {
+	if b.writeTargets[n] {
 		return
 	}
 	b.addNode(n, pdg.Computation, pdg.Attributes{Operator: b.pool.Known("parentheses")})
@@ -305,14 +305,4 @@ func (b *irBuilder) callee(expr ast.Expr) types.Object {
 func (b *irBuilder) typeSyntax(n ast.Node) bool {
 	expr, ok := n.(ast.Expr)
 	return ok && b.info.Types[expr].IsType()
-}
-
-// Scalar reads are facts on their source operation, not separate topology.
-func (b *irBuilder) readOwner(id *ast.Ident) pdg.Ref {
-	for i := len(b.stack) - 1; i >= 0; i-- {
-		if ref := b.nodes[b.stack[i]]; ref != 0 {
-			return ref
-		}
-	}
-	return b.addNode(id, pdg.Read, pdg.Attributes{})
 }
