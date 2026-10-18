@@ -219,3 +219,17 @@ panic lowering, arbitrary operand-order flow, exceptional/deferred state writes,
 concurrency and transformation safety remain open in the full PDG work plan.
 The selected source-order CFG and retained exit context do not establish full
 Go dependency completeness. This change adds no full-language formal proof.
+
+## Resource proofs at selected call states
+
+Resource release proofs use `callflow.OrdinaryCallOutcomes` from the same
+canonical queries and solved exit summaries. Each invocation joins all observed
+caller states. A callback selected only on a non-aborting path no longer imports
+a different path's abort outcome. Missing observations retain the existing
+conservative call query. Deferred invocations keep their separate saved-input
+and unwind rules.
+
+`TestResourceReleaseUsesSelectedCallbackStates` compares native Go cleanup for
+safe and leaking paths, then checks the report. Missing cleanup, possible process
+exit, mixed targets and unknown callbacks still produce resource warnings. This
+does not prove general closure cleanup or foreign-call behavior.

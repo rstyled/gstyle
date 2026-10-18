@@ -7,7 +7,10 @@ import (
 )
 
 func (p *proof) callStep(ref pdg.Ref, machine deferflow.Machine[bool]) int {
-	outcomes := p.query.calls.Outcomes(p.policy.Exits, ref, false)
+	outcomes, observed := p.ordinary[ref]
+	if !observed {
+		outcomes = p.query.calls.Outcomes(p.policy.Exits, ref, false)
+	}
 	return p.outcomeStep(p.cleanupOutcomes(outcomes), machine)
 }
 
