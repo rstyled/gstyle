@@ -26,6 +26,7 @@ type exitValues struct {
 	bindings, nodes map[pdg.Ref]exitValue
 	cells           map[pdg.Ref]exitValue
 	tuples          map[pdg.Ref]string
+	unorderedReads  map[pdg.Ref]bool
 }
 
 type valueEntry struct {
@@ -35,14 +36,14 @@ type valueEntry struct {
 
 func (evaluation *exitEvaluation) valueContext(point exitPoint) bindingflow.Evaluation {
 	values := evaluation.values[point.values]
-	return bindingflow.Evaluation{Captures: concreteValues(values.cells), Bindings: concreteValues(values.bindings), Nodes: concreteValues(values.nodes), Facts: evaluation.body.facts, Results: concreteResults(values.tuples)}
+	return bindingflow.Evaluation{Captures: evaluation.callCellValues(values), Bindings: concreteValues(values.bindings), Nodes: concreteValues(values.nodes), Facts: evaluation.body.facts, Results: concreteResults(values.tuples)}
 }
 
 func (evaluation *exitEvaluation) internValues(values exitValues) string {
-	if len(values.bindings)+len(values.nodes)+len(values.tuples)+len(values.cells) == 0 {
+	if len(values.bindings)+len(values.nodes)+len(values.tuples)+len(values.cells)+len(values.unorderedReads) == 0 {
 		return ""
 	}
-	key := fmt.Sprint(valueEntries(values.bindings), "/", valueEntries(values.nodes), "/", tupleEntries(values.tuples), "/", valueEntries(values.cells))
+	key := fmt.Sprint(valueEntries(values.bindings), "/", valueEntries(values.nodes), "/", tupleEntries(values.tuples), "/", valueEntries(values.cells), "/", slices.Sorted(maps.Keys(values.unorderedReads)))
 	evaluation.values[key] = values
 	return key
 }
@@ -63,13 +64,14 @@ func (evaluation *exitEvaluation) recoveryValue(point exitPoint, ref pdg.Ref) ex
 	} else {
 		nodes[ref] = value
 	}
-	next := exitValues{bindings: values.bindings, nodes: nodes, tuples: values.tuples, cells: values.cells}
+	next := exitValues{bindings: values.bindings, nodes: nodes, tuples: values.tuples, cells: values.cells, unorderedReads: values.unorderedReads}
 	point.values = evaluation.internValues(next)
 	return point
 }
 
 func (evaluation *exitEvaluation) transferValues(point exitPoint, ref pdg.Ref) exitPoint {
-	if evaluation.body.graph.Nodes[ref-1].Category == pdg.Call && evaluation.body.calls.PreservesCallerMemory(evaluation.summaries, ref) {
+	point, transferred := evaluation.transferCall(point, ref)
+	if transferred {
 		return point
 	}
 	point = evaluation.captureValues(point, ref)
@@ -78,7 +80,7 @@ func (evaluation *exitEvaluation) transferValues(point exitPoint, ref pdg.Ref) e
 		return point
 	}
 	values := evaluation.values[point.values]
-	next := exitValues{bindings: nextValueBindings(values.bindings, writes), nodes: values.nodes, tuples: values.tuples, cells: evaluation.nextCellValues(values.cells, writes)}
+	next := exitValues{bindings: nextValueBindings(values.bindings, writes), nodes: values.nodes, tuples: values.tuples, cells: evaluation.nextCellValues(values.cells, writes), unorderedReads: values.unorderedReads}
 	point.values = evaluation.internValues(next)
 	return point
 }

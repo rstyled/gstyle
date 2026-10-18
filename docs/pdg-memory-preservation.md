@@ -32,7 +32,9 @@ when every target in the active catalog preserves memory and the call site has
 no explicit unresolved write. The proof survives exit-summary iterations and
 remains immutable after solving. It preserves Boolean/nil binding facts and
 captured cell-family invariants, including nested readers and argument/result
-contexts. It does not transfer exact captured writes back into the caller.
+contexts. It alone does not transfer captured writes back into the caller;
+[ordinary single-cell postconditions](pdg-captured-writeback.md) now provide
+that separate, confined transfer.
 
 Raw PDG may-write records and dependency edges remain conservative. Removing
 those records would make a later query with an incomplete catalog lose its

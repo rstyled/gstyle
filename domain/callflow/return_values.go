@@ -9,6 +9,7 @@ func (evaluation *exitEvaluation) returnAt(point exitPoint, ref pdg.Ref) Outcome
 	result := finishExit(point, Returns)
 	if result&Returns != 0 {
 		evaluation.returned = joinReturned(evaluation.returned, evaluation.returnTuple(point, ref))
+		evaluation.captured = joinReturned(evaluation.captured, evaluation.captureTuple(point))
 	}
 	return result
 }
@@ -19,6 +20,7 @@ func (evaluation *exitEvaluation) finish(point exitPoint, outcomes Outcomes) Out
 	result := finishExit(point, outcomes)
 	if result&Returns != 0 {
 		evaluation.returned = joinReturned(evaluation.returned, unknownReturned(bodyResultCount(evaluation.body)))
+		evaluation.captured = joinReturned(evaluation.captured, unknownReturned(len(evaluation.body.captures)))
 	}
 	return result
 }

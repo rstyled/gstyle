@@ -225,6 +225,7 @@ func prepareGraph(pkg *packages.Package, fn *ast.FuncDecl, path string, pool *pd
 	b.ir.interfaceValueFacts()
 	b.ir.runtimeValueFacts(fn)
 	b.ir.memorySourceFacts(fn)
+	b.ir.singleCellFacts(fn)
 	b.ir.representationFacts(fn)
 	b.ir.deferredSourceFacts(fn.Body)
 	b.ir.operationEffectFacts(fn.Body)

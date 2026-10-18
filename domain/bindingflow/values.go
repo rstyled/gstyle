@@ -58,9 +58,10 @@ type Fact struct {
 
 // Facts contain no AST or source dependency graph.
 type Facts struct {
-	CapturedSymbols map[pdg.Ref]bool
-	Nodes           map[pdg.Ref]Fact
-	BooleanSymbols  map[pdg.Ref]bool
+	SingleCellSymbols map[pdg.Ref]bool
+	CapturedSymbols   map[pdg.Ref]bool
+	Nodes             map[pdg.Ref]Fact
+	BooleanSymbols    map[pdg.Ref]bool
 }
 
 func (facts Facts) NilConstant(ref pdg.Ref) bool {
@@ -69,7 +70,8 @@ func (facts Facts) NilConstant(ref pdg.Ref) bool {
 }
 
 type Evaluation struct {
-	// Captures holds cell-family invariants, never construction-time snapshots.
+	// Captures holds call-time cell facts: current values for proved single
+	// cells, otherwise family invariants. Deferred registration clears them.
 	Captures map[pdg.Ref]Value
 	Results  map[pdg.Ref][]Value
 	Bindings map[pdg.Ref]Value

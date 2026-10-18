@@ -20,7 +20,7 @@ func TestCapturedCellInvariantsComposeExitEffects(t *testing.T) {
 		{"stored copy", `flag:=false;fn:=func(){if flag{panic("bad")}};copy:=fn;copy()`, "", callflow.Returns},
 		{"same write", `flag:=false;flag=false;func(){if flag{panic("bad")}}()`, "", callflow.Returns},
 		{"write before capture", `flag:=false;flag=true;func(){if flag{panic("yes")}}()`, "", callflow.Panics},
-		{"live after construction", `flag:=true;fn:=func(){if flag{panic("maybe")}};flag=false;fn()`, "", callflow.Returns | callflow.Panics},
+		{"live after construction", `flag:=true;fn:=func(){if flag{panic("maybe")}};flag=false;fn()`, "", callflow.Returns},
 		{"parameter", `outer(false)`, `func outer(flag bool){func(){if flag{panic("bad")}}()}`, callflow.Returns},
 		{"nested relay", `flag:=false;func(){func(){if flag{panic("bad")}}()}()`, "", callflow.Returns},
 		{"captured return", `flag:=false;if func()bool{return flag}(){panic("bad")}`, "", callflow.Returns},

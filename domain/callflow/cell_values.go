@@ -71,6 +71,6 @@ func (evaluation *exitEvaluation) captureValues(point exitPoint, ref pdg.Ref) ex
 	for _, symbol := range attrs.Symbols {
 		cells[symbol] = joinCellValue(cells, symbol, values.bindings[symbol])
 	}
-	point.values = evaluation.internValues(exitValues{bindings: values.bindings, nodes: values.nodes, tuples: values.tuples, cells: cells})
+	point.values = evaluation.internValues(exitValues{bindings: values.bindings, nodes: values.nodes, tuples: values.tuples, cells: cells, unorderedReads: values.unorderedReads})
 	return point
 }

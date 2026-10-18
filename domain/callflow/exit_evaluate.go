@@ -15,6 +15,7 @@ type exitPoint struct {
 type exitEvaluation struct {
 	conditions        map[pdg.Ref]uint8
 	returned          string
+	captured          string
 	callOutcomes      map[pdg.Ref]Outcomes
 	operationOutcomes map[pdg.Ref]Outcomes
 	values            map[string]exitValues
@@ -66,6 +67,7 @@ func (evaluation *exitEvaluation) operation(point exitPoint, ref pdg.Ref) Outcom
 	if node.Category == pdg.Call {
 		return evaluation.call(point, ref)
 	}
+	point = evaluation.snapshotRead(point, ref)
 	outcomes := body.operations.Outcomes(ref)
 	if body.operations.effect(ref).NilInput {
 		outcomes = body.operations.outcomesWithValues(ref, evaluation.valueContext(point))
@@ -131,6 +133,7 @@ func evaluateBodyInputs(body *exitBody, summaries ExitSummaries, inherited bool,
 type evaluatedBody struct {
 	outcomes Outcomes
 	returned string
+	captured string
 }
 
 func evaluateBodyResult(body *exitBody, summaries ExitSummaries, inherited bool, inputs string) evaluatedBody {
@@ -139,7 +142,7 @@ func evaluateBodyResult(body *exitBody, summaries ExitSummaries, inherited bool,
 	}
 	evaluation := newExitEvaluation(body, summaries)
 	outcomes := evaluation.run(inherited, inputs)
-	return evaluatedBody{outcomes: outcomes, returned: evaluation.returned}
+	return evaluatedBody{outcomes: outcomes, returned: evaluation.returned, captured: evaluation.captured}
 }
 
 func newExitEvaluation(body *exitBody, summaries ExitSummaries) *exitEvaluation {

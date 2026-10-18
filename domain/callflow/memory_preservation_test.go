@@ -34,9 +34,10 @@ func TestMemoryPreservationAgainstWriterReachabilityOracle(t *testing.T) {
 					calls.targets[ref] = callTargets{known: true, names: []string{target}}
 				}
 				bodies[name] = &exitBody{graph: graph, calls: calls, flow: &pdg.NormalFlow{Blocks: []pdg.FlowBlock{block}}}
-				summaries[name] = ExitSummary{PreservesCallerMemory: true}
+				summaries[name] = ExitSummary{PreservesCallerMemory: true, frameConfined: true}
 			}
 			solveMemoryPreservation(bodies, summaries)
+			solveFrameConfinement(bodies, summaries)
 			for source := 0; source < 3; source++ {
 				seen := map[int]bool{}
 				queue := []int{source}
@@ -56,6 +57,9 @@ func TestMemoryPreservationAgainstWriterReachabilityOracle(t *testing.T) {
 							queue = append(queue, target)
 						}
 					}
+				}
+				if got := summaries[fmt.Sprint("f", source)].frameConfined; got != want {
+					t.Fatalf("frame edges=%09b writers=%03b source=%d got %v want %v", edges, writers, source, got, want)
 				}
 				if got := summaries[fmt.Sprint("f", source)].PreservesCallerMemory; got != want {
 					t.Fatalf("edges=%09b writers=%03b source=%d got %v want %v", edges, writers, source, got, want)

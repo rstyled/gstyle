@@ -43,6 +43,9 @@ func solveExitPass(bodies map[string]*exitBody, summaries ExitSummaries, pass ex
 			old := summaries[name]
 			ordinary := evaluateBodyResult(body, summaries, false, "")
 			next := ExitSummary{
+				frameConfined:         old.frameConfined,
+				captureArity:          old.captureArity,
+				captured:              pass.returned(old.captured, ordinary.captured),
 				PreservesCallerMemory: old.PreservesCallerMemory,
 				returned:              pass.returned(old.returned, ordinary.returned), arity: old.arity,
 				Ordinary:      pass.update(old.Ordinary, ordinary.outcomes),
@@ -65,9 +68,10 @@ func seedExitSummaries(bodies map[string]*exitBody) ExitSummaries {
 		if body != nil && body.flow != nil {
 			seed = 0
 		}
-		summaries[name] = ExitSummary{PreservesCallerMemory: memoryBodyKnown(body), Ordinary: seed, DeferredPanic: seed, Receiver: bodyHasReceiver(body), arity: bodyResultCount(body), invocations: newExitInvocations(body)}
+		summaries[name] = ExitSummary{captureArity: bodyCaptureCount(body), frameConfined: memoryBodyKnown(body), PreservesCallerMemory: memoryBodyKnown(body), Ordinary: seed, DeferredPanic: seed, Receiver: bodyHasReceiver(body), arity: bodyResultCount(body), invocations: newExitInvocations(body)}
 	}
 	solveMemoryPreservation(bodies, summaries)
+	solveFrameConfinement(bodies, summaries)
 	return summaries
 }
 

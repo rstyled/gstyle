@@ -21,14 +21,18 @@ func (q *Query) capturedSymbols() (map[pdg.Ref]bool, error) {
 }
 
 func (q *Query) captureMarker(extensions []pdg.Extension) (bool, error) {
+	return q.booleanSymbolMarker(extensions, "gstyle.memory:captured")
+}
+
+func (q *Query) booleanSymbolMarker(extensions []pdg.Extension, name string) (bool, error) {
 	data := ""
 	found := false
 	for _, extension := range extensions {
-		if q.graph.Tables.Text(extension.Name) != "gstyle.memory:captured" {
+		if q.graph.Tables.Text(extension.Name) != name {
 			continue
 		}
 		if found {
-			return false, fmt.Errorf("duplicate captured-cell marker")
+			return false, fmt.Errorf("duplicate symbol marker: %s", name)
 		}
 		data = q.graph.Tables.Text(extension.Value)
 		found = true
@@ -36,16 +40,16 @@ func (q *Query) captureMarker(extensions []pdg.Extension) (bool, error) {
 	if !found {
 		return false, nil
 	}
-	return decodeCaptureMarker(data)
+	return decodeBooleanSymbolMarker(data)
 }
 
-func decodeCaptureMarker(data string) (bool, error) {
+func decodeBooleanSymbolMarker(data string) (bool, error) {
 	var value *bool
 	if err := json.Unmarshal([]byte(data), &value); err != nil {
 		return false, err
 	}
 	if value == nil {
-		return false, fmt.Errorf("captured-cell marker is not Boolean")
+		return false, fmt.Errorf("symbol marker is not Boolean")
 	}
 	return *value, nil
 }

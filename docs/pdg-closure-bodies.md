@@ -44,7 +44,8 @@ caller-only and dependency revision cases check cached body retention and replac
 These are finite tests, not a new closure semantics proof.
 
 Ordinary calls can use [constant Boolean/nil cell-family invariants](pdg-captured-invariants.md).
-Changing families and deferred capture inputs stay unknown. Captured writes keep
+[Ordinary single-cell writeback](pdg-captured-writeback.md) now transfers
+normal-return stores. Repeated families and deferred capture inputs stay unknown. Unconfined writes keep
 the existing conservative caller invalidation. Binding closure environments, recursive
 captured callbacks, arbitrary callback parameters, package-initializer closure
 origins, heap payloads and deferred result-state execution remain open. A standalone

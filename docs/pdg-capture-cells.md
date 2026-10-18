@@ -41,6 +41,7 @@ checks addressable captured storage and unknown external pointer referents.
 
 This establishes lexical cell identity and conservative memory dependencies.
 [Constant cell-family histories](pdg-captured-invariants.md) can feed ordinary
-invocation inputs. Exact runtime environments, cross-invocation captured writes,
+invocation inputs. [Ordinary writeback for proved single cells](pdg-captured-writeback.md) now
+transfers normal-return postconditions. Exact runtime environments, general captured writes,
 closure instances and deferred state updates remain required work. The tests are finite evidence, not a new
 formal proof of closure semantics.

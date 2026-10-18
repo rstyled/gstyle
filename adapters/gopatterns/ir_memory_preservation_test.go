@@ -27,7 +27,7 @@ func TestMemoryPreservationComposesCallEffects(t *testing.T) {
 		{"recursive writer", `noop(false);fn()`, `func noop(value bool){if value{helper(value)}};func helper(value bool){global=true;if value{noop(value)}}`, callflow.Returns | callflow.Panics, false},
 		{"deferred writer", `noop();fn()`, `func noop(){defer func(){global=true}()}`, callflow.Returns | callflow.Panics, false},
 		{"indirect writer", `noop(&flag);fn()`, `func noop(value *bool){*value=true}`, callflow.Returns | callflow.Panics, false},
-		{"captured writer", `write:=func(){flag=true};write();fn()`, `func noop(){global=true}`, callflow.Returns | callflow.Panics, false},
+		{"captured writer", `write:=func(){flag=true};write();fn()`, `func noop(){global=true}`, callflow.Panics, false},
 		{"private indirect store stays conservative", `noop();fn()`, `func noop(){value:=false;p:=&value;*p=true}`, callflow.Returns | callflow.Panics, false},
 		{"opaque target", `noop();fn()`, `var noop func()`, callflow.UnknownExit, false},
 		{"body with opaque call", `noop();fn()`, `func noop(){foreign()};var foreign func()`, callflow.UnknownExit, false},

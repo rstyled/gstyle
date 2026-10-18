@@ -29,7 +29,7 @@ func TestClosureBodiesComposeExitEffects(t *testing.T) {
 		{"tuple result", `a,b:=func()(bool,bool){return false,true}();if a||!b{panic("bad")}`, callflow.Returns},
 		{"construction only", `stop:=func(){panic("not called")};_=stop`, callflow.Returns},
 		{"constant captured input", `flag:=true;func(){if flag{panic("maybe")}}()`, callflow.Panics},
-		{"captured write invalidates", `flag:=true;func(){flag=false}();if flag{panic("maybe")}`, callflow.Returns | callflow.Panics},
+		{"captured write updates", `flag:=true;func(){flag=false}();if flag{panic("maybe")}`, callflow.Returns},
 		{"target join", `stop:=func(){};if choose{stop=func(){panic("maybe")}};stop()`, callflow.Returns | callflow.Panics},
 		{"recursive stored closure", `var again func();again=func(){again()};again()`, callflow.UnknownExit},
 	} {

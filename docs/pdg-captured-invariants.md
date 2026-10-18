@@ -12,6 +12,8 @@ same lexical site, so an older cell retained by a closure is not replaced by the
 latest loop iteration's binding. Unknown writes poison capture histories.
 
 Invocation keys append implicit capture slots after the explicit formal slots.
+[Proved single cells](pdg-captured-writeback.md) now use current values and
+ordinary normal-return writeback; repeated families keep these histories.
 Validated owner/body links supply family values; missing or incompatible links
 keep capture inputs unknown. Captured bindings initialize the callee state, and
 return tuples use the same invocation key. Nested relay bodies can transfer a
@@ -19,10 +21,11 @@ constant family through successive lexical owners. History is part of state
 identity and survives call-result snapshots, branch assumptions and recovery.
 
 This is an invariant abstraction, not an exact heap or runtime cell-instance
-model. A family that changes from false to true remains unknown even if its
+model. A repeated family that changes from false to true remains unknown even if its
 latest binding is known. Branch assumptions do not turn an unknown history into
 a family invariant. Opaque calls retain their conservative write invalidation.
-Cross-invocation captured writes are not propagated back as exact values.
+Unconfined, repeated-cell and deferred writes are not propagated back as exact
+current-binding values.
 
 Deferred argument values retain their registration snapshots. Capture-family
 facts are explicitly removed at registration: a defer reads live cells at unwind,
