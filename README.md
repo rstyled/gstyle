@@ -249,5 +249,3 @@ See [SARIF verification](verification/sarif/README.md) for schema and test detai
 Go call identities and per-function PDG dependencies. JSON candidates include a
 `security` rule ID and CWE; SARIF uses the security rule ID. A reported path needs
 review, and no findings do not establish that the code is secure.
-
-Run `make verify-sast` to check the labeled source cases against the saved baseline.
