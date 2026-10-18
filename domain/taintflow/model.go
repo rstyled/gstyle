@@ -15,18 +15,29 @@ type Sink struct {
 	Kind      string
 	Positions []pdg.Position
 }
+type ArgumentEncoding struct {
+	Position pdg.Position
+	SafeFor  string
+}
 type Models struct {
-	Source func(*pdg.Graph, pdg.Ref) bool
-	Sinks  func(*pdg.Graph, pdg.Ref) []Sink
+	// PreservesValueEncoding identifies expressions that retain encoded text.
+	PreservesValueEncoding func(*pdg.Graph, pdg.Ref) bool
+	// Encodings describe proven output alphabets for individual call arguments.
+	Encodings func(*pdg.Graph, pdg.Ref) []ArgumentEncoding
+	// PreservesEncoding identifies calls that copy encoded text without decoding it.
+	PreservesEncoding func(*pdg.Graph, pdg.Ref) bool
+	Source            func(*pdg.Graph, pdg.Ref) bool
+	Sinks             func(*pdg.Graph, pdg.Ref) []Sink
 }
 type Finding struct {
 	Source, Sink Site
 	Kind         string
 }
 type atom struct {
-	Input  int
-	Fields string
-	Source Site
+	SafeFor string
+	Input   int
+	Fields  string
+	Source  Site
 }
 type dependencies map[atom]bool
 type object struct {

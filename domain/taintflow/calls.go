@@ -13,7 +13,7 @@ func (e *evaluation) call(ref pdg.Ref) {
 		e.localCall(ref, callee, e.summaries[target])
 		return
 	}
-	e.store(slot{Node: ref}, e.expressionInputs(ref))
+	e.store(slot{Node: ref}, e.externalCall(ref))
 }
 func (e *evaluation) target(ref pdg.Ref) string {
 	attrs := e.query.graph.NodeAttributes(e.query.graph.Nodes[ref-1])
@@ -44,7 +44,7 @@ func (e *evaluation) inheritedSink(call pdg.Ref, sink sinkKey, deps dependencies
 	if e.result.Sinks[sink] == nil {
 		e.result.Sinks[sink] = dependencies{}
 	}
-	joinDependencies(e.result.Sinks[sink], translated.Data)
+	joinSinkDependencies(e.result.Sinks[sink], translated.Data, sink.Kind)
 }
 func (e *evaluation) directSinks(ref pdg.Ref) {
 	if e.query.models.Sinks == nil {
@@ -60,6 +60,6 @@ func (e *evaluation) directSink(ref pdg.Ref, sink Sink) {
 		e.result.Sinks[key] = dependencies{}
 	}
 	for _, position := range sink.Positions {
-		joinDependencies(e.result.Sinks[key], e.input(ref, position).Data)
+		joinSinkDependencies(e.result.Sinks[key], e.input(ref, position).Data, sink.Kind)
 	}
 }

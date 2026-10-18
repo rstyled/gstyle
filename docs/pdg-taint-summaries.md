@@ -60,11 +60,16 @@ benchmark: the pre-fix API handler already validates sort columns and direction.
 The older [search-ranking SQL fix](https://github.com/miniflux/v2/commit/1b86913c005c082ed27fd7f1f42fc6ae9bdcbb9b)
 changes raw search-text interpolation into a SQL parameter. Static scans of the
 actual `storage`, `ui`, and `http/request` packages now connect request-helper
-sources to SQL consumers. Both revisions still report four findings, including
-numeric/length-derived dependencies. This demonstrates that summaries cross the
-builder boundaries; it does not establish that the scanner distinguishes the
-fix. Encoding and value-shape precision remains separate work. No target code
-is executed, and no application-specific model is added for this experiment.
+sources to SQL consumers. The parent `3e1e0b60` reports one SQL finding from
+`request.QueryStringParam` to `EntryQueryBuilder.GetEntries`; the fixed
+`1b86913c` reports none. The earlier query reports four on each revision.
+The difference is decimal-format evidence: typed primitive `%d` output cannot
+carry SQL syntax, even when its numeric value depends on input or slice length.
+Raw `%s` text and `%c` remain tainted. Named types, interfaces, unknown formats,
+and missing or conflicting type evidence do not prove decimal output.
+Encoding facts apply only to SQL; numeric SSRF targets retain their dependency.
+Unknown external calls discard encoding evidence because they can decode text.
+No target code is executed and no Miniflux-specific model is added.
 
 The first broad query took about 49 seconds on a local Miniflux package set.
 Immutable set sharing, affected-caller worklists and live expression retention

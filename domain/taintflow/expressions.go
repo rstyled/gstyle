@@ -66,7 +66,7 @@ func (e *evaluation) expression(ref pdg.Ref) value {
 	if e.query.graph.Tables.Text(attrs.Operator.Value) == "field" {
 		return e.fieldValue(ref)
 	}
-	return e.expressionInputs(ref)
+	return e.expressionEncoding(ref, e.expressionInputs(ref))
 }
 func (e *evaluation) expressionInputs(ref pdg.Ref) value {
 	result := emptyValue()

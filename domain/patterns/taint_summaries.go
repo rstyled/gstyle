@@ -17,7 +17,16 @@ func QueryTaintFlows(facts []*MiningFacts) ([]TaintFlow, error) {
 		graphs[fact.ID] = fact.Canonical
 		views[fact.ID] = semanticFact(fact)
 	}
+	encodings, err := indexTaintEncodings(graphs)
+	if err != nil {
+		return nil, err
+	}
 	models := taintflow.Models{
+		PreservesEncoding:      preservesTaintEncoding,
+		PreservesValueEncoding: preservesValueEncoding,
+		Encodings: func(graph *pdg.Graph, ref pdg.Ref) []taintflow.ArgumentEncoding {
+			return encodings[taintflow.Site{Function: graph.Tables.Text(graph.Function.ID), Node: ref}]
+		},
 		Source: func(graph *pdg.Graph, ref pdg.Ref) bool {
 			return semanticNode(graph, graph.Nodes[ref-1]).isTaintSource()
 		},

@@ -16,7 +16,11 @@ func fieldKey(fields []uint32) string {
 func (e *evaluation) substitute(item value, call pdg.Ref) value {
 	result := emptyValue()
 	for dep := range item.Data {
-		joinDependencies(result.Data, e.substituteAtom(dep, call).Data)
+		translated := e.substituteAtom(dep, call)
+		if dep.SafeFor != "" {
+			translated = encodeValue(translated, dep.SafeFor)
+		}
+		joinDependencies(result.Data, translated.Data)
 	}
 	for root := range item.Objects {
 		e.substituteObject(result.Objects, root, call)
