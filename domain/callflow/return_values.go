@@ -8,7 +8,7 @@ import (
 func (evaluation *exitEvaluation) returnAt(point exitPoint, ref pdg.Ref) completions {
 	returned := evaluation.returnTuple(point, ref)
 	point = evaluation.assignReturnSlots(point, returned)
-	return completions{{values: point.values, returned: returned, mode: Returns, recovered: point.recovered}: true}
+	return singleCompletion(completion{values: point.values, returned: returned, mode: Returns, recovered: point.recovered})
 }
 
 func (evaluation *exitEvaluation) returnTuple(point exitPoint, ref pdg.Ref) string {

@@ -23,6 +23,7 @@ type exitInvocation struct {
 }
 
 type exitInvocations struct {
+	observed     map[string]invocationObservation
 	graph        *pdg.Graph
 	captures     []pdg.Ref
 	environments map[*pdg.Graph]map[pdg.Ref]pdg.Ref
@@ -46,10 +47,10 @@ func newExitInvocations(body *exitBody) *exitInvocations {
 
 func (invocations *exitInvocations) lookup(key string) (exitInvocation, bool) {
 	if state, found := invocations.states[key]; found {
-		return state, true
+		return invocations.observe(key, state, true)
 	}
 	if !invocations.building {
-		return exitInvocation{}, false
+		return invocations.observe(key, exitInvocation{}, false)
 	}
 	var seed Outcomes
 	if invocations.pass == infinitePass {
@@ -57,7 +58,7 @@ func (invocations *exitInvocations) lookup(key string) (exitInvocation, bool) {
 	}
 	state := exitInvocation{memory: memoryProof{preserves: true, confined: true}, Ordinary: seed, DeferredPanic: seed}
 	invocations.states[key] = state
-	return state, true
+	return invocations.observe(key, state, true)
 }
 
 func (calls *CallSites) defaultValues() bindingflow.Evaluation {
@@ -67,8 +68,8 @@ func (calls *CallSites) defaultValues() bindingflow.Evaluation {
 	return bindingflow.Evaluation{Facts: calls.facts}
 }
 
-func (calls *CallSites) targetWithValues(name string, summaries ExitSummaries, invocation exitInvocationContext) Outcomes {
-	summary := summaries[name]
+func (calls *CallSites) targetWithValues(name string, summaries exitSummaryReader, invocation exitInvocationContext) Outcomes {
+	summary, _ := readExitSummary(summaries, name)
 	if !calls.validTargetEnvironment(summary, invocation) {
 		return UnknownExit
 	}
@@ -143,21 +144,21 @@ func invocationCount(summaries ExitSummaries) int {
 	return count
 }
 
-func solveInputPass(body *exitBody, summaries ExitSummaries, invocations *exitInvocations, pass exitPass) bool {
+func (solver exitPassSolver) solveInputs(body *exitBody, invocations *exitInvocations) bool {
 	if invocations == nil {
 		return false
 	}
 	changed := false
 	for key, old := range invocations.states {
-		ordinary := evaluateBodyResult(body, summaries, false, key)
-		inherited := evaluateBodyResult(body, summaries, true, key)
+		ordinary := solver.cache.evaluate(bodyEvaluationKey{body: body, inputs: key}, solver.summaries)
+		inherited := solver.cache.evaluate(bodyEvaluationKey{body: body, inputs: key, inherited: true}, solver.summaries)
 		next := exitInvocation{
-			heaps:         [2]heapEffects{pass.heapEffects(old.heaps[0], ordinary.heaps), pass.heapEffects(old.heaps[1], inherited.heaps)},
+			heaps:         [2]heapEffects{solver.pass.heapEffects(old.heaps[0], ordinary.heaps), solver.pass.heapEffects(old.heaps[1], inherited.heaps)},
 			memory:        old.memory.meet(ordinary.memory).meet(inherited.memory),
-			captured:      [2]captureEffects{pass.captureEffects(old.captured[0], ordinary.captured), pass.captureEffects(old.captured[1], inherited.captured)},
-			returned:      pass.returned(old.returned, ordinary.returned),
-			Ordinary:      pass.update(old.Ordinary, ordinary.outcomes),
-			DeferredPanic: pass.update(old.DeferredPanic, inherited.outcomes),
+			captured:      [2]captureEffects{solver.pass.captureEffects(old.captured[0], ordinary.captured), solver.pass.captureEffects(old.captured[1], inherited.captured)},
+			returned:      solver.pass.returned(old.returned, ordinary.returned),
+			Ordinary:      solver.pass.update(old.Ordinary, ordinary.outcomes),
+			DeferredPanic: solver.pass.update(old.DeferredPanic, inherited.outcomes),
 		}
 		if old == next {
 			continue
@@ -208,4 +209,13 @@ func setInputPass(summaries ExitSummaries, pass exitPass) {
 			summary.invocations.pass = pass
 		}
 	}
+}
+
+func (invocations *exitInvocations) observe(key string, state exitInvocation, found bool) (exitInvocation, bool) {
+	if invocations.observed != nil {
+		if _, recorded := invocations.observed[key]; !recorded {
+			invocations.observed[key] = invocationObservation{value: state, found: found}
+		}
+	}
+	return state, found
 }

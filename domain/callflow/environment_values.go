@@ -53,7 +53,7 @@ func (evaluation *exitEvaluation) bindClosure(point exitPoint, ref pdg.Ref) exit
 	if err != nil {
 		return point
 	}
-	summary := evaluation.summaries[name]
+	summary, _ := readExitSummary(evaluation.summaries, name)
 	if summary.invocations == nil {
 		return point
 	}

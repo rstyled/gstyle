@@ -7,9 +7,9 @@ import (
 
 func (evaluation *exitEvaluation) applyDeferred(suffix completions, ref pdg.Ref, saved bindingflow.Evaluation) completions {
 	result := completions{}
-	for value := range suffix {
+	for value := range suffix.all() {
 		if value.mode&(Aborts|Diverges|UnknownExit) != 0 {
-			result[value] = true
+			result.insert(value)
 			continue
 		}
 		result.add(evaluation.deferredCompletion(value, ref, saved))
@@ -28,7 +28,7 @@ func (evaluation *exitEvaluation) deferredCompletion(value completion, ref pdg.R
 	evaluation.observeInvocation(invocation)
 	outcomes := evaluation.body.calls.outcomesWithValues(evaluation.summaries, ref, invocation.inherited, saved)
 	result := terminalCompletion(outcomes & (Aborts | Diverges | UnknownExit))
-	delete(result, completion{})
+	result.removeZero()
 	for _, mode := range completedModes() {
 		if outcomes&mode == 0 {
 			continue
@@ -42,11 +42,11 @@ func (evaluation *exitEvaluation) deferredCompletion(value completion, ref pdg.R
 func (evaluation *exitEvaluation) resolvedDeferred(value completion, point exitPoint, mode Outcomes) completions {
 	outcomes := invocationOutcomes(value.mode, mode)
 	result := completions{}
-	for completed := range evaluation.finish(point, outcomes) {
+	for completed := range evaluation.finish(point, outcomes).all() {
 		if completed.mode&(Aborts|Diverges|UnknownExit) == 0 {
 			completed.returned = value.returned
 		}
-		result[completed] = true
+		result.insert(completed)
 	}
 	return result
 }

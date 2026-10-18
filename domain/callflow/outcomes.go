@@ -117,7 +117,7 @@ func (calls *CallSites) index(query *bindingflow.Query) error {
 	return nil
 }
 
-func (calls *CallSites) outcomesWithValues(summaries ExitSummaries, ref pdg.Ref, inherited bool, context bindingflow.Evaluation) Outcomes {
+func (calls *CallSites) outcomesWithValues(summaries exitSummaryReader, ref pdg.Ref, inherited bool, context bindingflow.Evaluation) Outcomes {
 	if calls == nil {
 		return UnknownExit
 	}
@@ -155,7 +155,7 @@ type operationEffect struct {
 	Unknown  bool `json:"unknown,omitempty"`
 }
 
-func targetOutcomes(name string, summaries ExitSummaries, inherited bool) Outcomes {
+func targetOutcomes(name string, summaries exitSummaryReader, inherited bool) Outcomes {
 	switch name {
 	case "panic":
 		return Panics
@@ -164,7 +164,7 @@ func targetOutcomes(name string, summaries ExitSummaries, inherited bool) Outcom
 	case "os.Exit":
 		return Aborts
 	}
-	if summary, known := summaries[name]; known {
+	if summary, known := readExitSummary(summaries, name); known {
 		return summary.outcomes(inherited)
 	}
 	return externalExitOutcomes(name)

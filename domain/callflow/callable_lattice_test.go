@@ -37,7 +37,8 @@ func TestCallableJoinsAgainstSetOracle(t *testing.T) {
 	}
 }
 func TestCallableTupleAndStateKeysRetainEverySlot(t *testing.T) {
-	states := map[string]bool{}
+	states := map[valueStateID]bool{}
+	evaluation := newExitEvaluation(nil, nil)
 	for a := 0; a < 12; a++ {
 		for b := 0; b < 12; b++ {
 			for c := 0; c < 12; c++ {
@@ -45,10 +46,9 @@ func TestCallableTupleAndStateKeysRetainEverySlot(t *testing.T) {
 				if got := decodeTuple(encodeTuple(values)); !reflect.DeepEqual(got, values) {
 					t.Fatal("tuple loses value")
 				}
-				evaluation := &exitEvaluation{values: map[string]exitValues{}}
 				key := evaluation.internValues(exitValues{bindings: map[pdg.Ref]exitValue{1: values[0], 2: values[1], 3: values[2]}})
 				if states[key] {
-					t.Fatalf("distinct states share %q", key)
+					t.Fatalf("distinct states share %d", key)
 				}
 				states[key] = true
 			}

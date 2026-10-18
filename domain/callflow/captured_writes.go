@@ -6,11 +6,11 @@ import (
 	"maps"
 )
 
-func (calls *CallSites) capturedWrites(summaries ExitSummaries, ref pdg.Ref, context bindingflow.Evaluation) (map[pdg.Ref]exitValue, bool) {
+func (calls *CallSites) capturedWrites(summaries exitSummaryReader, ref pdg.Ref, context bindingflow.Evaluation) (map[pdg.Ref]exitValue, bool) {
 	return calls.captureModeWrites(summaries, exitInvocationContext{ref: ref, values: context}, Returns)
 }
 
-func (calls *CallSites) captureModeWrites(summaries ExitSummaries, invocation exitInvocationContext, mode Outcomes) (map[pdg.Ref]exitValue, bool) {
+func (calls *CallSites) captureModeWrites(summaries exitSummaryReader, invocation exitInvocationContext, mode Outcomes) (map[pdg.Ref]exitValue, bool) {
 	if !calls.invocationMemory(summaries, invocation).confined {
 		return nil, false
 	}
@@ -31,9 +31,9 @@ type captureProjection struct {
 	outcomes, mode Outcomes
 }
 
-func (calls *CallSites) targetCaptureModeWrites(name string, summaries ExitSummaries, projection captureProjection) map[pdg.Ref]exitValue {
+func (calls *CallSites) targetCaptureModeWrites(name string, summaries exitSummaryReader, projection captureProjection) map[pdg.Ref]exitValue {
 	invocation := projection.invocation
-	summary := summaries[name]
+	summary, _ := readExitSummary(summaries, name)
 	result := map[pdg.Ref]exitValue{}
 	if calls.targetInvocationMemory(name, summaries, invocation).preserves || summary.captureArity == 0 {
 		return result

@@ -8,7 +8,7 @@ func solveMemoryPreservation(bodies map[string]*exitBody, summaries ExitSummarie
 	for changed := true; changed; {
 		changed = false
 		for name, body := range bodies {
-			summary := summaries[name]
+			summary, _ := readExitSummary(summaries, name)
 			if !summary.PreservesCallerMemory || body.preservesMemory(summaries) {
 				continue
 			}
@@ -77,6 +77,10 @@ func privateMemoryRole(role pdg.Role) bool {
 // PreservesCallerMemory is independent of termination and argument values.
 // Unknown targets and missing body summaries never establish this property.
 func (calls *CallSites) PreservesCallerMemory(summaries ExitSummaries, ref pdg.Ref) bool {
+	return calls.preservesCallerMemory(summaries, ref)
+}
+
+func (calls *CallSites) preservesCallerMemory(summaries exitSummaryReader, ref pdg.Ref) bool {
 	if calls == nil {
 		return false
 	}
@@ -112,14 +116,14 @@ func (calls *CallSites) resolvedSiteWrites(ref pdg.Ref) bool {
 	return true
 }
 
-func targetPreservesMemory(name string, summaries ExitSummaries) bool {
+func targetPreservesMemory(name string, summaries exitSummaryReader) bool {
 	// These canonical termination boundaries use the caller's
 	// explicit completion flow; their own bookkeeping does not store Go cells.
 	switch name {
 	case "runtime.Goexit", "os.Exit":
 		return true
 	}
-	if summary, found := summaries[name]; found {
+	if summary, found := readExitSummary(summaries, name); found {
 		return summary.PreservesCallerMemory
 	}
 	switch name {

@@ -9,7 +9,7 @@ type memoryProof struct{ preserves, confined bool }
 func (proof memoryProof) meet(next memoryProof) memoryProof {
 	return memoryProof{preserves: proof.preserves && next.preserves, confined: proof.confined && next.confined}
 }
-func (calls *CallSites) invocationMemory(summaries ExitSummaries, invocation exitInvocationContext) memoryProof {
+func (calls *CallSites) invocationMemory(summaries exitSummaryReader, invocation exitInvocationContext) memoryProof {
 	targets := calls.invocationTargets(invocation.ref, invocation.values)
 	if !targets.known || !calls.resolvedSiteWrites(invocation.ref) {
 		return memoryProof{}
@@ -27,8 +27,8 @@ func (calls *CallSites) invocationMemory(summaries ExitSummaries, invocation exi
 	}
 	return proof
 }
-func (calls *CallSites) targetInvocationMemory(name string, summaries ExitSummaries, invocation exitInvocationContext) memoryProof {
-	summary := summaries[name]
+func (calls *CallSites) targetInvocationMemory(name string, summaries exitSummaryReader, invocation exitInvocationContext) memoryProof {
+	summary, _ := readExitSummary(summaries, name)
 	if !calls.validTargetEnvironment(summary, invocation) {
 		return memoryProof{}
 	}

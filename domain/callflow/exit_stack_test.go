@@ -23,7 +23,7 @@ func TestUnwindContinuationOrder(t *testing.T) {
 	calls := &CallSites{targets: map[pdg.Ref]callTargets{1: {names: []string{"recoverer"}, known: true}, 2: {names: []string{"panic"}, known: true}}}
 	summaries := ExitSummaries{"recoverer": {Ordinary: Returns, DeferredPanic: RecoversInherited}}
 	evaluation := newExitEvaluation(&exitBody{calls: calls}, summaries)
-	base := completions{{mode: Returns}: true}
+	base := singleCompletion(completion{mode: Returns})
 	olderRecovery := evaluation.applyDeferred(evaluation.applyDeferred(base, 2, bindingflow.Evaluation{}), 1, bindingflow.Evaluation{})
 	olderPanic := evaluation.applyDeferred(evaluation.applyDeferred(base, 1, bindingflow.Evaluation{}), 2, bindingflow.Evaluation{})
 	if got := olderRecovery.outcomes(); got != Returns {
