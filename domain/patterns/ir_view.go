@@ -82,6 +82,7 @@ func MiningView(g *pdg.Graph) *MiningGraph {
 	for _, edge := range g.Edges {
 		projection.edge(edge)
 	}
+	projection.project()
 	return view
 }
 
