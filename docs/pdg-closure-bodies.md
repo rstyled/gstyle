@@ -19,6 +19,12 @@ same exit/result solve and are published through the source-free program catalog
 its declaration-level findings and source-edit contract. Closure bodies do not
 become named-function edit targets. Named reports still share canonical storage.
 
+The `pdg-json` command exports the callable catalog, including lexical closure
+bodies. Every graph is validated before output begins. Documents retain the
+existing compatibility schema and are encoded one at a time. The export test
+checks nested body references resolve to documents; a four-callable recovery/panic
+fixture validates against compat `56edd6bb804b10edaf9bbc2343d69e5e298d8c1a`.
+
 Call-target queries follow the existing canonical value origins, then decode a
 unique closure body identity. Stored copies and target joins retain their origin
 semantics. Unknown, missing or invalid targets stay unknown. The same invocation

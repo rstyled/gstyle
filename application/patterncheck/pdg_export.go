@@ -11,54 +11,54 @@ import (
 )
 
 // exportPDGs bypasses mining and its caches. The array contains one compat
-// document per function; documents are expanded and encoded one at a time.
+// document per canonical callable; documents are expanded and encoded one at a time.
 func exportPDGs(ctx context.Context, opts options, output io.Writer) error {
 	ext, err := gopatterns.Extract(ctx, "", opts.paths)
 	if err != nil {
 		return err
 	}
-	if err := validateExport(ext.Funcs); err != nil {
+	if err := validateExport(ext.Callables); err != nil {
 		return err
 	}
-	return writePDGArray(ctx, output, ext.Funcs)
+	return writePDGArray(ctx, output, ext.Callables)
 }
 
 // Reject invalid native input before writing any export bytes.
-func validateExport(funcs []gopatterns.FuncPdg) error {
-	for i := range funcs {
-		if err := pdg.Validate(&funcs[i].Pdg); err != nil {
-			return fmt.Errorf("export %s: %w", funcs[i].Name, err)
+func validateExport(graphs []*pdg.Graph) error {
+	for i, graph := range graphs {
+		if err := pdg.Validate(graph); err != nil {
+			return fmt.Errorf("export graph %d: %w", i, err)
 		}
 	}
 	return nil
 }
 
-func writePDGArray(ctx context.Context, output io.Writer, funcs []gopatterns.FuncPdg) error {
+func writePDGArray(ctx context.Context, output io.Writer, graphs []*pdg.Graph) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	if _, err := io.WriteString(output, "[\n"); err != nil {
 		return err
 	}
-	for i := range funcs {
+	for i, graph := range graphs {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if err := exportFunction(output, &funcs[i], i); err != nil {
+		if err := exportFunction(output, graph, i); err != nil {
 			return err
 		}
 	}
 	_, err := io.WriteString(output, "]\n")
 	return err
 }
-func exportFunction(output io.Writer, f *gopatterns.FuncPdg, index int) error {
+func exportFunction(output io.Writer, graph *pdg.Graph, index int) error {
 	if index != 0 {
 		if _, err := io.WriteString(output, ",\n"); err != nil {
 			return err
 		}
 	}
-	if err := pdgjson.Write(output, &f.Pdg); err != nil {
-		return fmt.Errorf("export %s: %w", f.Name, err)
+	if err := pdgjson.Write(output, graph); err != nil {
+		return fmt.Errorf("export graph %d: %w", index, err)
 	}
 	return nil
 }
