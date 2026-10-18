@@ -66,7 +66,9 @@ type Call struct {
 	Callee  string `json:"callee"`
 	Line    int    `json:"line"`
 	Dynamic bool   `json:"dynamic"`
-	Local   bool   `json:"local"`
+	// Local permits body-backed evaluation within the analyzed source. A
+	// cross-package body is included only with a read-only source proof.
+	Local bool `json:"local"`
 	// Args records each argument's provenance, relative to the caller.
 	Args []ArgSource `json:"args,omitempty"`
 }
