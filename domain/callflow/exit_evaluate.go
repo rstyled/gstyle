@@ -6,7 +6,7 @@ import (
 )
 
 type exitPoint struct {
-	values             string
+	values             valueStateID
 	block              pdg.Ref
 	recovery           pdg.Ref
 	offset             int
@@ -14,7 +14,8 @@ type exitPoint struct {
 }
 
 type exitEvaluation struct {
-	contexts          map[string]bindingflow.Evaluation
+	stateIndex        valueStateIndex
+	contexts          map[valueStateID]bindingflow.Evaluation
 	concrete          map[exitValue]bindingflow.Value
 	heapResults       heapEffects
 	incoming          environmentHeap
@@ -24,7 +25,7 @@ type exitEvaluation struct {
 	captured          captureEffects
 	callOutcomes      map[pdg.Ref]Outcomes
 	operationOutcomes map[pdg.Ref]Outcomes
-	values            map[string]exitValues
+	values            map[valueStateID]exitValues
 	body              *exitBody
 	summaries         ExitSummaries
 	seen              map[exitPoint]bool
@@ -162,7 +163,7 @@ func evaluateBodyResult(body *exitBody, summaries ExitSummaries, inherited bool,
 }
 
 func newExitEvaluation(body *exitBody, summaries ExitSummaries) *exitEvaluation {
-	return &exitEvaluation{memory: memoryProof{preserves: true, confined: true}, values: map[string]exitValues{}, body: body, summaries: summaries, active: map[exitPoint]bool{}, results: map[exitPoint]completions{}}
+	return &exitEvaluation{memory: memoryProof{preserves: true, confined: true}, values: map[valueStateID]exitValues{}, body: body, summaries: summaries, active: map[exitPoint]bool{}, results: map[exitPoint]completions{}}
 }
 
 func (evaluation *exitEvaluation) run(inherited bool, inputs string) Outcomes {

@@ -3,9 +3,10 @@ package callflow
 // A completion describes one abstract suffix exit before older registrations
 // run. The saved result tuple belongs to the return operation, not live cells.
 type completion struct {
-	values, returned string
-	mode             Outcomes
-	recovered        bool
+	values    valueStateID
+	returned  string
+	mode      Outcomes
+	recovered bool
 }
 
 type completions map[completion]bool

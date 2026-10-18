@@ -2,7 +2,6 @@ package callflow
 
 import (
 	"cmp"
-	"encoding/json"
 	"github.com/rstyled/gstyle/domain/bindingflow"
 	"github.com/rstyled/gstyle/domain/pdg"
 	"go/constant"
@@ -43,29 +42,10 @@ func (evaluation *exitEvaluation) valueContext(point exitPoint) bindingflow.Eval
 	values := evaluation.values[point.values]
 	context := bindingflow.Evaluation{Captures: evaluation.callCellValues(values), ClosureCells: evaluation.concreteHeap(values), RepeatedCells: values.repeatedHeap(), Bindings: evaluation.concreteValues(values.liveBindings()), Nodes: evaluation.concreteValues(values.nodes), Facts: evaluation.body.facts, Results: evaluation.concreteResults(values.tuples)}
 	if evaluation.contexts == nil {
-		evaluation.contexts = map[string]bindingflow.Evaluation{}
+		evaluation.contexts = map[valueStateID]bindingflow.Evaluation{}
 	}
 	evaluation.contexts[point.values] = context
 	return context
-}
-
-func (evaluation *exitEvaluation) internValues(values exitValues) string {
-	if len(values.heap)+len(values.locations)+len(values.bindings)+len(values.nodes)+len(values.tuples)+len(values.cells)+len(values.unorderedReads) == 0 {
-		return ""
-	}
-	record := struct {
-		Bindings, Nodes, Cells []valueEntry
-		Tuples                 []tupleEntry
-		Unordered              []pdg.Ref
-		Heap                   []heapEntry
-		Locations              []cellLink
-	}{
-		valueEntries(values.bindings), valueEntries(values.nodes), valueEntries(values.cells), tupleEntries(values.tuples), slices.Sorted(maps.Keys(values.unorderedReads)), heapEntries(values.heap), locationEntries(values.locations),
-	}
-	data, _ := json.Marshal(record)
-	key := string(data)
-	evaluation.values[key] = values
-	return key
 }
 
 func (evaluation *exitEvaluation) recoveryValue(point exitPoint, ref pdg.Ref) exitPoint {
