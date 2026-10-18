@@ -12,9 +12,9 @@ func attachHelpers(facts, available []quality.Function) []quality.Function {
 	for _, function := range available {
 		index[quality.NormalizeCallee(function.Name)] = function
 	}
-	readOnly := readOnlyHelpers(index)
+	bounded := boundSourceHelpers(index)
 	for name, function := range index {
-		function.Calls = sourceCalls(function.Calls, readOnly)
+		function.Calls = sourceCalls(function.Calls, bounded)
 		index[name] = function
 	}
 	for position, function := range facts {
@@ -41,29 +41,29 @@ func reachableHelpers(function quality.Function, index map[string]quality.Functi
 			continue
 		}
 		seen[name] = true
-		helpers = append(helpers, quality.Helper{Name: target.Name, Mutations: target.Mutations, Calls: target.Calls, Effects: target.Effects})
+		helpers = append(helpers, quality.Helper{Name: target.Name, Params: target.Params, HasSelf: target.HasSelf, Mutations: target.Mutations, Calls: target.Calls, Effects: target.Effects})
 		pending = append(pending, target.Calls...)
 	}
 	slices.SortFunc(helpers, func(a, b quality.Helper) int { return strings.Compare(a.Name, b.Name) })
 	return helpers
 }
 
-// Cross-package calls use only source bodies proven read-only. Evidence stays
-// intact for policy reevaluation. Other package calls remain conservative.
-func sourceCalls(calls []quality.Call, readOnly map[string]bool) []quality.Call {
+// Cross-package bodies must have bounded effects: local writes or writes bound
+// to direct formals. Complete evidence stays available for policy reevaluation.
+func sourceCalls(calls []quality.Call, available map[string]bool) []quality.Call {
 	result := slices.Clone(calls)
 	for i, call := range result {
-		available := readOnly[quality.NormalizeCallee(call.Callee)]
-		if available && !call.Dynamic {
+		found := available[quality.NormalizeCallee(call.Callee)]
+		if found && !call.Dynamic {
 			result[i].Local = true
 		}
 	}
 	return result
 }
 
-// The finite fixed point admits only bodies with no observable mutations,
-// intrinsic effects, dynamic calls or unresolved callees. Cycles stay unknown.
-func readOnlyHelpers(index map[string]quality.Function) map[string]bool {
+// The finite fixed point excludes unbound writes, intrinsic effects, dynamic
+// calls and unresolved callees. Cycles stay unknown.
+func boundSourceHelpers(index map[string]quality.Function) map[string]bool {
 	proven := map[string]bool{}
 	for changed := true; changed; {
 		changed = false
@@ -71,7 +71,7 @@ func readOnlyHelpers(index map[string]quality.Function) map[string]bool {
 			if proven[name] {
 				continue
 			}
-			if !readOnlyBody(body, proven) {
+			if !boundSourceBody(body, proven) {
 				continue
 			}
 			proven[name] = true
@@ -80,29 +80,39 @@ func readOnlyHelpers(index map[string]quality.Function) map[string]bool {
 	}
 	return proven
 }
-func readOnlyBody(body quality.Function, proven map[string]bool) bool {
+func boundSourceBody(body quality.Function, proven map[string]bool) bool {
 	if len(body.Effects) != 0 {
 		return false
 	}
-	if observableMutations(body.Mutations) {
+	if unboundMutations(body.Mutations) {
 		return false
 	}
-	return readOnlyCalls(body.Calls, proven)
+	return boundSourceCalls(body.Calls, proven)
 }
-func observableMutations(mutations []quality.Mutation) bool {
+func unboundMutations(mutations []quality.Mutation) bool {
 	for _, mutation := range mutations {
-		if mutation.Provenance != quality.Local {
+		if mutation.Provenance != quality.Local && mutation.Parameter == nil {
 			return true
 		}
 	}
 	return false
 }
-func readOnlyCalls(calls []quality.Call, proven map[string]bool) bool {
+func boundSourceCalls(calls []quality.Call, proven map[string]bool) bool {
 	for _, call := range calls {
-		known := proven[quality.NormalizeCallee(call.Callee)] || quality.ContainerClone(call.Callee) || call.HasLocalContainerTarget()
+		known := proven[quality.NormalizeCallee(call.Callee)] || sourceContainerCall(call)
 		if call.Dynamic || !known {
 			return false
 		}
 	}
 	return true
+}
+
+func sourceContainerCall(call quality.Call) bool {
+	if quality.ContainerClone(call.Callee) {
+		return true
+	}
+	if call.MutationTarget == "" || len(call.StorageArgs) == 0 {
+		return false
+	}
+	return call.HasLocalContainerTarget() || call.StorageArgs[0].Parameter != nil
 }

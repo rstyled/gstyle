@@ -13,7 +13,7 @@ func validateHelpers(f Function) error {
 			return fmt.Errorf("invalid or duplicate helper name %q", helper.Name)
 		}
 		seen[name] = true
-		body := Function{Location: f.Location, Mutations: helper.Mutations, Effects: helper.Effects, Calls: helper.Calls}
+		body := Function{Location: f.Location, Params: helper.Params, HasSelf: helper.HasSelf, Mutations: helper.Mutations, Effects: helper.Effects, Calls: helper.Calls}
 		if err := validateHelperBody(body); err != nil {
 			return err
 		}
@@ -22,7 +22,7 @@ func validateHelpers(f Function) error {
 }
 
 func validateHelperBody(f Function) error {
-	for _, validate := range []func(Function) error{validateCounts, validateMutations, validateEffects, validateCalls} {
+	for _, validate := range []func(Function) error{validateCounts, validateMutations, validateEffects, validateCalls, validateStorage} {
 		if err := validate(f); err != nil {
 			return err
 		}

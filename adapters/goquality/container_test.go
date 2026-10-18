@@ -154,8 +154,8 @@ func Shared(values []int){slices.Sort(values)}
 		t.Fatalf("fresh helper reported effects: %+v", caller)
 	}
 	shared := resultNamed(t, report, "Shared")
-	if len(shared.Effects) != 1 || shared.Effects[0].Kind != quality.UnknownEffect || shared.Complete {
-		t.Fatalf("external helper incorrectly proved local: %+v", shared)
+	if len(shared.Effects) != 1 || shared.Effects[0].Kind != quality.MutationEffect || !shared.Complete {
+		t.Fatalf("external helper lost observable write: %+v", shared)
 	}
 	encoded, err := json.Marshal(facts)
 	if err != nil {

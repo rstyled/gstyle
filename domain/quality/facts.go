@@ -11,6 +11,8 @@ type Location struct {
 // Helper retains policy-free body evidence for one statically called local
 // function. Helpers form a flat graph; cycles remain unknown during evaluation.
 type Helper struct {
+	Params    int        `json:"params,omitempty"`
+	HasSelf   bool       `json:"has_self,omitempty"`
 	Name      string     `json:"name"`
 	Mutations []Mutation `json:"mutations"`
 	Calls     []Call     `json:"calls"`
@@ -55,6 +57,8 @@ const (
 )
 
 type Mutation struct {
+	// Parameter binds direct formal storage; -1 denotes the receiver.
+	Parameter  *int       `json:"parameter,omitempty"`
 	Root       string     `json:"root"`
 	RootID     string     `json:"root_id"`
 	FieldPath  string     `json:"field_path"`
@@ -63,11 +67,13 @@ type Mutation struct {
 }
 
 type Call struct {
-	Callee  string `json:"callee"`
-	Line    int    `json:"line"`
-	Dynamic bool   `json:"dynamic"`
+	StorageArgs []Storage `json:"storage_args,omitempty"`
+	Receiver    *Storage  `json:"receiver,omitempty"`
+	Callee      string    `json:"callee"`
+	Line        int       `json:"line"`
+	Dynamic     bool      `json:"dynamic"`
 	// Local permits body-backed evaluation within the analyzed source. A
-	// cross-package body is included only with a read-only source proof.
+	// cross-package body requires bounded source effects.
 	Local bool `json:"local"`
 	// Args records each argument's provenance, relative to the caller.
 	Args []ArgSource `json:"args,omitempty"`
