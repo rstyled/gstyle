@@ -250,5 +250,4 @@ Go call identities and per-function PDG dependencies. JSON candidates include a
 `security` rule ID and CWE; SARIF uses the security rule ID. A reported path needs
 review, and no findings do not establish that the code is secure.
 
-See the [labeled SAST baseline](verification/sast/README.md) for supported API
-boundaries, safe controls, and known gaps. Run `make verify-sast` to reproduce it.
+Run `make verify-sast` to check the labeled source cases against the saved baseline.
