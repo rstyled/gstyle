@@ -37,18 +37,6 @@ type Strings struct{ ReturnPara, IntroPara, Name string }
 
 var primitiveTypes = []string{"bool", "i8", "i16", "i32", "i64", "i128", "isize", "u8", "u16", "u32", "u64", "u128", "usize", "unit"}
 
-type runeMatcher struct{ seenA, seenB []bool }
-
-func (m runeMatcher) match(i int, r rune, b []rune, window int) {
-	for j := max(0, i-window); j < min(len(b), i+window+1); j++ {
-		if m.seenB[j] || b[j] != r {
-			continue
-		}
-		m.seenA[i], m.seenB[j] = true, true
-		return
-	}
-}
-
 type StringScore struct{ ReturnPara, IntroPara, Name, Mean *big.Rat }
 
 func Interface(parameters []Parameter) (string, error) {
@@ -104,12 +92,18 @@ func orient(a, b []rune) ([]rune, []rune) {
 }
 
 func matchedRunes(a, b []rune) ([]rune, []rune) {
-	matcher := runeMatcher{make([]bool, len(a)), make([]bool, len(b))}
+	seenA, seenB := make([]bool, len(a)), make([]bool, len(b))
 	window := max(0, max(len(a), len(b))/2-1)
 	for i, r := range a {
-		matcher.match(i, r, b, window)
+		for j := max(0, i-window); j < min(len(b), i+window+1); j++ {
+			if seenB[j] || b[j] != r {
+				continue
+			}
+			seenA[i], seenB[j] = true, true
+			break
+		}
 	}
-	return selectedRunes(a, matcher.seenA), selectedRunes(b, matcher.seenB)
+	return selectedRunes(a, seenA), selectedRunes(b, seenB)
 }
 
 func selectedRunes(runes []rune, seen []bool) []rune {
