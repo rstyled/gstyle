@@ -34,7 +34,7 @@ func (a Analyzer) Extract(ctx context.Context, paths []string) ([]quality.Functi
 	if err != nil {
 		return nil, err
 	}
-	config := &packages.Config{Context: ctx, Dir: root, Mode: packages.LoadSyntax | packages.NeedForTest, Tests: a.Tests, BuildFlags: a.BuildFlags}
+	config := &packages.Config{Context: ctx, Dir: root, Mode: packages.LoadSyntax | packages.NeedForTest | packages.NeedModule, Tests: a.Tests, BuildFlags: a.BuildFlags}
 	pkgs, err := packages.Load(config, patterns...)
 	if err != nil {
 		return nil, fmt.Errorf("load Go packages: %w", err)

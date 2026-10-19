@@ -1,0 +1,68 @@
+package goquality
+
+import (
+	"go/ast"
+	"go/constant"
+	"go/types"
+
+	"golang.org/x/tools/go/packages"
+)
+
+const lipglossPackage = "charm.land/lipgloss/v2"
+
+func styleValueType(typ types.Type) bool {
+	named, ok := types.Unalias(typ).(*types.Named)
+	if !ok {
+		return false
+	}
+	object := named.Obj()
+	return object.Pkg() != nil && object.Pkg().Path() == lipglossPackage && object.Name() == "Style"
+}
+
+// In v2.0.6, this exact chain fills a zero Style with a value color.
+// Other Style values can hold mutable references or callbacks. Calls on the
+// proven value retain their effects; only the global read is stable.
+func stableStyle(pkg *packages.Package, value ast.Expr) bool {
+	if !auditedStyleModule(pkg) {
+		return false
+	}
+	foreground := styleCall(value, "Style.Foreground", 1, pkg.TypesInfo)
+	if foreground == nil {
+		return false
+	}
+	selector := ast.Unparen(foreground.Fun).(*ast.SelectorExpr)
+	if styleCall(selector.X, "NewStyle", 0, pkg.TypesInfo) == nil {
+		return false
+	}
+	color := styleCall(foreground.Args[0], "Color", 1, pkg.TypesInfo)
+	if color == nil {
+		return false
+	}
+	constantColor := pkg.TypesInfo.Types[color.Args[0]].Value
+	return constantColor != nil && constantColor.Kind() == constant.String
+}
+
+func auditedStyleModule(pkg *packages.Package) bool {
+	dependency := pkg.Imports[lipglossPackage]
+	if dependency == nil || dependency.Module == nil {
+		return false
+	}
+	module := dependency.Module
+	return module.Path == lipglossPackage && module.Version == "v2.0.6" && module.Replace == nil
+}
+
+func styleCall(value ast.Expr, name string, arity int, info *types.Info) *ast.CallExpr {
+	call, ok := ast.Unparen(value).(*ast.CallExpr)
+	if !ok || len(call.Args) != arity {
+		return nil
+	}
+	selector, ok := ast.Unparen(call.Fun).(*ast.SelectorExpr)
+	if !ok {
+		return nil
+	}
+	function, ok := info.ObjectOf(selector.Sel).(*types.Func)
+	if !ok || resolvedName(function) != lipglossPackage+"."+name {
+		return nil
+	}
+	return call
+}
