@@ -16,7 +16,7 @@ func TestReadOnlyHelpersAgainstReachabilityOracle(t *testing.T) {
 				helper := Helper{Name: name}
 				reach[from][from] = true
 				if dirty&(1<<from) != 0 {
-					helper.Effects = []Effect{{Kind: IO, Detail: "write", Line: 1}}
+					helper.Effects = []Effect{{Kind: []Kind{IO, Global, MutationEffect}[from], Detail: "write", Line: 1}}
 				}
 				for to := range size {
 					if edges&(1<<(from*size+to)) != 0 {
@@ -42,6 +42,24 @@ func TestReadOnlyHelpersAgainstReachabilityOracle(t *testing.T) {
 					if reach[root][node] && dirty&(1<<node) != 0 {
 						want = false
 					}
+				}
+				resolver := callResolver{helpers: helpers, pure: got, cache: map[string]callSummary{}, active: map[string]bool{}}
+				summary := resolver.recursiveCall(Call{Callee: fmt.Sprint("h", root), Local: true})
+				if (len(summary.effects) == 0) != want || summary.unclassified != 0 {
+					t.Fatalf("edges=%d dirty=%d root=%d: recursive effects=%+v", edges, dirty, root, summary)
+				}
+				resolved := resolver.call(Call{Callee: fmt.Sprint("h", root), Local: true})
+				kinds := map[Kind]bool{}
+				for _, effect := range resolved.effects {
+					kinds[effect.Kind] = true
+				}
+				for node, kind := range []Kind{IO, Global, MutationEffect} {
+					if kinds[kind] != (reach[root][node] && dirty&(1<<node) != 0) {
+						t.Fatalf("edges=%d dirty=%d root=%d: resolved kinds=%v", edges, dirty, root, kinds)
+					}
+				}
+				if kinds[UnknownEffect] || resolved.unclassified != 0 {
+					t.Fatalf("known graph becomes unknown: %+v", resolved)
 				}
 				if got[fmt.Sprint("h", root)] != want {
 					t.Fatalf("edges=%d dirty=%d root=%d: read-only=%v want=%v", edges, dirty, root, got, want)
@@ -90,7 +108,7 @@ func TestRecursiveReadOnlyProofRetainsPolicyOverrides(t *testing.T) {
 	for _, effect := range got.Effects {
 		kinds[effect.Kind] = true
 	}
-	if !kinds[IO] || !kinds[UnknownEffect] || got.Complete {
+	if !kinds[IO] || kinds[UnknownEffect] || !got.Complete {
 		t.Fatalf("override hidden by recursion proof: %+v", got)
 	}
 }

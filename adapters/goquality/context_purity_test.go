@@ -31,7 +31,7 @@ func Effectful() {noisy(make(map[int]bool),4)}
 	}
 	for _, name := range []string{"Shared", "Mixed", "ReverseMixed", "Effectful"} {
 		got := resultNamed(t, report, name)
-		if got.Complete || len(got.Effects) == 0 {
+		if !got.Complete || got.UnclassifiedCalls != 0 || len(got.Effects) == 0 {
 			t.Fatalf("%s loses evidence: %+v", name, got)
 		}
 	}
