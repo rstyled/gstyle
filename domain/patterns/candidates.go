@@ -360,7 +360,7 @@ func newCandidateIndex(facts []*MiningFacts, groups []SigGroup, params Params) *
 		byID:            map[string]*MiningFacts{},
 		groups:          map[string]*SigGroup{},
 		workspaceADTs:   map[string]bool{},
-		calleeOwners:    map[string]string{},
+		calleeOwners:    calleeOwners(facts),
 		singleCallGuard: params.SingleCallGuard,
 		maxHoles:        params.MaxHoles,
 	}
@@ -375,9 +375,6 @@ func newCandidateIndex(facts []*MiningFacts, groups []SigGroup, params Params) *
 	}
 	for i := range groups {
 		ix.groups[groups[i].Key] = &groups[i]
-	}
-	for id, owner := range calleeOwners(facts) {
-		ix.calleeOwners[id] = owner
 	}
 	return ix
 }

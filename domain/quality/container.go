@@ -8,7 +8,11 @@ func ContainerMutation(callee string) bool {
 	switch NormalizeCallee(callee) {
 	case "maps.Copy", "slices.Sort", "slices.Compact", "slices.Reverse",
 		"slices.Delete", "slices.Insert", "slices.Replace",
-		"sort.Ints", "sort.Float64s", "sort.Strings":
+		"sort.Ints", "sort.Float64s", "sort.Strings",
+		"encoding/binary.littleEndian.PutUint16", "encoding/binary.littleEndian.PutUint32", "encoding/binary.littleEndian.PutUint64",
+		"encoding/binary.littleEndian.AppendUint16", "encoding/binary.littleEndian.AppendUint32", "encoding/binary.littleEndian.AppendUint64",
+		"encoding/binary.bigEndian.PutUint16", "encoding/binary.bigEndian.PutUint32", "encoding/binary.bigEndian.PutUint64",
+		"encoding/binary.bigEndian.AppendUint16", "encoding/binary.bigEndian.AppendUint32", "encoding/binary.bigEndian.AppendUint64":
 		return true
 	default:
 		return false

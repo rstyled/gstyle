@@ -593,17 +593,18 @@ func patternSourceParser(sources map[string]string, snapshots *pdg.SourceContext
 		lock.Lock()
 		defer lock.Unlock()
 		sources[filename] = fmt.Sprintf("%x", sha256.Sum256(content))
-		if err := publishSourceSnapshot(snapshots, filename, content, fset, file); err != nil {
+		if err := publishSourceSnapshot(snapshots, content, fset, file); err != nil {
 			return nil, err
 		}
 		return file, nil
 	}
 }
 
-func publishSourceSnapshot(snapshots *pdg.SourceContext, filename string, content []byte, fset *token.FileSet, file *ast.File) error {
+func publishSourceSnapshot(snapshots *pdg.SourceContext, content []byte, fset *token.FileSet, file *ast.File) error {
 	if snapshots == nil {
 		return nil
 	}
+	filename := fset.File(file.Pos()).Name()
 	if snapshots.Reference(filename) != 0 {
 		return snapshots.Check(filename, content)
 	}

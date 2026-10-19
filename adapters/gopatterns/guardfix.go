@@ -74,7 +74,7 @@ func FixInvertedGuards(fset *token.FileSet, f *ast.File, src []byte) ([]byte, []
 // in ascending order, copying unchanged spans between them.
 func applyEdits(src []byte, edits []textEdit) []byte {
 	// Sort ascending by start.
-	for i := 0; i < len(edits); i++ {
+	for i := range edits {
 		for j := i + 1; j < len(edits); j++ {
 			if edits[j].start < edits[i].start {
 				edits[i], edits[j] = edits[j], edits[i]

@@ -198,7 +198,7 @@ func SimilarityNeighborhoodWLMilli(a, b *NeighborhoodWL) uint32 {
 // in wl.go. Each level normalizes by its own max total.
 func weightedNeighborhoodIntersection(a, b *NeighborhoodWL, w []uint64) (uint64, uint64) {
 	var num, den uint64
-	for k := 0; k < neighborhoodWLMaxK; k++ {
+	for k := range neighborhoodWLMaxK {
 		denom := a.totals[k]
 		if b.totals[k] > denom {
 			denom = b.totals[k]

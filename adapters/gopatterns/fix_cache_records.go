@@ -1,6 +1,7 @@
 package gopatterns
 
 import (
+	"maps"
 	"slices"
 	"strings"
 
@@ -53,7 +54,7 @@ func recordSourcePackage(pkgs []*packages.Package, facts Extraction, functions [
 	return record
 }
 
-func sourcePackageInputs(pkgs []*packages.Package) (paths, dependencies []string) {
+func sourcePackageInputs(pkgs []*packages.Package) ([]string, []string) {
 	files, imports := make(map[string]bool), make(map[string]bool)
 	for _, pkg := range pkgs {
 		for _, path := range pkg.CompiledGoFiles {
@@ -63,13 +64,7 @@ func sourcePackageInputs(pkgs []*packages.Package) (paths, dependencies []string
 			imports[strings.Clone(sourceFamilyPath(imported))] = true
 		}
 	}
-	for path := range files {
-		paths = append(paths, path)
-	}
-	for name := range imports {
-		dependencies = append(dependencies, name)
-	}
-	return paths, dependencies
+	return slices.Collect(maps.Keys(files)), slices.Collect(maps.Keys(imports))
 }
 
 // Keep test variants in their family while ordering production imports first.

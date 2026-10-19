@@ -27,7 +27,7 @@ func (x *extractor) call(call *ast.CallExpr) {
 	var fact quality.Call
 	switch object := object.(type) {
 	case *types.Func:
-		fact = quality.Call{Site: site, Line: line, Callee: resolvedName(object), Local: object.Pkg() == x.pkg.Types, Dynamic: interfaceCall(x.pkg.TypesInfo, fun), Args: args, MutationTarget: x.containerMutationTarget(object, call.Args)}
+		fact = quality.Call{Site: site, Line: line, Callee: resolvedName(object), Local: object.Pkg() == x.pkg.Types, Dynamic: interfaceCall(x.pkg.TypesInfo, fun), Args: args, MutationTarget: x.containerMutationTarget(object, call)}
 	case *types.Var:
 		fact = quality.Call{Site: site, Line: line, Callee: object.Name(), Dynamic: true, Args: args}
 	default:
@@ -36,11 +36,24 @@ func (x *extractor) call(call *ast.CallExpr) {
 	x.fact.Calls = append(x.fact.Calls, x.bindCallStorage(call, fact))
 }
 
-func (x *extractor) containerMutationTarget(function *types.Func, args []ast.Expr) quality.Provenance {
+func (x *extractor) containerMutationTarget(function *types.Func, call *ast.CallExpr) quality.Provenance {
 	if !quality.ContainerMutation(resolvedName(function)) {
 		return ""
 	}
-	return x.mutationProvenance(args[0], true)
+	return x.mutationProvenance(x.containerArgs(call)[0], true)
+}
+
+// Method expressions pass their receiver explicitly before the buffer.
+func (x *extractor) containerArgs(call *ast.CallExpr) []ast.Expr {
+	selector, ok := unwrappedCallee(call.Fun).(*ast.SelectorExpr)
+	if !ok {
+		return call.Args
+	}
+	selection := x.pkg.TypesInfo.Selections[selector]
+	if selection != nil && selection.Kind() == types.MethodExpr {
+		return call.Args[1:]
+	}
+	return call.Args
 }
 
 // classifyArgs records each argument's provenance relative to the caller's
