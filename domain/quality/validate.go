@@ -55,7 +55,7 @@ func validateMutations(f Function) error {
 
 func validateEffects(f Function) error {
 	for _, effect := range f.Effects {
-		if !validKind(effect.Kind, false) || effect.Line < 1 {
+		if effect.Site < 0 || !validKind(effect.Kind, false) || effect.Line < 1 {
 			return fmt.Errorf("invalid intrinsic effect in %s:%d", f.Path, f.Line)
 		}
 	}
@@ -64,7 +64,7 @@ func validateEffects(f Function) error {
 
 func validateCalls(f Function) error {
 	for _, call := range f.Calls {
-		if call.Callee == "" || call.Line < 1 || !call.validMutationTarget() {
+		if call.Site < 0 || call.Callee == "" || call.Line < 1 || !call.validMutationTarget() {
 			return fmt.Errorf("invalid call in %s:%d", f.Path, f.Line)
 		}
 	}

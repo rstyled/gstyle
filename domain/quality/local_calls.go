@@ -104,7 +104,7 @@ func (call Call) classifiedCall(kind Kind) callSummary {
 	if kind == UnknownEffect {
 		unknown = 1
 	}
-	return callSummary{effects: []Effect{{Kind: kind, Detail: call.Callee, Line: call.Line}}, unclassified: unknown}
+	return callSummary{effects: []Effect{{Site: call.Site, Kind: kind, Detail: call.Callee, Line: call.Line}}, unclassified: unknown}
 }
 
 func (call Call) atCall(summary callSummary) callSummary {
@@ -114,7 +114,7 @@ func (call Call) atCall(summary callSummary) callSummary {
 	via := shortCallee(NormalizeCallee(call.Callee))
 	effects := make([]Effect, len(summary.effects))
 	for index, effect := range summary.effects {
-		effects[index] = Effect{Kind: effect.Kind, Detail: call.Callee + " → " + effect.Detail, Line: call.Line, Via: via}
+		effects[index] = Effect{Site: call.Site, Kind: effect.Kind, Detail: call.Callee + " → " + effect.Detail, Line: call.Line, Via: via}
 	}
 	return callSummary{effects: effects, unclassified: summary.unclassified}
 }

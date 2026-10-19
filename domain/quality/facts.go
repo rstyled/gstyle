@@ -71,6 +71,8 @@ type Mutation struct {
 }
 
 type Call struct {
+	// Site is the opening-parenthesis offset plus one; zero means legacy facts.
+	Site        int       `json:"site,omitempty"`
 	StorageArgs []Storage `json:"storage_args,omitempty"`
 	Receiver    *Storage  `json:"receiver,omitempty"`
 	Callee      string    `json:"callee"`
@@ -134,6 +136,8 @@ const (
 var kinds = []Kind{MutationEffect, IO, Network, Global, Unsafe, Time, Random, Panic, UnknownEffect}
 
 type Effect struct {
+	// Site is the outer call charged by density; zero keeps independent evidence.
+	Site   int    `json:"site,omitempty"`
 	Kind   Kind   `json:"kind"`
 	Detail string `json:"detail"`
 	Line   int    `json:"line"`

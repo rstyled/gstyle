@@ -228,10 +228,11 @@ func appendRule(ds []Diagnostic, loc Location, check ruleCheck, allowed []string
 // summarizeDensity totals effect weight by kind, heaviest first.
 func summarizeDensity(effects []Effect, weights Weights) densitySummary {
 	byKind := map[Kind]int64{}
+	sites := densitySites{}
 	var total int64
 	for _, effect := range effects {
 		w := weights.value(effect.Kind)
-		if w == 0 {
+		if w == 0 || !sites.counts(effect) {
 			continue
 		}
 		byKind[effect.Kind] += w
@@ -314,8 +315,11 @@ func compareEffects(a, b Effect) int {
 func effectWeight(effects []Effect, weights Weights) (int64, bool) {
 	var weight int64
 	complete := true
+	sites := densitySites{}
 	for _, effect := range effects {
-		weight += weights.value(effect.Kind)
+		if sites.counts(effect) {
+			weight += weights.value(effect.Kind)
+		}
 		if effect.Kind == UnknownEffect {
 			complete = false
 		}

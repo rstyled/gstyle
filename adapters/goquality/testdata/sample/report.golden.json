@@ -176,11 +176,13 @@
           "line": 35
         },
         {
+          "site": 476,
           "kind": "io",
           "detail": "fmt.Println",
           "line": 36
         },
         {
+          "site": 523,
           "kind": "time",
           "detail": "time.Now",
           "line": 38
@@ -204,6 +206,7 @@
       "complete": true,
       "effects": [
         {
+          "site": 650,
           "kind": "mutation",
           "detail": "example.com/sample.Box.Bump → b.Count",
           "line": 50,
@@ -223,11 +226,13 @@
       "complete": false,
       "effects": [
         {
+          "site": 708,
           "kind": "io",
           "detail": "io.Reader.Read",
           "line": 54
         },
         {
+          "site": 723,
           "kind": "unknown",
           "detail": "callback",
           "line": 55
@@ -431,11 +436,13 @@
           "line": 35
         },
         {
+          "site": 476,
           "kind": "io",
           "detail": "fmt.Println",
           "line": 36
         },
         {
+          "site": 523,
           "kind": "time",
           "detail": "time.Now",
           "line": 38
