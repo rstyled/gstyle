@@ -48,7 +48,7 @@ func readOnlyBody(helper Helper) bool {
 
 func (proof *helperPurity) target(call Call) (string, bool) {
 	name := NormalizeCallee(call.Callee)
-	kind, configured := prefixKind(name, proof.prefixes)
+	kind, configured := call.policyKind(proof.prefixes)
 	if configured {
 		return "", kind == None || (kind == MutationEffect && call.HasLocalContainerTarget())
 	}

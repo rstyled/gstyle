@@ -74,10 +74,11 @@ func (x *extractor) valueStorage(value ast.Expr) *int {
 }
 
 func (x *extractor) argumentStorage(value ast.Expr) quality.Storage {
+	plain := plainJSONType(x.pkg.TypesInfo.TypeOf(value), map[types.Type]bool{})
 	if address, ok := ast.Unparen(value).(*ast.UnaryExpr); ok && address.Op == token.AND {
-		return quality.Storage{Provenance: x.addressOrigin(address), Parameter: x.mutationParameter(address.X, false)}
+		return quality.Storage{PlainJSON: plain, Provenance: x.addressOrigin(address), Parameter: x.mutationParameter(address.X, false)}
 	}
-	return quality.Storage{Provenance: x.mutationProvenance(value, true), Parameter: x.referenceStorage(value)}
+	return quality.Storage{PlainJSON: plain, Provenance: x.mutationProvenance(value, true), Parameter: x.referenceStorage(value)}
 }
 
 func (x *extractor) callStorage(call *ast.CallExpr) []quality.Storage {

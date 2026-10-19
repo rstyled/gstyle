@@ -3,12 +3,15 @@ package quality
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 )
 
-// Storage records reference storage at a call site. Parameter identifies an
+// Storage records call-site ownership and callback-free JSON type evidence.
+// Parameter identifies an
 // enclosing formal (-1 for its receiver); nil means no formal binding is known.
 type Storage struct {
+	PlainJSON  bool       `json:"plain_json,omitempty"`
 	Provenance Provenance `json:"provenance"`
 	Parameter  *int       `json:"parameter,omitempty"`
 }
@@ -30,7 +33,8 @@ func (call Call) resolveStorage(storage Storage) Storage {
 	if storage.Parameter == nil {
 		return storage
 	}
-	return Storage{Provenance: call.storage(*storage.Parameter).Provenance}
+	actual := call.storage(*storage.Parameter)
+	return Storage{Provenance: actual.Provenance, PlainJSON: storage.PlainJSON || actual.PlainJSON}
 }
 
 func (call Call) bindHelper(helper Helper) Helper {
@@ -65,15 +69,17 @@ func (call Call) bindCall(nested Call) Call {
 	return nested
 }
 
-// Helper results depend on ownership, never on the caller's formal identity.
+// Helper results depend on ownership and typed evidence, never formal identity.
 func (call Call) storageKey(name string) string {
 	var key strings.Builder
 	key.WriteString(name)
 	key.WriteByte('|')
 	key.WriteString(string(call.storage(-1).Provenance))
+	key.WriteString(strconv.FormatBool(call.storage(-1).PlainJSON))
 	for _, storage := range call.StorageArgs {
 		key.WriteByte('|')
 		key.WriteString(string(storage.Provenance))
+		key.WriteString(strconv.FormatBool(storage.PlainJSON))
 	}
 	return key.String()
 }

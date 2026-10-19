@@ -42,7 +42,7 @@ func (r *callResolver) calls(calls []Call) callSummary {
 
 func (r *callResolver) call(call Call) callSummary {
 	name := NormalizeCallee(call.Callee)
-	kind, configured := prefixKind(name, r.prefixes)
+	kind, configured := call.policyKind(r.prefixes)
 	if configured {
 		return call.classifiedCall(kind)
 	}
@@ -135,13 +135,18 @@ func shortCallee(callee string) string {
 }
 
 func prefixKind(normalizedCallee string, prefixes []Prefix) (Kind, bool) {
-	best, kind := -1, UnknownEffect
+	prefix, found := selectedPrefix(normalizedCallee, prefixes)
+	return prefix.Kind, found
+}
+
+func selectedPrefix(normalizedCallee string, prefixes []Prefix) (Prefix, bool) {
+	best, result := -1, Prefix{Kind: UnknownEffect}
 	for _, prefix := range prefixes {
 		if len(prefix.Path) >= best && strings.HasPrefix(normalizedCallee, prefix.Path) {
-			best, kind = len(prefix.Path), prefix.Kind
+			best, result = len(prefix.Path), prefix
 		}
 	}
-	return kind, best >= 0
+	return result, best >= 0
 }
 
 // Preserve established effects when marking a truncated helper summary unknown.

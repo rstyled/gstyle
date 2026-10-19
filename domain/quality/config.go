@@ -132,8 +132,10 @@ func (w Weights) environmentWeight(kind Kind) int64 {
 }
 
 type Prefix struct {
-	Path string `toml:"path"`
-	Kind Kind   `toml:"kind"`
+	// plainJSON refines only the built-in callback uncertainty.
+	plainJSON bool
+	Path      string `toml:"path"`
+	Kind      Kind   `toml:"kind"`
 }
 
 // Grouping decides which violations must be fixed together.

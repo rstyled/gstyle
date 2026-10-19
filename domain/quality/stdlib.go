@@ -24,11 +24,11 @@ type stdlibRule struct {
 
 func (r stdlibRule) prefixes() []Prefix {
 	if len(r.names) == 0 {
-		return []Prefix{{r.pkg + ".", r.kind}}
+		return []Prefix{{Path: r.pkg + ".", Kind: r.kind}}
 	}
 	result := make([]Prefix, len(r.names))
 	for index, name := range r.names {
-		result[index] = Prefix{r.pkg + "." + name, r.kind}
+		result[index] = Prefix{Path: r.pkg + "." + name, Kind: r.kind, plainJSON: r.pkg == "encoding/json" && name == "Marshal"}
 	}
 	return result
 }
