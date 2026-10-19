@@ -29,7 +29,7 @@ func (r *callResolver) calls(calls []Call) callSummary {
 	for _, call := range calls {
 		summary := r.call(call)
 		if len(result.effects)+len(summary.effects) > localEffectLimit {
-			unknown := (Call{Callee: call.Callee + " (local summary limit)", Line: call.Line}).classifiedCall(UnknownEffect)
+			unknown := (Call{Callee: call.Callee + " (local summary limit)", Line: call.Line, Site: call.Site}).classifiedCall(UnknownEffect)
 			result.effects = append(result.effects[:min(len(result.effects), localEffectLimit-1)], unknown.effects...)
 			result.unclassified += unknown.unclassified
 			return result

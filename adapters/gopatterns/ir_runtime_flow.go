@@ -74,7 +74,7 @@ func (b *irBuilder) runtimeFlowCFG(body *ast.BlockStmt, flow *cfg.CFG) (*cfg.CFG
 }
 
 func (b *irBuilder) runtimeBlock(block *cfg.Block) pdg.FlowBlock {
-	out := pdg.FlowBlock{Reachable: block.Live}
+	out := pdg.FlowBlock{Reachable: block.Live, Condition: b.runtimeCondition(block)}
 	if block.Kind == cfg.KindRangeLoop {
 		out.Operations = append(out.Operations, b.nodes[block.Stmt])
 	}
@@ -84,7 +84,6 @@ func (b *irBuilder) runtimeBlock(block *cfg.Block) pdg.FlowBlock {
 	for _, successor := range block.Succs {
 		out.Successors = append(out.Successors, pdg.Ref(successor.Index+1))
 	}
-	out.Condition = b.runtimeCondition(block)
 	return out
 }
 
