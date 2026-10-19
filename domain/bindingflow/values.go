@@ -24,10 +24,8 @@ func (v Value) Zero() bool {
 }
 
 func (v Value) Bool() (bool, bool) {
-	if v.Scalar == nil || v.Scalar.Kind() != constant.Bool {
-		return false, false
-	}
-	return constant.BoolVal(v.Scalar), true
+	value, known := constant.Val(v.Scalar).(bool)
+	return value, known
 }
 
 func (value Value) resolveTruth(truths map[pdg.Ref]bool) Value {
