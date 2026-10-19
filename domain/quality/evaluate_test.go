@@ -56,6 +56,8 @@ func TestPurePrefixesClassifyAsNone(t *testing.T) {
 		"github.com/charmbracelet/x/ansi.StringWidth", "error.Error",
 		"go/types.Object.Pkg", "go/types.Type.Underlying", "go/types.Info.ObjectOf",
 		"go/types.Selection.Index",
+		"io/fs.FileMode.String", "io/fs.FileMode.IsDir", "io/fs.FileMode.IsRegular",
+		"io/fs.FileMode.Perm", "io/fs.FileMode.Type", "os.ProcessState.ExitCode",
 	}
 	f := fact("calls", 1)
 	for index, callee := range pure {

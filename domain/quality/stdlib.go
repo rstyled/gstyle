@@ -206,7 +206,9 @@ var stdlibRules = []stdlibRule{
 	{pkg: "io/fs", kind: IO, names: []string{
 		"ReadFile", "WriteFile", "ReadDir", "Stat", "Glob", "WalkDir", "Mkdir",
 	}},
-	{pkg: "io/fs", kind: None, names: []string{"ValidPath"}},
+	{pkg: "io/fs", kind: None, names: []string{
+		"ValidPath", "FileMode.String", "FileMode.IsDir", "FileMode.IsRegular", "FileMode.Perm", "FileMode.Type",
+	}},
 	{pkg: "io/ioutil", kind: IO, names: []string{
 		"ReadFile", "WriteFile", "ReadDir", "ReadAll", "TempDir", "TempFile",
 	}},
@@ -224,7 +226,7 @@ var stdlibRules = []stdlibRule{
 	}},
 	{pkg: "os", kind: None, names: []string{
 		"Getpid", "Getppid", "Getuid", "Geteuid", "Getgid", "Getegid",
-		"Getpagesize", "Args",
+		"Getpagesize", "Args", "ProcessState.ExitCode",
 	}},
 	{pkg: "os", kind: IO, names: []string{
 		"File.Read", "File.ReadAt", "File.Write", "File.WriteAt", "File.WriteString",
