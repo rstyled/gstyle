@@ -71,6 +71,8 @@ type Mutation struct {
 }
 
 type Call struct {
+	// LocalJSONDecode proves a closed decode writes only unaliased fresh storage.
+	LocalJSONDecode bool `json:"local_json_decode,omitempty"`
 	// CallbackExpanded retains inline callback evidence in the enclosing facts.
 	CallbackExpanded bool `json:"callback_expanded,omitempty"`
 	// Site is the opening-parenthesis offset plus one; zero means legacy facts.

@@ -64,9 +64,13 @@ func validateEffects(f Function) error {
 
 func validateCalls(f Function) error {
 	for _, call := range f.Calls {
-		if call.Site < 0 || call.Callee == "" || call.Line < 1 || !call.validMutationTarget() {
+		if !call.valid() {
 			return fmt.Errorf("invalid call in %s:%d", f.Path, f.Line)
 		}
 	}
 	return nil
+}
+
+func (call Call) valid() bool {
+	return call.Site >= 0 && call.Callee != "" && call.Line >= 1 && call.validMutationTarget() && call.validJSONDecode()
 }
