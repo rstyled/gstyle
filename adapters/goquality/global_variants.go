@@ -19,11 +19,11 @@ func packageProofs(pkgs []*packages.Package, prove func(*packages.Package) map[t
 	for _, pkg := range pkgs {
 		proof := prove(pkg)
 		proofs[pkg] = proof
-		intersectPackageProof(common, pkg.PkgPath, proof)
+		intersectPackageProof(common, pkg, proof)
 	}
 	for pkg, proof := range proofs {
 		for object := range proof {
-			if !common[pkg.PkgPath][resolvedVariable(object)] {
+			if !common[pkg.PkgPath][packageProofKey(pkg, object)] {
 				delete(proof, object)
 			}
 		}
@@ -31,14 +31,14 @@ func packageProofs(pkgs []*packages.Package, prove func(*packages.Package) map[t
 	return proofs
 }
 
-func intersectPackageProof(common map[string]map[string]bool, path string, proof map[types.Object]bool) {
+func intersectPackageProof(common map[string]map[string]bool, pkg *packages.Package, proof map[types.Object]bool) {
 	current := map[string]bool{}
 	for object := range proof {
-		current[resolvedVariable(object)] = true
+		current[packageProofKey(pkg, object)] = true
 	}
-	prior, found := common[path]
+	prior, found := common[pkg.PkgPath]
 	if !found {
-		common[path] = current
+		common[pkg.PkgPath] = current
 		return
 	}
 	for name := range prior {
@@ -46,4 +46,13 @@ func intersectPackageProof(common map[string]map[string]bool, path string, proof
 			delete(prior, name)
 		}
 	}
+}
+
+func packageProofKey(pkg *packages.Package, object types.Object) string {
+	// Same-named fields belong to distinct records. Physical declarations also
+	// match across test variants without depending on //line source mappings.
+	if field, ok := object.(*types.Var); ok && field.IsField() {
+		return physicalPosition(pkg.Fset, field.Pos()).String()
+	}
+	return resolvedVariable(object)
 }

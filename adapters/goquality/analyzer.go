@@ -83,8 +83,9 @@ func extractPackages(pkgs []*packages.Package, root string, selected selection) 
 	all := packageFacts{}
 	proofs := stablePackageGlobals(pkgs)
 	receivers := packageProofs(pkgs, closedReceiverTypes)
+	receiverFields := packageProofs(pkgs, closedReceiverFields)
 	for _, pkg := range pkgs {
-		extraction := packageExtraction{pkg: pkg, stable: proofs[pkg], factories: factoryResults(pkg), receivers: receivers[pkg]}
+		extraction := packageExtraction{pkg: pkg, stable: proofs[pkg], factories: factoryResults(pkg), receivers: receivers[pkg], receiverFields: receiverFields[pkg]}
 		functions, err := extraction.extractPackage(root, selected)
 		if err != nil {
 			return nil, err
@@ -206,10 +207,11 @@ func (extraction packageExtraction) extractPackage(root string, selected selecti
 }
 
 type packageExtraction struct {
-	receivers map[types.Object]bool
-	factories map[*types.Func]ast.Expr
-	pkg       *packages.Package
-	stable    map[types.Object]bool
+	receiverFields map[types.Object]bool
+	receivers      map[types.Object]bool
+	factories      map[*types.Func]ast.Expr
+	pkg            *packages.Package
+	stable         map[types.Object]bool
 }
 
 func (x packageExtraction) extractFile(file *ast.File, path, filename string) ([]quality.Function, error) {

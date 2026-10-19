@@ -247,3 +247,9 @@ func (x *extractor) localReceiverField(value *ast.SelectorExpr) bool {
 	id, ok := ast.Unparen(value.X).(*ast.Ident)
 	return x.closedReceiver && ok && x.pkg.TypesInfo.ObjectOf(id) == x.receiver
 }
+
+// This proves only the selected container's backing storage, not its elements.
+func (x *extractor) localReceiverStorage(value *ast.SelectorExpr) bool {
+	selection := x.pkg.TypesInfo.Selections[value]
+	return x.localReceiverField(value) && selection != nil && len(selection.Index()) == 1 && x.receiverFields[selection.Obj()]
+}

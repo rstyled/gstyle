@@ -305,14 +305,22 @@ func (x *extractor) fieldOrigin(value *ast.SelectorExpr, seen map[types.Object]b
 	if object == nil {
 		return quality.Unknown
 	}
-	if packageVariable(object) || x.parameters[object] {
-		return quality.External
+	if x.localReceiverStorage(value) {
+		return quality.Local
 	}
-	if _, pointer := underlying(object.Type()).(*types.Pointer); pointer && x.objectOrigin(object, seen) == quality.External {
+	if x.externalFieldRoot(object, seen) {
 		return quality.External
 	}
 	// Prove each field separately: fresh outer storage can hold borrowed data.
 	return x.ownedField(value, seen)
+}
+
+func (x *extractor) externalFieldRoot(object types.Object, seen map[types.Object]bool) bool {
+	if packageVariable(object) || x.parameters[object] {
+		return true
+	}
+	_, pointer := underlying(object.Type()).(*types.Pointer)
+	return pointer && x.objectOrigin(object, seen) == quality.External
 }
 
 func (x *extractor) sliceOrigin(value *ast.SliceExpr, seen map[types.Object]bool) quality.Provenance {

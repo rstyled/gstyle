@@ -358,13 +358,13 @@ func sortSpecsForApply(specs []*patterns.FixSpec) []*patterns.FixSpec {
 }
 
 // showDiff prints a unified diff for dry-run.
-func showDiff(path string, src, out []byte, n int, output io.Writer) (int, error) {
+func showDiff(path string, src, out []byte, output io.Writer) error {
 	diff, err := unifiedDiff(path, src, out)
 	if err != nil {
-		return 0, err
+		return err
 	}
 	_, err = io.WriteString(output, diff)
-	return n, err
+	return err
 }
 
 // unifiedDiff reports IO failures; diff's exit code 1 means a valid difference.

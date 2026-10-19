@@ -26,7 +26,10 @@ func unitGlobals(info *types.Info, stable map[types.Object]bool) {
 
 func stableGlobalRead(id *ast.Ident, parents map[ast.Node]ast.Node, info *types.Info) bool {
 	object := info.ObjectOf(id)
-	if !unitGlobal(object) && !styleValueType(object.Type()) && !errorValueType(object.Type()) {
+	if regexpValue(object.Type()) {
+		return stableRegexpRead(id, parents, info)
+	}
+	if !immutableGlobalValue(object) {
 		return stableTableRead(id, parents, info)
 	}
 	var node ast.Node = id
@@ -37,6 +40,10 @@ func stableGlobalRead(id *ast.Ident, parents map[ast.Node]ast.Node, info *types.
 		node = parent
 	}
 	return true
+}
+
+func immutableGlobalValue(object types.Object) bool {
+	return unitGlobal(object) || styleValueType(object.Type()) || errorValueType(object.Type())
 }
 
 func unitValueContext(node, parent ast.Node, info *types.Info) bool {

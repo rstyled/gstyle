@@ -138,3 +138,104 @@ func init(){p:=new(testCursor);escapedTest=p}
 		}
 	}
 }
+
+func TestClosedReceiverFreshFields(t *testing.T) {
+	root := qualitySourceModule(t, []byte(`package repro
+type ownedMap struct{values map[string]int}
+func(p *ownedMap)OwnedMap(){p.values["x"]=1;delete(p.values,"y");clear(p.values)}
+func ownedMapRun(){p:=ownedMap{values:make(map[string]int)};p.OwnedMap()}
+type ownedSlice struct{values []int}
+func(p *ownedSlice)OwnedSlice(){p.values=append(p.values,1);p.values[0]=2}
+func ownedSliceRun(){var p ownedSlice;p.OwnedSlice()}
+type resetMap struct{values map[string]int}
+func(p *resetMap)ResetMap(){p.values=map[string]int{};p.values["x"]=1}
+func resetMapRun(){p:=new(resetMap);p.ResetMap()}
+type borrowedMap struct{values map[string]int}
+func(p *borrowedMap)BorrowedField(){p.values["x"]=1}
+func borrowedMapRun(values map[string]int){p:=borrowedMap{values:values};p.BorrowedField()}
+type replacedMap struct{values map[string]int}
+var sharedMap=map[string]int{}
+func(p *replacedMap)ReplacedField(){p.values=sharedMap;p.values["x"]=1}
+func replacedMapRun(){p:=replacedMap{values:map[string]int{}};p.ReplacedField()}
+type publishedMap struct{values map[string]int}
+func(p *publishedMap)PublishedField(){sharedMap=p.values;p.values["x"]=1}
+func publishedMapRun(){p:=publishedMap{values:map[string]int{}};p.PublishedField()}
+type returnedMap struct{values map[string]int}
+func(p *returnedMap)ReturnedField()map[string]int{p.values["x"]=1;return p.values}
+func returnedMapRun(){p:=returnedMap{values:map[string]int{}};p.ReturnedField()}
+type aliasedMap struct{values map[string]int}
+func(p *aliasedMap)AliasedField(){alias:=p.values;delete(alias,"y");p.values["x"]=1}
+func aliasedMapRun(){p:=aliasedMap{values:map[string]int{}};p.AliasedField()}
+func consume(values map[string]int){}
+type passedMap struct{values map[string]int}
+func(p *passedMap)PassedField(){consume(p.values);p.values["x"]=1}
+func passedMapRun(){p:=passedMap{values:map[string]int{}};p.PassedField()}
+var element *int
+type addressedSlice struct{values []int}
+func(p *addressedSlice)AddressedElement(){element=&p.values[0];p.values[0]=1}
+func addressedRun(){p:=addressedSlice{values:[]int{0}};p.AddressedElement()}
+type elementBox struct{value int}
+var exposedBox *elementBox
+func(p *elementBox)Expose(){exposedBox=p}
+type methodSlice struct{values []elementBox}
+func(p *methodSlice)ElementMethod(){p.values[0].Expose();p.values[0].value=1}
+func methodSliceRun(){p:=methodSlice{values:[]elementBox{{}}};p.ElementMethod()}
+type shallowSlice struct{values []*int}
+func(p *shallowSlice)BorrowedElement(){*p.values[0]=1}
+func shallowRun(input *int){p:=shallowSlice{values:[]*int{input}};p.BorrowedElement()}
+`))
+	facts, err := (Analyzer{Root: root}).Extract(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name  string
+		local bool
+	}{
+		{"OwnedMap", true}, {"OwnedSlice", true}, {"ResetMap", true},
+		{"BorrowedField", false}, {"ReplacedField", false}, {"PublishedField", false}, {"ReturnedField", false},
+		{"AliasedField", false}, {"PassedField", false}, {"AddressedElement", false}, {"ElementMethod", false}, {"BorrowedElement", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fact := findFunction(t, facts, tc.name)
+			if len(fact.Mutations) == 0 {
+				t.Fatal("missing mutation")
+			}
+			got := fact.Mutations[len(fact.Mutations)-1].Provenance
+			if (got == quality.Local) != tc.local {
+				t.Fatalf("mutation=%s, want local=%t: %+v", got, tc.local, fact.Mutations)
+			}
+		})
+	}
+}
+
+func TestClosedReceiverFieldTestVariant(t *testing.T) {
+	root := qualitySourceModule(t, []byte(`package repro
+type privateCache struct{values map[string]int}
+func(p *privateCache)CacheWrite(){p.values["x"]=1}
+func run(){p:=privateCache{values:map[string]int{}};p.CacheWrite()}
+type otherCache struct{values map[string]int}
+func(p *otherCache)OtherCacheWrite(){p.values["x"]=1}
+func otherRun(){p:=otherCache{values:map[string]int{}};p.OtherCacheWrite()}
+`))
+	if err := os.WriteFile(filepath.Join(root, "input_test.go"), []byte(`package repro
+var published map[string]int
+func(p *privateCache)publish(){published=p.values}
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, tests := range []bool{false, true} {
+		facts, err := (Analyzer{Root: root, Tests: tests}).Extract(context.Background(), []string{"input.go"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		fact := findFunction(t, facts, "CacheWrite")
+		got := fact.Mutations[0].Provenance
+		if (got == quality.Local) == tests {
+			t.Fatalf("tests=%t mutation=%s", tests, got)
+		}
+		if other := findFunction(t, facts, "OtherCacheWrite"); other.Mutations[0].Provenance != quality.Local {
+			t.Fatalf("same-named field loses independent proof: %+v", other.Mutations)
+		}
+	}
+}
