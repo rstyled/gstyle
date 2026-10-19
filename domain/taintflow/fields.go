@@ -3,6 +3,7 @@ package taintflow
 import (
 	"encoding/json"
 	"github.com/rstyled/gstyle/domain/pdg"
+	"maps"
 	"strconv"
 	"strings"
 )
@@ -22,7 +23,7 @@ func (e *evaluation) substitute(item value, call pdg.Ref) value {
 		if dep.SafeFor != "" {
 			translated = encodeValue(translated, dep.SafeFor)
 		}
-		joinDependencies(result.Data, translated.Data)
+		maps.Copy(result.Data, translated.Data)
 	}
 	for root := range item.Objects {
 		e.substituteObject(result.Objects, root, call)

@@ -40,6 +40,8 @@ type atom struct {
 	Fields  string
 	Source  Site
 }
+
+// dependencies is a set; stored values are always true.
 type dependencies map[atom]bool
 type object struct {
 	Captured   bool
@@ -90,11 +92,6 @@ func emptyState() state {
 func emptySummary() summary {
 	return summary{Repeated: map[object]bool{}, Results: map[pdg.Position]value{}, Writes: map[cell]value{}, Sinks: map[sinkKey]dependencies{}}
 }
-func joinDependencies(to, from dependencies) {
-	for item := range from {
-		to[item] = true
-	}
-}
 func joinValue(to, from value) value {
 	if valueContains(to, from) {
 		return to
@@ -107,8 +104,8 @@ func joinValue(to, from value) value {
 	result.Nil = to.Nil || from.Nil
 	maps.Copy(result.Functions, to.Functions)
 	maps.Copy(result.Functions, from.Functions)
-	joinDependencies(result.Data, to.Data)
-	joinDependencies(result.Data, from.Data)
+	maps.Copy(result.Data, to.Data)
+	maps.Copy(result.Data, from.Data)
 	maps.Copy(result.Objects, to.Objects)
 	maps.Copy(result.Objects, from.Objects)
 	return result
@@ -116,15 +113,9 @@ func joinValue(to, from value) value {
 func cloneState(old state) state {
 	result := emptyState()
 	maps.Copy(result.Repeated, old.Repeated)
-	for key, item := range old.Bindings {
-		result.Bindings[key] = item
-	}
-	for key, item := range old.Memory {
-		result.Memory[key] = item
-	}
-	for key, item := range old.Nodes {
-		result.Nodes[key] = item
-	}
+	maps.Copy(result.Bindings, old.Bindings)
+	maps.Copy(result.Memory, old.Memory)
+	maps.Copy(result.Nodes, old.Nodes)
 	return result
 }
 

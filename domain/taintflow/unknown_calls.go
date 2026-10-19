@@ -2,6 +2,7 @@ package taintflow
 
 import (
 	"github.com/rstyled/gstyle/domain/pdg"
+	"maps"
 	"strings"
 )
 
@@ -74,7 +75,7 @@ func callbackValue(store state, base value) value {
 	result := emptyValue()
 	for root := range reachable.Objects {
 		if root.Captured {
-			joinDependencies(result.Data, readCell(store, cellKey(root, "value")).Data)
+			maps.Copy(result.Data, readCell(store, cellKey(root, "value")).Data)
 			continue
 		}
 		if root.Input != 0 {
