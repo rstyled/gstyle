@@ -57,6 +57,19 @@ func Parameter(f Fields) { f.Items[0]=2 }
 func IndexedPointer(input []*Fields) { alias:=input[0]; alias.Items[0]=2 }
 func IndexedSlice(input [][]int) { alias:=input[0]; alias[0]=2 }
 func IndexedMap(input map[string]map[string]int) { alias:=input["x"]; alias["y"]=2 }
+func RangedPointer(input []*Fields) { for _, alias:=range input { alias.Items[0]=2 } }
+func RangedMap(input map[string]*Fields) { for _, alias:=range input { alias.Items[0]=2 } }
+func RangedArray(input [1]*Fields) { for _, alias:=range input { alias.Items[0]=2 } }
+func RangedSlice(input [][]int) { for _, alias:=range input { alias[0]=2 } }
+func LocalShallowRange(input *Fields) { values:=[]*Fields{input}; for _, alias:=range values { alias.Items[0]=2 } }
+func MixedRange(input []*Fields, condition bool) { for _, alias:=range input { if condition {alias=&Fields{Items:[]int{1}}}; alias.Items[0]=2 } }
+func ChannelRange(input chan *Fields) { for alias:=range input { alias.Items[0]=2 } }
+func IteratorRange(input func(func(*Fields)bool)) { for alias:=range input { alias.Items[0]=2 } }
+func CopiedRange(input []Fields) { for _, alias:=range input { alias.Items=make([]int,1); alias.Items[0]=2 } }
+func KeyRange(input map[*Fields]int) { for alias:=range input { alias.Items[0]=2 } }
+func ReassignedRange(input []*Fields) { alias:=new(Fields); for _, alias=range input { alias.Items[0]=2 } }
+type RecursiveSlice []RecursiveSlice
+func SelfRangedContainer() { value:=RecursiveSlice{nil}; for _,value=range append(value,nil) {value[0]=nil} }
 func LocalShallowIndex(input *Fields) { values:=[]*Fields{input}; alias:=values[0]; alias.Items[0]=2 }
 func MixedIndex(input []*Fields, condition bool) { values:=input; if condition {values=[]*Fields{}}; alias:=values[0]; alias.Items[0]=2 }
 func AssertedPointer(input any) { alias:=input.(*Fields); alias.Items[0]=2 }
@@ -105,7 +118,7 @@ func PromotedReference() { f:=Embedded{Fields:&Fields{Items:[]int{1}}}; f.Items[
 	if !foundGlobal {
 		t.Fatalf("factory argument lost global effect: %+v", argument.Effects)
 	}
-	for _, name := range []string{"ExternalPointerAlias", "ExternalIndexedAlias", "IndexedPointer", "IndexedSlice", "IndexedMap"} {
+	for _, name := range []string{"ExternalPointerAlias", "ExternalIndexedAlias", "IndexedPointer", "IndexedSlice", "IndexedMap", "RangedPointer", "RangedMap", "RangedArray", "RangedSlice"} {
 		function := findFunction(t, facts, name)
 		if got := function.Mutations[0].Provenance; got != quality.External {
 			t.Fatalf("%s provenance=%s, want external", name, got)
@@ -115,7 +128,7 @@ func PromotedReference() { f:=Embedded{Fields:&Fields{Items:[]int{1}}}; f.Items[
 			t.Fatalf("shared mutation lost: %+v", result)
 		}
 	}
-	for _, name := range []string{"MixedPointerAlias", "UnknownPointerAlias", "LocalPointerBorrowed", "CopiedValue", "LocalShallowIndex", "MixedIndex", "AssertedPointer"} {
+	for _, name := range []string{"MixedPointerAlias", "UnknownPointerAlias", "LocalPointerBorrowed", "CopiedValue", "LocalShallowIndex", "MixedIndex", "AssertedPointer", "LocalShallowRange", "MixedRange", "ChannelRange", "IteratorRange", "CopiedRange", "KeyRange", "ReassignedRange", "SelfRangedContainer"} {
 		function := findFunction(t, facts, name)
 		if got := function.Mutations[len(function.Mutations)-1].Provenance; got != quality.Unknown {
 			t.Fatalf("%s provenance=%s, want unknown", name, got)
