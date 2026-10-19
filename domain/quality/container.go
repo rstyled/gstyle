@@ -19,11 +19,17 @@ func ContainerMutation(callee string) bool {
 	}
 }
 
-// ContainerClone identifies shallow copies with fresh container storage and no
-// user callbacks. Element references in the copy can still be shared.
+// ContainerClone identifies callback-free standard calls that return fresh
+// container storage. Element references in the result can still be shared.
 func ContainerClone(callee string) bool {
-	name := NormalizeCallee(callee)
-	return name == "slices.Clone" || name == "maps.Clone"
+	switch NormalizeCallee(callee) {
+	case "slices.Clone", "maps.Clone", "slices.Concat", "slices.Repeat",
+		"strings.Split", "strings.SplitN", "strings.SplitAfter", "strings.SplitAfterN", "strings.Fields",
+		"bytes.Clone", "bytes.Repeat", "bytes.Split", "bytes.SplitN", "bytes.SplitAfter", "bytes.SplitAfterN", "bytes.Fields":
+		return true
+	default:
+		return false
+	}
 }
 
 // HasLocalContainerTarget proves only that this modeled call writes local
