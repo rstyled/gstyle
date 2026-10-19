@@ -9,13 +9,17 @@ import (
 )
 
 func (x *extractor) formalStorage(value ast.Expr) *int {
+	return x.formalStorageSeen(value, map[types.Object]bool{})
+}
+
+func (x *extractor) formalStorageSeen(value ast.Expr, seen map[types.Object]bool) *int {
 	id, ok := ast.Unparen(value).(*ast.Ident)
 	if !ok {
 		return nil
 	}
 	object := x.pkg.TypesInfo.ObjectOf(id)
-	if _, rebound := x.bindings[object]; rebound {
-		return nil
+	if binding, rebound := x.bindings[object]; rebound {
+		return x.aliasParameter(object, binding, seen)
 	}
 	if object == x.receiver && object != nil {
 		index := -1
@@ -25,6 +29,26 @@ func (x *extractor) formalStorage(value ast.Expr) *int {
 		return &index
 	}
 	return nil
+}
+
+// Only stable direct aliases retain a formal's storage identity. Reassigned
+// formals and range elements do not establish the same storage on every path.
+func (x *extractor) aliasParameter(object types.Object, binding referenceBinding, seen map[types.Object]bool) *int {
+	if x.parameters[object] || seen[object] {
+		return nil
+	}
+	seen[object] = true
+	return x.bindingParameter(binding, seen)
+}
+
+func (x *extractor) bindingParameter(binding referenceBinding, seen map[types.Object]bool) *int {
+	if binding.unknown || binding.selfReturned || len(binding.values) != 1 {
+		return nil
+	}
+	if _, rangeValue := x.fields.parents[binding.values[0]].(*ast.RangeStmt); rangeValue {
+		return nil
+	}
+	return x.formalStorageSeen(binding.values[0], seen)
 }
 
 // Only the formal's storage is bound. Reference fields and indirect pointees
