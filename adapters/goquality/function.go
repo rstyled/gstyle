@@ -18,6 +18,7 @@ type extractor struct {
 	stable     map[types.Object]bool
 	fact       quality.Function
 	bindings   map[types.Object]referenceBinding
+	fields     fieldOwnership
 	parameters map[types.Object]bool
 	// paramIndex maps outer-function parameter objects to their ParamList
 	// index. The receiver and closure parameters are not indexed: they are
