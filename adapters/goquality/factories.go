@@ -8,15 +8,21 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-// Index literal results once per typed package. A fresh outer result does not
-// prove its fields: their original initializer expressions retain provenance.
-func literalFactories(pkg *packages.Package) map[*types.Func]*ast.CompositeLit {
-	result := map[*types.Func]*ast.CompositeLit{}
+// Index owned results once per typed package. Literal record fields retain
+// their initializer provenance; constructed containers own their backing storage.
+func factoryResults(pkg *packages.Package) map[*types.Func]ast.Expr {
+	result := map[*types.Func]ast.Expr{}
 	for _, file := range pkg.Syntax {
 		for _, declaration := range file.Decls {
 			if fn, ok := declaration.(*ast.FuncDecl); ok {
+				var value ast.Expr
 				if literal := factoryReturn(fn); literal != nil {
-					result[pkg.TypesInfo.Defs[fn.Name].(*types.Func)] = literal
+					value = literal
+				} else {
+					value = localContainerReturn(pkg, fn)
+				}
+				if value != nil {
+					result[pkg.TypesInfo.Defs[fn.Name].(*types.Func)] = value
 				}
 			}
 		}

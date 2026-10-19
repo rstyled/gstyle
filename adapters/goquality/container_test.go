@@ -19,6 +19,31 @@ var counter int
 type Numbers []int
 type Text string
 type Runes []rune
+type Seed struct{}
+func(Seed) seeds(input []int) []int {var out []int;for _,v:=range input {out=append(out,v)};return out}
+func filled(n int) []int {out:=make([]int,n);for i:=range out {out[i]=i};return out}
+func mapping(input map[int]int) map[int]int {out:=make(map[int]int);for k,v:=range input {out[k]=v};return out}
+func mixedReturn(input []int, flag bool) []int {if flag{return input};out:=make([]int,1);return out}
+func publishedReturn() []int {out:=make([]int,1);shared=out;return out}
+func writtenReturn(dst *[]int) []int {out:=make([]int,1);*dst=out;return out}
+var leakedElement *int
+func retain(out []int){shared=out}
+func escapedReturn() []int {out:=make([]int,1);retain(out);return out}
+func addressedReturn() []int {out:=make([]int,1);leakedElement=&out[0];return out}
+func closureReturn() []int {out:=make([]int,1);f:=func(){out[0]=1};_ =f;return out}
+func deferredReturn(input []int) []int {out:=make([]int,1);defer copy(out,input);return out}
+func outputReturn() []int {out:=make([]int,1);println("output");return out}
+func ReturnedQueue(input []int){out:=(Seed{}).seeds(input);out=append(out,1);slices.Reverse(out)}
+func ReturnedFilled(){out:=filled(2);slices.Reverse(out)}
+func ReturnedMap(){maps.Copy(mapping(nil),map[int]int{1:1})}
+func ReturnedMixed(){out:=mixedReturn(shared,true);slices.Reverse(out)}
+func ReturnedPublished(){out:=publishedReturn();slices.Reverse(out)}
+func ReturnedWritten(){out:=writtenReturn(new([]int));slices.Reverse(out)}
+func ReturnedEscape(){out:=escapedReturn();slices.Reverse(out)}
+func ReturnedAddress(){out:=addressedReturn();slices.Reverse(out)}
+func ReturnedClosure(){out:=closureReturn();slices.Reverse(out)}
+func ReturnedDeferred(){out:=deferredReturn(shared);slices.Reverse(out)}
+func ReturnedOutput(){out:=outputReturn();slices.Reverse(out)}
 func FreshContainers(text string, data []byte, values []int){
 slices.Reverse(strings.Split(text,","));slices.Reverse(strings.SplitN(text,",",1))
 slices.Reverse(strings.SplitAfter(text,","));slices.Reverse(strings.SplitAfterN(text,",",1));slices.Reverse(strings.Fields(text))
@@ -94,7 +119,7 @@ func Caller(){helper()}
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"InlineSort", "InlineStable", "InlineReflect", "InlineReflectStable", "InlinePolicy", "FreshContainers", "FreshBytes", "FreshRunes", "NamedString", "NilClone", "NilSelf", "NilSort", "NilDirect", "LocalSort", "NamedSort", "LocalCopy", "LocalReverse", "LocalCompact", "LocalDelete", "LocalInsert", "LocalReplace", "LocalInts", "LocalFloats", "LocalStrings", "LocalAlias", "LocalAppend", "SelfAppend", "CloneSort", "CloneCopy", "Caller"} {
+	for _, name := range []string{"ReturnedQueue", "ReturnedFilled", "ReturnedMap", "InlineSort", "InlineStable", "InlineReflect", "InlineReflectStable", "InlinePolicy", "FreshContainers", "FreshBytes", "FreshRunes", "NamedString", "NilClone", "NilSelf", "NilSort", "NilDirect", "LocalSort", "NamedSort", "LocalCopy", "LocalReverse", "LocalCompact", "LocalDelete", "LocalInsert", "LocalReplace", "LocalInts", "LocalFloats", "LocalStrings", "LocalAlias", "LocalAppend", "SelfAppend", "CloneSort", "CloneCopy", "Caller"} {
 		t.Run(name, func(t *testing.T) {
 			r := resultNamed(t, report, name)
 			if len(r.Effects) != 0 || !r.Complete {
@@ -106,7 +131,7 @@ func Caller(){helper()}
 		name       string
 		provenance quality.Provenance
 	}{
-		{"InlineShared", quality.External}, {"CallbackFields", quality.Unknown}, {"ShadowNil", quality.External}, {"OrdinaryConversion", quality.External}, {"ExternalSort", quality.External}, {"ExternalCopy", quality.External}, {"GenericSort", quality.External}, {"GlobalSort", quality.External}, {"ExternalAlias", quality.External}, {"ExternalAppend", quality.Unknown}, {"FakeClone", quality.Unknown}, {"Mixed", quality.Unknown}, {"Unknown", quality.Unknown},
+		{"ReturnedMixed", quality.Unknown}, {"ReturnedPublished", quality.Unknown}, {"ReturnedWritten", quality.Unknown}, {"ReturnedEscape", quality.Unknown}, {"ReturnedAddress", quality.Unknown}, {"ReturnedClosure", quality.Unknown}, {"ReturnedDeferred", quality.Unknown}, {"InlineShared", quality.External}, {"CallbackFields", quality.Unknown}, {"ShadowNil", quality.External}, {"OrdinaryConversion", quality.External}, {"ExternalSort", quality.External}, {"ExternalCopy", quality.External}, {"GenericSort", quality.External}, {"GlobalSort", quality.External}, {"ExternalAlias", quality.External}, {"ExternalAppend", quality.Unknown}, {"FakeClone", quality.Unknown}, {"Mixed", quality.Unknown}, {"Unknown", quality.Unknown},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := findFunction(t, facts, tc.name)
@@ -139,7 +164,7 @@ func Caller(){helper()}
 		name string
 		kind quality.Kind
 	}{
-		{"InlineOutput", quality.IO}, {"InlineCaptured", quality.MutationEffect}, {"InlineGlobal", quality.Global}, {"InlineLaunch", quality.UnknownEffect}, {"InlineChannel", quality.UnknownEffect},
+		{"ReturnedOutput", quality.IO}, {"InlineOutput", quality.IO}, {"InlineCaptured", quality.MutationEffect}, {"InlineGlobal", quality.Global}, {"InlineLaunch", quality.UnknownEffect}, {"InlineChannel", quality.UnknownEffect},
 	} {
 		got := resultNamed(t, report, tc.name)
 		found := false

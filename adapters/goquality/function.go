@@ -14,7 +14,7 @@ import (
 )
 
 type extractor struct {
-	factories  map[*types.Func]*ast.CompositeLit
+	factories  map[*types.Func]ast.Expr
 	pkg        *packages.Package
 	stable     map[types.Object]bool
 	fact       quality.Function

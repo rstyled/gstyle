@@ -184,7 +184,7 @@ type packageFacts struct{ selected, available []quality.Function }
 func extractPackage(pkg *packages.Package, root string, selected selection, stable map[types.Object]bool) (packageFacts, error) {
 	facts := []quality.Function{}
 	available := []quality.Function{}
-	extraction := packageExtraction{pkg: pkg, stable: stable, factories: literalFactories(pkg)}
+	extraction := packageExtraction{pkg: pkg, stable: stable, factories: factoryResults(pkg)}
 	for _, file := range pkg.Syntax {
 		filename := pkg.Fset.PositionFor(file.Pos(), false).Filename
 		path, err := relativePath(root, filename)
@@ -204,7 +204,7 @@ func extractPackage(pkg *packages.Package, root string, selected selection, stab
 }
 
 type packageExtraction struct {
-	factories map[*types.Func]*ast.CompositeLit
+	factories map[*types.Func]ast.Expr
 	pkg       *packages.Package
 	stable    map[types.Object]bool
 }
