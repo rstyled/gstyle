@@ -223,9 +223,20 @@ func (x *extractor) constructedOrigin(value ast.Expr, seen map[types.Object]bool
 		return x.allocationOrigin(value, seen)
 	case *ast.SelectorExpr:
 		return x.fieldOrigin(value, seen)
+	case *ast.IndexExpr:
+		return referencedOrigin(x.origin(value.X, seen))
 	default:
 		return quality.Unknown
 	}
+}
+
+// Referenced values from shared storage remain shared. Fresh containers can
+// contain borrowed elements, so local storage does not prove local elements.
+func referencedOrigin(input quality.Provenance) quality.Provenance {
+	if input == quality.External {
+		return quality.External
+	}
+	return quality.Unknown
 }
 
 func (x *extractor) addressOrigin(value *ast.UnaryExpr) quality.Provenance {
@@ -252,6 +263,9 @@ func (x *extractor) fieldOrigin(value *ast.SelectorExpr, seen map[types.Object]b
 		return quality.Unknown
 	}
 	if packageVariable(object) || x.parameters[object] {
+		return quality.External
+	}
+	if _, pointer := underlying(object.Type()).(*types.Pointer); pointer && x.objectOrigin(object, seen) == quality.External {
 		return quality.External
 	}
 	// Prove each field separately: fresh outer storage can hold borrowed data.
