@@ -200,6 +200,9 @@ func (x *extractor) origin(value ast.Expr, seen map[types.Object]bool) quality.P
 	case nil:
 		return quality.Local // Zero-initialized reference contains no shared state.
 	case *ast.Ident:
+		if x.pkg.TypesInfo.Types[value].IsNil() {
+			return quality.Local
+		}
 		return x.objectOrigin(x.pkg.TypesInfo.ObjectOf(value), seen)
 	case *ast.ParenExpr:
 		return x.origin(value.X, seen)
@@ -263,6 +266,9 @@ func (x *extractor) sliceOrigin(value *ast.SliceExpr, seen map[types.Object]bool
 }
 
 func (x *extractor) allocationOrigin(call *ast.CallExpr, seen map[types.Object]bool) quality.Provenance {
+	if x.pkg.TypesInfo.Types[call.Fun].IsType() {
+		return x.conversionOrigin(call, seen)
+	}
 	switch object := x.calledObject(unwrappedCallee(call.Fun)).(type) {
 	case *types.Builtin:
 		return x.builtinAllocationOrigin(call, object.Name(), seen)
@@ -388,4 +394,21 @@ func embeddedPointer(selection *types.Selection) bool {
 		}
 	}
 	return false
+}
+
+// String-to-slice conversions copy bytes or runes. Other slice conversions
+// preserve their input storage; type checking establishes legal element types.
+func (x *extractor) conversionOrigin(call *ast.CallExpr, seen map[types.Object]bool) quality.Provenance {
+	input := call.Args[0]
+	if x.pkg.TypesInfo.Types[input].IsNil() {
+		return quality.Local
+	}
+	if _, slice := underlying(x.pkg.TypesInfo.TypeOf(call)).(*types.Slice); !slice {
+		return quality.Unknown
+	}
+	basic, ok := underlying(x.pkg.TypesInfo.TypeOf(input)).(*types.Basic)
+	if ok && basic.Kind() == types.String {
+		return quality.Local
+	}
+	return x.origin(input, seen)
 }

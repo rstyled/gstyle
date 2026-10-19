@@ -16,6 +16,19 @@ func TestContainerStorageOwnership(t *testing.T) {
 import("maps";"slices";"sort")
 var shared = []int{2,1}
 type Numbers []int
+type Text string
+type Runes []rune
+func FreshBytes(text string){values:=[]byte(text);slices.Reverse(values)}
+func FreshRunes(text string){values:=[]rune(text);slices.Reverse(values)}
+func NamedString(text Text){values:=Runes(text);slices.Reverse(values)}
+func NilClone(src []int){values:=append([]int(nil),src...);slices.Sort(values)}
+func NilSelf(src []int){values:=[]int(nil);values=append(values,src...);slices.Sort(values)}
+func NilSort(){slices.Sort([]int(nil))}
+func NilDirect(){slices.Reverse[[]int](nil)}
+func OrdinaryConversion(values []int){converted:=Numbers(values);slices.Sort(converted)}
+func ShadowNil(values []int){nil:=values;slices.Sort(nil)}
+func NilFunction(){var callback func();callback()}
+func ShallowNilClone(src []*int){values:=append([]*int(nil),src...);*values[0]=1}
 func LocalSort(){values:=[]int{2,1}; slices.Sort(values)}
 func NamedSort(){values:=Numbers{2,1}; slices.Sort(values)}
 func LocalCopy(src map[int]int){dst:=make(map[int]int); maps.Copy(dst,src)}
@@ -55,7 +68,7 @@ func Caller(){helper()}
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"LocalSort", "NamedSort", "LocalCopy", "LocalReverse", "LocalCompact", "LocalDelete", "LocalInsert", "LocalReplace", "LocalInts", "LocalFloats", "LocalStrings", "LocalAlias", "LocalAppend", "SelfAppend", "CloneSort", "CloneCopy", "Caller"} {
+	for _, name := range []string{"FreshBytes", "FreshRunes", "NamedString", "NilClone", "NilSelf", "NilSort", "NilDirect", "LocalSort", "NamedSort", "LocalCopy", "LocalReverse", "LocalCompact", "LocalDelete", "LocalInsert", "LocalReplace", "LocalInts", "LocalFloats", "LocalStrings", "LocalAlias", "LocalAppend", "SelfAppend", "CloneSort", "CloneCopy", "Caller"} {
 		t.Run(name, func(t *testing.T) {
 			r := resultNamed(t, report, name)
 			if len(r.Effects) != 0 || !r.Complete {
@@ -67,7 +80,7 @@ func Caller(){helper()}
 		name       string
 		provenance quality.Provenance
 	}{
-		{"ExternalSort", quality.External}, {"ExternalCopy", quality.External}, {"GenericSort", quality.External}, {"GlobalSort", quality.External}, {"ExternalAlias", quality.External}, {"ExternalAppend", quality.Unknown}, {"FakeClone", quality.Unknown}, {"Mixed", quality.Unknown}, {"Unknown", quality.Unknown},
+		{"ShadowNil", quality.External}, {"OrdinaryConversion", quality.External}, {"ExternalSort", quality.External}, {"ExternalCopy", quality.External}, {"GenericSort", quality.External}, {"GlobalSort", quality.External}, {"ExternalAlias", quality.External}, {"ExternalAppend", quality.Unknown}, {"FakeClone", quality.Unknown}, {"Mixed", quality.Unknown}, {"Unknown", quality.Unknown},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := findFunction(t, facts, tc.name)
@@ -85,8 +98,10 @@ func Caller(){helper()}
 			}
 		})
 	}
-	if len(resultNamed(t, report, "Shallow").Effects) == 0 {
-		t.Fatal("shallow clone hid pointee mutation")
+	for _, name := range []string{"Shallow", "ShallowNilClone", "NilFunction"} {
+		if len(resultNamed(t, report, name).Effects) == 0 {
+			t.Fatalf("%s loses pointee or dynamic-call evidence", name)
+		}
 	}
 	callback := findFunction(t, facts, "Callback")
 	if callback.Calls[0].MutationTarget != "" {
