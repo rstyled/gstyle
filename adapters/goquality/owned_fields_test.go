@@ -2,6 +2,7 @@ package goquality
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/rstyled/gstyle/domain/quality"
@@ -51,6 +52,11 @@ func PointerRoot() { f:=&Fields{Items:[]int{1}}; f.Items[0]=2 }
 func Mapping() { f:=Fields{Lookup:map[string]int{}}; f.Lookup["key"]=1 }
 func Pointer() { f:=Fields{Pointer:new(int)}; *f.Pointer=1 }
 func Omitted() { f:=Fields{}; f.Items=make([]int,1); f.Items[0]=1 }
+func ZeroLocal() { var f Fields; f.Items=make([]int,1); f.Items[0]=1 }
+func NewLocal() { f:=new(Fields); f.Items=make([]int,1); f.Items[0]=1 }
+func ZeroBorrowed() { var f Fields; f.Items=shared; f.Items[0]=1 }
+func NewBorrowed() { f:=new(Fields); f.Items=shared; f.Items[0]=1 }
+func NewValueBorrowed() { f:=new(Fields{Items:shared}); f.Items[0]=1 }
 func SelfAppend() { f:=Fields{Items:[]int{1}}; f.Items=append(f.Items,2); f.Items[0]=3 }
 func FieldAlias() { f:=Fields{Items:[]int{1}}; alias:=f.Items; alias[0]=2; f.Items[0]=3 }
 func FieldCall(fn func([]int)) { f:=Fields{Items:[]int{1}}; fn(f.Items); f.Items[0]=2 }
@@ -112,6 +118,9 @@ func NamedReturnAlias() (out *Fields) { f:=&Fields{Items:[]int{1}}; defer func()
 func NestedReference() { f:=Fields{Child:&Fields{Items:[]int{1}}}; f.Child.Items[0]=2 }
 func PromotedReference() { f:=Embedded{Fields:&Fields{Items:[]int{1}}}; f.Items[0]=2 }
 `))
+	if err := os.WriteFile(root+"/go.mod", []byte("module example.com/quality-repro\n\ngo 1.26.0\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	facts, err := (Analyzer{Root: root}).Extract(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -159,6 +168,8 @@ func PromotedReference() { f:=Embedded{Fields:&Fields{Items:[]int{1}}}; f.Items[
 		{"BorrowedFactory", false, false}, {"OpaqueFactory", false, false}, {"DeferredFactory", false, false}, {"NamedFactory", false, false}, {"BorrowedGenericFactory", false, false},
 		{"Slice", true, false}, {"PointerRoot", true, false}, {"Mapping", true, false},
 		{"Pointer", true, false}, {"Omitted", true, false}, {"SelfAppend", true, false},
+		{"ZeroLocal", true, false}, {"NewLocal", true, false},
+		{"ZeroBorrowed", false, false}, {"NewBorrowed", false, false}, {"NewValueBorrowed", false, false},
 		{"FieldAlias", true, false}, {"FieldCall", true, false}, {"LocalClosure", true, false},
 		{"Returned", true, false}, {"ReturnedField", true, false}, {"ReboundLiteral", true, false},
 		{"Borrowed", false, false}, {"BorrowedPointer", false, false}, {"BorrowedRecordPointer", false, false},

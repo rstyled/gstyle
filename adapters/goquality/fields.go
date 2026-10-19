@@ -100,12 +100,29 @@ func (x *extractor) fieldBindingOrigin(key fieldKey, initializers []ast.Expr, cu
 
 func (x *extractor) initializedFieldOrigin(key fieldKey, initializers []ast.Expr, seen map[types.Object]bool) quality.Provenance {
 	for _, initializer := range initializers {
+		if x.zeroFieldInitializer(initializer) {
+			continue
+		}
 		field, ok := x.literalField(initializer, key.field)
 		if !ok || x.origin(field, seen) != quality.Local {
 			return quality.Unknown
 		}
 	}
 	return quality.Local
+}
+
+// Both an uninitialized local and new(T) start with zero-valued fields.
+// new(value) can copy borrowed references, so its argument must be a type.
+func (x *extractor) zeroFieldInitializer(value ast.Expr) bool {
+	if value == nil {
+		return true
+	}
+	call, ok := ast.Unparen(value).(*ast.CallExpr)
+	if !ok || len(call.Args) != 1 {
+		return false
+	}
+	builtin, ok := x.calledObject(unwrappedCallee(call.Fun)).(*types.Builtin)
+	return ok && builtin.Name() == "new" && x.pkg.TypesInfo.Types[call.Args[0]].IsType()
 }
 
 func (x *extractor) literalField(value ast.Expr, field types.Object) (ast.Expr, bool) {
