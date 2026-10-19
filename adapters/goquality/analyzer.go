@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"go/types"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -182,13 +183,14 @@ type packageFacts struct{ selected, available []quality.Function }
 func extractPackage(pkg *packages.Package, root string, selected selection) (packageFacts, error) {
 	facts := []quality.Function{}
 	available := []quality.Function{}
+	extraction := packageExtraction{pkg: pkg, stable: stableGlobals(pkg)}
 	for _, file := range pkg.Syntax {
 		filename := pkg.Fset.PositionFor(file.Pos(), false).Filename
 		path, err := relativePath(root, filename)
 		if err != nil {
 			continue
 		}
-		functions, err := extractFile(pkg, file, path, filename)
+		functions, err := extraction.extractFile(file, path, filename)
 		if err != nil {
 			return packageFacts{}, err
 		}
@@ -200,20 +202,25 @@ func extractPackage(pkg *packages.Package, root string, selected selection) (pac
 	return packageFacts{selected: facts, available: available}, nil
 }
 
-func extractFile(pkg *packages.Package, file *ast.File, path, filename string) ([]quality.Function, error) {
+type packageExtraction struct {
+	pkg    *packages.Package
+	stable map[types.Object]bool
+}
+
+func (x packageExtraction) extractFile(file *ast.File, path, filename string) ([]quality.Function, error) {
 	source, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", path, err)
 	}
-	return extractDeclarations(pkg, file, path, source)
+	return x.extractDeclarations(file, path, source)
 }
 
-func extractDeclarations(pkg *packages.Package, file *ast.File, path string, source []byte) ([]quality.Function, error) {
+func (x packageExtraction) extractDeclarations(file *ast.File, path string, source []byte) ([]quality.Function, error) {
 	facts := []quality.Function{}
 	for _, declaration := range file.Decls {
 		function, ok := declaration.(*ast.FuncDecl)
 		if !ok {
-			initializers, err := extractInitializers(pkg, declaration, path, source)
+			initializers, err := x.extractInitializers(declaration, path, source)
 			if err != nil {
 				return nil, err
 			}
@@ -223,7 +230,7 @@ func extractDeclarations(pkg *packages.Package, file *ast.File, path string, sou
 		if function.Body == nil {
 			continue
 		}
-		fact, err := extractFunction(pkg, function, path, source)
+		fact, err := x.extractFunction(function, path, source)
 		if err != nil {
 			return nil, err
 		}
@@ -232,7 +239,7 @@ func extractDeclarations(pkg *packages.Package, file *ast.File, path string, sou
 	return facts, nil
 }
 
-func extractInitializers(pkg *packages.Package, declaration ast.Decl, path string, source []byte) ([]quality.Function, error) {
+func (x packageExtraction) extractInitializers(declaration ast.Decl, path string, source []byte) ([]quality.Function, error) {
 	facts := []quality.Function{}
 	var extractErr error
 	ast.Inspect(declaration, func(node ast.Node) bool {
@@ -243,11 +250,11 @@ func extractInitializers(pkg *packages.Package, declaration ast.Decl, path strin
 		if !ok {
 			return true
 		}
-		pos := physicalPosition(pkg.Fset, literal.Pos())
-		name := fmt.Sprintf("%s.<literal@%d:%d>", pkg.PkgPath, pos.Line, pos.Column)
+		pos := physicalPosition(x.pkg.Fset, literal.Pos())
+		name := fmt.Sprintf("%s.<literal@%d:%d>", x.pkg.PkgPath, pos.Line, pos.Column)
 		// No Doc: a declaration's suppression cannot target an embedded literal.
 		function := &ast.FuncDecl{Name: ast.NewIdent(name), Type: literal.Type, Body: literal.Body}
-		fact, err := extractFunction(pkg, function, path, source)
+		fact, err := x.extractFunction(function, path, source)
 		if err != nil {
 			extractErr = err
 			return false

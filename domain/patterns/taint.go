@@ -120,7 +120,7 @@ func propagateTaintStep(succ [][]int, tainted map[int]bool) bool {
 // receives tainted data.
 func sinkArgTainted(pdg *MiningGraph, idx int, sink *taintSink, tainted map[int]bool) bool {
 	for _, e := range pdg.Edges {
-		if taintedSinkEdge(pdg, e, idx, sink, tainted) {
+		if taintedSinkEdge(e, idx, sink, tainted) {
 			return true
 		}
 	}
@@ -129,7 +129,7 @@ func sinkArgTainted(pdg *MiningGraph, idx int, sink *taintSink, tainted map[int]
 
 // taintedSinkEdge reports whether e is a tainted data edge into a
 // dangerous argument of the sink.
-func taintedSinkEdge(pdg *MiningGraph, e PdgEdge, idx int, sink *taintSink, tainted map[int]bool) bool {
+func taintedSinkEdge(e PdgEdge, idx int, sink *taintSink, tainted map[int]bool) bool {
 	if e.Kind != Data || e.To != idx || !tainted[e.From] {
 		return false
 	}

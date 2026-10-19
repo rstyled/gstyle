@@ -80,10 +80,18 @@ const specMinOperands = 2
 // FindAggregateMods is exported for the quality gate: it records the
 // named struct types whose fields are mutated inside fn.
 func FindAggregateMods(fn *ast.FuncDecl, info *types.Info) []patterns.AggregateModHit {
+	return FindAggregateModsForWrites(fn, info, func(ast.Expr) bool { return true })
+}
+
+// FindAggregateModsForWrites records mutated types for writes selected by the caller.
+func FindAggregateModsForWrites(fn *ast.FuncDecl, info *types.Info, include func(ast.Expr) bool) []patterns.AggregateModHit {
 	seen := map[string]bool{}
 	var out []patterns.AggregateModHit
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
 		for _, lhs := range assignTargets(n) {
+			if !include(lhs) {
+				continue
+			}
 			id, ok := baseIdent(lhs)
 			if !ok {
 				continue
