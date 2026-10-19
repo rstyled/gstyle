@@ -180,7 +180,7 @@ func TestClassificationLongestPrefixAndUnknownCoverage(t *testing.T) {
 	f := fact("calls", 1)
 	f.Calls = []Call{{Callee: "net/http.Get", Line: 2}, {Callee: "fmt.Sprintf", Line: 3}, {Callee: "os/exec.Command", Line: 4}, {Callee: "os/exec.Cmd.Output", Line: 5}, {Callee: "project.save", Local: true, Line: 6}, {Callee: "callback", Dynamic: true, Line: 7}}
 	c := DefaultConfig()
-	c.Prefixes = append(c.Prefixes, Prefix{"net/http.Get", None})
+	c.Prefixes = append(c.Prefixes, Prefix{Path: "net/http.Get", Kind: None})
 	report := evaluate(t, f, c)
 	result := report.Functions[0]
 	if result.Complete || result.UnclassifiedCalls != 2 || result.DensityMilli != 1250 {
@@ -311,7 +311,7 @@ func TestInvalidBoundaries(t *testing.T) {
 		t.Fatal("negative weight accepted")
 	}
 	c = DefaultConfig()
-	c.Prefixes = append(c.Prefixes, Prefix{"p", Kind("typo")})
+	c.Prefixes = append(c.Prefixes, Prefix{Path: "p", Kind: Kind("typo")})
 	if _, err := Evaluate(nil, c); err == nil {
 		t.Fatal("unknown kind accepted")
 	}

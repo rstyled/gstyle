@@ -111,7 +111,7 @@ func boundSourceCall(call quality.Call, proven map[string]bool) bool {
 	if call.Dynamic {
 		return false
 	}
-	return proven[quality.NormalizeCallee(call.Callee)] || sourceContainerCall(call) || quality.ClassifyCallee(call.Callee) == quality.None
+	return proven[quality.NormalizeCallee(call.Callee)] || sourceContainerCall(call) || call.HasPlainJSON() || quality.ClassifyCallee(call.Callee) == quality.None
 }
 
 func sourceContainerCall(call quality.Call) bool {

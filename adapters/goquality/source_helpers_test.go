@@ -15,6 +15,7 @@ func TestLoadedSourceHelpersCrossPackageBoundaries(t *testing.T) {
 	root := qualitySourceModule(t, []byte(`package repro
 import "example.com/quality-repro/lib"
 func PureCaller(t lib.Table)string{return t.Text()}
+func JSONCaller(){lib.JSON()}
 func IOCaller(){lib.IO()}
 func GlobalCaller(){lib.Global()}
 func MutationCaller(p *int){lib.Set(p)}
@@ -26,9 +27,10 @@ func GeneratedCaller()int{return lib.Generated(7)}
 `))
 	files := map[string]string{
 		"lib/helper.go": `package lib
-import("fmt";"example.com/quality-repro/core")
+import("fmt";"encoding/json";"example.com/quality-repro/core")
 type Table struct{Value string}
 func(t Table)Text()string{return core.Identity(t.Value)}
+func JSON(){json.Marshal(struct{Value string}{})}
 func IO(){fmt.Println("hello")}
 var Counter int
 func Global(){Counter++}
@@ -69,7 +71,7 @@ func Identity(v string)string{return v}
 		kind     quality.Kind
 		complete bool
 	}{
-		{"PureCaller", quality.None, true}, {"GeneratedCaller", quality.None, true},
+		{"PureCaller", quality.None, true}, {"JSONCaller", quality.None, true}, {"GeneratedCaller", quality.None, true},
 		{"IOCaller", quality.UnknownEffect, false}, {"GlobalCaller", quality.UnknownEffect, false}, {"MutationCaller", quality.MutationEffect, true},
 		{"RecursiveCaller", quality.None, true}, {"MutualCaller", quality.None, true},
 		{"RecursiveIOCaller", quality.UnknownEffect, false}, {"DynamicCaller", quality.UnknownEffect, false},
