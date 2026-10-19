@@ -48,7 +48,7 @@ func reachableHelpers(function quality.Function, index map[string]quality.Functi
 	return helpers
 }
 
-// Cross-package bodies retain known writes and writes bound to direct formals.
+// Cross-package bodies retain panics, known writes, and writes bound to formals.
 // Complete evidence stays available for policy reevaluation.
 func sourceCalls(calls []quality.Call, available map[string]bool) []quality.Call {
 	result := slices.Clone(calls)
@@ -82,8 +82,10 @@ func boundSourceHelpers(index map[string]quality.Function) map[string]bool {
 }
 
 func boundSourceBody(body quality.Function, proven map[string]bool) bool {
-	if len(body.Effects) != 0 {
-		return false
+	for _, effect := range body.Effects {
+		if effect.Kind != quality.Panic {
+			return false
+		}
 	}
 	if unboundMutations(body.Mutations) {
 		return false
