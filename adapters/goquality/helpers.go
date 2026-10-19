@@ -48,8 +48,8 @@ func reachableHelpers(function quality.Function, index map[string]quality.Functi
 	return helpers
 }
 
-// Cross-package bodies must have bounded effects: local writes or writes bound
-// to direct formals. Complete evidence stays available for policy reevaluation.
+// Cross-package bodies retain known writes and writes bound to direct formals.
+// Complete evidence stays available for policy reevaluation.
 func sourceCalls(calls []quality.Call, available map[string]bool) []quality.Call {
 	result := slices.Clone(calls)
 	for i, call := range result {
@@ -92,7 +92,7 @@ func boundSourceBody(body quality.Function, proven map[string]bool) bool {
 }
 func unboundMutations(mutations []quality.Mutation) bool {
 	for _, mutation := range mutations {
-		if mutation.Provenance != quality.Local && mutation.Parameter == nil {
+		if mutation.Provenance == quality.Unknown && mutation.Parameter == nil {
 			return true
 		}
 	}

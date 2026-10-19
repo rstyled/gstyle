@@ -19,6 +19,11 @@ func JSONCaller(){lib.JSON()}
 func IOCaller(){lib.IO()}
 func GlobalCaller(){lib.Global()}
 func MutationCaller(p *int){lib.Set(p)}
+func FieldCaller(b *lib.Box){b.Put()}
+func BorrowedFieldCaller(m map[string]int){b:=lib.Box{Values:m};b.Put()}
+func FieldSortCaller(b *lib.Box){b.Sort()}
+func UnknownWriteCaller(p **int){lib.UnknownWrite(p)}
+func UnsafeCaller(p *int){lib.Unsafe(p)}
 func RecursiveCaller(){lib.Recurse()}
 func MutualCaller()bool{return lib.Even(4)}
 func RecursiveIOCaller(){lib.RecursiveIO()}
@@ -27,7 +32,7 @@ func GeneratedCaller()int{return lib.Generated(7)}
 `))
 	files := map[string]string{
 		"lib/helper.go": `package lib
-import("fmt";"encoding/json";"example.com/quality-repro/core")
+import("fmt";"encoding/json";"slices";"unsafe";"example.com/quality-repro/core")
 type Table struct{Value string}
 func(t Table)Text()string{return core.Identity(t.Value)}
 func JSON(){json.Marshal(struct{Value string}{})}
@@ -35,6 +40,11 @@ func IO(){fmt.Println("hello")}
 var Counter int
 func Global(){Counter++}
 func Set(p *int){*p=1}
+type Box struct{Values map[string]int;Items []int}
+func(b *Box)Put(){b.Values["x"]=1}
+func(b *Box)Sort(){slices.Sort(b.Items)}
+func UnknownWrite(p **int){**p=1}
+func Unsafe(p *int){_ = unsafe.Pointer(p)}
 func Recurse(){Recurse()}
 func Even(n int)bool{if n==0{return true};return Odd(n-1)}
 func Odd(n int)bool{if n==0{return false};return Even(n-1)}
@@ -73,6 +83,8 @@ func Identity(v string)string{return v}
 	}{
 		{"PureCaller", quality.None, true}, {"JSONCaller", quality.None, true}, {"GeneratedCaller", quality.None, true},
 		{"IOCaller", quality.UnknownEffect, false}, {"GlobalCaller", quality.UnknownEffect, false}, {"MutationCaller", quality.MutationEffect, true},
+		{"FieldCaller", quality.MutationEffect, true}, {"BorrowedFieldCaller", quality.MutationEffect, true}, {"FieldSortCaller", quality.UnknownEffect, false},
+		{"UnknownWriteCaller", quality.UnknownEffect, false}, {"UnsafeCaller", quality.UnknownEffect, false},
 		{"RecursiveCaller", quality.None, true}, {"MutualCaller", quality.None, true},
 		{"RecursiveIOCaller", quality.UnknownEffect, false}, {"DynamicCaller", quality.UnknownEffect, false},
 	} {
@@ -95,14 +107,28 @@ func Identity(v string)string{return v}
 			}
 		})
 	}
+	field := findFunction(t, facts, "FieldCaller")
+	if !field.Calls[0].Local || len(field.Helpers) != 1 {
+		t.Fatal("known field mutation body was not retained")
+	}
+	writes := field.Helpers[0].Mutations
+	if len(writes) != 1 || writes[0].Provenance != quality.External || writes[0].Parameter != nil {
+		t.Fatalf("unbound external mutation changed: %+v", writes)
+	}
+	if findFunction(t, facts, "UnknownWriteCaller").Calls[0].Local {
+		t.Fatal("unknown unbound mutation was admitted")
+	}
 	override := quality.DefaultConfig()
-	override.Prefixes = append(override.Prefixes, quality.Prefix{Path: "example.com/quality-repro/core.Identity", Kind: quality.IO})
+	override.Prefixes = append(override.Prefixes, quality.Prefix{Path: "example.com/quality-repro/core.Identity", Kind: quality.IO}, quality.Prefix{Path: field.Calls[0].Callee, Kind: quality.IO})
 	overridden, err := quality.Evaluate(facts, override)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := resultNamed(t, overridden, "PureCaller"); len(got.Effects) != 1 || got.Effects[0].Kind != quality.IO {
 		t.Fatal("read-only proof hid a policy override")
+	}
+	if got := resultNamed(t, overridden, "FieldCaller"); len(got.Effects) != 1 || got.Effects[0].Kind != quality.IO {
+		t.Fatal("mutation evidence hid a policy override")
 	}
 	encoded, err := json.Marshal(facts)
 	if err != nil {
