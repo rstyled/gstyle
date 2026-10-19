@@ -30,7 +30,7 @@ func projectedSource(t *testing.T, path, source string) *pdg.SourceContext {
 		t.Fatal(err)
 	}
 	context := pdg.NewSourceContext(filepath.Dir(path), nil)
-	if err := publishSourceSnapshot(context, path, []byte(source), fset, file); err != nil {
+	if err := publishSourceSnapshot(context, []byte(source), fset, file); err != nil {
 		t.Fatal(err)
 	}
 	return context

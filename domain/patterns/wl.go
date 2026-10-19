@@ -463,18 +463,7 @@ func countCalls(pdg *MiningGraph) int {
 
 // levels caps refinement depth by the smaller graph's diameter.
 func levels(a, b *Wl) int {
-	h := a.diameter
-	if b.diameter < h {
-		h = b.diameter
-	}
-	h++
-	if h < 1 {
-		h = 1
-	}
-	if h > maxLevels {
-		h = maxLevels
-	}
-	return h
+	return min(max(min(a.diameter, b.diameter)+1, 1), maxLevels)
 }
 
 // weights are (h, h-1, ..., 1): earlier levels count more.

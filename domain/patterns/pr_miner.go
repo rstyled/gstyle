@@ -333,7 +333,7 @@ func countTriples(sets []CallSet, indices map[string]int) map[[3]int]int {
 }
 
 func addTriples(calls []int, counts map[[3]int]int) {
-	for i := 0; i < len(calls); i++ {
+	for i := range calls {
 		for j := i + 1; j < len(calls); j++ {
 			for k := j + 1; k < len(calls); k++ {
 				counts[[3]int{calls[i], calls[j], calls[k]}]++

@@ -9,20 +9,21 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-// stableGlobals proves private literal tables cannot change or escape through
-// any use in the active package. Values copied from a table contain no aliases.
+// stableGlobals proves reads of private literal tables and unit values do not
+// depend on mutable state. All uses in the active package must preserve value reads.
 func stableGlobals(pkg *packages.Package) map[types.Object]bool {
 	stable := map[types.Object]bool{}
 	if opaqueGlobals(pkg) {
 		return stable
 	}
+	unitGlobals(pkg.TypesInfo, stable)
 	parents := map[ast.Node]ast.Node{}
 	for _, file := range pkg.Syntax {
 		indexParents(file, parents)
 		stableDeclarations(pkg, file, stable)
 	}
 	for id, object := range pkg.TypesInfo.Uses {
-		if stable[object] && !stableTableRead(id, parents, pkg.TypesInfo) {
+		if stable[object] && !stableGlobalRead(id, parents, pkg.TypesInfo) {
 			delete(stable, object)
 		}
 	}

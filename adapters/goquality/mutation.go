@@ -11,9 +11,9 @@ import (
 )
 
 type referenceBinding struct {
-	values   []ast.Expr
-	unknown  bool
-	appended bool
+	values       []ast.Expr
+	unknown      bool
+	selfReturned bool
 }
 
 // Bindings retain all possible assignments. Provenance is conservative across
@@ -52,8 +52,8 @@ func (x *extractor) bindAssignments(places, values []ast.Expr) {
 		}
 		value := assignmentValue(values, index, len(places))
 		binding := x.bindings[object]
-		if x.appendSelfAssignment(object, value) {
-			binding.appended = true
+		if x.containerSelfAssignment(object, value) {
+			binding.selfReturned = true
 		} else {
 			binding.values = append(binding.values, value)
 		}
@@ -61,21 +61,25 @@ func (x *extractor) bindAssignments(places, values []ast.Expr) {
 	}
 }
 
-func (x *extractor) appendSelfAssignment(object types.Object, value ast.Expr) bool {
+// A self assignment from a modeled container operation keeps local ownership:
+// these calls return their first buffer, a view of it, or fresh storage.
+func (x *extractor) containerSelfAssignment(object types.Object, value ast.Expr) bool {
 	call, ok := ast.Unparen(value).(*ast.CallExpr)
-	if !ok {
+	if !ok || !x.selfContainerCall(call) {
 		return false
 	}
-	id, ok := unwrappedCallee(call.Fun).(*ast.Ident)
-	if !ok {
-		return false
-	}
-	builtin, ok := x.pkg.TypesInfo.ObjectOf(id).(*types.Builtin)
-	if !ok || builtin.Name() != "append" {
-		return false
-	}
-	target, ok := ast.Unparen(call.Args[0]).(*ast.Ident)
+	target, ok := ast.Unparen(x.containerArgs(call)[0]).(*ast.Ident)
 	return ok && x.pkg.TypesInfo.ObjectOf(target) == object
+}
+
+func (x *extractor) selfContainerCall(call *ast.CallExpr) bool {
+	switch object := x.calledObject(unwrappedCallee(call.Fun)).(type) {
+	case *types.Builtin:
+		return object.Name() == "append"
+	case *types.Func:
+		return quality.ContainerMutation(resolvedName(object))
+	}
+	return false
 }
 
 func (x *extractor) addressBinding(value *ast.UnaryExpr) {
@@ -307,13 +311,13 @@ func (x *extractor) bindingOrigin(binding referenceBinding, seen map[types.Objec
 			return quality.Unknown
 		}
 	}
-	if binding.appended {
+	if binding.selfReturned {
 		return appendOrigin(result)
 	}
 	return result
 }
 
-// An append result can reuse its input or allocate. Only local input proves
+// A container update can reuse its input or allocate. Only local input proves
 // local output; shared or unknown input leaves the result's ownership unknown.
 func appendOrigin(input quality.Provenance) quality.Provenance {
 	if input == quality.Local {

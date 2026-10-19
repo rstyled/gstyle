@@ -81,8 +81,9 @@ func (s selection) includes(file string) bool {
 
 func extractPackages(pkgs []*packages.Package, root string, selected selection) ([]quality.Function, error) {
 	all := packageFacts{}
+	proofs := stablePackageGlobals(pkgs)
 	for _, pkg := range pkgs {
-		functions, err := extractPackage(pkg, root, selected)
+		functions, err := extractPackage(pkg, root, selected, proofs[pkg])
 		if err != nil {
 			return nil, err
 		}
@@ -180,10 +181,10 @@ func packageErrors(pkgs []*packages.Package, root string) error {
 
 type packageFacts struct{ selected, available []quality.Function }
 
-func extractPackage(pkg *packages.Package, root string, selected selection) (packageFacts, error) {
+func extractPackage(pkg *packages.Package, root string, selected selection, stable map[types.Object]bool) (packageFacts, error) {
 	facts := []quality.Function{}
 	available := []quality.Function{}
-	extraction := packageExtraction{pkg: pkg, stable: stableGlobals(pkg)}
+	extraction := packageExtraction{pkg: pkg, stable: stable}
 	for _, file := range pkg.Syntax {
 		filename := pkg.Fset.PositionFor(file.Pos(), false).Filename
 		path, err := relativePath(root, filename)

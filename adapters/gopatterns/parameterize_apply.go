@@ -21,7 +21,7 @@ func applyParameterizeFix(spec *patterns.FixSpec, src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	normalizeParameterizationFile(spec, fset, file, a, b)
+	normalizeParameterizationFile(spec, fset, file)
 	candidates := []patterns.Candidate{{Kind: patterns.Parameterize, Sites: []patterns.Site{{Name: a}, {Name: b}}}}
 	out, _, err := fixParameterizeWithTypes(fset, file, src, parameterizeConfig{typedInterfaces: true, candidates: candidates, signatures: signatures, helperName: spec.Params["helper_name"]})
 	return out, err
@@ -48,8 +48,8 @@ func parameterizationProof(spec *patterns.FixSpec, src []byte) (string, string, 
 
 func validParameterizationPair(a, b string) bool { return a != "" && b != "" && a != b }
 
-func normalizeParameterizationFile(spec *patterns.FixSpec, fset *token.FileSet, file *ast.File, a, b string) {
-	first, second := namedFreeFunction(file, a), namedFreeFunction(file, b)
+func normalizeParameterizationFile(spec *patterns.FixSpec, fset *token.FileSet, file *ast.File) {
+	first, second := namedFreeFunction(file, spec.Params["pair_a"]), namedFreeFunction(file, spec.Params["pair_b"])
 	if first == nil || second == nil {
 		return
 	}

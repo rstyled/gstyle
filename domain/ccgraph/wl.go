@@ -50,13 +50,13 @@ func (p kernelPair) compare(ctx context.Context) (Kernel, error) {
 	ca, cb := ga.colors, gb.colors
 	out := Kernel{Depth: h, DiameterA: da, DiameterB: db}
 	out.Rounds = append(out.Rounds, makeRound(ca, cb, h+1))
-	for round := 1; round <= h; round++ {
+	for level := range h {
 		if err := ctx.Err(); err != nil {
 			return Kernel{}, err
 		}
 		intern := map[string]int{}
 		ca, cb = refine(ga, ca, intern), refine(gb, cb, intern)
-		out.Rounds = append(out.Rounds, makeRound(ca, cb, h+1-round))
+		out.Rounds = append(out.Rounds, makeRound(ca, cb, h-level))
 	}
 	setScores(&out, len(a.Nodes), len(b.Nodes))
 	return out, nil

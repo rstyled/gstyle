@@ -16,7 +16,7 @@ func (m dashboard) sizeChart(width, height int) []string {
 		grid[i] = []rune(emptyRow)
 	}
 	point := 0
-	for x := 0; x < columns; x++ {
+	for x := range columns {
 		at := time.Duration(float64(duration) * float64(x) / float64(lastColumn))
 		for point+1 < len(m.history) && m.history[point+1].elapsed <= at {
 			point++

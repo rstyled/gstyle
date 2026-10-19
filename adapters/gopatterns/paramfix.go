@@ -208,7 +208,7 @@ func fixParameterizeWithTypes(fset *token.FileSet, f *ast.File, src []byte, conf
 func collectEdits(tc *tryCtx, funcs []*ast.FuncDecl) ([]textEdit, []ParamFix) {
 	var edits []textEdit
 	var fixes []ParamFix
-	for i := 0; i < len(funcs); i++ {
+	for i := range funcs {
 		for j := i + 1; j < len(funcs); j++ {
 			if edit, fix, ok := tc.tryPair(funcs[i], funcs[j]); ok {
 				edits = append(edits, edit)

@@ -76,6 +76,18 @@ var stdlibRules = []stdlibRule{
 	{pkg: "encoding/base32", kind: None},
 	{pkg: "encoding/base64", kind: None},
 	{pkg: "encoding/binary", kind: None},
+	// Concrete byte orders write only their first buffer argument. Interface
+	// mutators can dispatch to user code and cannot receive ownership proofs.
+	{pkg: "encoding/binary", kind: MutationEffect, names: []string{
+		"littleEndian.PutUint16", "littleEndian.PutUint32", "littleEndian.PutUint64",
+		"littleEndian.AppendUint16", "littleEndian.AppendUint32", "littleEndian.AppendUint64",
+		"bigEndian.PutUint16", "bigEndian.PutUint32", "bigEndian.PutUint64",
+		"bigEndian.AppendUint16", "bigEndian.AppendUint32", "bigEndian.AppendUint64",
+	}},
+	{pkg: "encoding/binary", kind: UnknownEffect, names: []string{
+		"ByteOrder.PutUint16", "ByteOrder.PutUint32", "ByteOrder.PutUint64",
+		"AppendByteOrder.AppendUint16", "AppendByteOrder.AppendUint32", "AppendByteOrder.AppendUint64",
+	}},
 	{pkg: "encoding/hex", kind: None},
 	{pkg: "encoding/pem", kind: None},
 	{pkg: "encoding/csv", kind: None},
