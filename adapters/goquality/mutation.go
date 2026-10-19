@@ -273,7 +273,7 @@ func (x *extractor) allocationOrigin(call *ast.CallExpr, seen map[types.Object]b
 	case *types.Builtin:
 		return x.builtinAllocationOrigin(call, object.Name(), seen)
 	case *types.Func:
-		if quality.ContainerClone(resolvedName(object)) {
+		if x.factories[object] != nil || quality.ContainerClone(resolvedName(object)) {
 			return quality.Local
 		}
 	}
