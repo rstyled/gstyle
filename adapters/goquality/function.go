@@ -14,13 +14,14 @@ import (
 )
 
 type extractor struct {
-	factories  map[*types.Func]ast.Expr
-	pkg        *packages.Package
-	stable     map[types.Object]bool
-	fact       quality.Function
-	bindings   map[types.Object]referenceBinding
-	fields     fieldOwnership
-	parameters map[types.Object]bool
+	closedReceiver bool
+	factories      map[*types.Func]ast.Expr
+	pkg            *packages.Package
+	stable         map[types.Object]bool
+	fact           quality.Function
+	bindings       map[types.Object]referenceBinding
+	fields         fieldOwnership
+	parameters     map[types.Object]bool
 	// paramIndex maps outer-function parameter objects to their ParamList
 	// index. The receiver and closure parameters are not indexed: they are
 	// not forwardable as bare Param(i) arguments.
@@ -201,6 +202,9 @@ func (extraction packageExtraction) extractFunction(fn *ast.FuncDecl, path strin
 	x.fact.CodeLines = lines
 	x.indexParameters(fn.Type.Params)
 	x.noteReceiver(fn.Recv)
+	if x.receiver != nil {
+		x.closedReceiver = extraction.receivers[receiverType(x.receiver.Type())]
+	}
 	x.addParameters(fn.Type.Params)
 	x.addParameters(fn.Recv)
 	x.collectBindings(fn.Body)

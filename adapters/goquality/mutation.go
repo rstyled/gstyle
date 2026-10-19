@@ -213,6 +213,9 @@ func (x *extractor) selectorProvenance(place *ast.SelectorExpr) quality.Provenan
 	if embeddedPointer(x.pkg.TypesInfo.Selections[place]) {
 		return x.fieldOrigin(place, map[types.Object]bool{})
 	}
+	if x.localReceiverField(place) {
+		return quality.Local
+	}
 	if _, ok := underlying(x.pkg.TypesInfo.TypeOf(place.X)).(*types.Pointer); ok {
 		return x.origin(place.X, map[types.Object]bool{})
 	}

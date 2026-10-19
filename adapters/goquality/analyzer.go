@@ -82,8 +82,10 @@ func (s selection) includes(file string) bool {
 func extractPackages(pkgs []*packages.Package, root string, selected selection) ([]quality.Function, error) {
 	all := packageFacts{}
 	proofs := stablePackageGlobals(pkgs)
+	receivers := packageProofs(pkgs, closedReceiverTypes)
 	for _, pkg := range pkgs {
-		functions, err := extractPackage(pkg, root, selected, proofs[pkg])
+		extraction := packageExtraction{pkg: pkg, stable: proofs[pkg], factories: factoryResults(pkg), receivers: receivers[pkg]}
+		functions, err := extraction.extractPackage(root, selected)
 		if err != nil {
 			return nil, err
 		}
@@ -181,10 +183,10 @@ func packageErrors(pkgs []*packages.Package, root string) error {
 
 type packageFacts struct{ selected, available []quality.Function }
 
-func extractPackage(pkg *packages.Package, root string, selected selection, stable map[types.Object]bool) (packageFacts, error) {
+func (extraction packageExtraction) extractPackage(root string, selected selection) (packageFacts, error) {
+	pkg := extraction.pkg
 	facts := []quality.Function{}
 	available := []quality.Function{}
-	extraction := packageExtraction{pkg: pkg, stable: stable, factories: factoryResults(pkg)}
 	for _, file := range pkg.Syntax {
 		filename := pkg.Fset.PositionFor(file.Pos(), false).Filename
 		path, err := relativePath(root, filename)
@@ -204,6 +206,7 @@ func extractPackage(pkg *packages.Package, root string, selected selection, stab
 }
 
 type packageExtraction struct {
+	receivers map[types.Object]bool
 	factories map[*types.Func]ast.Expr
 	pkg       *packages.Package
 	stable    map[types.Object]bool
