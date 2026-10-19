@@ -35,12 +35,25 @@ func ContainerClone(callee string) bool {
 // HasLocalContainerTarget proves only that this modeled call writes local
 // container storage. It does not override a configured effect classification.
 func (call Call) HasLocalContainerTarget() bool {
-	return call.MutationTarget == Local && !call.Dynamic && ContainerMutation(call.Callee)
+	return call.MutationTarget == Local && !call.Dynamic && call.modeledContainerMutation()
 }
 
 func (call Call) validMutationTarget() bool {
 	if call.MutationTarget == "" {
-		return true
+		return call.validCallbackExpansion()
 	}
-	return !call.Dynamic && ContainerMutation(call.Callee) && slices.Contains([]Provenance{Local, External, Unknown}, call.MutationTarget)
+	return call.validCallbackExpansion() && !call.Dynamic && call.modeledContainerMutation() && slices.Contains([]Provenance{Local, External, Unknown}, call.MutationTarget)
+}
+
+// CallbackContainer identifies sorts whose sole callback is the second argument.
+func CallbackContainer(callee string) bool {
+	return slices.Contains([]string{"slices.SortFunc", "slices.SortStableFunc", "sort.Slice", "sort.SliceStable"}, NormalizeCallee(callee))
+}
+
+func (call Call) modeledContainerMutation() bool {
+	return ContainerMutation(call.Callee) || (call.CallbackExpanded && CallbackContainer(call.Callee))
+}
+
+func (call Call) validCallbackExpansion() bool {
+	return !call.CallbackExpanded || (!call.Dynamic && CallbackContainer(call.Callee))
 }

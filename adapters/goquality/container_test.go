@@ -15,6 +15,7 @@ func TestContainerStorageOwnership(t *testing.T) {
 	root := qualitySourceModule(t, []byte(`package repro
 import("bytes";"maps";"slices";"sort";"strings")
 var shared = []int{2,1}
+var counter int
 type Numbers []int
 type Text string
 type Runes []rune
@@ -68,6 +69,20 @@ func ExternalAppend(values []int){alias:=append(values,3); slices.Sort(alias)}
 func Mixed(values []int, flag bool){alias:=[]int{2,1}; if flag{alias=values}; slices.Sort(alias)}
 func Unknown(factory func()[]int){values:=factory(); slices.Sort(values)}
 func Callback(compare func(int,int)int){values:=[]int{2,1}; slices.SortFunc(values,compare)}
+func InlineSort(){v:=[]int{2,1};slices.SortFunc(v,func(a,b int)int{return a-b})}
+func InlineStable(){v:=[]int{2,1};slices.SortStableFunc(v,func(a,b int)int{return a-b})}
+func InlineReflect(){v:=[]int{2,1};sort.Slice(v,func(a,b int)bool{return v[a]<v[b]})}
+func InlineReflectStable(){v:=[]int{2,1};sort.SliceStable(v,func(a,b int)bool{return v[a]<v[b]})}
+func InlineShared(v []int){slices.SortFunc(v,func(a,b int)int{return a-b})}
+func NamedCallback(){v:=[]int{2,1};slices.SortFunc(v,compare)}
+func compare(a,b int)int{return a-b}
+func VariableCallback(){v:=[]int{2,1};compare:=func(a,b int)int{return a-b};slices.SortFunc(v,compare)}
+func InlineOutput(){v:=[]int{2,1};slices.SortFunc(v,func(a,b int)int{println(a);return a-b})}
+func InlineCaptured(shared *int){v:=[]int{2,1};slices.SortFunc(v,func(a,b int)int{*shared++;return a-b})}
+func InlineGlobal(){v:=[]int{2,1};slices.SortFunc(v,func(a,b int)int{return a-b+counter})}
+func InlineLaunch(){v:=[]int{2,1};slices.SortFunc(v,func(a,b int)int{go func(){}();return a-b})}
+func InlineChannel(ch chan int){v:=[]int{2,1};slices.SortFunc(v,func(a,b int)int{ch<-a;return a-b})}
+func InlinePolicy(){v:=[]string{"b","a"};slices.SortFunc(v,func(a,b string)int{return strings.Compare(a,b)})}
 func helper(){values:=[]int{2,1}; slices.Sort(values)}
 func Caller(){helper()}
 `))
@@ -79,7 +94,7 @@ func Caller(){helper()}
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"FreshContainers", "FreshBytes", "FreshRunes", "NamedString", "NilClone", "NilSelf", "NilSort", "NilDirect", "LocalSort", "NamedSort", "LocalCopy", "LocalReverse", "LocalCompact", "LocalDelete", "LocalInsert", "LocalReplace", "LocalInts", "LocalFloats", "LocalStrings", "LocalAlias", "LocalAppend", "SelfAppend", "CloneSort", "CloneCopy", "Caller"} {
+	for _, name := range []string{"InlineSort", "InlineStable", "InlineReflect", "InlineReflectStable", "InlinePolicy", "FreshContainers", "FreshBytes", "FreshRunes", "NamedString", "NilClone", "NilSelf", "NilSort", "NilDirect", "LocalSort", "NamedSort", "LocalCopy", "LocalReverse", "LocalCompact", "LocalDelete", "LocalInsert", "LocalReplace", "LocalInts", "LocalFloats", "LocalStrings", "LocalAlias", "LocalAppend", "SelfAppend", "CloneSort", "CloneCopy", "Caller"} {
 		t.Run(name, func(t *testing.T) {
 			r := resultNamed(t, report, name)
 			if len(r.Effects) != 0 || !r.Complete {
@@ -91,7 +106,7 @@ func Caller(){helper()}
 		name       string
 		provenance quality.Provenance
 	}{
-		{"CallbackFields", quality.Unknown}, {"ShadowNil", quality.External}, {"OrdinaryConversion", quality.External}, {"ExternalSort", quality.External}, {"ExternalCopy", quality.External}, {"GenericSort", quality.External}, {"GlobalSort", quality.External}, {"ExternalAlias", quality.External}, {"ExternalAppend", quality.Unknown}, {"FakeClone", quality.Unknown}, {"Mixed", quality.Unknown}, {"Unknown", quality.Unknown},
+		{"InlineShared", quality.External}, {"CallbackFields", quality.Unknown}, {"ShadowNil", quality.External}, {"OrdinaryConversion", quality.External}, {"ExternalSort", quality.External}, {"ExternalCopy", quality.External}, {"GenericSort", quality.External}, {"GlobalSort", quality.External}, {"ExternalAlias", quality.External}, {"ExternalAppend", quality.Unknown}, {"FakeClone", quality.Unknown}, {"Mixed", quality.Unknown}, {"Unknown", quality.Unknown},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := findFunction(t, facts, tc.name)
@@ -114,12 +129,26 @@ func Caller(){helper()}
 			t.Fatalf("%s loses pointee or dynamic-call evidence", name)
 		}
 	}
-	callback := findFunction(t, facts, "Callback")
-	if callback.Calls[0].MutationTarget != "" {
-		t.Fatal("callback-based operation received ownership proof")
+	for _, name := range []string{"Callback", "NamedCallback", "VariableCallback"} {
+		callback := findFunction(t, facts, name)
+		if callback.Calls[0].MutationTarget != "" || callback.Calls[0].CallbackExpanded || len(resultNamed(t, report, name).Effects) == 0 {
+			t.Fatalf("unproved callback %s became local: %+v", name, callback)
+		}
 	}
-	if len(resultNamed(t, report, "Callback").Effects) == 0 {
-		t.Fatal("callback operation became pure")
+	for _, tc := range []struct {
+		name string
+		kind quality.Kind
+	}{
+		{"InlineOutput", quality.IO}, {"InlineCaptured", quality.MutationEffect}, {"InlineGlobal", quality.Global}, {"InlineLaunch", quality.UnknownEffect}, {"InlineChannel", quality.UnknownEffect},
+	} {
+		got := resultNamed(t, report, tc.name)
+		found := false
+		for _, effect := range got.Effects {
+			found = found || effect.Kind == tc.kind
+		}
+		if !found {
+			t.Fatalf("%s loses %s callback evidence: %+v", tc.name, tc.kind, got)
+		}
 	}
 	encoded, err := json.Marshal(facts)
 	if err != nil {
@@ -135,6 +164,18 @@ func Caller(){helper()}
 	}
 	if !reflect.DeepEqual(report, roundtrip) {
 		t.Fatal("saved ownership facts changed evaluation")
+	}
+	for _, path := range []string{"strings.Compare", "slices.SortFunc"} {
+		config := quality.DefaultConfig()
+		config.Prefixes = append(config.Prefixes, quality.Prefix{Path: path, Kind: quality.IO})
+		replay, err := quality.Evaluate(restored, config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := resultNamed(t, replay, "InlinePolicy")
+		if len(got.Effects) != 1 || got.Effects[0].Kind != quality.IO {
+			t.Fatalf("saved callback hid %s override: %+v", path, got)
+		}
 	}
 	override := quality.DefaultConfig()
 	override.Prefixes = append(override.Prefixes, quality.Prefix{Path: "slices.Sort", Kind: quality.IO})
@@ -155,6 +196,7 @@ func TestContainerHelpersAcrossPackages(t *testing.T) {
 import "example.com/quality-repro/lib"
 func Caller(values []int)[]int{return lib.Sorted(values)}
 func Shared(values []int){lib.Shared(values)}
+func InlineHelper(values []int)[]int{return lib.SortedInline(values)}
 `))
 	if err := os.MkdirAll(filepath.Join(root, "lib"), 0700); err != nil {
 		t.Fatal(err)
@@ -163,6 +205,7 @@ func Shared(values []int){lib.Shared(values)}
 import "slices"
 func Sorted(values []int)[]int{local:=slices.Clone(values); slices.Sort(local); return local}
 func Shared(values []int){slices.Sort(values)}
+func SortedInline(values []int)[]int{local:=slices.Clone(values);slices.SortFunc(local,func(a,b int)int{return a-b});return local}
 `
 	if err := os.WriteFile(filepath.Join(root, "lib/helper.go"), []byte(source), 0600); err != nil {
 		t.Fatal(err)
@@ -190,6 +233,20 @@ func Shared(values []int){slices.Sort(values)}
 	var restored []quality.Function
 	if err := json.Unmarshal(encoded, &restored); err != nil {
 		t.Fatal(err)
+	}
+	inline := resultNamed(t, report, "InlineHelper")
+	if len(inline.Effects) != 0 || !inline.Complete {
+		t.Fatalf("inline helper stays effectful: %+v", inline)
+	}
+	callbackConfig := quality.DefaultConfig()
+	callbackConfig.Prefixes = append(callbackConfig.Prefixes, quality.Prefix{Path: "slices.SortFunc", Kind: quality.IO})
+	changed, err := quality.Evaluate(restored, callbackConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inline = resultNamed(t, changed, "InlineHelper")
+	if len(inline.Effects) != 1 || inline.Effects[0].Kind != quality.IO {
+		t.Fatalf("saved helper callback proof hid override: %+v", inline)
 	}
 	for _, callee := range []string{"slices.Sort", "slices.Clone"} {
 		config := quality.DefaultConfig()
