@@ -59,6 +59,7 @@ func TestHelperSummaryLimitsStayUnknown(t *testing.T) {
 		}
 		f.Helpers = append(f.Helpers, h)
 	}
+	f.Helpers[len(f.Helpers)-1].Effects = []Effect{{Kind: IO, Detail: "deep write", Line: 3}}
 	result := evaluate(t, f, DefaultConfig()).Functions[0]
 	if result.Complete || result.UnclassifiedCalls == 0 {
 		t.Fatalf("depth limit pretends pure: %+v", result)

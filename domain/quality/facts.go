@@ -9,7 +9,8 @@ type Location struct {
 }
 
 // Helper retains policy-free body evidence for one statically called local
-// function. Helpers form a flat graph; cycles remain unknown during evaluation.
+// function. Helpers form a flat graph; read-only cycles can be proved without
+// claiming that recursion terminates.
 type Helper struct {
 	Params    int        `json:"params,omitempty"`
 	HasSelf   bool       `json:"has_self,omitempty"`

@@ -17,6 +17,7 @@ type callSummary struct {
 }
 
 type callResolver struct {
+	pure     map[string]bool
 	prefixes []Prefix
 	helpers  map[string]Helper
 	active   map[string]bool
@@ -47,6 +48,13 @@ func (r *callResolver) call(call Call) callSummary {
 	}
 	if !call.staticLocal() {
 		return call.classifiedCall(UnknownEffect)
+	}
+	return r.localCall(name, call)
+}
+
+func (r *callResolver) localCall(name string, call Call) callSummary {
+	if r.pure[name] {
+		return callSummary{}
 	}
 	if r.active[name] || len(r.active) >= localDepthLimit {
 		return call.classifiedCall(UnknownEffect)
@@ -112,7 +120,7 @@ func localCalls(f Function, prefixes []Prefix) ([]Effect, int) {
 	for _, helper := range f.Helpers {
 		helpers[NormalizeCallee(helper.Name)] = helper
 	}
-	resolver := callResolver{prefixes: prefixes, helpers: helpers, active: map[string]bool{}, cache: map[string]callSummary{}}
+	resolver := callResolver{pure: readOnlyHelpers(helpers, prefixes), prefixes: prefixes, helpers: helpers, active: map[string]bool{}, cache: map[string]callSummary{}}
 	summary := resolver.calls(f.Calls)
 	return summary.effects, summary.unclassified
 }
