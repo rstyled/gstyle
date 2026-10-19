@@ -542,7 +542,7 @@ func splitPrimitiveField(field *ast.Field, paramName, typeName string) []*ast.Fi
 // wrapGroupCallSites wraps call-site args for every function in the group.
 func wrapGroupCallSites(f *ast.File, group []primitiveConceptInfo, typeName string) bool {
 	for _, info := range group {
-		if !wrapCallSites(f, info.fn.Name.Name, info.param.Name, info.fn, typeName) {
+		if !wrapCallSites(f, info.param.Name, info.fn, typeName) {
 			return false
 		}
 	}
@@ -552,12 +552,12 @@ func wrapGroupCallSites(f *ast.File, group []primitiveConceptInfo, typeName stri
 // wrapCallSites wraps args at call sites of funcName. args that are untyped
 // constants (string/int literals) need no wrapping; others get TypeName(...).
 // Returns false if any call cannot be safely rewritten.
-func wrapCallSites(f *ast.File, funcName, paramName string, fn *ast.FuncDecl, typeName string) bool {
+func wrapCallSites(f *ast.File, paramName string, fn *ast.FuncDecl, typeName string) bool {
 	targetPos, ok := paramPosition(fn, paramName)
 	if !ok {
 		return false
 	}
-	w := &callWrapper{funcName: funcName, pos: targetPos, typeName: typeName, ok: true}
+	w := &callWrapper{funcName: fn.Name.Name, pos: targetPos, typeName: typeName, ok: true}
 	astutil.Apply(f, w.visit, nil)
 	return w.ok
 }

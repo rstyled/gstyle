@@ -56,7 +56,13 @@ func (r *callResolver) localCall(name string, call Call) callSummary {
 	if r.pure[name] {
 		return callSummary{}
 	}
-	if r.active[name] || len(r.active) >= localDepthLimit {
+	if r.active[name] {
+		if r.contextReadOnly(call) {
+			return callSummary{}
+		}
+		return call.classifiedCall(UnknownEffect)
+	}
+	if len(r.active) >= localDepthLimit {
 		return call.classifiedCall(UnknownEffect)
 	}
 	helper, ok := r.helpers[name]

@@ -15,6 +15,7 @@ import (
 
 type extractor struct {
 	pkg        *packages.Package
+	stable     map[types.Object]bool
 	fact       quality.Function
 	bindings   map[types.Object]referenceBinding
 	parameters map[types.Object]bool
@@ -160,7 +161,7 @@ func (x *extractor) effect(kind quality.Kind, detail string, pos token.Pos) {
 
 func (x *extractor) globalRead(id *ast.Ident) {
 	object, ok := x.pkg.TypesInfo.Uses[id].(*types.Var)
-	if !ok || !packageVariable(object) {
+	if !ok || !packageVariable(object) || x.stable[object] {
 		return
 	}
 	// A write's global effect already captures observability. Deduplicate the
@@ -178,13 +179,14 @@ func (x *extractor) objectID(object types.Object) string {
 	return strconv.Itoa(pos.Line) + ":" + strconv.Itoa(pos.Column)
 }
 
-func extractFunction(pkg *packages.Package, fn *ast.FuncDecl, path string, source []byte) (quality.Function, error) {
+func (extraction packageExtraction) extractFunction(fn *ast.FuncDecl, path string, source []byte) (quality.Function, error) {
+	pkg := extraction.pkg
 	start, end := physicalPosition(pkg.Fset, fn.Pos()), physicalPosition(pkg.Fset, fn.End())
 	name := fn.Name.Name
 	if object, ok := pkg.TypesInfo.Defs[fn.Name].(*types.Func); ok {
 		name = resolvedName(object)
 	}
-	x := extractor{pkg: pkg, bindings: map[types.Object]referenceBinding{}, parameters: map[types.Object]bool{}, paramIndex: map[types.Object]int{}, fact: quality.Function{
+	x := extractor{pkg: pkg, stable: extraction.stable, bindings: map[types.Object]referenceBinding{}, parameters: map[types.Object]bool{}, paramIndex: map[types.Object]int{}, fact: quality.Function{
 		Location: quality.Location{Path: path, Line: start.Line, Column: start.Column, Name: name},
 		Params:   parameterCount(fn.Type.Params), HasSelf: fn.Recv != nil,
 		Source: string(source[start.Offset:end.Offset]), PrecedingLine: precedingSuppression(fn.Doc),
@@ -201,18 +203,25 @@ func extractFunction(pkg *packages.Package, fn *ast.FuncDecl, path string, sourc
 	x.addParameters(fn.Recv)
 	x.collectBindings(fn.Body)
 	ast.Inspect(fn.Body, x.visit)
-	x.fact.DDD = dddViolations(pkg, fn, path)
+	x.fact.DDD = x.dddViolations(fn, path)
 	return x.fact, nil
 }
 
 // dddViolations runs the DDD detectors (Evans) for the quality gate:
 // aggregate boundaries, repository bypasses, and mutable identities.
-func dddViolations(pkg *packages.Package, fn *ast.FuncDecl, path string) []quality.DDDViolation {
+func (x *extractor) dddViolations(fn *ast.FuncDecl, path string) []quality.DDDViolation {
 	var out []quality.DDDViolation
-	// Aggregate: mutating 2+ struct types in one function crosses an
-	// aggregate boundary. One violation per type; the gate fires when
-	// the distinct count exceeds the limit.
-	for _, m := range gopatterns.FindAggregateMods(fn, pkg.TypesInfo) {
+	// Aggregate boundaries concern writes to shared or uncertain storage.
+	// Building an owned local value does not modify another aggregate.
+	pkg := x.pkg
+	include := func(place ast.Expr) bool {
+		object, _ := x.placeRoot(place)
+		if object != nil && packageVariable(object) {
+			return true
+		}
+		return x.placeProvenance(place) != quality.Local
+	}
+	for _, m := range gopatterns.FindAggregateModsForWrites(fn, pkg.TypesInfo, include) {
 		out = append(out, quality.DDDViolation{
 			RuleID: "aggregate",
 			Line:   pkg.Fset.Position(fn.Pos()).Line,

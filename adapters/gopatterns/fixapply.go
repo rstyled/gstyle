@@ -36,7 +36,7 @@ func newFactoryContext(fset *token.FileSet, f *ast.File, src []byte, typeName st
 	if hasFuncDecl(f, factoryName) {
 		return factoryContext{}, false
 	}
-	rewrites := factoryLitRewrites(fset, f, src, typeName, factoryName, fields)
+	rewrites := factoryLitRewrites(f, litRewriteCtx{fset: fset, src: src, typeName: typeName, factoryName: factoryName, fields: fields})
 	if len(rewrites) == 0 {
 		return factoryContext{}, false
 	}
@@ -486,24 +486,24 @@ func typeDeclFields(fset *token.FileSet, decl ast.Decl, src []byte, typeName str
 		return nil, 0, false
 	}
 	for _, s := range gen.Specs {
-		if fields, end, ok := typeSpecFields(fset, gen, s, src, typeName); ok {
-			return fields, end, true
+		if fields, ok := typeSpecFields(fset, s, src, typeName); ok {
+			return fields, fset.Position(gen.End()).Offset, true
 		}
 	}
 	return nil, 0, false
 }
 
 // typeSpecFields extracts fields from one type spec.
-func typeSpecFields(fset *token.FileSet, gen *ast.GenDecl, s ast.Spec, src []byte, typeName string) ([]factoryField, int, bool) {
+func typeSpecFields(fset *token.FileSet, s ast.Spec, src []byte, typeName string) ([]factoryField, bool) {
 	ts, ok := matchingTypeSpec(s, typeName)
 	if !ok {
-		return nil, 0, false
+		return nil, false
 	}
 	fields := structFieldList(fset, src, ts)
 	if len(fields) == 0 {
-		return nil, 0, false
+		return nil, false
 	}
-	return fields, fset.Position(gen.End()).Offset, true
+	return fields, true
 }
 
 // matchingTypeSpec returns the type spec if it declares typeName as a
@@ -553,8 +553,7 @@ func hasFuncDecl(f *ast.File, name string) bool {
 
 // factoryLitRewrites finds composite literals of typeName that set every
 // field and returns text edits rewriting them to factory calls.
-func factoryLitRewrites(fset *token.FileSet, f *ast.File, src []byte, typeName, factoryName string, fields []factoryField) []textEdit {
-	rc := litRewriteCtx{fset: fset, src: src, typeName: typeName, factoryName: factoryName, fields: fields}
+func factoryLitRewrites(f *ast.File, rc litRewriteCtx) []textEdit {
 	var edits []textEdit
 	ast.Inspect(f, func(n ast.Node) bool {
 		if edit, ok, skip := unaryLitEdit(rc, n); ok || skip {
