@@ -22,6 +22,21 @@ func TestStableLiteralTableReads(t *testing.T) {
 		"go.sum": string(sum),
 		"tables.go": `package stable
 import "charm.land/lipgloss/v2"
+import "errors"
+var sentinel = errors.New("fixed")
+var sentinelWritten = errors.New("fixed")
+var sentinelAddressed = errors.New("fixed")
+var ExportedSentinel = errors.New("fixed")
+var sentinelDynamic = errors.New(computeText())
+var sentinelAlias = errors.New
+var sentinelIndirect = sentinelAlias("fixed")
+func computeText() string { return "fixed" }
+func ErrorValue() error { return sentinel }
+func ErrorWritten() error { return sentinelWritten }
+func ErrorAddressed() *error { return &sentinelAddressed }
+func ErrorExported() error { return ExportedSentinel }
+func ErrorDynamic() error { return sentinelDynamic }
+func ErrorIndirect() error { return sentinelIndirect }
 const tone = "#" + "123456"
 var style = lipgloss.NewStyle().Foreground(lipgloss.Color(tone))
 var styleWritten = lipgloss.NewStyle().Foreground(lipgloss.Color(tone))
@@ -78,6 +93,7 @@ func Method() { methodCalled[0].change() }
 `,
 		"writes.go": `package stable
 import "charm.land/lipgloss/v2"
+func replaceError() { sentinelWritten = nil }
 func write() { mutated["a"] = 2 }
 func init() { initWritten[0] = 2; styleWritten = lipgloss.NewStyle() }
 func closure() func() { return func() { closureWritten[0]++ } }
@@ -92,7 +108,7 @@ func closure() func() { return func() { closureWritten[0]++ } }
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"Fixed", "Records", "StyleValue", "StyleRender", "StyleMethodValue"} {
+	for _, name := range []string{"ErrorValue", "Fixed", "Records", "StyleValue", "StyleRender", "StyleMethodValue"} {
 		fact := findFunction(t, facts, name)
 		for _, effect := range fact.Effects {
 			if effect.Kind == quality.Global {
@@ -100,7 +116,7 @@ func closure() func() { return func() { closureWritten[0]++ } }
 			}
 		}
 	}
-	for _, name := range []string{"Mutable", "Escape", "Address", "Reference", "Dynamic", "Public", "Initialized", "Closed", "Method", "RangeWrite", "Nested", "StyleWritten", "StyleAddressed", "StyleExported", "StyleDynamic", "StyleCallback", "StyleColorReference", "StyleAlias", "StyleOther"} {
+	for _, name := range []string{"ErrorWritten", "ErrorAddressed", "ErrorExported", "ErrorDynamic", "ErrorIndirect", "Mutable", "Escape", "Address", "Reference", "Dynamic", "Public", "Initialized", "Closed", "Method", "RangeWrite", "Nested", "StyleWritten", "StyleAddressed", "StyleExported", "StyleDynamic", "StyleCallback", "StyleColorReference", "StyleAlias", "StyleOther"} {
 		fact := findFunction(t, facts, name)
 		found := false
 		for _, effect := range fact.Effects {

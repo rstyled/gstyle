@@ -26,7 +26,7 @@ func unitGlobals(info *types.Info, stable map[types.Object]bool) {
 
 func stableGlobalRead(id *ast.Ident, parents map[ast.Node]ast.Node, info *types.Info) bool {
 	object := info.ObjectOf(id)
-	if !unitGlobal(object) && !styleValueType(object.Type()) {
+	if !unitGlobal(object) && !styleValueType(object.Type()) && !errorValueType(object.Type()) {
 		return stableTableRead(id, parents, info)
 	}
 	var node ast.Node = id
