@@ -57,10 +57,7 @@ func (r *callResolver) localCall(name string, call Call) callSummary {
 		return callSummary{}
 	}
 	if r.active[name] {
-		if r.contextReadOnly(call) {
-			return callSummary{}
-		}
-		return call.classifiedCall(UnknownEffect)
+		return r.recursiveCall(call)
 	}
 	if len(r.active) >= localDepthLimit {
 		return call.classifiedCall(UnknownEffect)

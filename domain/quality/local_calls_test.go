@@ -167,20 +167,20 @@ func TestCallLimitReservesRoomForUnknownEvidence(t *testing.T) {
 
 func TestRecursiveHelperKeepsKnownEffects(t *testing.T) {
 	f := fact("caller", 1)
-	f.Calls = []Call{{Callee: "helper", Local: true, Line: 2}}
+	f.Calls = []Call{{Callee: "helper", Local: true, Site: 17, Line: 2}}
 	f.Helpers = []Helper{{Name: "helper", Calls: []Call{{Callee: "helper", Local: true, Line: 8}}, Effects: []Effect{{Kind: IO, Detail: "write", Line: 9}}}}
 	result := evaluate(t, f, DefaultConfig()).Functions[0]
-	if result.Complete || result.UnclassifiedCalls != 1 || len(result.Effects) != 2 {
+	if !result.Complete || result.UnclassifiedCalls != 0 || len(result.Effects) != 2 {
 		t.Fatalf("recursive helper evidence: %+v", result)
 	}
 	kinds := map[Kind]bool{}
 	for _, effect := range result.Effects {
 		kinds[effect.Kind] = true
-		if effect.Line != 2 {
+		if effect.Line != 2 || effect.Site != 17 || effect.Via != "helper" {
 			t.Fatalf("recursive callsite: %+v", effect)
 		}
 	}
-	if !kinds[IO] || !kinds[UnknownEffect] {
+	if !kinds[IO] || kinds[UnknownEffect] {
 		t.Fatalf("recursion erases established effects: %+v", result.Effects)
 	}
 }
