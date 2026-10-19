@@ -14,6 +14,7 @@ import (
 )
 
 type extractor struct {
+	factories  map[*types.Func]*ast.CompositeLit
 	pkg        *packages.Package
 	stable     map[types.Object]bool
 	fact       quality.Function
@@ -187,7 +188,7 @@ func (extraction packageExtraction) extractFunction(fn *ast.FuncDecl, path strin
 	if object, ok := pkg.TypesInfo.Defs[fn.Name].(*types.Func); ok {
 		name = resolvedName(object)
 	}
-	x := extractor{pkg: pkg, stable: extraction.stable, bindings: map[types.Object]referenceBinding{}, parameters: map[types.Object]bool{}, paramIndex: map[types.Object]int{}, fact: quality.Function{
+	x := extractor{pkg: pkg, factories: extraction.factories, stable: extraction.stable, bindings: map[types.Object]referenceBinding{}, parameters: map[types.Object]bool{}, paramIndex: map[types.Object]int{}, fact: quality.Function{
 		Location: quality.Location{Path: path, Line: start.Line, Column: start.Column, Name: name},
 		Params:   parameterCount(fn.Type.Params), HasSelf: fn.Recv != nil,
 		Source: string(source[start.Offset:end.Offset]), PrecedingLine: precedingSuppression(fn.Doc),

@@ -18,6 +18,24 @@ var shared = []int{1}
 var global int
 var globalRecord struct { Value int }
 var globalFields Fields
+func literalFields() Fields { return Fields{Items:[]int{1}} }
+func pointerFields() *Fields { return &Fields{Items:[]int{1}} }
+func borrowedFields(input []int) Fields { return Fields{Items:input} }
+func opaqueFields() Fields { println("effect"); return Fields{Items:[]int{1}} }
+func deferredFields() Fields { defer func(){}(); return Fields{Items:[]int{1}} }
+func namedFields() (result Fields) { return Fields{Items:[]int{1}} }
+func sizedFields(n int) Fields { return Fields{Items:make([]int,n)} }
+func nextSize() int { global++; return 1 }
+type GenericFields[T any] struct { Items []T }
+func genericFields(input []int) GenericFields[int] { return GenericFields[int]{Items:input} }
+func Factory() { f:=literalFields(); f.Items[0]=2 }
+func PointerFactory() { f:=pointerFields(); f.Items[0]=2 }
+func BorrowedFactory() { f:=borrowedFields(shared); f.Items[0]=2 }
+func OpaqueFactory() { f:=opaqueFields(); f.Items[0]=2 }
+func DeferredFactory() { f:=deferredFields(); f.Items[0]=2 }
+func NamedFactory() { f:=namedFields(); f.Items[0]=2 }
+func ArgumentEffects() { f:=sizedFields(nextSize()); f.Items[0]=2 }
+func BorrowedGenericFactory() { f:=genericFields(shared); f.Items[0]=2 }
 func Slice() { f:=Fields{Items:[]int{1}}; f.Items[0]=2 }
 func PointerRoot() { f:=&Fields{Items:[]int{1}}; f.Items[0]=2 }
 func Mapping() { f:=Fields{Lookup:map[string]int{}}; f.Lookup["key"]=1 }
@@ -62,6 +80,18 @@ func PromotedReference() { f:=Embedded{Fields:&Fields{Items:[]int{1}}}; f.Items[
 	if err != nil {
 		t.Fatal(err)
 	}
+	report, err := quality.Evaluate(facts, quality.DefaultConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	argument := resultNamed(t, report, "ArgumentEffects")
+	foundGlobal := false
+	for _, effect := range argument.Effects {
+		foundGlobal = foundGlobal || effect.Kind == quality.Global
+	}
+	if !foundGlobal {
+		t.Fatalf("factory argument lost global effect: %+v", argument.Effects)
+	}
 	global := findFunction(t, facts, "PackageVariable")
 	if len(global.Effects) != 1 || global.Effects[0].Kind != quality.Global {
 		t.Fatalf("global field write lost: %+v", global.Effects)
@@ -71,6 +101,8 @@ func PromotedReference() { f:=Embedded{Fields:&Fields{Items:[]int{1}}}; f.Items[
 		local bool
 		first bool
 	}{
+		{"Factory", true, false}, {"PointerFactory", true, false}, {"ArgumentEffects", true, false},
+		{"BorrowedFactory", false, false}, {"OpaqueFactory", false, false}, {"DeferredFactory", false, false}, {"NamedFactory", false, false}, {"BorrowedGenericFactory", false, false},
 		{"Slice", true, false}, {"PointerRoot", true, false}, {"Mapping", true, false},
 		{"Pointer", true, false}, {"Omitted", true, false}, {"SelfAppend", true, false},
 		{"FieldAlias", true, false}, {"FieldCall", true, false}, {"LocalClosure", true, false},

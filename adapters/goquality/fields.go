@@ -109,6 +109,10 @@ func (x *extractor) initializedFieldOrigin(key fieldKey, initializers []ast.Expr
 }
 
 func (x *extractor) literalField(value ast.Expr, field types.Object) (ast.Expr, bool) {
+	if call, ok := ast.Unparen(value).(*ast.CallExpr); ok {
+		function, _ := x.calledObject(unwrappedCallee(call.Fun)).(*types.Func)
+		value = x.factories[function]
+	}
 	value = ast.Unparen(value)
 	if address, ok := value.(*ast.UnaryExpr); ok && address.Op == token.AND {
 		value = ast.Unparen(address.X)
