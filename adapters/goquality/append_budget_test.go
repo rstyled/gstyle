@@ -17,6 +17,8 @@ func TestAppendAssignmentsShareBudgetSite(t *testing.T) {
  func Separate() { xs:=[]int{}; xs=append(xs,1); xs=append(xs,2); xs=append(xs,3); xs=append(xs,4); _=xs }
  func Other(xs []int) { var ys []int; ys=append(xs,1); _=ys }
  func Ordinary() { x:=0; x=1; x=2; x=3; x=4; _=x }
+ func Parenthesized(s *State) { s.Values=(append)(s.Values,1); s.Values=append(s.Values,2) }
+ func Nested(s *State) { s.Values=append(append(s.Values,1),2) }
  `))
 	facts, err := (Analyzer{Root: root}).Extract(context.Background(), nil)
 	if err != nil {
@@ -41,6 +43,7 @@ func TestAppendAssignmentsShareBudgetSite(t *testing.T) {
 	}{
 		{"Local", 4, 0, false}, {"Shared", 4, 0, true}, {"Field", 4, 0, true},
 		{"Separate", 8, 1, false}, {"Other", 2, 0, true}, {"Ordinary", 4, 1, false},
+		{"Parenthesized", 4, 0, true}, {"Nested", 3, 0, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			f := findFunction(t, facts, test.name)
@@ -59,6 +62,22 @@ func TestAppendAssignmentsShareBudgetSite(t *testing.T) {
 			for _, result := range report.Functions {
 				if result.Name == f.Name && (len(result.Effects) > 0) != test.observable {
 					t.Fatalf("observable effects: %+v", result.Effects)
+				}
+				if result.Name != f.Name || (test.name != "Field" && test.name != "Parenthesized" && test.name != "Nested") {
+					continue
+				}
+				sites := map[int]bool{}
+				for _, effect := range result.Effects {
+					if effect.Site == 0 {
+						t.Fatalf("append effect lost operation identity: %+v", effect)
+					}
+					sites[effect.Site] = true
+				}
+				if len(sites) != 2 {
+					t.Fatalf("distinct append operations collapsed: %+v", result.Effects)
+				}
+				if test.name != "Nested" && result.DensityMilli != 2000/int64(f.Statements) {
+					t.Fatalf("append density counts storage evidence twice: %+v", result)
 				}
 			}
 		})
