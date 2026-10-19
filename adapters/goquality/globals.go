@@ -101,6 +101,9 @@ func stableVariable(object types.Object, value ast.Expr, pkg *packages.Package) 
 }
 
 func stableInitializer(typ types.Type, value ast.Expr, info *types.Info) bool {
+	if stableErrorInitializer(value, info) {
+		return true
+	}
 	literal, ok := value.(*ast.CompositeLit)
 	return ok && stableTableType(typ) && constantLiteral(literal, info)
 }
