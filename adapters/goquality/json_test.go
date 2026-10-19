@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/rstyled/gstyle/domain/quality"
 )
 
-func TestPlainJSONMarshalKeepsCallbacksAndWritesConservative(t *testing.T) {
+func TestPlainJSONKeepsCallbacksAndWritesConservative(t *testing.T) {
 	root := qualitySourceModule(t, []byte(`package repro
 import "encoding/json"
 type Record struct { Name string; Values []int; Lookup map[string]int; Next *Record }
@@ -19,10 +20,12 @@ func(Stringer) String()string{println("not a JSON callback");return "value"}
 func UnrelatedMethod(){json.Marshal(Stringer(1))}
 type Custom int
 func(Custom) MarshalJSON()([]byte,error){println("callback");return []byte("1"),nil}
+func(*Custom) UnmarshalJSON([]byte)error{println("decode callback");return nil}
 type Pointer int
 func(*Pointer) MarshalJSON()([]byte,error){println("callback");return []byte("1"),nil}
 type Key string
 func(Key) MarshalText()([]byte,error){println("key callback");return []byte("key"),nil}
+func(*Key) UnmarshalText([]byte)error{println("key decode callback");return nil}
 type Open struct{Next *Open; Value any}
 func Plain(){json.Marshal(&Alias{})}
 func Scalars(){json.Marshal([]int{1,2})}
@@ -37,6 +40,21 @@ func Dynamic(v any){json.Marshal(v)}
 func RecursiveOpen(){json.Marshal(new(Open))}
 func Generic[T any](v T){json.Marshal(v)}
 func Decode(v *Record){json.Unmarshal([]byte("{}"),v)}
+func Decoded(data []byte)(Alias,error){var result Alias;err:=json.Unmarshal(data,&result);return result,err}
+func DecodedSlice(data []byte)([]Record,error){var result []Record;err:=json.Unmarshal(data,&result);return result,err}
+func DecodedPointer(data []byte)(*Pointer,error){var result *Pointer;err:=json.Unmarshal(data,&result);return result,err}
+func WrappedDecode(){Decoded(nil)}
+func DecodeCallback(data []byte)Custom{var result Custom;json.Unmarshal(data,&result);return result}
+func DecodeMapKey(data []byte)map[Key]int{var result map[Key]int;json.Unmarshal(data,&result);return result}
+func PreloadedDecode(data []byte,values []int)Record{result:=Record{Values:values};json.Unmarshal(data,&result);return result}
+func AliasedDecode(data []byte)Record{var result Record;alias:=&result;json.Unmarshal(data,&result);_ = alias;return result}
+var escaped *Record
+func PublishedDecode(data []byte)Record{var result Record;escaped=&result;json.Unmarshal(data,&result);return result}
+func CapturedDecode(data []byte)func()Record{var result Record;json.Unmarshal(data,&result);return func()Record{return result}}
+func DeferredDecode(data []byte)Record{var result Record;defer json.Unmarshal(data,&result);return result}
+func ConcurrentDecode(data []byte)Record{var result Record;go json.Unmarshal(data,&result);return result}
+func ReusedDecode(data []byte)Record{var result Record;json.Unmarshal(data,&result);json.Unmarshal(data,&result);return result}
+
 func wrap(v any){json.Marshal(v)}
 func chain(v any){wrap(v)}
 func Wrapped(){chain(&Record{})}
@@ -54,15 +72,15 @@ func ReboundCaller(){Rebound(&Record{})}
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"Plain", "Scalars", "Shared", "Wrapped", "UnrelatedMethod"} {
+	for _, name := range []string{"Plain", "Scalars", "Shared", "Wrapped", "UnrelatedMethod", "Decoded", "DecodedSlice", "DecodedPointer", "WrappedDecode"} {
 		got := resultNamed(t, report, name)
 		if !got.Complete || len(got.Effects) != 0 {
 			t.Fatalf("%s plain value: %+v", name, got)
 		}
 	}
-	for _, name := range []string{"Callback", "PointerCallback", "Nested", "MapKey", "Embedded", "Raw", "Dynamic", "RecursiveOpen", "Generic", "Decode", "Mixed", "ReverseMixed", "ReboundCaller"} {
+	for _, name := range []string{"Callback", "PointerCallback", "Nested", "MapKey", "Embedded", "Raw", "Dynamic", "RecursiveOpen", "Generic", "Decode", "Mixed", "ReverseMixed", "ReboundCaller", "DecodeCallback", "DecodeMapKey", "PreloadedDecode", "AliasedDecode", "PublishedDecode", "CapturedDecode", "DeferredDecode", "ConcurrentDecode", "ReusedDecode"} {
 		got := resultNamed(t, report, name)
-		if got.Complete || len(got.Effects) != 1 || got.Effects[0].Kind != quality.UnknownEffect {
+		if got.Complete || !slices.ContainsFunc(got.Effects, func(e quality.Effect) bool { return e.Kind == quality.UnknownEffect }) {
 			t.Fatalf("%s lost uncertainty: %+v", name, got)
 		}
 	}

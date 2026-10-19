@@ -74,7 +74,7 @@ func (x *extractor) valueStorage(value ast.Expr) *int {
 }
 
 func (x *extractor) argumentStorage(value ast.Expr) quality.Storage {
-	plain := plainJSONType(x.pkg.TypesInfo.TypeOf(value), map[types.Type]bool{})
+	plain := plainJSONType(x.pkg.TypesInfo.TypeOf(value), map[types.Type]bool{}, "Marshal")
 	if address, ok := ast.Unparen(value).(*ast.UnaryExpr); ok && address.Op == token.AND {
 		return quality.Storage{PlainJSON: plain, Provenance: x.addressOrigin(address), Parameter: x.mutationParameter(address.X, false)}
 	}
@@ -90,6 +90,7 @@ func (x *extractor) callStorage(call *ast.CallExpr) []quality.Storage {
 }
 
 func (x *extractor) bindCallStorage(call *ast.CallExpr, fact quality.Call) quality.Call {
+	fact.LocalJSONDecode = x.localJSONDecode(call, fact.Callee)
 	fact.StorageArgs = x.callStorage(call)
 	selector, ok := unwrappedCallee(call.Fun).(*ast.SelectorExpr)
 	if !ok {
