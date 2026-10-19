@@ -9,7 +9,7 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-// stableGlobals proves reads of private literal tables and unit values do not
+// stableGlobals proves reads of private literal tables, unit values, and modeled values do not
 // depend on mutable state. All uses in the active package must preserve value reads.
 func stableGlobals(pkg *packages.Package) map[types.Object]bool {
 	stable := map[types.Object]bool{}
@@ -85,18 +85,19 @@ func stableCandidates(pkg *packages.Package, spec *ast.ValueSpec, stable map[typ
 		return
 	}
 	for index, name := range spec.Names {
-		if stableVariable(pkg.TypesInfo.Defs[name], spec.Values[index], pkg.TypesInfo) {
+		if stableVariable(pkg.TypesInfo.Defs[name], spec.Values[index], pkg) {
 			stable[pkg.TypesInfo.Defs[name]] = true
 		}
 	}
 }
 
-func stableVariable(object types.Object, value ast.Expr, info *types.Info) bool {
+func stableVariable(object types.Object, value ast.Expr, pkg *packages.Package) bool {
 	variable, ok := object.(*types.Var)
 	if !ok || variable.Exported() || !packageVariable(variable) {
 		return false
 	}
-	return stableInitializer(variable.Type(), value, info)
+	return stableInitializer(variable.Type(), value, pkg.TypesInfo) ||
+		(styleValueType(variable.Type()) && stableStyle(pkg, value))
 }
 
 func stableInitializer(typ types.Type, value ast.Expr, info *types.Info) bool {
