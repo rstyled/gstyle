@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/rstyled/gstyle/domain/bindingflow"
 	"github.com/rstyled/gstyle/domain/pdg"
+	"maps"
 	"strconv"
 )
 
@@ -158,7 +159,7 @@ func (e *evaluation) opaqueEnvironment(ref pdg.Ref, item value) value {
 	item.Opaque = true
 	attrs := e.query.graph.NodeAttributes(e.query.graph.Nodes[ref-1])
 	for _, symbol := range attrs.Symbols {
-		joinDependencies(item.Data, e.symbolValue(symbol).Data)
+		maps.Copy(item.Data, e.symbolValue(symbol).Data)
 		key, found := e.query.cells[symbol]
 		if !found {
 			continue

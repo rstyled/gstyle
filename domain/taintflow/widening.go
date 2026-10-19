@@ -1,6 +1,9 @@
 package taintflow
 
-import "strings"
+import (
+	"maps"
+	"strings"
+)
 
 // A widened suffix reads all reachable stored descendants. It cannot be used
 // to justify a strong update or to discard an existing concrete dependency.
@@ -40,7 +43,7 @@ func wildcardChildren(store state, root object, deps dependencies, queue []objec
 		if key.Object != root || !fieldPrefix(prefix, key.Fields) {
 			continue
 		}
-		joinDependencies(deps, item.Data)
+		maps.Copy(deps, item.Data)
 		for child := range item.Objects {
 			queue = append(queue, child)
 		}
