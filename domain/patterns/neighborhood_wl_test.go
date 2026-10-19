@@ -83,3 +83,19 @@ func TestNeighborhoodWLPipelineRuns(t *testing.T) {
 		t.Errorf("neighborhood-WL pipeline: got %v, want one group of two", groups)
 	}
 }
+
+func TestNeighborhoodTraversalReusesWarmedBuffer(t *testing.T) {
+	const nodes = 2048
+	g := Graph{inc: make([][]Nb, nodes), out: make([][]Nb, nodes)}
+	for node := 1; node < nodes; node++ {
+		g.out[0] = append(g.out[0], Nb{node: uint64(node)})
+	}
+	ws := newNeighborhoodWLWorkspace(nodes)
+	var reached int
+	allocs := testing.AllocsPerRun(100, func() {
+		reached = len(ws.markKHop(&g, 0, 2))
+	})
+	if reached != nodes || allocs != 0 {
+		t.Fatalf("warmed full traversal: reached=%d want=%d allocations=%g want=0", reached, nodes, allocs)
+	}
+}
