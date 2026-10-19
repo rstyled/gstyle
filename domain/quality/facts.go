@@ -71,6 +71,8 @@ type Mutation struct {
 }
 
 type Call struct {
+	// CallbackExpanded retains inline callback evidence in the enclosing facts.
+	CallbackExpanded bool `json:"callback_expanded,omitempty"`
 	// Site is the opening-parenthesis offset plus one; zero means legacy facts.
 	Site        int       `json:"site,omitempty"`
 	StorageArgs []Storage `json:"storage_args,omitempty"`

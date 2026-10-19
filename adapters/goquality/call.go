@@ -27,7 +27,7 @@ func (x *extractor) call(call *ast.CallExpr) {
 	var fact quality.Call
 	switch object := object.(type) {
 	case *types.Func:
-		fact = quality.Call{Site: site, Line: line, Callee: resolvedName(object), Local: object.Pkg() == x.pkg.Types, Dynamic: interfaceCall(x.pkg.TypesInfo, fun), Args: args, MutationTarget: x.containerMutationTarget(object, call)}
+		fact = quality.Call{CallbackExpanded: x.inlineContainerCallback(object, call), Site: site, Line: line, Callee: resolvedName(object), Local: object.Pkg() == x.pkg.Types, Dynamic: interfaceCall(x.pkg.TypesInfo, fun), Args: args, MutationTarget: x.containerMutationTarget(object, call)}
 	case *types.Var:
 		fact = quality.Call{Site: site, Line: line, Callee: object.Name(), Dynamic: true, Args: args}
 	default:
@@ -37,10 +37,19 @@ func (x *extractor) call(call *ast.CallExpr) {
 }
 
 func (x *extractor) containerMutationTarget(function *types.Func, call *ast.CallExpr) quality.Provenance {
-	if !quality.ContainerMutation(resolvedName(function)) {
+	if !quality.ContainerMutation(resolvedName(function)) && !x.inlineContainerCallback(function, call) {
 		return ""
 	}
 	return x.mutationProvenance(x.containerArgs(call)[0], true)
+}
+
+// Inline callback effects remain in the enclosing function's syntactic facts.
+func (x *extractor) inlineContainerCallback(function *types.Func, call *ast.CallExpr) bool {
+	if !quality.CallbackContainer(resolvedName(function)) || len(call.Args) != 2 {
+		return false
+	}
+	_, expanded := ast.Unparen(call.Args[1]).(*ast.FuncLit)
+	return expanded
 }
 
 // Method expressions pass their receiver explicitly before the buffer.
