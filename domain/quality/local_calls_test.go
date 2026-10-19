@@ -38,6 +38,7 @@ func TestHelperResolutionKeepsMissingAndDynamicBodiesUnknown(t *testing.T) {
 		{Callee: "project.missing", Local: true, Line: 2},
 		{Callee: "project.helper", Local: true, Dynamic: true, Line: 2},
 		{Callee: "project.helper", Line: 2},
+		{Callee: "io/fs.FileInfo.IsDir", Dynamic: true, Line: 2},
 	} {
 		f := fact("caller", 1)
 		f.Calls = []Call{call}
