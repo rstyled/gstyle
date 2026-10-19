@@ -221,25 +221,25 @@ func (p receiverProof) fieldUse(selector *ast.SelectorExpr) bool {
 	case *types.Struct, *types.Array:
 		return false // Inline aggregates can expose storage within the receiver.
 	}
-	node, parent := p.parent(selector)
+	_, parent := p.parent(selector)
 	switch parent := parent.(type) {
 	case *ast.UnaryExpr:
 		return parent.Op != token.AND
 	case *ast.SelectorExpr:
-		return !p.implicitFieldAddress(parent, node.(ast.Expr))
+		return !implicitReceiverAddress(p.pkg.TypesInfo, parent)
 	default:
 		return true
 	}
 }
 
-func (p receiverProof) implicitFieldAddress(selector *ast.SelectorExpr, value ast.Expr) bool {
-	selection := p.pkg.TypesInfo.Selections[selector]
+func implicitReceiverAddress(info *types.Info, selector *ast.SelectorExpr) bool {
+	selection := info.Selections[selector]
 	if selection == nil || selection.Kind() == types.FieldVal {
 		return false
 	}
 	signature := selection.Obj().Type().(*types.Signature)
 	_, pointerMethod := underlying(signature.Recv().Type()).(*types.Pointer)
-	_, pointerValue := underlying(p.pkg.TypesInfo.TypeOf(value)).(*types.Pointer)
+	_, pointerValue := underlying(info.TypeOf(selector.X)).(*types.Pointer)
 	return pointerMethod && !pointerValue
 }
 

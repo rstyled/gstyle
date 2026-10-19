@@ -22,6 +22,7 @@ func (x *extractor) collectBindings(body *ast.BlockStmt) {
 	x.collectFieldWrites(body)
 	ast.Inspect(body, func(node ast.Node) bool {
 		x.addLiteralParameters(node)
+		x.addressBinding(node)
 		switch node := node.(type) {
 		case *ast.AssignStmt:
 			x.bindAssignments(node.Lhs, node.Rhs)
@@ -34,8 +35,6 @@ func (x *extractor) collectBindings(body *ast.BlockStmt) {
 		case *ast.RangeStmt:
 			x.unknownBinding(node.Key)
 			x.bindRangeValue(node)
-		case *ast.UnaryExpr:
-			x.addressBinding(node)
 		}
 		return true
 	})
@@ -114,12 +113,22 @@ func (x *extractor) selfContainerCall(call *ast.CallExpr) bool {
 	return false
 }
 
-func (x *extractor) addressBinding(value *ast.UnaryExpr) {
-	if value.Op != token.AND {
-		return
+func (x *extractor) addressBinding(value ast.Node) {
+	// Explicit and implicit addresses permit writes outside direct bindings.
+	switch value := value.(type) {
+	case *ast.UnaryExpr:
+		if value.Op == token.AND {
+			x.unknownBinding(value.X)
+		}
+	case *ast.SelectorExpr:
+		// A pointer method can replace a reference alias's map or slice header.
+		switch underlying(x.pkg.TypesInfo.TypeOf(value.X)).(type) {
+		case *types.Slice, *types.Map:
+			if implicitReceiverAddress(x.pkg.TypesInfo, value) {
+				x.unknownBinding(value.X)
+			}
+		}
 	}
-	// Taking a variable's address permits assignments outside direct bindings.
-	x.unknownBinding(value.X)
 }
 
 func (x *extractor) unknownBinding(place ast.Expr) {
