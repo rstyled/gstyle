@@ -78,7 +78,6 @@ func NewNeighborhoodWL(pdg *MiningGraph) *NeighborhoodWL {
 // counters so it never needs clearing.
 type neighborhoodWLWorkspace struct {
 	seen  []int // generation marker per node
-	queue []int // BFS queue
 	nodes []int // neighborhood node list
 	gen   int
 }
@@ -87,7 +86,6 @@ type neighborhoodWLWorkspace struct {
 func newNeighborhoodWLWorkspace(n int) *neighborhoodWLWorkspace {
 	return &neighborhoodWLWorkspace{
 		seen:  make([]int, n),
-		queue: make([]int, 0, 64),
 		nodes: make([]int, 0, 64),
 	}
 }
@@ -97,34 +95,29 @@ func newNeighborhoodWLWorkspace(n int) *neighborhoodWLWorkspace {
 func (ws *neighborhoodWLWorkspace) markKHop(g *Graph, start, k int) []int {
 	ws.gen++
 	gen := ws.gen
-	ws.queue = ws.queue[:0]
-	ws.nodes = ws.nodes[:0]
+	ws.nodes = append(ws.nodes[:0], start)
 	ws.seen[start] = gen
-	ws.queue = append(ws.queue, start)
-	ws.nodes = append(ws.nodes, start)
-	for depth := 0; depth < k && len(ws.queue) > 0; depth++ {
-		levelSize := len(ws.queue)
-		for i := 0; i < levelSize; i++ {
-			v := ws.queue[0]
-			ws.queue = ws.queue[1:]
-			ws.queue = ws.markNeighbors(g.inc[v], gen, ws.queue)
-			ws.queue = ws.markNeighbors(g.out[v], gen, ws.queue)
+	head := 0
+	for depth := 0; depth < k && head < len(ws.nodes); depth++ {
+		levelEnd := len(ws.nodes)
+		for head < levelEnd {
+			v := ws.nodes[head]
+			head++
+			ws.markNeighbors(g.inc[v], gen)
+			ws.markNeighbors(g.out[v], gen)
 		}
-		// nodes added this level are at the end of ws.nodes via markNeighbors
 	}
 	return ws.nodes
 }
 
-// markNeighbors appends unvisited neighbors to queue/nodes, marking them.
-func (ws *neighborhoodWLWorkspace) markNeighbors(nbs []Nb, gen int, queue []int) []int {
+// markNeighbors appends unvisited neighbors to the BFS node list.
+func (ws *neighborhoodWLWorkspace) markNeighbors(nbs []Nb, gen int) {
 	for _, nb := range nbs {
 		if w := int(nb.node); ws.seen[w] != gen {
 			ws.seen[w] = gen
-			queue = append(queue, w)
 			ws.nodes = append(ws.nodes, w)
 		}
 	}
-	return queue
 }
 
 // digestFiltered is digest() restricted to neighbors in the current
