@@ -4,7 +4,9 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"reflect"
 	"slices"
+	"strings"
 )
 
 // Reject the selected JSON callbacks and open interfaces; visit each type once.
@@ -36,11 +38,39 @@ func plainJSONShape(typ types.Type, seen map[types.Type]bool, method string) boo
 
 func plainJSONFields(typ *types.Struct, seen map[types.Type]bool, method string) bool {
 	for i := 0; i < typ.NumFields(); i++ {
-		if !plainJSONType(typ.Field(i).Type(), seen, method) {
+		field := typ.Field(i)
+		tag := reflect.StructTag(typ.Tag(i)).Get("json")
+		// Embedded fields can promote callbacks even when their tag is ignored.
+		if !field.Anonymous() && (!field.Exported() || tag == "-") {
+			continue
+		}
+		if !plainJSONField(field.Type(), tag, seen, method) {
 			return false
 		}
 	}
 	return true
+}
+
+func plainJSONField(typ types.Type, tag string, seen map[types.Type]bool, method string) bool {
+	_, options, _ := strings.Cut(tag, ",")
+	if method == "Marshal" && slices.Contains(strings.Split(options, ","), "omitzero") && jsonZeroMethod(typ) {
+		return false
+	}
+	return plainJSONType(typ, seen, method)
+}
+
+func jsonZeroMethod(typ types.Type) bool {
+	object, _, _ := types.LookupFieldOrMethod(typ, true, nil, "IsZero")
+	method, ok := object.(*types.Func)
+	if !ok {
+		return false
+	}
+	signature := method.Type().(*types.Signature)
+	if signature.Params().Len() != 0 || signature.Results().Len() != 1 {
+		return false
+	}
+	result, ok := types.Unalias(signature.Results().At(0).Type()).(*types.Basic)
+	return ok && result.Kind() == types.Bool
 }
 
 func plainJSONNamed(typ *types.Named, seen map[types.Type]bool, method string) bool {
