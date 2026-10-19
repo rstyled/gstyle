@@ -116,12 +116,31 @@ func (x *extractor) visitEffect(node ast.Node) {
 }
 
 func (x *extractor) assignment(statement *ast.AssignStmt) {
-	for _, place := range statement.Lhs {
+	for index, place := range statement.Lhs {
 		if id, ok := place.(*ast.Ident); ok && x.pkg.TypesInfo.Defs[id] != nil {
 			continue
 		}
+		before := len(x.fact.Mutations)
 		x.mutate(place, statement.Pos(), false)
+		if site := x.appendAssignmentSite(statement, index); site != 0 && len(x.fact.Mutations) > before {
+			x.fact.Mutations[before].Site = site
+		}
 	}
+}
+
+func (x *extractor) appendAssignmentSite(statement *ast.AssignStmt, index int) int {
+	if len(statement.Rhs) != len(statement.Lhs) {
+		return 0
+	}
+	call, ok := ast.Unparen(statement.Rhs[index]).(*ast.CallExpr)
+	if !ok {
+		return 0
+	}
+	builtin, ok := x.calledObject(unwrappedCallee(call.Fun)).(*types.Builtin)
+	if !ok || builtin.Name() != "append" {
+		return 0
+	}
+	return physicalPosition(x.pkg.Fset, call.Pos()).Offset + 1
 }
 
 func (x *extractor) rangeAssignment(statement *ast.RangeStmt) {

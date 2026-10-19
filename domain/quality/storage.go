@@ -122,6 +122,9 @@ func validateCallStorage(call Call, f Function) error {
 }
 
 func validMutationParameter(mutation Mutation, f Function) bool {
+	if mutation.Site < 0 {
+		return false
+	}
 	if mutation.Parameter == nil {
 		return true
 	}
