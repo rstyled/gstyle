@@ -61,25 +61,26 @@ func sourceCalls(calls []quality.Call, available map[string]bool) []quality.Call
 	return result
 }
 
-// The finite fixed point excludes unbound writes, intrinsic effects, dynamic
-// calls and unresolved callees. Cycles stay unknown.
+// Bounded recursive groups retain their complete source evidence. The quality
+// evaluator still checks effects and project policy before proving read-only.
 func boundSourceHelpers(index map[string]quality.Function) map[string]bool {
 	proven := map[string]bool{}
+	for name := range index {
+		proven[name] = true
+	}
 	for changed := true; changed; {
 		changed = false
 		for name, body := range index {
-			if proven[name] {
+			if !proven[name] || boundSourceBody(body, proven) {
 				continue
 			}
-			if !boundSourceBody(body, proven) {
-				continue
-			}
-			proven[name] = true
+			delete(proven, name)
 			changed = true
 		}
 	}
 	return proven
 }
+
 func boundSourceBody(body quality.Function, proven map[string]bool) bool {
 	if len(body.Effects) != 0 {
 		return false
@@ -99,12 +100,18 @@ func unboundMutations(mutations []quality.Mutation) bool {
 }
 func boundSourceCalls(calls []quality.Call, proven map[string]bool) bool {
 	for _, call := range calls {
-		known := proven[quality.NormalizeCallee(call.Callee)] || sourceContainerCall(call)
-		if call.Dynamic || !known {
+		if !boundSourceCall(call, proven) {
 			return false
 		}
 	}
 	return true
+}
+
+func boundSourceCall(call quality.Call, proven map[string]bool) bool {
+	if call.Dynamic {
+		return false
+	}
+	return proven[quality.NormalizeCallee(call.Callee)] || sourceContainerCall(call) || quality.ClassifyCallee(call.Callee) == quality.None
 }
 
 func sourceContainerCall(call quality.Call) bool {

@@ -54,8 +54,8 @@ func DynamicCaller(callback func()) { unknown(callback) }
 		{"MutationCaller", quality.MutationEffect, true, 0},
 		{"IOCaller", quality.IO, true, 0},
 		{"GlobalCaller", quality.Global, true, 0},
-		{"RecursiveCaller", quality.UnknownEffect, false, 1},
-		{"MutualCaller", quality.UnknownEffect, false, 1},
+		{"RecursiveCaller", quality.None, true, 0},
+		{"MutualCaller", quality.None, true, 0},
 		{"DynamicCaller", quality.UnknownEffect, false, 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
