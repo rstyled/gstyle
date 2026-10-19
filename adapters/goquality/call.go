@@ -131,9 +131,7 @@ func (x *extractor) calledObject(expr ast.Expr) types.Object {
 func (x *extractor) builtin(call *ast.CallExpr, name string) {
 	switch name {
 	case "append", "copy", "delete", "clear":
-		if len(call.Args) > 0 {
-			x.mutate(call.Args[0], call.Pos(), true)
-		}
+		x.builtinMutation(call, name)
 	case "print", "println":
 		x.effect(quality.IO, "builtin."+name, call.Pos())
 	case "panic", "recover":
@@ -199,4 +197,16 @@ func interfaceCall(info *types.Info, expr ast.Expr) bool {
 	}
 	_, ok = selection.Recv().Underlying().(*types.Interface)
 	return ok
+}
+
+// Keep both storage effects; the assignment and append share one budget site.
+func (x *extractor) builtinMutation(call *ast.CallExpr, name string) {
+	if len(call.Args) == 0 {
+		return
+	}
+	before := len(x.fact.Mutations)
+	x.mutate(call.Args[0], call.Pos(), true)
+	if name == "append" && len(x.fact.Mutations) > before {
+		x.fact.Mutations[before].Site = physicalPosition(x.pkg.Fset, call.Pos()).Offset + 1
+	}
 }

@@ -257,7 +257,9 @@ func mutationTargets(mutations []Mutation, granularity string) [][]Mutation {
 		if granularity == "field" {
 			key += "." + mutation.FieldPath
 		}
-		groups[key] = append(groups[key], mutation)
+		if mutation.Site == 0 || !slices.ContainsFunc(groups[key], func(prior Mutation) bool { return prior.Site == mutation.Site }) {
+			groups[key] = append(groups[key], mutation)
+		}
 	}
 	result := make([][]Mutation, len(groups))
 	for index, key := range slices.Sorted(maps.Keys(groups)) {

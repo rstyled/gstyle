@@ -58,6 +58,9 @@ const (
 )
 
 type Mutation struct {
+	// Site joins writes made by one source operation for mutation budgets.
+	// Zero preserves independent events in older saved facts.
+	Site int `json:"site,omitempty"`
 	// Parameter binds direct formal storage; -1 denotes the receiver.
 	Parameter  *int       `json:"parameter,omitempty"`
 	Root       string     `json:"root"`
