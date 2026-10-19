@@ -70,6 +70,9 @@ func (x *extractor) bindAssignments(places, values []ast.Expr) {
 			continue
 		}
 		value := assignmentValue(values, index, len(places))
+		if x.selfSliceAssignment(object, value) {
+			continue
+		}
 		binding := x.bindings[object]
 		if x.containerSelfAssignment(object, value) {
 			binding.selfReturned = true
@@ -78,6 +81,16 @@ func (x *extractor) bindAssignments(places, values []ast.Expr) {
 		}
 		x.bindings[object] = binding
 	}
+}
+
+// A bare self slice is a view of the same storage, with unchanged provenance.
+func (x *extractor) selfSliceAssignment(object types.Object, value ast.Expr) bool {
+	slice, ok := ast.Unparen(value).(*ast.SliceExpr)
+	if !ok {
+		return false
+	}
+	target, ok := ast.Unparen(slice.X).(*ast.Ident)
+	return ok && x.pkg.TypesInfo.ObjectOf(target) == object
 }
 
 // A self assignment from a modeled container operation keeps local ownership:

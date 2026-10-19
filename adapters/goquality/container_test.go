@@ -33,6 +33,13 @@ func addressedReturn() []int {out:=make([]int,1);leakedElement=&out[0];return ou
 func closureReturn() []int {out:=make([]int,1);f:=func(){out[0]=1};_ =f;return out}
 func deferredReturn(input []int) []int {out:=make([]int,1);defer copy(out,input);return out}
 func outputReturn() []int {out:=make([]int,1);println("output");return out}
+func SelfView(){out:=make([]int,3);out=(out)[1:2:3];slices.Reverse(out)}
+func SelfViewAppend(){out:=[]int{1,2};out=out[1:];out=append(out,3);slices.Reverse(out)}
+func SharedView(out []int){out=out[1:];slices.Reverse(out)}
+func MixedView(input []int, flag bool){out:=input;if flag{out=make([]int,3)};out=out[1:];slices.Reverse(out)}
+func UnknownView(get func()[]int){out:=get();out=out[1:];slices.Reverse(out)}
+func ViewBounds(){out:=make([]int,3);out=out[bound():];slices.Reverse(out)}
+func bound()int{counter++;return 0}
 func ReturnedQueue(input []int){out:=(Seed{}).seeds(input);out=append(out,1);slices.Reverse(out)}
 func ReturnedFilled(){out:=filled(2);slices.Reverse(out)}
 func ReturnedMap(){maps.Copy(mapping(nil),map[int]int{1:1})}
@@ -119,7 +126,7 @@ func Caller(){helper()}
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"ReturnedQueue", "ReturnedFilled", "ReturnedMap", "InlineSort", "InlineStable", "InlineReflect", "InlineReflectStable", "InlinePolicy", "FreshContainers", "FreshBytes", "FreshRunes", "NamedString", "NilClone", "NilSelf", "NilSort", "NilDirect", "LocalSort", "NamedSort", "LocalCopy", "LocalReverse", "LocalCompact", "LocalDelete", "LocalInsert", "LocalReplace", "LocalInts", "LocalFloats", "LocalStrings", "LocalAlias", "LocalAppend", "SelfAppend", "CloneSort", "CloneCopy", "Caller"} {
+	for _, name := range []string{"SelfView", "SelfViewAppend", "ReturnedQueue", "ReturnedFilled", "ReturnedMap", "InlineSort", "InlineStable", "InlineReflect", "InlineReflectStable", "InlinePolicy", "FreshContainers", "FreshBytes", "FreshRunes", "NamedString", "NilClone", "NilSelf", "NilSort", "NilDirect", "LocalSort", "NamedSort", "LocalCopy", "LocalReverse", "LocalCompact", "LocalDelete", "LocalInsert", "LocalReplace", "LocalInts", "LocalFloats", "LocalStrings", "LocalAlias", "LocalAppend", "SelfAppend", "CloneSort", "CloneCopy", "Caller"} {
 		t.Run(name, func(t *testing.T) {
 			r := resultNamed(t, report, name)
 			if len(r.Effects) != 0 || !r.Complete {
@@ -127,11 +134,14 @@ func Caller(){helper()}
 			}
 		})
 	}
+	if result := resultNamed(t, report, "ViewBounds"); len(result.Effects) == 0 {
+		t.Fatal("self slice lost bound evaluation effect")
+	}
 	for _, tc := range []struct {
 		name       string
 		provenance quality.Provenance
 	}{
-		{"ReturnedMixed", quality.Unknown}, {"ReturnedPublished", quality.Unknown}, {"ReturnedWritten", quality.Unknown}, {"ReturnedEscape", quality.Unknown}, {"ReturnedAddress", quality.Unknown}, {"ReturnedClosure", quality.Unknown}, {"ReturnedDeferred", quality.Unknown}, {"InlineShared", quality.External}, {"CallbackFields", quality.Unknown}, {"ShadowNil", quality.External}, {"OrdinaryConversion", quality.External}, {"ExternalSort", quality.External}, {"ExternalCopy", quality.External}, {"GenericSort", quality.External}, {"GlobalSort", quality.External}, {"ExternalAlias", quality.External}, {"ExternalAppend", quality.Unknown}, {"FakeClone", quality.Unknown}, {"Mixed", quality.Unknown}, {"Unknown", quality.Unknown},
+		{"SharedView", quality.External}, {"MixedView", quality.Unknown}, {"UnknownView", quality.Unknown}, {"ReturnedMixed", quality.Unknown}, {"ReturnedPublished", quality.Unknown}, {"ReturnedWritten", quality.Unknown}, {"ReturnedEscape", quality.Unknown}, {"ReturnedAddress", quality.Unknown}, {"ReturnedClosure", quality.Unknown}, {"ReturnedDeferred", quality.Unknown}, {"InlineShared", quality.External}, {"CallbackFields", quality.Unknown}, {"ShadowNil", quality.External}, {"OrdinaryConversion", quality.External}, {"ExternalSort", quality.External}, {"ExternalCopy", quality.External}, {"GenericSort", quality.External}, {"GlobalSort", quality.External}, {"ExternalAlias", quality.External}, {"ExternalAppend", quality.Unknown}, {"FakeClone", quality.Unknown}, {"Mixed", quality.Unknown}, {"Unknown", quality.Unknown},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := findFunction(t, facts, tc.name)

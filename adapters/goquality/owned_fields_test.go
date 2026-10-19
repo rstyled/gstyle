@@ -28,6 +28,16 @@ func sizedFields(n int) Fields { return Fields{Items:make([]int,n)} }
 func nextSize() int { global++; return 1 }
 type GenericFields[T any] struct { Items []T }
 func genericFields(input []int) GenericFields[int] { return GenericFields[int]{Items:input} }
+func BeforePublish(publish func(Fields)) { f:=literalFields(); f.Items[0]=2; publish(f) }
+func AfterPublish(publish func(Fields)) { f:=literalFields(); publish(f); f.Items[0]=2 }
+func LoopPublish(publish func(Fields)) { f:=literalFields(); for i:=0;i<2;i++ {f.Items[0]=2;publish(f)} }
+func FreshLoopPublish(publish func(Fields)) { for i:=0;i<2;i++ {f:=literalFields();f.Items[0]=2;publish(f)} }
+func ConditionalPublish(publish func(Fields), flag bool) { f:=literalFields(); if flag {f.Items[0]=2;publish(f)} }
+func PriorConditionalPublish(publish func(Fields), flag bool) { f:=literalFields(); if flag {publish(f)}; f.Items[0]=2 }
+func LabeledPublish(publish func(Fields)) { f:=literalFields(); again: f.Items[0]=2;publish(f);if false {goto again} }
+func ClosurePublish(publish func(Fields)) { f:=literalFields(); update:=func(){f.Items[0]=2};publish(f);update() }
+func DeferredPublish(publish func(Fields)) { f:=literalFields();defer func(){f.Items[0]=2}();publish(f) }
+func BorrowedBeforePublish(publish func(Fields), input []int) { f:=Fields{Items:input};f.Items[0]=2;publish(f) }
 func Factory() { f:=literalFields(); f.Items[0]=2 }
 func PointerFactory() { f:=pointerFields(); f.Items[0]=2 }
 func BorrowedFactory() { f:=borrowedFields(shared); f.Items[0]=2 }
@@ -143,6 +153,8 @@ func PromotedReference() { f:=Embedded{Fields:&Fields{Items:[]int{1}}}; f.Items[
 		local bool
 		first bool
 	}{
+		{"BeforePublish", true, false}, {"FreshLoopPublish", true, false},
+		{"AfterPublish", false, false}, {"LoopPublish", false, false}, {"ConditionalPublish", false, false}, {"PriorConditionalPublish", false, false}, {"LabeledPublish", false, false}, {"ClosurePublish", false, false}, {"DeferredPublish", false, false}, {"BorrowedBeforePublish", false, false},
 		{"Factory", true, false}, {"PointerFactory", true, false}, {"ArgumentEffects", true, false},
 		{"BorrowedFactory", false, false}, {"OpaqueFactory", false, false}, {"DeferredFactory", false, false}, {"NamedFactory", false, false}, {"BorrowedGenericFactory", false, false},
 		{"Slice", true, false}, {"PointerRoot", true, false}, {"Mapping", true, false},
