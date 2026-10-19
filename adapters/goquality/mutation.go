@@ -19,6 +19,7 @@ type referenceBinding struct {
 // Bindings retain all possible assignments. Provenance is conservative across
 // branches and loops; it does not depend on the AST walk's execution order.
 func (x *extractor) collectBindings(body *ast.BlockStmt) {
+	x.collectFieldWrites(body)
 	ast.Inspect(body, func(node ast.Node) bool {
 		x.addLiteralParameters(node)
 		switch node := node.(type) {
@@ -179,7 +180,7 @@ func (x *extractor) placeProvenance(place ast.Expr) quality.Provenance {
 
 func (x *extractor) selectorProvenance(place *ast.SelectorExpr) quality.Provenance {
 	if embeddedPointer(x.pkg.TypesInfo.Selections[place]) {
-		return x.fieldOrigin(place)
+		return x.fieldOrigin(place, map[types.Object]bool{})
 	}
 	if _, ok := underlying(x.pkg.TypesInfo.TypeOf(place.X)).(*types.Pointer); ok {
 		return x.origin(place.X, map[types.Object]bool{})
@@ -218,7 +219,7 @@ func (x *extractor) constructedOrigin(value ast.Expr, seen map[types.Object]bool
 	case *ast.CallExpr:
 		return x.allocationOrigin(value, seen)
 	case *ast.SelectorExpr:
-		return x.fieldOrigin(value)
+		return x.fieldOrigin(value, seen)
 	default:
 		return quality.Unknown
 	}
@@ -229,12 +230,20 @@ func (x *extractor) addressOrigin(value *ast.UnaryExpr) quality.Provenance {
 		if _, literal := ast.Unparen(value.X).(*ast.CompositeLit); literal {
 			return quality.Local
 		}
-		return x.placeProvenance(value.X)
+		return x.addressedPlaceOrigin(value.X)
 	}
 	return quality.Unknown
 }
 
-func (x *extractor) fieldOrigin(value *ast.SelectorExpr) quality.Provenance {
+func (x *extractor) addressedPlaceOrigin(place ast.Expr) quality.Provenance {
+	object, _ := x.placeRoot(place)
+	if object != nil && packageVariable(object) {
+		return quality.External
+	}
+	return x.placeProvenance(place)
+}
+
+func (x *extractor) fieldOrigin(value *ast.SelectorExpr, seen map[types.Object]bool) quality.Provenance {
 	object, _ := x.placeRoot(value)
 	if object == nil {
 		return quality.Unknown
@@ -242,8 +251,8 @@ func (x *extractor) fieldOrigin(value *ast.SelectorExpr) quality.Provenance {
 	if packageVariable(object) || x.parameters[object] {
 		return quality.External
 	}
-	// Reference fields may contain aliases in locally allocated structs.
-	return quality.Unknown
+	// Prove each field separately: fresh outer storage can hold borrowed data.
+	return x.ownedField(value, seen)
 }
 
 func (x *extractor) sliceOrigin(value *ast.SliceExpr, seen map[types.Object]bool) quality.Provenance {
