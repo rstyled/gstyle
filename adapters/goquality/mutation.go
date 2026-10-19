@@ -33,12 +33,30 @@ func (x *extractor) collectBindings(body *ast.BlockStmt) {
 			x.bindAssignments(places, node.Values)
 		case *ast.RangeStmt:
 			x.unknownBinding(node.Key)
-			x.unknownBinding(node.Value)
+			x.bindRangeValue(node)
 		case *ast.UnaryExpr:
 			x.addressBinding(node)
 		}
 		return true
 	})
+}
+
+// Range values from shared containers remain shared; fresh containers can
+// still contain borrowed references. Other range forms need separate models.
+func (x *extractor) bindRangeValue(node *ast.RangeStmt) {
+	id, ok := ast.Unparen(node.Value).(*ast.Ident)
+	if !ok {
+		return
+	}
+	object := x.pkg.TypesInfo.ObjectOf(id)
+	binding := x.bindings[object]
+	switch underlying(x.pkg.TypesInfo.TypeOf(node.X)).(type) {
+	case *types.Slice, *types.Map, *types.Array:
+		binding.values = append(binding.values, node.X)
+	default:
+		binding.unknown = true
+	}
+	x.bindings[object] = binding
 }
 
 func (x *extractor) bindAssignments(places, values []ast.Expr) {
@@ -334,9 +352,9 @@ func (x *extractor) bindingOrigin(binding referenceBinding, seen map[types.Objec
 	if len(binding.values) == 0 {
 		return quality.Local
 	}
-	result := x.origin(binding.values[0], seen)
+	result := x.bindingValueOrigin(binding.values[0], seen)
 	for _, value := range binding.values[1:] {
-		if result != x.origin(value, seen) {
+		if result != x.bindingValueOrigin(value, seen) {
 			return quality.Unknown
 		}
 	}
@@ -344,6 +362,15 @@ func (x *extractor) bindingOrigin(binding referenceBinding, seen map[types.Objec
 		return appendOrigin(result)
 	}
 	return result
+}
+
+// A range binding receives an element, rather than the container expression.
+func (x *extractor) bindingValueOrigin(value ast.Expr, seen map[types.Object]bool) quality.Provenance {
+	origin := x.origin(value, seen)
+	if parent, ok := x.fields.parents[value].(*ast.RangeStmt); ok && parent.X == value {
+		return referencedOrigin(origin)
+	}
+	return origin
 }
 
 // A container update can reuse its input or allocate. Only local input proves
