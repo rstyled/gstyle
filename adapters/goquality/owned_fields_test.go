@@ -54,6 +54,19 @@ func BorrowedRecordPointer() { f:=Fields{Pointer:&globalRecord.Value}; *f.Pointe
 func DirectGlobalAddress() { p:=&global; *p=1 }
 func DirectGlobalFieldAddress() { p:=&globalRecord.Value; *p=1 }
 func Parameter(f Fields) { f.Items[0]=2 }
+func IndexedPointer(input []*Fields) { alias:=input[0]; alias.Items[0]=2 }
+func IndexedSlice(input [][]int) { alias:=input[0]; alias[0]=2 }
+func IndexedMap(input map[string]map[string]int) { alias:=input["x"]; alias["y"]=2 }
+func LocalShallowIndex(input *Fields) { values:=[]*Fields{input}; alias:=values[0]; alias.Items[0]=2 }
+func MixedIndex(input []*Fields, condition bool) { values:=input; if condition {values=[]*Fields{}}; alias:=values[0]; alias.Items[0]=2 }
+func AssertedPointer(input any) { alias:=input.(*Fields); alias.Items[0]=2 }
+func ExternalPointerAlias(input *Fields) { alias:=input; alias.Items[0]=2 }
+func ExternalIndexedAlias(input []Fields) { alias:=&input[0]; alias.Items[0]=2 }
+func MixedPointerAlias(input *Fields, condition bool) { alias:=input; if condition {alias=&Fields{Items:[]int{1}}}; alias.Items[0]=2 }
+func UnknownPointerAlias(input func()*Fields) { alias:=input(); alias.Items[0]=2 }
+func LocalPointerBorrowed() { alias:=&Fields{Items:shared}; alias.Items[0]=2 }
+func CopiedValue(input Fields) { alias:=input; alias.Items=make([]int,1); alias.Items[0]=2 }
+
 func PackageVariable() { globalFields.Items[0]=2 }
 func BorrowedSelfAppend() { f:=Fields{Items:shared}; f.Items=append(f.Items,2); f.Items[0]=3 }
 func HeaderLater() { f:=Fields{Items:[]int{1}}; f.Items[0]=2; f.Items=shared }
@@ -91,6 +104,22 @@ func PromotedReference() { f:=Embedded{Fields:&Fields{Items:[]int{1}}}; f.Items[
 	}
 	if !foundGlobal {
 		t.Fatalf("factory argument lost global effect: %+v", argument.Effects)
+	}
+	for _, name := range []string{"ExternalPointerAlias", "ExternalIndexedAlias", "IndexedPointer", "IndexedSlice", "IndexedMap"} {
+		function := findFunction(t, facts, name)
+		if got := function.Mutations[0].Provenance; got != quality.External {
+			t.Fatalf("%s provenance=%s, want external", name, got)
+		}
+		result := resultNamed(t, report, name)
+		if len(result.Effects) != 1 || result.Effects[0].Kind != quality.MutationEffect {
+			t.Fatalf("shared mutation lost: %+v", result)
+		}
+	}
+	for _, name := range []string{"MixedPointerAlias", "UnknownPointerAlias", "LocalPointerBorrowed", "CopiedValue", "LocalShallowIndex", "MixedIndex", "AssertedPointer"} {
+		function := findFunction(t, facts, name)
+		if got := function.Mutations[len(function.Mutations)-1].Provenance; got != quality.Unknown {
+			t.Fatalf("%s provenance=%s, want unknown", name, got)
+		}
 	}
 	global := findFunction(t, facts, "PackageVariable")
 	if len(global.Effects) != 1 || global.Effects[0].Kind != quality.Global {
