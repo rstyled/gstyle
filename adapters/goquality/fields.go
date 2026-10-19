@@ -83,11 +83,11 @@ func (x *extractor) ownedField(value *ast.SelectorExpr, seen map[types.Object]bo
 	if !ok || root.unknown || len(root.values) == 0 {
 		return quality.Unknown
 	}
-	return x.fieldBindingOrigin(key, root.values, seen)
+	return x.fieldBindingOrigin(key, root.values, value, seen)
 }
 
-func (x *extractor) fieldBindingOrigin(key fieldKey, initializers []ast.Expr, seen map[types.Object]bool) quality.Provenance {
-	if seen[key.root] || !x.fields.roots[key.root] {
+func (x *extractor) fieldBindingOrigin(key fieldKey, initializers []ast.Expr, current ast.Node, seen map[types.Object]bool) quality.Provenance {
+	if seen[key.root] || (!x.fields.roots[key.root] && !x.rootClosedAt(key.root, initializers, current)) {
 		return quality.Unknown
 	}
 	seen[key.root] = true
