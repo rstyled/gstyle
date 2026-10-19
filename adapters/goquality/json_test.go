@@ -27,6 +27,22 @@ type Key string
 func(Key) MarshalText()([]byte,error){println("key callback");return []byte("key"),nil}
 func(*Key) UnmarshalText([]byte)error{println("key decode callback");return nil}
 type Open struct{Next *Open; Value any}
+type Ignored struct{Callback Custom `+"`json:\"-\"`"+`; private Custom}
+func IgnoredFields(){json.Marshal(Ignored{})}
+func DecodedIgnored(data []byte)Ignored{var result Ignored;json.Unmarshal(data,&result);return result}
+func IgnoredEmbedded(){json.Marshal(struct{Custom `+"`json:\"-\"`"+`}{})}
+func DashName(){json.Marshal(struct{Value Custom `+"`json:\"-,\"`"+`}{})}
+type Zero int
+func(*Zero) IsZero()bool{println("zero callback");return false}
+type ZeroRecord struct{Value Zero `+"`json:\",omitzero\"`"+`}
+func ZeroCallback(){json.Marshal(ZeroRecord{})}
+func ZeroOrdinary(){json.Marshal(struct{Value Zero}{})}
+func ZeroNamed(){json.Marshal(struct{Value Zero `+"`json:\"omitzero\"`"+`}{})}
+func DecodedZero(data []byte)ZeroRecord{var result ZeroRecord;json.Unmarshal(data,&result);return result}
+func OmitZeroScalar(){json.Marshal(struct{Value int `+"`json:\",omitzero\"`"+`}{})}
+type WrongZero int
+func(WrongZero) IsZero()int{return 0}
+func NonCallbackZero(){json.Marshal(struct{Value WrongZero `+"`json:\",omitzero\"`"+`}{})}
 func Plain(){json.Marshal(&Alias{})}
 func Scalars(){json.Marshal([]int{1,2})}
 func Shared(v *Record){json.Marshal(v)}
@@ -72,13 +88,13 @@ func ReboundCaller(){Rebound(&Record{})}
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"Plain", "Scalars", "Shared", "Wrapped", "UnrelatedMethod", "Decoded", "DecodedSlice", "DecodedPointer", "WrappedDecode"} {
+	for _, name := range []string{"IgnoredFields", "DecodedIgnored", "ZeroOrdinary", "ZeroNamed", "DecodedZero", "OmitZeroScalar", "NonCallbackZero", "Plain", "Scalars", "Shared", "Wrapped", "UnrelatedMethod", "Decoded", "DecodedSlice", "DecodedPointer", "WrappedDecode"} {
 		got := resultNamed(t, report, name)
 		if !got.Complete || len(got.Effects) != 0 {
 			t.Fatalf("%s plain value: %+v", name, got)
 		}
 	}
-	for _, name := range []string{"Callback", "PointerCallback", "Nested", "MapKey", "Embedded", "Raw", "Dynamic", "RecursiveOpen", "Generic", "Decode", "Mixed", "ReverseMixed", "ReboundCaller", "DecodeCallback", "DecodeMapKey", "PreloadedDecode", "AliasedDecode", "PublishedDecode", "CapturedDecode", "DeferredDecode", "ConcurrentDecode", "ReusedDecode"} {
+	for _, name := range []string{"IgnoredEmbedded", "DashName", "ZeroCallback", "Callback", "PointerCallback", "Nested", "MapKey", "Embedded", "Raw", "Dynamic", "RecursiveOpen", "Generic", "Decode", "Mixed", "ReverseMixed", "ReboundCaller", "DecodeCallback", "DecodeMapKey", "PreloadedDecode", "AliasedDecode", "PublishedDecode", "CapturedDecode", "DeferredDecode", "ConcurrentDecode", "ReusedDecode"} {
 		got := resultNamed(t, report, name)
 		if got.Complete || !slices.ContainsFunc(got.Effects, func(e quality.Effect) bool { return e.Kind == quality.UnknownEffect }) {
 			t.Fatalf("%s lost uncertainty: %+v", name, got)
