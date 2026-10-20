@@ -105,7 +105,7 @@ func stableInitializer(typ types.Type, value ast.Expr, info *types.Info) bool {
 		return true
 	}
 	literal, ok := value.(*ast.CompositeLit)
-	return ok && stableTableType(typ) && constantLiteral(literal, info)
+	return ok && (stableTableType(typ) || scalarValue(typ)) && constantLiteral(literal, info)
 }
 
 func stableTableType(typ types.Type) bool {

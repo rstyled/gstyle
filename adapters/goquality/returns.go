@@ -11,7 +11,23 @@ import (
 
 // Prove the returned backing storage, not purity of the function or ownership
 // of referenced elements. Unrelated calls and effects keep their normal facts.
-func localContainerReturn(pkg *packages.Package, fn *ast.FuncDecl) ast.Expr {
+func containerFactory(pkg *packages.Package, fn *ast.FuncDecl) factoryResult {
+	if value := localContainerReturn(pkg, fn, nil); value != nil {
+		return factoryResult{value: value}
+	}
+	signature := pkg.TypesInfo.Defs[fn.Name].Type().(*types.Signature)
+	for index := range signature.Params().Len() {
+		if signature.Variadic() && index == signature.Params().Len()-1 {
+			continue
+		}
+		if value := localContainerReturn(pkg, fn, &index); value != nil {
+			return factoryResult{value: value, parameter: &index}
+		}
+	}
+	return factoryResult{}
+}
+
+func localContainerReturn(pkg *packages.Package, fn *ast.FuncDecl, parameter *int) ast.Expr {
 	function := pkg.TypesInfo.Defs[fn.Name].(*types.Func)
 	signature := function.Type().(*types.Signature)
 	if fn.Body == nil || signature.Results().Len() != 1 || signature.Results().At(0).Name() != "" {
@@ -22,11 +38,39 @@ func localContainerReturn(pkg *packages.Package, fn *ast.FuncDecl) ast.Expr {
 	default:
 		return nil
 	}
-	x := extractor{pkg: pkg, factories: map[*types.Func]ast.Expr{function: fn.Name}, bindings: map[types.Object]referenceBinding{}, parameters: map[types.Object]bool{}}
+	x := extractor{pkg: pkg, factories: map[*types.Func]factoryResult{function: {value: fn.Name, parameter: parameter}}, bindings: map[types.Object]referenceBinding{}, parameters: map[types.Object]bool{}}
 	x.addParameters(fn.Type.Params)
 	x.addParameters(fn.Recv)
 	x.collectBindings(fn.Body)
+	if !x.seedContainerParameter(signature.Params(), parameter) {
+		return nil
+	}
 	return x.ownedContainerReturn(fn.Body)
+}
+
+// A relative certificate substitutes a fresh input only for its selected formal.
+// Other formals stay borrowed, including children referenced by container elements.
+func (x *extractor) seedContainerParameter(parameters *types.Tuple, index *int) bool {
+	if index == nil {
+		return true
+	}
+	parameter := parameters.At(*index)
+	switch underlying(parameter.Type()).(type) {
+	case *types.Map, *types.Slice:
+	default:
+		return false
+	}
+	for _, use := range x.fields.uses[parameter] {
+		_, parent := (receiverProof{parents: x.fields.parents}).parent(use)
+		if address, ok := parent.(*ast.UnaryExpr); ok && address.Op == token.AND {
+			return false
+		}
+	}
+	delete(x.parameters, parameter)
+	binding := x.bindings[parameter]
+	binding.values = append(binding.values, nil)
+	x.bindings[parameter] = binding
+	return x.containerUses(parameter)
 }
 
 func (x *extractor) ownedContainerReturn(body *ast.BlockStmt) ast.Expr {
@@ -188,7 +232,17 @@ func (x *extractor) synchronousContainerCall(node ast.Node) bool {
 
 func (x *extractor) containerOperation(id *ast.Ident, call *ast.CallExpr, object types.Object) bool {
 	function, ok := object.(*types.Func)
-	if !ok || !quality.ContainerMutation(resolvedName(function)) {
+	if !ok {
+		return false
+	}
+	if result, exists := x.factories[function]; exists {
+		return x.relativeContainerCall(id, call, result)
+	}
+	return x.modeledContainerCall(id, call, function)
+}
+
+func (x *extractor) modeledContainerCall(id *ast.Ident, call *ast.CallExpr, function *types.Func) bool {
+	if !quality.ContainerMutation(resolvedName(function)) {
 		return false
 	}
 	if len(call.Args) == 0 || ast.Unparen(call.Args[0]) != id {
@@ -196,6 +250,17 @@ func (x *extractor) containerOperation(id *ast.Ident, call *ast.CallExpr, object
 	}
 	signature := function.Type().(*types.Signature)
 	return signature.Results().Len() == 0 || x.containerResult(id, call)
+}
+
+func (x *extractor) relativeContainerCall(id *ast.Ident, call *ast.CallExpr, result factoryResult) bool {
+	if ast.Unparen(x.factoryArgument(call, result)) != id {
+		return false
+	}
+	_, parent := (receiverProof{parents: x.fields.parents}).parent(call)
+	if _, returned := parent.(*ast.ReturnStmt); returned {
+		return true
+	}
+	return x.containerResult(id, call)
 }
 
 func (x *extractor) containerResult(id *ast.Ident, call *ast.CallExpr) bool {

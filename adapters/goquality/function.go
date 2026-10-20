@@ -16,7 +16,7 @@ import (
 type extractor struct {
 	receiverFields map[types.Object]bool
 	closedReceiver bool
-	factories      map[*types.Func]ast.Expr
+	factories      map[*types.Func]factoryResult
 	pkg            *packages.Package
 	stable         map[types.Object]bool
 	fact           quality.Function

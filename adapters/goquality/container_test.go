@@ -49,6 +49,28 @@ func ReturnedInserted(){out:=insertedReturn();slices.Reverse(out)}
 func recursiveReturn(input *int,n int)[]*int{if n<=0{return []*int{input}};return append(recursiveReturn(input,n-1),recursiveReturn(input,n-1)...)}
 func recursiveBorrowed(input []int,n int)[]int{if n<=0{return input};return append(recursiveBorrowed(input,n-1),1)}
 func recursiveEscaped(n int)[]int{if n<=0{out:=make([]int,1);shared=out;return out};return append(recursiveEscaped(n-1),1)}
+func relativeAppend(out []int)[]int{return append(out,1)}
+func appendOther(dummy int,out []int)[]int{return append(out,dummy)}
+func ReturnedRelativeSelf(){out:=make([]int,1);out=appendOther(0,out);slices.Reverse(out)}
+func ReturnedRelativeSelfBorrowed(out []int){out=appendOther(0,out);slices.Reverse(out)}
+func relativeEffect(out []int)[]int{counter++;return append(out,1)}
+func relativeMixed(out,other []int,flag bool)[]int{if flag{return other};return append(out,1)}
+func relativePublished(out []int)[]int{shared=out;return append(out,1)}
+func relativeAliased(out []int)[]int{alias:=out;shared=alias;return append(out,1)}
+func relativeAddress(out []int)[]int{leakedElement=&out[0];return out}
+func relativeNamed(out []int)(result []int){return append(out,1)}
+func relativeReferences(out []*int,input *int)[]*int{return append(out,input)}
+func ReturnedRelativeNil(){out:=relativeAppend(nil);slices.Reverse(out)}
+func ReturnedRelativeLocal(){input:=make([]int,1);out:=relativeAppend(input);slices.Reverse(out)}
+func ReturnedRelativeRecursive(){out:=recursiveBorrowed(nil,1);slices.Reverse(out)}
+func ReturnedRelativeBorrowed(input []int){out:=relativeAppend(input);slices.Reverse(out)}
+func ReturnedRelativeMixed(){out:=relativeMixed(nil,shared,true);slices.Reverse(out)}
+func ReturnedRelativePublished(){out:=relativePublished(nil);slices.Reverse(out)}
+func ReturnedRelativeAliased(){out:=relativeAliased(nil);slices.Reverse(out)}
+func ReturnedRelativeAddress(){out:=relativeAddress(make([]int,1));slices.Reverse(out)}
+func ReturnedRelativeNamed(){out:=relativeNamed(nil);slices.Reverse(out)}
+func ReturnedRelativeEffect(){out:=relativeEffect(nil);slices.Reverse(out)}
+func ReturnedRelativePointee(input *int){out:=relativeReferences(nil,input);*out[0]=1}
 func finalAppendReturn()[]int{out:=make([]int,1);return append(out,1)}
 func directMakeReturn()[]int{return make([]int,1)}
 func directCloneReturn(input []int)[]int{return slices.Clone(input)}
@@ -166,7 +188,7 @@ func Caller(){helper()}
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"ReturnedRecursive", "ReturnedFinalAppend", "ReturnedDirectMake", "ReturnedDirectClone", "ReturnedSorted", "ReturnedCopied", "ReturnedReferences", "SelfView", "SelfViewAppend", "ReturnedQueue", "ReturnedFilled", "ReturnedMap", "InlineSort", "InlineStable", "InlineReflect", "InlineReflectStable", "InlinePolicy", "FreshContainers", "FreshBytes", "FreshRunes", "NamedString", "NilClone", "NilSelf", "NilSort", "NilDirect", "LocalSort", "NamedSort", "LocalCopy", "LocalReverse", "LocalCompact", "LocalDelete", "LocalInsert", "LocalReplace", "LocalInts", "LocalFloats", "LocalStrings", "LocalAlias", "LocalAppend", "SelfAppend", "CloneSort", "CloneCopy", "Caller"} {
+	for _, name := range []string{"ReturnedRelativeSelf", "ReturnedRelativeNil", "ReturnedRelativeLocal", "ReturnedRecursive", "ReturnedFinalAppend", "ReturnedDirectMake", "ReturnedDirectClone", "ReturnedSorted", "ReturnedCopied", "ReturnedReferences", "SelfView", "SelfViewAppend", "ReturnedQueue", "ReturnedFilled", "ReturnedMap", "InlineSort", "InlineStable", "InlineReflect", "InlineReflectStable", "InlinePolicy", "FreshContainers", "FreshBytes", "FreshRunes", "NamedString", "NilClone", "NilSelf", "NilSort", "NilDirect", "LocalSort", "NamedSort", "LocalCopy", "LocalReverse", "LocalCompact", "LocalDelete", "LocalInsert", "LocalReplace", "LocalInts", "LocalFloats", "LocalStrings", "LocalAlias", "LocalAppend", "SelfAppend", "CloneSort", "CloneCopy", "Caller"} {
 		t.Run(name, func(t *testing.T) {
 			r := resultNamed(t, report, name)
 			if len(r.Effects) != 0 || !r.Complete {
@@ -181,7 +203,7 @@ func Caller(){helper()}
 		name       string
 		provenance quality.Provenance
 	}{
-		{"ReturnedRecursiveBorrowed", quality.Unknown}, {"ReturnedRecursiveEscaped", quality.Unknown}, {"ReturnedOperationAlias", quality.Unknown}, {"ReturnedInserted", quality.Unknown}, {"ReturnedGlobal", quality.Unknown}, {"ReturnedFormal", quality.Unknown}, {"ReturnedView", quality.Unknown}, {"ReturnedNamed", quality.Unknown}, {"ReturnedFakeDecode", quality.Unknown}, {"SharedView", quality.External}, {"MixedView", quality.Unknown}, {"UnknownView", quality.Unknown}, {"ReturnedMixed", quality.Unknown}, {"ReturnedPublished", quality.Unknown}, {"ReturnedWritten", quality.Unknown}, {"ReturnedEscape", quality.Unknown}, {"ReturnedAddress", quality.Unknown}, {"ReturnedClosure", quality.Unknown}, {"ReturnedDeferred", quality.Unknown}, {"InlineShared", quality.External}, {"CallbackFields", quality.Unknown}, {"ShadowNil", quality.External}, {"OrdinaryConversion", quality.External}, {"ExternalSort", quality.External}, {"ExternalCopy", quality.External}, {"GenericSort", quality.External}, {"GlobalSort", quality.External}, {"ExternalAlias", quality.External}, {"ExternalAppend", quality.Unknown}, {"FakeClone", quality.Unknown}, {"Mixed", quality.Unknown}, {"Unknown", quality.Unknown},
+		{"ReturnedRelativeSelfBorrowed", quality.External}, {"ReturnedRelativeRecursive", quality.Unknown}, {"ReturnedRelativeBorrowed", quality.Unknown}, {"ReturnedRelativeMixed", quality.Unknown}, {"ReturnedRelativePublished", quality.Unknown}, {"ReturnedRelativeAliased", quality.Unknown}, {"ReturnedRelativeAddress", quality.Unknown}, {"ReturnedRelativeNamed", quality.Unknown}, {"ReturnedRecursiveBorrowed", quality.Unknown}, {"ReturnedRecursiveEscaped", quality.Unknown}, {"ReturnedOperationAlias", quality.Unknown}, {"ReturnedInserted", quality.Unknown}, {"ReturnedGlobal", quality.Unknown}, {"ReturnedFormal", quality.Unknown}, {"ReturnedView", quality.Unknown}, {"ReturnedNamed", quality.Unknown}, {"ReturnedFakeDecode", quality.Unknown}, {"SharedView", quality.External}, {"MixedView", quality.Unknown}, {"UnknownView", quality.Unknown}, {"ReturnedMixed", quality.Unknown}, {"ReturnedPublished", quality.Unknown}, {"ReturnedWritten", quality.Unknown}, {"ReturnedEscape", quality.Unknown}, {"ReturnedAddress", quality.Unknown}, {"ReturnedClosure", quality.Unknown}, {"ReturnedDeferred", quality.Unknown}, {"InlineShared", quality.External}, {"CallbackFields", quality.Unknown}, {"ShadowNil", quality.External}, {"OrdinaryConversion", quality.External}, {"ExternalSort", quality.External}, {"ExternalCopy", quality.External}, {"GenericSort", quality.External}, {"GlobalSort", quality.External}, {"ExternalAlias", quality.External}, {"ExternalAppend", quality.Unknown}, {"FakeClone", quality.Unknown}, {"Mixed", quality.Unknown}, {"Unknown", quality.Unknown},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := findFunction(t, facts, tc.name)
@@ -210,13 +232,13 @@ func Caller(){helper()}
 	if !foundPanic {
 		t.Fatal("decoded factory lost panic evidence")
 	}
-	for _, name := range []string{"ReturnedDecoded", "ReturnedOutput", "ReturnedCalled"} {
+	for _, name := range []string{"ReturnedRelativeEffect", "ReturnedDecoded", "ReturnedOutput", "ReturnedCalled"} {
 		fact := findFunction(t, facts, name)
 		if got := fact.Calls[len(fact.Calls)-1].MutationTarget; got != quality.Local {
 			t.Fatalf("%s backing storage=%s, want local", name, got)
 		}
 	}
-	for _, name := range []string{"ReturnedRecursivePointee", "ReturnedPointee", "Shallow", "ShallowNilClone", "NilFunction", "BorrowedBytes", "BorrowedConcat"} {
+	for _, name := range []string{"ReturnedRelativePointee", "ReturnedRecursivePointee", "ReturnedPointee", "Shallow", "ShallowNilClone", "NilFunction", "BorrowedBytes", "BorrowedConcat"} {
 		if len(resultNamed(t, report, name).Effects) == 0 {
 			t.Fatalf("%s loses pointee or dynamic-call evidence", name)
 		}
@@ -231,7 +253,7 @@ func Caller(){helper()}
 		name string
 		kind quality.Kind
 	}{
-		{"ReturnedCalled", quality.Global}, {"ReturnedOutput", quality.IO}, {"InlineOutput", quality.IO}, {"InlineCaptured", quality.MutationEffect}, {"InlineGlobal", quality.Global}, {"InlineLaunch", quality.UnknownEffect}, {"InlineChannel", quality.UnknownEffect},
+		{"ReturnedRelativeEffect", quality.Global}, {"ReturnedCalled", quality.Global}, {"ReturnedOutput", quality.IO}, {"InlineOutput", quality.IO}, {"InlineCaptured", quality.MutationEffect}, {"InlineGlobal", quality.Global}, {"InlineLaunch", quality.UnknownEffect}, {"InlineChannel", quality.UnknownEffect},
 	} {
 		got := resultNamed(t, report, tc.name)
 		found := false

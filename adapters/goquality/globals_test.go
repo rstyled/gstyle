@@ -23,6 +23,21 @@ func TestStableLiteralTableReads(t *testing.T) {
 		"tables.go": `package stable
 import "charm.land/lipgloss/v2"
 import "errors"
+type valueRecord struct{Value int;Name string;Numbers [1]int}
+func(r *valueRecord) Touch(){r.Value++}
+var fixedRecord=valueRecord{Value:1,Name:"fixed",Numbers:[1]int{2}}
+var writtenRecord=valueRecord{Value:1}
+var addressedRecord=valueRecord{Value:1}
+var methodRecord=valueRecord{Value:1}
+var ExportedRecord=valueRecord{Value:1}
+var referencedRecord=struct{Value *int}{Value:new(int)}
+func RecordValue()valueRecord{return fixedRecord}
+func RecordWritten()valueRecord{return writtenRecord}
+func RecordAddress()*valueRecord{return &addressedRecord}
+func RecordMethod(){methodRecord.Touch()}
+func RecordExported()valueRecord{return ExportedRecord}
+func RecordReference()*int{return referencedRecord.Value}
+func init(){writtenRecord.Value++}
 var sentinel = errors.New("fixed")
 var sentinelWritten = errors.New("fixed")
 var sentinelAddressed = errors.New("fixed")
@@ -127,7 +142,7 @@ func closure() func() { return func() { closureWritten[0]++ } }
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"ErrorValue", "Fixed", "Records", "Dispatch", "DispatchRecord", "DispatchCallback", "StyleValue", "StyleRender", "StyleMethodValue"} {
+	for _, name := range []string{"RecordValue", "ErrorValue", "Fixed", "Records", "Dispatch", "DispatchRecord", "DispatchCallback", "StyleValue", "StyleRender", "StyleMethodValue"} {
 		fact := findFunction(t, facts, name)
 		for _, effect := range fact.Effects {
 			if effect.Kind == quality.Global {
@@ -135,7 +150,7 @@ func closure() func() { return func() { closureWritten[0]++ } }
 			}
 		}
 	}
-	for _, name := range []string{"ErrorWritten", "ErrorAddressed", "ErrorExported", "ErrorDynamic", "ErrorIndirect", "Mutable", "Escape", "Address", "Reference", "Dynamic", "Public", "Initialized", "Closed", "Method", "RangeWrite", "Nested", "DispatchWritten", "DispatchEscaped", "DispatchAddressed", "DispatchVariable", "DispatchBound", "StyleWritten", "StyleAddressed", "StyleExported", "StyleDynamic", "StyleCallback", "StyleColorReference", "StyleAlias", "StyleOther"} {
+	for _, name := range []string{"RecordWritten", "RecordAddress", "RecordMethod", "RecordExported", "RecordReference", "ErrorWritten", "ErrorAddressed", "ErrorExported", "ErrorDynamic", "ErrorIndirect", "Mutable", "Escape", "Address", "Reference", "Dynamic", "Public", "Initialized", "Closed", "Method", "RangeWrite", "Nested", "DispatchWritten", "DispatchEscaped", "DispatchAddressed", "DispatchVariable", "DispatchBound", "StyleWritten", "StyleAddressed", "StyleExported", "StyleDynamic", "StyleCallback", "StyleColorReference", "StyleAlias", "StyleOther"} {
 		fact := findFunction(t, facts, name)
 		found := false
 		for _, effect := range fact.Effects {

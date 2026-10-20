@@ -209,7 +209,7 @@ func (extraction packageExtraction) extractPackage(root string, selected selecti
 type packageExtraction struct {
 	receiverFields map[types.Object]bool
 	receivers      map[types.Object]bool
-	factories      map[*types.Func]ast.Expr
+	factories      map[*types.Func]factoryResult
 	pkg            *packages.Package
 	stable         map[types.Object]bool
 }
