@@ -9,9 +9,9 @@ import (
 )
 
 // Closed roots do not prove ownership of their fields. Only fresh container
-// headers whose values never escape receive this separate storage proof.
+// headers whose values stay private until construction ends receive this proof.
 func closedReceiverFields(pkg *packages.Package) map[types.Object]bool {
-	proof := receiverFields{receiverProof: receiverProof{pkg: pkg, parents: map[ast.Node]ast.Node{}}, owned: map[types.Object]bool{}}
+	proof := receiverFields{receiverProof: newReceiverProof(pkg), owned: map[types.Object]bool{}}
 	closed := closedReceiverTypes(pkg)
 	for object := range closed {
 		shape := object.Type().Underlying().(*types.Struct)
@@ -21,9 +21,6 @@ func closedReceiverFields(pkg *packages.Package) map[types.Object]bool {
 				proof.owned[field] = true
 			}
 		}
-	}
-	for _, file := range pkg.Syntax {
-		indexParents(file, proof.parents)
 	}
 	for _, file := range pkg.Syntax {
 		ast.Inspect(file, proof.check)
@@ -106,9 +103,39 @@ func (p receiverFields) use(selector *ast.SelectorExpr) bool {
 		return p.headerWrite(selector, node, parent)
 	case *ast.CallExpr:
 		return p.containerUse(selector, node, parent)
+	case *ast.ReturnStmt:
+		return p.terminalPublication(selector)
 	default:
 		return false
 	}
+}
+
+// Returning a locally constructed root's field ends its private lifetime.
+// A receiver parameter can remain in use by its caller, so it cannot publish.
+func (p receiverFields) terminalPublication(selector *ast.SelectorExpr) bool {
+	id, ok := ast.Unparen(selector.X).(*ast.Ident)
+	if !ok {
+		return false
+	}
+	definition := p.defs[p.pkg.TypesInfo.ObjectOf(id)]
+	switch p.parents[definition].(type) {
+	case *ast.AssignStmt, *ast.ValueSpec:
+	default:
+		return false
+	}
+	fn, ok := p.function(selector).(*ast.FuncDecl)
+	return ok && p.function(definition) == fn && !hasDeferredStatement(fn.Body)
+}
+
+func hasDeferredStatement(body *ast.BlockStmt) bool {
+	found := false
+	ast.Inspect(body, func(node ast.Node) bool {
+		if _, ok := node.(*ast.DeferStmt); ok {
+			found = true
+		}
+		return !found
+	})
+	return found
 }
 
 func (p receiverFields) indexUse(node ast.Node, index *ast.IndexExpr) bool {

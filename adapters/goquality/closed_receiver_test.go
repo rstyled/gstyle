@@ -150,9 +150,19 @@ func ownedSliceRun(){var p ownedSlice;p.OwnedSlice()}
 type resetMap struct{values map[string]int}
 func(p *resetMap)ResetMap(){p.values=map[string]int{};p.values["x"]=1}
 func resetMapRun(){p:=new(resetMap);p.ResetMap()}
+type finishedSlice struct{values []int}
+func(p *finishedSlice)FinishedSlice(){p.values=append(p.values,1)}
+func finishedSliceRun()[]int{p:=finishedSlice{};p.FinishedSlice();return p.values}
+type finishedMap struct{values map[string]int}
+func(p *finishedMap)FinishedMap(){p.values["x"]=1}
+func finishedMapRun()map[string]int{var p finishedMap;p.values=make(map[string]int);p.FinishedMap();return p.values}
+type deferredSlice struct{values []int}
+var sharedSlice []int
+func(p *deferredSlice)DeferredPublication(){p.values=append(p.values,1)}
+func deferredSliceRun()(out []int){p:=deferredSlice{};p.DeferredPublication();defer func(){sharedSlice=out;out[0]=2}();return p.values}
 type borrowedMap struct{values map[string]int}
 func(p *borrowedMap)BorrowedField(){p.values["x"]=1}
-func borrowedMapRun(values map[string]int){p:=borrowedMap{values:values};p.BorrowedField()}
+func borrowedMapRun(values map[string]int)map[string]int{p:=borrowedMap{values:values};p.BorrowedField();return p.values}
 type replacedMap struct{values map[string]int}
 var sharedMap=map[string]int{}
 func(p *replacedMap)ReplacedField(){p.values=sharedMap;p.values["x"]=1}
@@ -162,7 +172,7 @@ func(p *publishedMap)PublishedField(){sharedMap=p.values;p.values["x"]=1}
 func publishedMapRun(){p:=publishedMap{values:map[string]int{}};p.PublishedField()}
 type returnedMap struct{values map[string]int}
 func(p *returnedMap)ReturnedField()map[string]int{p.values["x"]=1;return p.values}
-func returnedMapRun(){p:=returnedMap{values:map[string]int{}};p.ReturnedField()}
+func returnedMapRun(){p:=returnedMap{values:map[string]int{}};sharedMap=p.ReturnedField();p.ReturnedField()}
 type aliasedMap struct{values map[string]int}
 func(p *aliasedMap)AliasedField(){alias:=p.values;delete(alias,"y");p.values["x"]=1}
 func aliasedMapRun(){p:=aliasedMap{values:map[string]int{}};p.AliasedField()}
@@ -182,7 +192,7 @@ func(p *methodSlice)ElementMethod(){p.values[0].Expose();p.values[0].value=1}
 func methodSliceRun(){p:=methodSlice{values:[]elementBox{{}}};p.ElementMethod()}
 type shallowSlice struct{values []*int}
 func(p *shallowSlice)BorrowedElement(){*p.values[0]=1}
-func shallowRun(input *int){p:=shallowSlice{values:[]*int{input}};p.BorrowedElement()}
+func shallowRun(input *int)[]*int{p:=shallowSlice{values:[]*int{input}};p.BorrowedElement();return p.values}
 `))
 	facts, err := (Analyzer{Root: root}).Extract(context.Background(), nil)
 	if err != nil {
@@ -193,6 +203,7 @@ func shallowRun(input *int){p:=shallowSlice{values:[]*int{input}};p.BorrowedElem
 		local bool
 	}{
 		{"OwnedMap", true}, {"OwnedSlice", true}, {"ResetMap", true},
+		{"FinishedSlice", true}, {"FinishedMap", true}, {"DeferredPublication", false},
 		{"BorrowedField", false}, {"ReplacedField", false}, {"PublishedField", false}, {"ReturnedField", false},
 		{"AliasedField", false}, {"PassedField", false}, {"AddressedElement", false}, {"ElementMethod", false}, {"BorrowedElement", false},
 	} {
