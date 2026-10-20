@@ -53,20 +53,18 @@ func (p *mapParameters) argument(call *ast.CallExpr, value ast.Node) bool {
 // that a map cannot be retained by a helper.
 func (p *mapParameters) parameter(fn *ast.FuncDecl, parameter *types.Var) bool {
 	if state := p.states[parameter]; state != 0 {
-		return state == 3
+		return state == 2
 	}
 	p.states[parameter] = 1
 	if !boundedMap(parameter.Type()) {
-		p.states[parameter] = 2
 		return false
 	}
 	for _, use := range p.uses[parameter] {
 		if p.function(use) != fn || !p.use(use) {
-			p.states[parameter] = 2
 			return false
 		}
 	}
-	p.states[parameter] = 3
+	p.states[parameter] = 2
 	return true
 }
 
