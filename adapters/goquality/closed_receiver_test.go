@@ -18,6 +18,31 @@ func cursorRun(){p:=new(cursor);p.ClosedCursor()}
 type problem struct{ message string }
 func(p *problem) ClosedError(){p.message="error"}
 func errorRun(){p:=&problem{};p.ClosedError()}
+type constructed struct{n int}
+func(p *constructed)ConstructorLocal(){p.n++}
+func newConstructed()*constructed{p:=&constructed{};p.n=1;return p}
+func constructedRun(){p:=newConstructed();p.ConstructorLocal()}
+type literalConstructed struct{n int}
+func(p *literalConstructed)LiteralConstructor(){p.n++}
+func newLiteralConstructed()*literalConstructed{return &literalConstructed{}}
+func literalConstructedRun(){p:=newLiteralConstructed();p.LiteralConstructor()}
+type escapedConstructor struct{n int}
+func(p *escapedConstructor)EscapedConstructor(){p.n++}
+func newEscapedConstructor()*escapedConstructor{return new(escapedConstructor)}
+func escapedConstructorRun()any{p:=newEscapedConstructor();p.EscapedConstructor();return p}
+type indirectConstructor struct{n int}
+func(p *indirectConstructor)IndirectConstructor(){p.n++}
+func newIndirectConstructor()*indirectConstructor{return &indirectConstructor{}}
+var indirectFactory=newIndirectConstructor
+func indirectConstructorRun(){p:=indirectFactory();p.IndirectConstructor()}
+type interfaceConstructor struct{n int}
+func(p *interfaceConstructor)InterfaceConstructor(){p.n++}
+func newInterfaceConstructor()*interfaceConstructor{return &interfaceConstructor{}}
+var published any
+func interfaceConstructorRun(){var p any=newInterfaceConstructor();published=p}
+type interfaceLiteral struct{n int}
+func(p *interfaceLiteral)InterfaceLiteral(){p.n++}
+func interfaceLiteralRun(){var p any=&interfaceLiteral{};published=p}
 type returned struct{ n int }
 func(p *returned) Returned(){p.n++}
 func returnedRun()any{p:=new(returned);return p}
@@ -96,6 +121,9 @@ func borrowedRun(values map[string]int){p:=new(borrowed);p.values=values;p.Borro
 		want quality.Provenance
 	}{
 		{"ClosedCursor", quality.Local}, {"ClosedError", quality.Local},
+		{"ConstructorLocal", quality.Local}, {"LiteralConstructor", quality.Local},
+		{"EscapedConstructor", quality.External}, {"IndirectConstructor", quality.External},
+		{"InterfaceConstructor", quality.External}, {"InterfaceLiteral", quality.External},
 		{"Returned", quality.External}, {"PointerHolder", quality.External}, {"InferredGlobal", quality.External}, {"FreshEscape", quality.External},
 		{"PublicParameter", quality.External}, {"PublicResult", quality.External}, {"MethodValue", quality.External},
 		{"Captured", quality.External}, {"Concurrent", quality.External}, {"Deferred", quality.External},
@@ -115,11 +143,12 @@ func TestClosedReceiverTestVariantEscape(t *testing.T) {
 	root := qualitySourceModule(t, []byte(`package repro
 type testCursor struct{n int}
 func(p *testCursor) TestVariantWrite(){p.n++}
-func run(){p:=new(testCursor);p.TestVariantWrite()}
+func newTestCursor()*testCursor{return &testCursor{}}
+func run(){p:=newTestCursor();p.TestVariantWrite()}
 `))
 	if err := os.WriteFile(filepath.Join(root, "input_test.go"), []byte(`package repro
 var escapedTest any
-func init(){p:=new(testCursor);escapedTest=p}
+func init(){p:=newTestCursor();escapedTest=p}
 `), 0600); err != nil {
 		t.Fatal(err)
 	}
