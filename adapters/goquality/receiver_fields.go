@@ -12,6 +12,7 @@ import (
 // headers whose values stay private until construction ends receive this proof.
 func closedReceiverFields(pkg *packages.Package) map[types.Object]bool {
 	proof := receiverFields{receiverProof: newReceiverProof(pkg), owned: map[types.Object]bool{}}
+	proof.maps = newMapParameters(proof.receiverProof)
 	closed := closedReceiverTypes(pkg)
 	for object := range closed {
 		shape := object.Type().Underlying().(*types.Struct)
@@ -31,6 +32,7 @@ func closedReceiverFields(pkg *packages.Package) map[types.Object]bool {
 type receiverFields struct {
 	receiverProof
 	owned map[types.Object]bool
+	maps  *mapParameters
 }
 
 func (p receiverFields) check(node ast.Node) bool {
@@ -205,7 +207,7 @@ func (p receiverFields) containerUse(selector *ast.SelectorExpr, node ast.Node, 
 	case "append":
 		return p.appendWrite(selector, call)
 	default:
-		return false
+		return p.maps != nil && p.maps.argument(call, node)
 	}
 }
 
