@@ -172,6 +172,23 @@ func ReturnedCappedDynamic(input []int, get func([]int)[]int){out:=append(get(in
 func ReturnedCappedEmpty(input,extra []int){out:=append(capped(input),extra...);slices.Sort(out)}
 func ReturnedCappedEffect(input []int){out:=append(cappedEffect(input),1);slices.Sort(out)}
 func ReturnedCappedPointee(input []*int){out:=append(cappedReferences(input),nil);*out[0]=1}
+func LocalCapped(input []int){out:=capped(input);out=append(out,1);slices.Sort(out)}
+func LocalCappedView(input []int){out:=input[:len(input):len(input)];out=append(out,1);slices.Sort(out)}
+func LocalCappedAlias(input []int){out:=capped(input);alias:=out;out=input;alias=append(alias,1);slices.Sort(alias)}
+func LocalCappedReset(input []int,n int){for range n{out:=capped(input);out=append(out,1);slices.Sort(out)}}
+func LocalCappedTwice(input []int){out:=capped(input);out=append(out,1);out=append(out,2);slices.Sort(out)}
+func LocalCappedBefore(input []int){out:=capped(input);out[0]=1;out=append(out,2);out[0]=3}
+func LocalCappedMixed(input []int,flag bool){out:=capped(input);if flag{out=input};out=append(out,1);slices.Sort(out)}
+func LocalCappedLoop(input []int,n int){out:=capped(input);for range n{out=append(out,1);slices.Sort(out)}}
+func LocalCappedRange(input []int,rows [][]int){out:=capped(input);for _,out=range rows{};out=append(out,1);slices.Sort(out)}
+func LocalCappedReslice(input []int){out:=capped(input);out=out[:0];out=append(out,1);slices.Sort(out)}
+func LocalCappedAddress(input []int,change func(*[]int)){out:=capped(input);change(&out);out=append(out,1);slices.Sort(out)}
+func LocalCappedCapture(input []int){out:=capped(input);change:=func(){out=input};change();out=append(out,1);slices.Sort(out)}
+func LocalCappedLabel(input []int,again bool){out:=capped(input);next:out=append(out,1);out=input;if again{goto next};slices.Sort(out)}
+func LocalCappedReborrow(input []int){out:=capped(input);out=append(out,1);out=input;slices.Sort(out)}
+func LocalCappedEmpty(input,extra []int){out:=capped(input);out=append(out,extra...);slices.Sort(out)}
+func LocalCappedEffect(input []int){out:=cappedEffect(input);out=append(out,1);slices.Sort(out)}
+func LocalCappedPointee(input []*int){out:=cappedReferences(input);out=append(out,nil);*out[0]=1}
 func tupleFresh(flag bool)(int,[]int){if flag{return 0,nil};return 1,[]int{1}}
 func tupleBorrowed(input []int)([]int,[]int){return []int{1},input}
 func tupleMixed(input []int,flag bool)(int,[]int){if flag{return 0,input};return 1,[]int{1}}
@@ -297,12 +314,12 @@ func Caller(){helper()}
 			}
 		})
 	}
-	for _, name := range []string{"TupleMutate", "TupleLocal", "TupleGeneric", "TupleMap", "TupleForward", "ForcedAppend", "ForcedBound", "ForcedConstant", "ReturnedForced", "ReturnedCapped", "ReturnedCappedBranches", "ReturnedCappedGeneric", "ReturnedCappedAppend"} {
+	for _, name := range []string{"TupleMutate", "TupleLocal", "TupleGeneric", "TupleMap", "TupleForward", "ForcedAppend", "ForcedBound", "ForcedConstant", "ReturnedForced", "ReturnedCapped", "ReturnedCappedBranches", "ReturnedCappedGeneric", "ReturnedCappedAppend", "LocalCapped", "LocalCappedView", "LocalCappedAlias", "LocalCappedReset", "LocalCappedTwice"} {
 		if r := resultNamed(t, report, name); len(r.Effects) != 0 || !r.Complete {
 			t.Fatalf("%s loses fresh append ownership: %+v", name, r)
 		}
 	}
-	for _, name := range []string{"MapShared", "MapBorrowed", "MapInserted", "MapCopied", "MapAliased", "MapPublished", "MapRanged", "MapAddressed", "MapCaptured", "MapDeferred", "MapShadowed", "MapEffect", "MapPointee", "TupleBorrowed", "TupleMixed", "TupleEscaped", "TupleNamed", "TupleDynamic", "TuplePointee", "TupleEffect", "TuplePointer", "TupleRecord", "TupleRecursiveBorrowed", "TupleAddress", "TupleClosure", "TupleDeferred", "SpareCapacity", "UnequalBounds", "EmptyExpansion", "ChangingBound", "ShadowedLength", "ChannelBounds", "CapturedBounds", "AddressedBounds", "ForcedPointee", "ForcedArgumentEffect", "ReturnedCappedDirect", "ReturnedCappedMixed", "ReturnedCappedNamed", "ReturnedCappedDynamic", "ReturnedCappedEmpty", "ReturnedCappedEffect", "ReturnedCappedPointee"} {
+	for _, name := range []string{"MapShared", "MapBorrowed", "MapInserted", "MapCopied", "MapAliased", "MapPublished", "MapRanged", "MapAddressed", "MapCaptured", "MapDeferred", "MapShadowed", "MapEffect", "MapPointee", "TupleBorrowed", "TupleMixed", "TupleEscaped", "TupleNamed", "TupleDynamic", "TuplePointee", "TupleEffect", "TuplePointer", "TupleRecord", "TupleRecursiveBorrowed", "TupleAddress", "TupleClosure", "TupleDeferred", "SpareCapacity", "UnequalBounds", "EmptyExpansion", "ChangingBound", "ShadowedLength", "ChannelBounds", "CapturedBounds", "AddressedBounds", "ForcedPointee", "ForcedArgumentEffect", "ReturnedCappedDirect", "ReturnedCappedMixed", "ReturnedCappedNamed", "ReturnedCappedDynamic", "ReturnedCappedEmpty", "ReturnedCappedEffect", "ReturnedCappedPointee", "LocalCappedBefore", "LocalCappedMixed", "LocalCappedLoop", "LocalCappedRange", "LocalCappedReslice", "LocalCappedAddress", "LocalCappedCapture", "LocalCappedLabel", "LocalCappedReborrow", "LocalCappedEmpty", "LocalCappedEffect", "LocalCappedPointee"} {
 		if len(resultNamed(t, report, name).Effects) == 0 {
 			t.Fatalf("%s loses borrowed storage or argument effects", name)
 		}
@@ -327,6 +344,16 @@ func Caller(){helper()}
 		last := f.Mutations[len(f.Mutations)-1]
 		if last.Provenance == quality.Local {
 			t.Fatalf("%s hides borrowed or published entry storage: %+v", name, f.Mutations)
+		}
+	}
+	before := findFunction(t, facts, "LocalCappedBefore")
+	if before.Mutations[0].Provenance == quality.Local || before.Mutations[len(before.Mutations)-1].Provenance != quality.Local {
+		t.Fatalf("append loses the borrowed-to-fresh storage boundary: %+v", before.Mutations)
+	}
+	for _, name := range []string{"LocalCappedMixed", "LocalCappedLoop", "LocalCappedRange", "LocalCappedReslice", "LocalCappedAddress", "LocalCappedCapture", "LocalCappedLabel", "LocalCappedReborrow", "LocalCappedEmpty"} {
+		f := findFunction(t, facts, name)
+		if f.Calls[len(f.Calls)-1].MutationTarget == quality.Local {
+			t.Fatalf("%s loses a header write: %+v", name, f.Calls)
 		}
 	}
 	for _, name := range []string{"ChannelBounds", "CapturedBounds", "AddressedBounds"} {

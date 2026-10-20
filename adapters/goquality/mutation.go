@@ -20,6 +20,7 @@ type referenceBinding struct {
 // Bindings retain all possible assignments. Provenance is conservative across
 // branches and loops; it does not depend on the AST walk's execution order.
 func (x *extractor) collectBindings(body *ast.BlockStmt) {
+	x.sliceWrites = map[types.Object][]sliceWrite{}
 	x.collectFieldWrites(body)
 	ast.Inspect(body, func(node ast.Node) bool {
 		x.addLiteralParameters(node)
@@ -61,6 +62,7 @@ func (x *extractor) bindRangeValue(node *ast.RangeStmt) {
 		return
 	}
 	object := x.pkg.TypesInfo.ObjectOf(id)
+	x.bindSliceValue(object, id, nil)
 	binding := x.bindings[object]
 	switch underlying(x.pkg.TypesInfo.TypeOf(node.X)).(type) {
 	case *types.Slice, *types.Map, *types.Array:
@@ -82,6 +84,7 @@ func (x *extractor) bindAssignments(places, values []ast.Expr) {
 			continue
 		}
 		value := x.boundValue(values, index, len(places))
+		x.bindSliceValue(object, id, value)
 		if x.selfSliceAssignment(object, value) {
 			continue
 		}
@@ -263,10 +266,7 @@ func (x *extractor) origin(value ast.Expr, seen map[types.Object]bool) quality.P
 	case nil:
 		return quality.Local // Zero-initialized reference contains no shared state.
 	case *ast.Ident:
-		if x.pkg.TypesInfo.Types[value].IsNil() {
-			return quality.Local
-		}
-		return x.objectOrigin(x.pkg.TypesInfo.ObjectOf(value), seen)
+		return x.identifierOrigin(value, seen)
 	case *ast.ParenExpr:
 		return x.origin(value.X, seen)
 	case *ast.SliceExpr:
