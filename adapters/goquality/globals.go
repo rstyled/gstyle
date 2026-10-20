@@ -192,7 +192,7 @@ func stableTableRead(id *ast.Ident, parents map[ast.Node]ast.Node, info *types.I
 	case *ast.IndexExpr:
 		return parent.X == id && copiedTableValue(parent, parents, info)
 	case *ast.CallExpr:
-		return tableLength(parent, id, info)
+		return tableLength(parent, id, info) || tableContains(parent, id, info)
 	}
 	return false
 }
@@ -206,8 +206,25 @@ func tableLength(call *ast.CallExpr, id *ast.Ident, info *types.Info) bool {
 	return ok && (builtin.Name() == "len" || builtin.Name() == "cap")
 }
 
+// Contains neither retains the table nor invokes its elements.
+func tableContains(call *ast.CallExpr, id *ast.Ident, info *types.Info) bool {
+	if len(call.Args) != 2 || call.Args[0] != id {
+		return false
+	}
+	selector, ok := unwrappedCallee(call.Fun).(*ast.SelectorExpr)
+	if !ok || info.Selections[selector] != nil {
+		return false
+	}
+	function, ok := info.ObjectOf(selector.Sel).(*types.Func)
+	return ok && function.FullName() == "slices.Contains"
+}
+
 func copiedTableValue(node ast.Node, parents map[ast.Node]ast.Node, info *types.Info) bool {
 	for parent := parents[node]; parent != nil; parent = parents[node] {
+		// An index/key consumes the copied value; the indexed target is separate.
+		if index, ok := parent.(*ast.IndexExpr); ok && index.Index == node {
+			return true
+		}
 		if !tableValueContext(node, parent, info) {
 			return false
 		}

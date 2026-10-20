@@ -23,6 +23,7 @@ func TestStableLiteralTableReads(t *testing.T) {
 		"tables.go": `package stable
 import "charm.land/lipgloss/v2"
 import "errors"
+import "slices"
 type valueRecord struct{Value int;Name string;Numbers [1]int}
 func(r *valueRecord) Touch(){r.Value++}
 var fixedRecord=valueRecord{Value:1,Name:"fixed",Numbers:[1]int{2}}
@@ -75,6 +76,36 @@ func StyleCallback() lipgloss.Style { return styleCallback }
 func StyleColorReference() lipgloss.Style { return styleColorReference }
 func StyleAlias() lipgloss.Style { return styleAlias }
 func StyleOther() any { return styleOther }
+var offsets = map[string]int{"a":0}
+var allowed = []string{"a"}
+var changedAllowed = []string{"a"}
+var shadowAllowed = []string{"a"}
+var callbackAllowed = []string{"a"}
+var queriedReferences = [][]int{{1}}
+var changingOffsets = map[string]int{"a":0}
+var selfIndex = map[int]int{0:0}
+var addressedIndex = map[string]int{"a":0}
+var escapedIndex = map[string]int{"a":0}
+var effectCount int
+func effectKey()string{effectCount++;return "a"}
+func LocalIndex()int{counts:=[1]int{};counts[offsets["a"]]++;return counts[0]}
+func NestedIndex()int{counts:=[1]struct{n int}{};counts[offsets["a"]].n++;return counts[0].n}
+func BorrowedIndex(counts []int){counts[offsets["a"]]++}
+func EffectfulIndex()int{counts:=[1]int{};counts[offsets[effectKey()]]++;return counts[0]}
+func FixedContains(s string)bool{return slices.Contains(allowed,s)}
+func GenericContains(s string)bool{return slices.Contains[[]string,string](allowed,s)}
+func CallbackContains()bool{return slices.ContainsFunc(callbackAllowed,func(s string)bool{return s=="a"})}
+func ReferenceContains(v []int)bool{return slices.ContainsFunc(queriedReferences,func(s []int)bool{s[0]++;return true})}
+func changingKey()string{changingOffsets["a"]=0;return "a"}
+func ChangingIndex(){counts:=[1]int{};counts[changingOffsets[changingKey()]]++}
+func ChangedContains(s string)bool{return slices.Contains(changedAllowed,s)}
+func SelfIndex(){selfIndex[selfIndex[0]]++}
+func AddressIndex()*map[string]int{return &addressedIndex}
+func AddressedIndex(){counts:=[1]int{};counts[addressedIndex["a"]]++}
+func EscapeIndex()map[string]int{return escapedIndex}
+func EscapedIndex(){counts:=[1]int{};counts[escapedIndex["a"]]++}
+func ShadowedContains()bool{slices:=struct{Contains func([]string,string)bool}{func(v []string,s string)bool{v[0]=s;return true}};return slices.Contains(shadowAllowed,"x")}
+func init(){changedAllowed[0]="b"}
 var fixed = map[string]int{"a": 1}
 var names = [...]string{"a", "b"}
 var records = []struct{ name string; code int }{{name: "a", code: 1}}
@@ -142,7 +173,7 @@ func closure() func() { return func() { closureWritten[0]++ } }
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"RecordValue", "ErrorValue", "Fixed", "Records", "Dispatch", "DispatchRecord", "DispatchCallback", "StyleValue", "StyleRender", "StyleMethodValue"} {
+	for _, name := range []string{"LocalIndex", "NestedIndex", "BorrowedIndex", "FixedContains", "GenericContains", "RecordValue", "ErrorValue", "Fixed", "Records", "Dispatch", "DispatchRecord", "DispatchCallback", "StyleValue", "StyleRender", "StyleMethodValue"} {
 		fact := findFunction(t, facts, name)
 		for _, effect := range fact.Effects {
 			if effect.Kind == quality.Global {
@@ -150,7 +181,7 @@ func closure() func() { return func() { closureWritten[0]++ } }
 			}
 		}
 	}
-	for _, name := range []string{"RecordWritten", "RecordAddress", "RecordMethod", "RecordExported", "RecordReference", "ErrorWritten", "ErrorAddressed", "ErrorExported", "ErrorDynamic", "ErrorIndirect", "Mutable", "Escape", "Address", "Reference", "Dynamic", "Public", "Initialized", "Closed", "Method", "RangeWrite", "Nested", "DispatchWritten", "DispatchEscaped", "DispatchAddressed", "DispatchVariable", "DispatchBound", "StyleWritten", "StyleAddressed", "StyleExported", "StyleDynamic", "StyleCallback", "StyleColorReference", "StyleAlias", "StyleOther"} {
+	for _, name := range []string{"CallbackContains", "ReferenceContains", "ChangingIndex", "ChangedContains", "SelfIndex", "AddressedIndex", "EscapedIndex", "ShadowedContains", "RecordWritten", "RecordAddress", "RecordMethod", "RecordExported", "RecordReference", "ErrorWritten", "ErrorAddressed", "ErrorExported", "ErrorDynamic", "ErrorIndirect", "Mutable", "Escape", "Address", "Reference", "Dynamic", "Public", "Initialized", "Closed", "Method", "RangeWrite", "Nested", "DispatchWritten", "DispatchEscaped", "DispatchAddressed", "DispatchVariable", "DispatchBound", "StyleWritten", "StyleAddressed", "StyleExported", "StyleDynamic", "StyleCallback", "StyleColorReference", "StyleAlias", "StyleOther"} {
 		fact := findFunction(t, facts, name)
 		found := false
 		for _, effect := range fact.Effects {
@@ -165,6 +196,14 @@ func closure() func() { return func() { closureWritten[0]++ } }
 		if len(fact.Calls) != 1 || !fact.Calls[0].Dynamic {
 			t.Errorf("%s loses dispatch call evidence: %+v", name, fact.Calls)
 		}
+	}
+	borrowed := findFunction(t, facts, "BorrowedIndex")
+	if len(borrowed.Mutations) == 0 {
+		t.Fatal("table lookup loses borrowed destination mutation")
+	}
+	key := findFunction(t, facts, "EffectfulIndex")
+	if len(key.Calls) != 1 || key.Calls[0].Callee != "example.com/stable.effectKey" {
+		t.Fatalf("table lookup loses evaluated key: %+v", key.Calls)
 	}
 	render := findFunction(t, facts, "StyleRender")
 	if len(render.Calls) != 1 || render.Calls[0].Callee != lipglossPackage+".Style.Render" {
