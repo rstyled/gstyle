@@ -153,6 +153,25 @@ func ForcedBound(input []int,n int){out:=append(input[1:n:n],1);slices.Sort(out)
 func ForcedConstant(input []int){out:=append(input[:1+1:2],1);slices.Sort(out)}
 func forcedReturn(input []int)[]int{return append(input[:len(input):len(input)],1)}
 func ReturnedForced(input []int){out:=forcedReturn(input);slices.Sort(out)}
+func capped(input []int)[]int{return input[:len(input):len(input)]}
+func cappedBranches(input []int,flag bool)[]int{if flag{return input[:1:1]};return input[:len(input):len(input)]}
+func cappedMixed(input []int,flag bool)[]int{if flag{return input};return input[:len(input):len(input)]}
+func cappedNamed(input []int)(out []int){out=input[:1:1];defer func(){out=input}();return out}
+func cappedEffect(input []int)[]int{input[0]++;return input[:len(input):len(input)]}
+func cappedReferences(input []*int)[]*int{return input[:len(input):len(input)]}
+func cappedGeneric[T any](input []T)[]T{return input[:1:1]}
+func cappedAppend(input []int)[]int{return append(capped(input),1)}
+func ReturnedCappedAppend(input []int){out:=cappedAppend(input);slices.Sort(out)}
+func ReturnedCapped(input []int){out:=append(capped(input),1);slices.Sort(out)}
+func ReturnedCappedBranches(input []int){out:=append(cappedBranches(input,true),1);slices.Sort(out)}
+func ReturnedCappedGeneric(input []int){out:=append(cappedGeneric(input),1);slices.Sort(out)}
+func ReturnedCappedDirect(input []int){slices.Sort(capped(input))}
+func ReturnedCappedMixed(input []int){out:=append(cappedMixed(input,true),1);slices.Sort(out)}
+func ReturnedCappedNamed(input []int){out:=append(cappedNamed(input),1);slices.Sort(out)}
+func ReturnedCappedDynamic(input []int, get func([]int)[]int){out:=append(get(input),1);slices.Sort(out)}
+func ReturnedCappedEmpty(input,extra []int){out:=append(capped(input),extra...);slices.Sort(out)}
+func ReturnedCappedEffect(input []int){out:=append(cappedEffect(input),1);slices.Sort(out)}
+func ReturnedCappedPointee(input []*int){out:=append(cappedReferences(input),nil);*out[0]=1}
 func SpareCapacity(input []int){out:=append(input[:len(input):cap(input)],1);slices.Sort(out)}
 func UnequalBounds(input []int,n,m int){out:=append(input[:n:m],1);slices.Sort(out)}
 func EmptyExpansion(input,extra []int){out:=append(input[:len(input):len(input)],extra...);slices.Sort(out)}
@@ -212,12 +231,12 @@ func Caller(){helper()}
 			}
 		})
 	}
-	for _, name := range []string{"ForcedAppend", "ForcedBound", "ForcedConstant", "ReturnedForced"} {
+	for _, name := range []string{"ForcedAppend", "ForcedBound", "ForcedConstant", "ReturnedForced", "ReturnedCapped", "ReturnedCappedBranches", "ReturnedCappedGeneric", "ReturnedCappedAppend"} {
 		if r := resultNamed(t, report, name); len(r.Effects) != 0 || !r.Complete {
 			t.Fatalf("%s loses fresh append ownership: %+v", name, r)
 		}
 	}
-	for _, name := range []string{"SpareCapacity", "UnequalBounds", "EmptyExpansion", "ChangingBound", "ShadowedLength", "ChannelBounds", "CapturedBounds", "AddressedBounds", "ForcedPointee", "ForcedArgumentEffect"} {
+	for _, name := range []string{"SpareCapacity", "UnequalBounds", "EmptyExpansion", "ChangingBound", "ShadowedLength", "ChannelBounds", "CapturedBounds", "AddressedBounds", "ForcedPointee", "ForcedArgumentEffect", "ReturnedCappedDirect", "ReturnedCappedMixed", "ReturnedCappedNamed", "ReturnedCappedDynamic", "ReturnedCappedEmpty", "ReturnedCappedEffect", "ReturnedCappedPointee"} {
 		if len(resultNamed(t, report, name).Effects) == 0 {
 			t.Fatalf("%s loses borrowed storage or argument effects", name)
 		}

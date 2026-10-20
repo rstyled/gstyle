@@ -15,7 +15,7 @@ type factoryResult struct {
 	parameter *int
 }
 
-func factoryResults(pkg *packages.Package) map[*types.Func]factoryResult {
+func factoryResults(pkg *packages.Package, capacity map[*types.Func]bool) map[*types.Func]factoryResult {
 	result := map[*types.Func]factoryResult{}
 	for _, file := range pkg.Syntax {
 		for _, declaration := range file.Decls {
@@ -24,7 +24,7 @@ func factoryResults(pkg *packages.Package) map[*types.Func]factoryResult {
 				if literal := factoryReturn(fn); literal != nil {
 					resultValue.value = literal
 				} else {
-					resultValue = containerFactory(pkg, fn)
+					resultValue = containerFactory(pkg, fn, capacity)
 				}
 				if resultValue.value != nil {
 					result[pkg.TypesInfo.Defs[fn.Name].(*types.Func)] = resultValue
