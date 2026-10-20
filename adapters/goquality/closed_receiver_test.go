@@ -11,13 +11,27 @@ import (
 
 func TestClosedReceiverStorageBoundaries(t *testing.T) {
 	root := qualitySourceModule(t, []byte(`package repro
-import "encoding/json"
+import("encoding/json";"go/ast")
 type cursor struct{ n int }
 func(p *cursor) ClosedCursor(){p.n++}
 func cursorRun(){p:=new(cursor);p.ClosedCursor()}
 type problem struct{ message string }
 func(p *problem) ClosedError(){p.message="error"}
 func errorRun(){p:=&problem{};p.ClosedError()}
+type localVisitor struct{n int}
+func(p *localVisitor)LocalVisitor(ast.Node)bool{p.n++;return true}
+func localVisitorRun(){p:=localVisitor{};ast.Inspect(&ast.Ident{},p.LocalVisitor)}
+type savedVisitor struct{n int}
+var savedVisit func(ast.Node)bool
+func saveVisit(_ ast.Node,visit func(ast.Node)bool){savedVisit=visit}
+func(p *savedVisitor)SavedVisitor(ast.Node)bool{p.n++;return true}
+func savedVisitorRun(){p:=savedVisitor{};saveVisit(&ast.Ident{},p.SavedVisitor)}
+type asyncVisitor struct{n int}
+func(p *asyncVisitor)AsyncVisitor(ast.Node)bool{p.n++;return true}
+func asyncVisitorRun(){p:=asyncVisitor{};go ast.Inspect(&ast.Ident{},p.AsyncVisitor)}
+type inputVisitor struct{}
+func(p *inputVisitor)VisitorInput(node ast.Node)bool{node.(*ast.Ident).Name="changed";return false}
+func inputVisitorRun(node ast.Node){p:=inputVisitor{};ast.Inspect(node,p.VisitorInput)}
 type constructed struct{n int}
 func(p *constructed)ConstructorLocal(){p.n++}
 func newConstructed()*constructed{p:=&constructed{};p.n=1;return p}
@@ -121,6 +135,8 @@ func borrowedRun(values map[string]int){p:=new(borrowed);p.values=values;p.Borro
 		want quality.Provenance
 	}{
 		{"ClosedCursor", quality.Local}, {"ClosedError", quality.Local},
+		{"LocalVisitor", quality.Local}, {"SavedVisitor", quality.External},
+		{"AsyncVisitor", quality.External}, {"VisitorInput", quality.Unknown},
 		{"ConstructorLocal", quality.Local}, {"LiteralConstructor", quality.Local},
 		{"EscapedConstructor", quality.External}, {"IndirectConstructor", quality.External},
 		{"InterfaceConstructor", quality.External}, {"InterfaceLiteral", quality.External},
