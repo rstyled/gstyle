@@ -85,7 +85,8 @@ func extractPackages(pkgs []*packages.Package, root string, selected selection) 
 	receivers := packageProofs(pkgs, closedReceiverTypes)
 	receiverFields := packageProofs(pkgs, closedReceiverFields)
 	for _, pkg := range pkgs {
-		extraction := packageExtraction{pkg: pkg, stable: proofs[pkg], factories: factoryResults(pkg), receivers: receivers[pkg], receiverFields: receiverFields[pkg]}
+		capacity := cappedReturns(pkg)
+		extraction := packageExtraction{pkg: pkg, stable: proofs[pkg], factories: factoryResults(pkg, capacity), cappedReturns: capacity, receivers: receivers[pkg], receiverFields: receiverFields[pkg]}
 		functions, err := extraction.extractPackage(root, selected)
 		if err != nil {
 			return nil, err
@@ -210,6 +211,7 @@ type packageExtraction struct {
 	receiverFields map[types.Object]bool
 	receivers      map[types.Object]bool
 	factories      map[*types.Func]factoryResult
+	cappedReturns  map[*types.Func]bool
 	pkg            *packages.Package
 	stable         map[types.Object]bool
 }

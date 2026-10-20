@@ -13,8 +13,19 @@ func (x *extractor) freshAppend(call *ast.CallExpr) bool {
 	if call.Ellipsis.IsValid() || len(call.Args) < 2 {
 		return false
 	}
-	view, ok := ast.Unparen(call.Args[0]).(*ast.SliceExpr)
-	return ok && view.Slice3 && x.sameCapacityBound(view.High, view.Max)
+	return x.fullSlice(call.Args[0])
+}
+
+func (x *extractor) fullSlice(value ast.Expr) bool {
+	switch value := ast.Unparen(value).(type) {
+	case *ast.SliceExpr:
+		return value.Slice3 && x.sameCapacityBound(value.High, value.Max)
+	case *ast.CallExpr:
+		function, ok := x.calledObject(unwrappedCallee(value.Fun)).(*types.Func)
+		return ok && x.cappedReturns[function.Origin()]
+	default:
+		return false
+	}
 }
 
 func (x *extractor) sameCapacityBound(left, right ast.Expr) bool {

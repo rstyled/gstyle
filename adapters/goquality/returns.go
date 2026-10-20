@@ -11,8 +11,8 @@ import (
 
 // Prove the returned backing storage, not purity of the function or ownership
 // of referenced elements. Unrelated calls and effects keep their normal facts.
-func containerFactory(pkg *packages.Package, fn *ast.FuncDecl) factoryResult {
-	if value := localContainerReturn(pkg, fn, nil); value != nil {
+func containerFactory(pkg *packages.Package, fn *ast.FuncDecl, capacity map[*types.Func]bool) factoryResult {
+	if value := localContainerReturn(pkg, fn, nil, capacity); value != nil {
 		return factoryResult{value: value}
 	}
 	signature := pkg.TypesInfo.Defs[fn.Name].Type().(*types.Signature)
@@ -20,14 +20,14 @@ func containerFactory(pkg *packages.Package, fn *ast.FuncDecl) factoryResult {
 		if signature.Variadic() && index == signature.Params().Len()-1 {
 			continue
 		}
-		if value := localContainerReturn(pkg, fn, &index); value != nil {
+		if value := localContainerReturn(pkg, fn, &index, capacity); value != nil {
 			return factoryResult{value: value, parameter: &index}
 		}
 	}
 	return factoryResult{}
 }
 
-func localContainerReturn(pkg *packages.Package, fn *ast.FuncDecl, parameter *int) ast.Expr {
+func localContainerReturn(pkg *packages.Package, fn *ast.FuncDecl, parameter *int, capacity map[*types.Func]bool) ast.Expr {
 	function := pkg.TypesInfo.Defs[fn.Name].(*types.Func)
 	signature := function.Type().(*types.Signature)
 	if fn.Body == nil || signature.Results().Len() != 1 || signature.Results().At(0).Name() != "" {
@@ -38,7 +38,7 @@ func localContainerReturn(pkg *packages.Package, fn *ast.FuncDecl, parameter *in
 	default:
 		return nil
 	}
-	x := extractor{pkg: pkg, factories: map[*types.Func]factoryResult{function: {value: fn.Name, parameter: parameter}}, bindings: map[types.Object]referenceBinding{}, parameters: map[types.Object]bool{}}
+	x := extractor{pkg: pkg, cappedReturns: capacity, factories: map[*types.Func]factoryResult{function: {value: fn.Name, parameter: parameter}}, bindings: map[types.Object]referenceBinding{}, parameters: map[types.Object]bool{}}
 	x.addParameters(fn.Type.Params)
 	x.addParameters(fn.Recv)
 	x.collectBindings(fn.Body)

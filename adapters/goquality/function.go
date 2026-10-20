@@ -17,6 +17,7 @@ type extractor struct {
 	receiverFields map[types.Object]bool
 	closedReceiver bool
 	factories      map[*types.Func]factoryResult
+	cappedReturns  map[*types.Func]bool
 	pkg            *packages.Package
 	stable         map[types.Object]bool
 	fact           quality.Function
@@ -190,7 +191,7 @@ func (extraction packageExtraction) extractFunction(fn *ast.FuncDecl, path strin
 	if object, ok := pkg.TypesInfo.Defs[fn.Name].(*types.Func); ok {
 		name = resolvedName(object)
 	}
-	x := extractor{receiverFields: extraction.receiverFields, pkg: pkg, factories: extraction.factories, stable: extraction.stable, bindings: map[types.Object]referenceBinding{}, parameters: map[types.Object]bool{}, paramIndex: map[types.Object]int{}, fact: quality.Function{
+	x := extractor{receiverFields: extraction.receiverFields, pkg: pkg, factories: extraction.factories, cappedReturns: extraction.cappedReturns, stable: extraction.stable, bindings: map[types.Object]referenceBinding{}, parameters: map[types.Object]bool{}, paramIndex: map[types.Object]int{}, fact: quality.Function{
 		Location: quality.Location{Path: path, Line: start.Line, Column: start.Column, Name: name},
 		Params:   parameterCount(fn.Type.Params), HasSelf: fn.Recv != nil,
 		Source: string(source[start.Offset:end.Offset]), PrecedingLine: precedingSuppression(fn.Doc),
