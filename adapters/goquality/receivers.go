@@ -231,7 +231,7 @@ func (p receiverProof) methodUse(selector *ast.SelectorExpr, selection *types.Se
 	}
 	node, parent := p.parent(selector)
 	call, ok := parent.(*ast.CallExpr)
-	if !ok || call.Fun != node {
+	if !ok || !p.receiverInvocation(call, node) {
 		return false
 	}
 	switch p.parents[call].(type) {
@@ -239,6 +239,20 @@ func (p receiverProof) methodUse(selector *ast.SelectorExpr, selection *types.Se
 		return false
 	}
 	return true
+}
+
+// Inspect finishes visiting before it returns and does not retain the method.
+// The receiver must still pass every other ownership and escape check.
+func (p receiverProof) receiverInvocation(call *ast.CallExpr, node ast.Node) bool {
+	if call.Fun == node {
+		return true
+	}
+	if len(call.Args) != 2 || call.Args[1] != node {
+		return false
+	}
+	x := extractor{pkg: p.pkg}
+	function, ok := x.calledObject(unwrappedCallee(call.Fun)).(*types.Func)
+	return ok && resolvedName(function) == "go/ast.Inspect"
 }
 
 func (p receiverProof) fieldUse(selector *ast.SelectorExpr) bool {
