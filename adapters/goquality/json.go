@@ -74,6 +74,12 @@ func jsonZeroMethod(typ types.Type) bool {
 }
 
 func plainJSONNamed(typ *types.Named, seen map[types.Type]bool, method string) bool {
+	// RawMessage's standard methods only read bytes or copy into the decode
+	// destination; jsonv2 aliases RawMessage to jsontext.Value. Destination
+	// ownership is checked separately.
+	if metadataType(typ, "encoding/json", "RawMessage") || metadataType(typ, "encoding/json/jsontext", "Value") {
+		return true
+	}
 	for i := 0; i < typ.NumMethods(); i++ {
 		if slices.Contains([]string{method + "JSON", method + "Text"}, typ.Method(i).Name()) {
 			return false
@@ -82,7 +88,7 @@ func plainJSONNamed(typ *types.Named, seen map[types.Type]bool, method string) b
 	return plainJSONType(typ.Underlying(), seen, method)
 }
 
-// Decode only into an unaliased zero-value local whose other uses return it.
+// Decode only into an unaliased local; reference-bearing values start at zero.
 // The proof belongs to this call; it is not forwarded from caller storage.
 func (x *extractor) localJSONDecode(call *ast.CallExpr, callee string) bool {
 	if callee != "encoding/json.Unmarshal" {
@@ -101,6 +107,9 @@ func (x *extractor) returnedJSONValue(value ast.Expr) bool {
 		return false
 	}
 	object := x.pkg.TypesInfo.ObjectOf(id)
+	if x.scalarJSONValue(object, id) {
+		return true
+	}
 	binding, found := x.bindings[object]
 	if !found || len(binding.values) != 1 || binding.values[0] != nil {
 		return false
@@ -108,13 +117,40 @@ func (x *extractor) returnedJSONValue(value ast.Expr) bool {
 	return x.returnedJSONUses(object, id)
 }
 
+// Scalar values have no mutable child storage. Reads and value copies do not
+// expose the destination slot, but addresses, methods and captures can.
+func (x *extractor) scalarJSONValue(object types.Object, destination *ast.Ident) bool {
+	variable, ok := object.(*types.Var)
+	if !ok || !isLocalVar(variable) || x.parameters[object] {
+		return false
+	}
+	basic, ok := underlying(variable.Type()).(*types.Basic)
+	if !ok || basic.Info()&(types.IsBoolean|types.IsInteger|types.IsFloat|types.IsString) == 0 {
+		return false
+	}
+	return x.returnedJSONUses(object, destination)
+}
+
+func (x *extractor) scalarJSONUse(node ast.Node) bool {
+	for parent := x.fields.parents[node]; parent != nil; parent = x.fields.parents[node] {
+		switch parent.(type) {
+		case *ast.GoStmt, *ast.DeferStmt:
+			return false
+		}
+		if !tableValueContext(node, parent, x.pkg.TypesInfo) {
+			return false
+		}
+		node = parent
+	}
+	return true
+}
+
 func (x *extractor) returnedJSONUses(object types.Object, destination *ast.Ident) bool {
 	for _, use := range x.fields.uses[object] {
 		if use == destination {
 			continue
 		}
-		parent, ok := x.fields.parents[use].(*ast.ReturnStmt)
-		if !ok || !x.outerFieldReturn(parent) {
+		if !x.outerFieldReturn(use) || !x.scalarJSONUse(use) {
 			return false
 		}
 	}
@@ -122,11 +158,45 @@ func (x *extractor) returnedJSONUses(object types.Object, destination *ast.Ident
 }
 
 func (x *extractor) synchronousJSONCall(call *ast.CallExpr) bool {
+	if x.loopSafeJSONCall(call) {
+		return x.synchronousContainerCall(call)
+	}
+	var body *ast.BlockStmt
 	for parent := ast.Node(call); parent != nil; parent = x.fields.parents[parent] {
+		if block, ok := parent.(*ast.BlockStmt); ok {
+			body = block
+		}
 		switch parent.(type) {
-		case *ast.FuncLit, *ast.GoStmt, *ast.DeferStmt:
+		case *ast.FuncLit, *ast.GoStmt, *ast.DeferStmt, *ast.ForStmt, *ast.RangeStmt:
 			return false
 		}
 	}
-	return true
+	return body != nil && !labeledBlock(body)
+}
+
+// Scalars cannot publish mutable children through copies. Reference-bearing
+// results retain the older return-only proof inside repeated control flow.
+func (x *extractor) loopSafeJSONCall(call *ast.CallExpr) bool {
+	address := ast.Unparen(call.Args[1]).(*ast.UnaryExpr)
+	destination, ok := ast.Unparen(address.X).(*ast.Ident)
+	if !ok {
+		return false
+	}
+	object := x.pkg.TypesInfo.ObjectOf(destination)
+	return x.scalarJSONValue(object, destination) || x.returnOnlyJSONUses(object, destination)
+}
+
+func (x *extractor) returnOnlyJSONUses(object types.Object, destination *ast.Ident) bool {
+	returned := false
+	for _, use := range x.fields.uses[object] {
+		if use == destination {
+			continue
+		}
+		statement, ok := x.fields.parents[use].(*ast.ReturnStmt)
+		if !ok || !x.outerFieldReturn(statement) {
+			return false
+		}
+		returned = true
+	}
+	return returned
 }

@@ -13,7 +13,7 @@ import (
 
 func TestContainerStorageOwnership(t *testing.T) {
 	root := qualitySourceModule(t, []byte(`package repro
-import("bytes";"maps";"slices";"sort";"strings")
+import("bytes";"encoding/json";"maps";"slices";"sort";"strings")
 var shared = []int{2,1}
 var counter int
 type Numbers []int
@@ -33,6 +33,33 @@ func addressedReturn() []int {out:=make([]int,1);leakedElement=&out[0];return ou
 func closureReturn() []int {out:=make([]int,1);f:=func(){out[0]=1};_ =f;return out}
 func deferredReturn(input []int) []int {out:=make([]int,1);defer copy(out,input);return out}
 func outputReturn() []int {out:=make([]int,1);println("output");return out}
+func globalReturn() []int {shared=make([]int,1);return shared}
+func formalReturn(input []int,flag bool) []int {if flag{input=make([]int,1)};return input}
+func ReturnedGlobal(){out:=globalReturn();slices.Reverse(out)}
+func ReturnedFormal(){out:=formalReturn(shared,false);slices.Reverse(out)}
+func sortedReturn() []int {out:=[]int{2,1};slices.Sort(out);out=slices.Delete(out,0,1);return out}
+func copiedReturn(input map[int]int)map[int]int{out:=make(map[int]int);maps.Copy(out,input);return out}
+func aliasOperationReturn()[]int{out:=make([]int,2);alias:=slices.Delete(out,0,1);shared=alias;return out}
+var sharedNested [][]int
+func insertedReturn()[]int{out:=make([]int,1);sharedNested=slices.Insert(sharedNested,0,out);return out}
+func ReturnedSorted(){out:=sortedReturn();slices.Reverse(out)}
+func ReturnedCopied(){maps.Copy(copiedReturn(nil),map[int]int{})}
+func ReturnedOperationAlias(){out:=aliasOperationReturn();slices.Reverse(out)}
+func ReturnedInserted(){out:=insertedReturn();slices.Reverse(out)}
+func referenceReturn(input *int) []*int {out:=make([]*int,1);out[0]=input;return out}
+func decodedReturn(data []byte) []struct{Values []int} {var out []struct{Values []int};if err:=json.Unmarshal(data,&out);err!=nil{panic(err)};return out}
+func calledReturn() []int {out:=make([]int,1);out[0]=bound();return out}
+func viewReturn() []int {out:=make([]int,1);alias:=out[:];_ =alias;return out}
+func namedReturn()(out []int){out=make([]int,1);defer func(){shared=out}();return out}
+func fakeUnmarshal(data []byte,out *[]int){shared=*out}
+func fakeDecodeReturn() []int {var out []int;fakeUnmarshal(nil,&out);return out}
+func ReturnedReferences(input *int){out:=referenceReturn(input);slices.Reverse(out)}
+func ReturnedPointee(input *int){out:=referenceReturn(input);*out[0]=1}
+func ReturnedDecoded(){out:=decodedReturn(nil);slices.Reverse(out)}
+func ReturnedCalled(){out:=calledReturn();slices.Reverse(out)}
+func ReturnedView(){out:=viewReturn();slices.Reverse(out)}
+func ReturnedNamed(){out:=namedReturn();slices.Reverse(out)}
+func ReturnedFakeDecode(){out:=fakeDecodeReturn();slices.Reverse(out)}
 func SelfView(){out:=make([]int,3);out=(out)[1:2:3];slices.Reverse(out)}
 func SelfViewAppend(){out:=[]int{1,2};out=out[1:];out=append(out,3);slices.Reverse(out)}
 func SharedView(out []int){out=out[1:];slices.Reverse(out)}
@@ -126,7 +153,7 @@ func Caller(){helper()}
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"SelfView", "SelfViewAppend", "ReturnedQueue", "ReturnedFilled", "ReturnedMap", "InlineSort", "InlineStable", "InlineReflect", "InlineReflectStable", "InlinePolicy", "FreshContainers", "FreshBytes", "FreshRunes", "NamedString", "NilClone", "NilSelf", "NilSort", "NilDirect", "LocalSort", "NamedSort", "LocalCopy", "LocalReverse", "LocalCompact", "LocalDelete", "LocalInsert", "LocalReplace", "LocalInts", "LocalFloats", "LocalStrings", "LocalAlias", "LocalAppend", "SelfAppend", "CloneSort", "CloneCopy", "Caller"} {
+	for _, name := range []string{"ReturnedSorted", "ReturnedCopied", "ReturnedReferences", "SelfView", "SelfViewAppend", "ReturnedQueue", "ReturnedFilled", "ReturnedMap", "InlineSort", "InlineStable", "InlineReflect", "InlineReflectStable", "InlinePolicy", "FreshContainers", "FreshBytes", "FreshRunes", "NamedString", "NilClone", "NilSelf", "NilSort", "NilDirect", "LocalSort", "NamedSort", "LocalCopy", "LocalReverse", "LocalCompact", "LocalDelete", "LocalInsert", "LocalReplace", "LocalInts", "LocalFloats", "LocalStrings", "LocalAlias", "LocalAppend", "SelfAppend", "CloneSort", "CloneCopy", "Caller"} {
 		t.Run(name, func(t *testing.T) {
 			r := resultNamed(t, report, name)
 			if len(r.Effects) != 0 || !r.Complete {
@@ -141,7 +168,7 @@ func Caller(){helper()}
 		name       string
 		provenance quality.Provenance
 	}{
-		{"SharedView", quality.External}, {"MixedView", quality.Unknown}, {"UnknownView", quality.Unknown}, {"ReturnedMixed", quality.Unknown}, {"ReturnedPublished", quality.Unknown}, {"ReturnedWritten", quality.Unknown}, {"ReturnedEscape", quality.Unknown}, {"ReturnedAddress", quality.Unknown}, {"ReturnedClosure", quality.Unknown}, {"ReturnedDeferred", quality.Unknown}, {"InlineShared", quality.External}, {"CallbackFields", quality.Unknown}, {"ShadowNil", quality.External}, {"OrdinaryConversion", quality.External}, {"ExternalSort", quality.External}, {"ExternalCopy", quality.External}, {"GenericSort", quality.External}, {"GlobalSort", quality.External}, {"ExternalAlias", quality.External}, {"ExternalAppend", quality.Unknown}, {"FakeClone", quality.Unknown}, {"Mixed", quality.Unknown}, {"Unknown", quality.Unknown},
+		{"ReturnedOperationAlias", quality.Unknown}, {"ReturnedInserted", quality.Unknown}, {"ReturnedGlobal", quality.Unknown}, {"ReturnedFormal", quality.Unknown}, {"ReturnedView", quality.Unknown}, {"ReturnedNamed", quality.Unknown}, {"ReturnedFakeDecode", quality.Unknown}, {"SharedView", quality.External}, {"MixedView", quality.Unknown}, {"UnknownView", quality.Unknown}, {"ReturnedMixed", quality.Unknown}, {"ReturnedPublished", quality.Unknown}, {"ReturnedWritten", quality.Unknown}, {"ReturnedEscape", quality.Unknown}, {"ReturnedAddress", quality.Unknown}, {"ReturnedClosure", quality.Unknown}, {"ReturnedDeferred", quality.Unknown}, {"InlineShared", quality.External}, {"CallbackFields", quality.Unknown}, {"ShadowNil", quality.External}, {"OrdinaryConversion", quality.External}, {"ExternalSort", quality.External}, {"ExternalCopy", quality.External}, {"GenericSort", quality.External}, {"GlobalSort", quality.External}, {"ExternalAlias", quality.External}, {"ExternalAppend", quality.Unknown}, {"FakeClone", quality.Unknown}, {"Mixed", quality.Unknown}, {"Unknown", quality.Unknown},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := findFunction(t, facts, tc.name)
@@ -159,7 +186,24 @@ func Caller(){helper()}
 			}
 		})
 	}
-	for _, name := range []string{"Shallow", "ShallowNilClone", "NilFunction", "BorrowedBytes", "BorrowedConcat"} {
+	decoded := resultNamed(t, report, "ReturnedDecoded")
+	foundPanic := false
+	for _, effect := range decoded.Effects {
+		if effect.Kind == quality.MutationEffect || effect.Kind == quality.UnknownEffect {
+			t.Fatalf("decoded storage loses ownership: %+v", decoded)
+		}
+		foundPanic = foundPanic || effect.Kind == quality.Panic
+	}
+	if !foundPanic {
+		t.Fatal("decoded factory lost panic evidence")
+	}
+	for _, name := range []string{"ReturnedDecoded", "ReturnedOutput", "ReturnedCalled"} {
+		fact := findFunction(t, facts, name)
+		if got := fact.Calls[len(fact.Calls)-1].MutationTarget; got != quality.Local {
+			t.Fatalf("%s backing storage=%s, want local", name, got)
+		}
+	}
+	for _, name := range []string{"ReturnedPointee", "Shallow", "ShallowNilClone", "NilFunction", "BorrowedBytes", "BorrowedConcat"} {
 		if len(resultNamed(t, report, name).Effects) == 0 {
 			t.Fatalf("%s loses pointee or dynamic-call evidence", name)
 		}
@@ -174,7 +218,7 @@ func Caller(){helper()}
 		name string
 		kind quality.Kind
 	}{
-		{"ReturnedOutput", quality.IO}, {"InlineOutput", quality.IO}, {"InlineCaptured", quality.MutationEffect}, {"InlineGlobal", quality.Global}, {"InlineLaunch", quality.UnknownEffect}, {"InlineChannel", quality.UnknownEffect},
+		{"ReturnedCalled", quality.Global}, {"ReturnedOutput", quality.IO}, {"InlineOutput", quality.IO}, {"InlineCaptured", quality.MutationEffect}, {"InlineGlobal", quality.Global}, {"InlineLaunch", quality.UnknownEffect}, {"InlineChannel", quality.UnknownEffect},
 	} {
 		got := resultNamed(t, report, tc.name)
 		found := false

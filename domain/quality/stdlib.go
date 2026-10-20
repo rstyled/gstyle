@@ -227,6 +227,7 @@ var stdlibRules = []stdlibRule{
 	{pkg: "os", kind: None, names: []string{
 		"Getpid", "Getppid", "Getuid", "Geteuid", "Getgid", "Getegid",
 		"Getpagesize", "Args", "ProcessState.ExitCode",
+		"IsExist", "IsNotExist", "IsPermission",
 	}},
 	{pkg: "os", kind: IO, names: []string{
 		"File.Read", "File.ReadAt", "File.Write", "File.WriteAt", "File.WriteString",
@@ -330,7 +331,7 @@ var stdlibRules = []stdlibRule{
 	{pkg: "net", kind: None, names: []string{
 		"ParseIP", "ParseCIDR", "ParseMAC",
 		"SplitHostPort", "JoinHostPort",
-		"IPv4", "IPv4Mask", "CIDRMask",
+		"IPv4", "IPv4Mask", "CIDRMask", "IPMask.Size",
 		"IP.", "IPNet.", "TCPAddr.", "UDPAddr.", "UnixAddr.",
 	}},
 	{pkg: "net/netip", kind: None},
