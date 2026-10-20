@@ -13,6 +13,7 @@ import (
 type factoryResult struct {
 	value     ast.Expr
 	parameter *int
+	tuple     []bool
 }
 
 func factoryResults(pkg *packages.Package, capacity map[*types.Func]bool) map[*types.Func]factoryResult {
@@ -32,6 +33,7 @@ func factoryResults(pkg *packages.Package, capacity map[*types.Func]bool) map[*t
 			}
 		}
 	}
+	tupleFactories(pkg, capacity, result)
 	return result
 }
 
