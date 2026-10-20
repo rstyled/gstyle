@@ -185,21 +185,21 @@ func constantElement(value ast.Expr, info *types.Info) bool {
 }
 
 func stableTableRead(id *ast.Ident, parents map[ast.Node]ast.Node, info *types.Info) bool {
-	parent := parents[id]
+	node, parent := (receiverProof{parents: parents}).parent(id)
 	switch parent := parent.(type) {
 	case *ast.RangeStmt:
-		return parent.X == id
+		return parent.X == node
 	case *ast.IndexExpr:
-		return parent.X == id && copiedTableValue(parent, parents, info)
+		return parent.X == node && copiedTableValue(parent, parents, info)
 	case *ast.CallExpr:
-		return tableLength(parent, id, info) || tableContains(parent, id, info)
+		return tableLength(parent, node, info) || tableContains(parent, node, info)
 	}
 	return false
 }
 
-func tableLength(call *ast.CallExpr, id *ast.Ident, info *types.Info) bool {
+func tableLength(call *ast.CallExpr, node ast.Node, info *types.Info) bool {
 	name, ok := call.Fun.(*ast.Ident)
-	if !ok || len(call.Args) != 1 || call.Args[0] != id {
+	if !ok || len(call.Args) != 1 || call.Args[0] != node {
 		return false
 	}
 	builtin, ok := info.Uses[name].(*types.Builtin)
@@ -207,8 +207,8 @@ func tableLength(call *ast.CallExpr, id *ast.Ident, info *types.Info) bool {
 }
 
 // Contains neither retains the table nor invokes its elements.
-func tableContains(call *ast.CallExpr, id *ast.Ident, info *types.Info) bool {
-	if len(call.Args) != 2 || call.Args[0] != id {
+func tableContains(call *ast.CallExpr, node ast.Node, info *types.Info) bool {
+	if len(call.Args) != 2 || call.Args[0] != node {
 		return false
 	}
 	selector, ok := unwrappedCallee(call.Fun).(*ast.SelectorExpr)

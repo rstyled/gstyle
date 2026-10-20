@@ -93,6 +93,8 @@ func NestedIndex()int{counts:=[1]struct{n int}{};counts[offsets["a"]].n++;return
 func BorrowedIndex(counts []int){counts[offsets["a"]]++}
 func EffectfulIndex()int{counts:=[1]int{};counts[offsets[effectKey()]]++;return counts[0]}
 func FixedContains(s string)bool{return slices.Contains(allowed,s)}
+func ParenthesizedContains(s string)bool{return slices.Contains(((allowed)),s)}
+func ParenthesizedIndex()int{counts:=[1]int{};counts[((offsets))["a"]]++;return counts[0]}
 func GenericContains(s string)bool{return slices.Contains[[]string,string](allowed,s)}
 func CallbackContains()bool{return slices.ContainsFunc(callbackAllowed,func(s string)bool{return s=="a"})}
 func ReferenceContains(v []int)bool{return slices.ContainsFunc(queriedReferences,func(s []int)bool{s[0]++;return true})}
@@ -100,7 +102,7 @@ func changingKey()string{changingOffsets["a"]=0;return "a"}
 func ChangingIndex(){counts:=[1]int{};counts[changingOffsets[changingKey()]]++}
 func ChangedContains(s string)bool{return slices.Contains(changedAllowed,s)}
 func SelfIndex(){selfIndex[selfIndex[0]]++}
-func AddressIndex()*map[string]int{return &addressedIndex}
+func AddressIndex()*map[string]int{return &((addressedIndex))}
 func AddressedIndex(){counts:=[1]int{};counts[addressedIndex["a"]]++}
 func EscapeIndex()map[string]int{return escapedIndex}
 func EscapedIndex(){counts:=[1]int{};counts[escapedIndex["a"]]++}
@@ -173,7 +175,7 @@ func closure() func() { return func() { closureWritten[0]++ } }
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"LocalIndex", "NestedIndex", "BorrowedIndex", "FixedContains", "GenericContains", "RecordValue", "ErrorValue", "Fixed", "Records", "Dispatch", "DispatchRecord", "DispatchCallback", "StyleValue", "StyleRender", "StyleMethodValue"} {
+	for _, name := range []string{"LocalIndex", "NestedIndex", "BorrowedIndex", "FixedContains", "ParenthesizedContains", "ParenthesizedIndex", "GenericContains", "RecordValue", "ErrorValue", "Fixed", "Records", "Dispatch", "DispatchRecord", "DispatchCallback", "StyleValue", "StyleRender", "StyleMethodValue"} {
 		fact := findFunction(t, facts, name)
 		for _, effect := range fact.Effects {
 			if effect.Kind == quality.Global {
