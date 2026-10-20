@@ -21,6 +21,24 @@ func errorRun(){p:=&problem{};p.ClosedError()}
 type localVisitor struct{n int}
 func(p *localVisitor)LocalVisitor(ast.Node)bool{p.n++;return true}
 func localVisitorRun(){p:=localVisitor{};ast.Inspect(&ast.Ident{},p.LocalVisitor)}
+type inlineVisitor struct{n int}
+func(p *inlineVisitor)InlineVisitor(ast.Node)bool{p.n++;return true}
+func inlineVisitorRun(){p:=inlineVisitor{};ast.Inspect(&ast.Ident{},func(node ast.Node)bool{return p.InlineVisitor(node)})}
+type nestedVisitor struct{n int}
+func(p *nestedVisitor)NestedVisitor(ast.Node)bool{p.n++;return false}
+func nestedVisitorRun(){p:=nestedVisitor{};ast.Inspect(&ast.Ident{},func(node ast.Node)bool{ast.Inspect(&ast.Ident{},func(child ast.Node)bool{return p.NestedVisitor(child)});return false})}
+type inlineSavedVisitor struct{n int}
+func(p *inlineSavedVisitor)InlineSavedVisitor(ast.Node)bool{p.n++;return true}
+func inlineSavedRun(){p:=inlineSavedVisitor{};saveVisit(&ast.Ident{},func(node ast.Node)bool{return p.InlineSavedVisitor(node)})}
+type inlineAsyncVisitor struct{n int}
+func(p *inlineAsyncVisitor)InlineAsyncVisitor(ast.Node)bool{p.n++;return true}
+func inlineAsyncRun(){p:=inlineAsyncVisitor{};go ast.Inspect(&ast.Ident{},func(node ast.Node)bool{return p.InlineAsyncVisitor(node)})}
+type inlineDeferredVisitor struct{n int}
+func(p *inlineDeferredVisitor)InlineDeferredVisitor(ast.Node)bool{p.n++;return true}
+func inlineDeferredRun(){p:=inlineDeferredVisitor{};defer ast.Inspect(&ast.Ident{},func(node ast.Node)bool{return p.InlineDeferredVisitor(node)})}
+type publishedVisitor struct{n int}
+func(p *publishedVisitor)PublishedVisitor(ast.Node)bool{p.n++;return true}
+func publishedVisitorRun(){p:=&publishedVisitor{};ast.Inspect(&ast.Ident{},func(node ast.Node)bool{published=p;return p.PublishedVisitor(node)})}
 type savedVisitor struct{n int}
 var savedVisit func(ast.Node)bool
 func saveVisit(_ ast.Node,visit func(ast.Node)bool){savedVisit=visit}
@@ -31,7 +49,7 @@ func(p *asyncVisitor)AsyncVisitor(ast.Node)bool{p.n++;return true}
 func asyncVisitorRun(){p:=asyncVisitor{};go ast.Inspect(&ast.Ident{},p.AsyncVisitor)}
 type inputVisitor struct{}
 func(p *inputVisitor)VisitorInput(node ast.Node)bool{node.(*ast.Ident).Name="changed";return false}
-func inputVisitorRun(node ast.Node){p:=inputVisitor{};ast.Inspect(node,p.VisitorInput)}
+func inputVisitorRun(node ast.Node){p:=inputVisitor{};ast.Inspect(node,func(node ast.Node)bool{return p.VisitorInput(node)})}
 type constructed struct{n int}
 func(p *constructed)ConstructorLocal(){p.n++}
 func newConstructed()*constructed{p:=&constructed{};p.n=1;return p}
@@ -136,6 +154,9 @@ func borrowedRun(values map[string]int){p:=new(borrowed);p.values=values;p.Borro
 	}{
 		{"ClosedCursor", quality.Local}, {"ClosedError", quality.Local},
 		{"LocalVisitor", quality.Local}, {"SavedVisitor", quality.External},
+		{"InlineVisitor", quality.Local}, {"NestedVisitor", quality.Local},
+		{"InlineSavedVisitor", quality.External}, {"InlineAsyncVisitor", quality.External},
+		{"InlineDeferredVisitor", quality.External}, {"PublishedVisitor", quality.External},
 		{"AsyncVisitor", quality.External}, {"VisitorInput", quality.Unknown},
 		{"ConstructorLocal", quality.Local}, {"LiteralConstructor", quality.Local},
 		{"EscapedConstructor", quality.External}, {"IndirectConstructor", quality.External},
