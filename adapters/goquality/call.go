@@ -30,7 +30,7 @@ func (x *extractor) call(call *ast.CallExpr) {
 		callee := resolvedName(object)
 		fact = quality.Call{
 			MemoryWriter: x.memoryFormat(call, callee), LocalMemoryRead: x.localMemoryRead(call),
-			CallbackExpanded: x.inlineContainerCallback(object, call), Site: site, Line: line,
+			CallbackExpanded: x.containerCallback(object, call), Site: site, Line: line,
 			Callee: callee, Local: object.Pkg() == x.pkg.Types, Dynamic: interfaceCall(x.pkg.TypesInfo, fun),
 			Args: args, MutationTarget: x.containerMutationTarget(object, call),
 		}
@@ -40,22 +40,45 @@ func (x *extractor) call(call *ast.CallExpr) {
 		fact = quality.Call{Site: site, Line: line, Callee: "<dynamic>", Dynamic: true, Args: args}
 	}
 	x.fact.Calls = append(x.fact.Calls, x.bindCallStorage(call, fact))
+	x.namedContainerCallback(call, fact)
 }
 
 func (x *extractor) containerMutationTarget(function *types.Func, call *ast.CallExpr) quality.Provenance {
-	if !quality.ContainerMutation(resolvedName(function)) && !x.inlineContainerCallback(function, call) {
+	if !quality.ContainerMutation(resolvedName(function)) && !x.containerCallback(function, call) {
 		return ""
 	}
 	return x.mutationProvenance(x.containerArgs(call)[0], true)
 }
 
-// Inline callback effects remain in the enclosing function's syntactic facts.
-func (x *extractor) inlineContainerCallback(function *types.Func, call *ast.CallExpr) bool {
+// Inline callbacks keep their syntactic facts; named callbacks get a body-backed
+// call at the sort site. Element references remain unknown, not owned with the slice.
+func (x *extractor) containerCallback(function *types.Func, call *ast.CallExpr) bool {
 	if !quality.CallbackContainer(resolvedName(function)) || len(call.Args) != 2 {
 		return false
 	}
 	_, expanded := ast.Unparen(call.Args[1]).(*ast.FuncLit)
-	return expanded
+	return expanded || x.namedCallback(call.Args[1]) != nil
+}
+
+func (x *extractor) namedCallback(value ast.Expr) *types.Func {
+	function, ok := x.calledObject(unwrappedCallee(value)).(*types.Func)
+	if !ok || function.Type().(*types.Signature).Recv() != nil {
+		return nil
+	}
+	return function
+}
+
+func (x *extractor) namedContainerCallback(call *ast.CallExpr, fact quality.Call) {
+	if !fact.CallbackExpanded {
+		return
+	}
+	function := x.namedCallback(call.Args[1])
+	if function == nil {
+		return
+	}
+	x.fact.Calls = append(x.fact.Calls, quality.Call{
+		Site: fact.Site, Line: fact.Line, Callee: resolvedName(function), Local: function.Pkg() == x.pkg.Types,
+	})
 }
 
 // Method expressions pass their receiver explicitly before the buffer.
