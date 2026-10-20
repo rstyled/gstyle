@@ -30,6 +30,21 @@ var sharedValues=Values{0}
 func (v *Values) Replace(){*v=sharedValues}
 func implicitAlias(p Values){q:=p;q.Replace();q[0]++}
 func rangeAlias(p []*State){for _,q:=range p{q.N++}}
+var published []int
+func selfAppend(p []int){p=append(p,1);p[0]++}
+func selfViewAppend(p []int){p=p[1:];p=append(p,1);p[0]++}
+func appendAfter(dummy int,p []int)[]int{return append(p,dummy)}
+func selfFactory(p []int){p=appendAfter(0,p);p[0]++}
+func publishSelf(p []int){published=p;p=append(p,1);p[0]++}
+func rebindSelf(p []int){p=published;p=append(p,1);p[0]++}
+func OwnedSelf(){selfAppend(make([]int,2))}
+func OwnedSelfView(){selfViewAppend(make([]int,2))}
+func OwnedSelfFactory(){selfFactory(make([]int,2))}
+func BorrowedSelf(p []int){selfAppend(p)}
+func BorrowedSelfView(p []int){selfViewAppend(p)}
+func BorrowedSelfFactory(p []int){selfFactory(p)}
+func PublishedSelf(){publishSelf(make([]int,2))}
+func ReboundSelf(){rebindSelf(make([]int,2))}
 func rebind(p *State){p=global;p.N++}
 func field(p *State){p.Values[0]++}
 func indirect(p **State){(*p).N++}
@@ -96,7 +111,7 @@ func Sort(values []int){slices.Sort(values)}
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"Owned", "OwnedAlias", "OwnedMapAlias", "OwnedSliceAlias", "Literal", "Receiver", "AutoAddress", "MethodExpr", "CrossOwned", "CrossReceiver", "CrossSort"} {
+	for _, name := range []string{"OwnedSelf", "OwnedSelfView", "OwnedSelfFactory", "Owned", "OwnedAlias", "OwnedMapAlias", "OwnedSliceAlias", "Literal", "Receiver", "AutoAddress", "MethodExpr", "CrossOwned", "CrossReceiver", "CrossSort"} {
 		t.Run(name, func(t *testing.T) {
 			r := resultNamed(t, report, name)
 			if len(r.Effects) != 0 || !r.Complete {
@@ -104,7 +119,7 @@ func Sort(values []int){slices.Sort(values)}
 			}
 		})
 	}
-	for _, name := range []string{"Shared", "SharedAlias", "ReboundAlias", "EscapedAlias", "ImplicitAlias", "RangeAlias", "Mixed", "Twice", "ReverseTwice", "Reassigned", "ReferenceField", "Indirect", "SharedReceiver", "SharedMethodExpr", "ReboundReceiver", "Promoted", "PromotedExpr", "NestedPointer", "CrossShared", "CrossSharedSort", "FunctionField"} {
+	for _, name := range []string{"BorrowedSelf", "BorrowedSelfView", "BorrowedSelfFactory", "PublishedSelf", "ReboundSelf", "Shared", "SharedAlias", "ReboundAlias", "EscapedAlias", "ImplicitAlias", "RangeAlias", "Mixed", "Twice", "ReverseTwice", "Reassigned", "ReferenceField", "Indirect", "SharedReceiver", "SharedMethodExpr", "ReboundReceiver", "Promoted", "PromotedExpr", "NestedPointer", "CrossShared", "CrossSharedSort", "FunctionField"} {
 		t.Run(name, func(t *testing.T) {
 			r := resultNamed(t, report, name)
 			visible := false

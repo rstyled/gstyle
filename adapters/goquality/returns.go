@@ -68,6 +68,7 @@ func (x *extractor) seedContainerParameter(parameters *types.Tuple, index *int) 
 	}
 	delete(x.parameters, parameter)
 	binding := x.bindings[parameter]
+	binding.closedSelf = false
 	binding.values = append(binding.values, nil)
 	x.bindings[parameter] = binding
 	return x.containerUses(parameter)
@@ -160,6 +161,8 @@ func (x *extractor) containerUse(id *ast.Ident) bool {
 		return x.containerCall(id, parent)
 	case *ast.UnaryExpr:
 		return parent.Op == token.AND && x.containerDecode(parent)
+	case *ast.SliceExpr:
+		return x.containerSelfView(parent)
 	default:
 		return x.containerValueUse(node, parent)
 	}
@@ -178,6 +181,11 @@ func (x *extractor) containerValueUse(node, parent ast.Node) bool {
 	default:
 		return false
 	}
+}
+
+func (x *extractor) containerSelfView(view *ast.SliceExpr) bool {
+	id, ok := ast.Unparen(view.X).(*ast.Ident)
+	return ok && x.containerResult(id, view)
 }
 
 func (x *extractor) containerDecode(address *ast.UnaryExpr) bool {
@@ -263,7 +271,7 @@ func (x *extractor) relativeContainerCall(id *ast.Ident, call *ast.CallExpr, res
 	return x.containerResult(id, call)
 }
 
-func (x *extractor) containerResult(id *ast.Ident, call *ast.CallExpr) bool {
+func (x *extractor) containerResult(id *ast.Ident, call ast.Node) bool {
 	proof := receiverProof{parents: x.fields.parents}
 	_, parent := proof.parent(call)
 	if _, discarded := parent.(*ast.ExprStmt); discarded {

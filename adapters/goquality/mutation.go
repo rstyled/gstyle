@@ -14,6 +14,7 @@ type referenceBinding struct {
 	values       []ast.Expr
 	unknown      bool
 	selfReturned bool
+	closedSelf   bool
 }
 
 // Bindings retain all possible assignments. Provenance is conservative across
@@ -38,6 +39,18 @@ func (x *extractor) collectBindings(body *ast.BlockStmt) {
 		}
 		return true
 	})
+	x.closeSelfBindings()
+}
+
+// Bindings are complete before this derived noescape certificate is cached.
+func (x *extractor) closeSelfBindings() {
+	for object, binding := range x.bindings {
+		if !x.parameters[object] || binding.unknown || !binding.selfReturned || len(binding.values) != 0 {
+			continue
+		}
+		binding.closedSelf = x.containerUses(object)
+		x.bindings[object] = binding
+	}
 }
 
 // Range values from shared containers remain shared; fresh containers can
