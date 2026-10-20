@@ -10,11 +10,7 @@ func (m dashboard) sizeChart(width, height int) []string {
 	columns, rows := max(width-6, 1), max(height-2, 2)
 	duration := max(m.now.Sub(m.started), time.Millisecond)
 	lastColumn := max(columns-1, 1)
-	emptyRow := strings.Repeat(" ", columns)
-	grid := make([][]rune, rows)
-	for i := range grid {
-		grid[i] = []rune(emptyRow)
-	}
+	grid := []rune(strings.Repeat(strings.Repeat(" ", columns), rows))
 	point := 0
 	for x := range columns {
 		at := time.Duration(float64(duration) * float64(x) / float64(lastColumn))
@@ -22,10 +18,11 @@ func (m dashboard) sizeChart(width, height int) []string {
 			point++
 		}
 		y := chartRow(m.history[point].bytes, m.original, rows)
-		grid[y][x] = '●'
+		grid[y*columns+x] = '●'
 	}
 	lines := make([]string, rows)
-	for y, row := range grid {
+	for y := range rows {
+		row := grid[y*columns : (y+1)*columns]
 		label := fmt.Sprintf("%3d%%│", 100-y*100/(rows-1))
 		lines[y] = label + dashboardGreen.Render(string(row))
 	}
