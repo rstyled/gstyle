@@ -110,7 +110,7 @@ func (p receiverProof) typeUse(id *ast.Ident) bool {
 	}
 	switch parent := parent.(type) {
 	case *ast.Field:
-		return p.receiverDeclaration(parent)
+		return p.closedDeclaration(parent)
 	case *ast.CompositeLit:
 		return p.localConstruction(parent)
 	case *ast.CallExpr:
@@ -122,10 +122,17 @@ func (p receiverProof) typeUse(id *ast.Ident) bool {
 	}
 }
 
-func (p receiverProof) receiverDeclaration(field *ast.Field) bool {
+func (p receiverProof) closedDeclaration(field *ast.Field) bool {
 	list, _ := p.parents[field].(*ast.FieldList)
-	fn, ok := p.parents[list].(*ast.FuncDecl)
-	return ok && fn.Recv == list
+	switch owner := p.parents[list].(type) {
+	case *ast.FuncDecl:
+		return owner.Recv == list
+	case *ast.FuncType:
+		fn, ok := p.parents[owner].(*ast.FuncDecl)
+		return ok && p.constructorResult(fn, list, field)
+	default:
+		return false
+	}
 }
 
 func (p receiverProof) newConstruction(call *ast.CallExpr) bool {
@@ -152,7 +159,16 @@ func (p receiverProof) localNames(names []*ast.Ident) bool {
 	return len(names) != 0
 }
 
-func (p receiverProof) localConstruction(value ast.Node) bool {
+func (p receiverProof) constructedNames(value ast.Expr, names []*ast.Ident) bool {
+	for _, id := range names {
+		if receiverType(p.pkg.TypesInfo.ObjectOf(id).Type()) != receiverType(p.pkg.TypesInfo.TypeOf(value)) {
+			return false // An interface holder can publish the root indirectly.
+		}
+	}
+	return p.localNames(names)
+}
+
+func (p receiverProof) localConstruction(value ast.Expr) bool {
 	_, parent := p.parent(value)
 	if address, ok := parent.(*ast.UnaryExpr); ok {
 		// A typed record construction permits only address-taking here.
@@ -162,7 +178,9 @@ func (p receiverProof) localConstruction(value ast.Node) bool {
 	case *ast.AssignStmt:
 		return p.localAssignment(parent)
 	case *ast.ValueSpec:
-		return p.localNames(parent.Names)
+		return p.constructedNames(value, parent.Names)
+	case *ast.ReturnStmt:
+		return p.constructorReturn(parent, receiverType(p.pkg.TypesInfo.TypeOf(value)))
 	default:
 		return false
 	}
@@ -193,11 +211,11 @@ func (p receiverProof) variableUse(id *ast.Ident, object types.Object, name type
 	}
 	node, parent := p.parent(id)
 	selector, ok := parent.(*ast.SelectorExpr)
-	if !ok || selector.X != node {
-		return false
+	if !ok {
+		return p.constructorReturn(parent, name)
 	}
 	selection := p.pkg.TypesInfo.Selections[selector]
-	if selection == nil {
+	if selection == nil || selector.X != node {
 		return false
 	}
 	if selection.Kind() == types.FieldVal {
