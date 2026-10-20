@@ -287,7 +287,7 @@ func (x *extractor) constructedOrigin(value ast.Expr, seen map[types.Object]bool
 	case *ast.SelectorExpr:
 		return x.fieldOrigin(value, seen)
 	case *ast.IndexExpr:
-		return referencedOrigin(x.origin(value.X, seen))
+		return x.indexedOrigin(value, seen)
 	default:
 		return quality.Unknown
 	}

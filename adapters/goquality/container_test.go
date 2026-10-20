@@ -210,6 +210,24 @@ func TupleRecursiveBorrowed(input []int){_,out:=tupleBadB(input,2);slices.Sort(o
 func TupleAddress(){_,out:=tupleAddress();slices.Sort(out)}
 func TupleClosure(){_,out:=tupleClosure();slices.Sort(out)}
 func TupleDeferred(){_,out:=tupleDeferred();slices.Sort(out)}
+func mapEntries()map[int][]int{out:=map[int][]int{};for _,n:=range []int{1,2}{out[n]=append(out[n],n)};return out}
+func MapEntries(){_ =mapEntries()}
+func MapMade(){out:=make(map[int][]int);out[1]=append(out[2],1)}
+func MapSpread(input []int){out:=map[int][]int{};out[1]=append(out[1],input...)}
+func MapShared(out map[int][]int){out[1]=append(out[1],1)}
+func MapBorrowed(input []int){out:=map[int][]int{1:input};out[1]=append(out[1],1)}
+func MapInserted(input []int){out:=map[int][]int{};out[1]=input;out[1]=append(out[1],1)}
+func MapCopied(input map[int][]int){out:=map[int][]int{};maps.Copy(out,input);out[1]=append(out[1],1)}
+func MapAliased(input []int){out:=map[int][]int{};alias:=out;alias[1]=input;out[1]=append(out[1],1)}
+func MapPublished(){out:=map[int][]int{};out[1]=append(out[1],1);shared=out[1];out[1]=append(out[1],1)}
+func MapRanged(){out:=map[int][]int{};out[1]=append(out[1],1);for _,value:=range out{shared=value};out[1]=append(out[1],1)}
+func MapAddressed(){out:=map[int][]int{};ptr:=&out;_ =ptr;out[1]=append(out[1],1)}
+func MapCaptured(){out:=map[int][]int{};f:=func(){shared=out[1]};_ =f;out[1]=append(out[1],1)}
+func MapDeferred(){out:=map[int][]int{};defer func(){shared=out[1]}();out[1]=append(out[1],1)}
+func MapShadowed(input []int){out:=map[int][]int{};append:=func([]int,int)[]int{return input};out[1]=append(out[1],1)}
+func MapEffect(input []int){out:=map[int][]int{};out[1]=append(out[1],appendElement(input))}
+func mapReferences(input *int)map[int][]*int{out:=map[int][]*int{};out[1]=append(out[1],input);return out}
+func MapPointee(input *int){out:=mapReferences(input);*out[1][0]=1}
 func SpareCapacity(input []int){out:=append(input[:len(input):cap(input)],1);slices.Sort(out)}
 func UnequalBounds(input []int,n,m int){out:=append(input[:n:m],1);slices.Sort(out)}
 func EmptyExpansion(input,extra []int){out:=append(input[:len(input):len(input)],extra...);slices.Sort(out)}
@@ -271,7 +289,7 @@ func Caller(){helper()}
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"ReturnedRelativeSelf", "ReturnedRelativeNil", "ReturnedRelativeLocal", "ReturnedRecursive", "ReturnedFinalAppend", "ReturnedDirectMake", "ReturnedDirectClone", "ReturnedSorted", "ReturnedCopied", "ReturnedReferences", "SelfView", "SelfViewAppend", "ReturnedQueue", "ReturnedFilled", "ReturnedMap", "NamedCallback", "NamedStandard", "NamedStable", "InlineSort", "InlineStable", "InlineReflect", "InlineReflectStable", "InlinePolicy", "FreshContainers", "FreshBytes", "FreshRunes", "NamedString", "NilClone", "NilSelf", "NilSort", "NilDirect", "LocalSort", "NamedSort", "LocalCopy", "LocalReverse", "LocalCompact", "LocalDelete", "LocalInsert", "LocalReplace", "LocalInts", "LocalFloats", "LocalStrings", "LocalAlias", "LocalAppend", "SelfAppend", "CloneSort", "CloneCopy", "Caller"} {
+	for _, name := range []string{"ReturnedRelativeSelf", "ReturnedRelativeNil", "ReturnedRelativeLocal", "ReturnedRecursive", "ReturnedFinalAppend", "ReturnedDirectMake", "ReturnedDirectClone", "ReturnedSorted", "ReturnedCopied", "ReturnedReferences", "SelfView", "SelfViewAppend", "ReturnedQueue", "ReturnedFilled", "ReturnedMap", "MapEntries", "MapMade", "MapSpread", "NamedCallback", "NamedStandard", "NamedStable", "InlineSort", "InlineStable", "InlineReflect", "InlineReflectStable", "InlinePolicy", "FreshContainers", "FreshBytes", "FreshRunes", "NamedString", "NilClone", "NilSelf", "NilSort", "NilDirect", "LocalSort", "NamedSort", "LocalCopy", "LocalReverse", "LocalCompact", "LocalDelete", "LocalInsert", "LocalReplace", "LocalInts", "LocalFloats", "LocalStrings", "LocalAlias", "LocalAppend", "SelfAppend", "CloneSort", "CloneCopy", "Caller"} {
 		t.Run(name, func(t *testing.T) {
 			r := resultNamed(t, report, name)
 			if len(r.Effects) != 0 || !r.Complete {
@@ -284,7 +302,7 @@ func Caller(){helper()}
 			t.Fatalf("%s loses fresh append ownership: %+v", name, r)
 		}
 	}
-	for _, name := range []string{"TupleBorrowed", "TupleMixed", "TupleEscaped", "TupleNamed", "TupleDynamic", "TuplePointee", "TupleEffect", "TuplePointer", "TupleRecord", "TupleRecursiveBorrowed", "TupleAddress", "TupleClosure", "TupleDeferred", "SpareCapacity", "UnequalBounds", "EmptyExpansion", "ChangingBound", "ShadowedLength", "ChannelBounds", "CapturedBounds", "AddressedBounds", "ForcedPointee", "ForcedArgumentEffect", "ReturnedCappedDirect", "ReturnedCappedMixed", "ReturnedCappedNamed", "ReturnedCappedDynamic", "ReturnedCappedEmpty", "ReturnedCappedEffect", "ReturnedCappedPointee"} {
+	for _, name := range []string{"MapShared", "MapBorrowed", "MapInserted", "MapCopied", "MapAliased", "MapPublished", "MapRanged", "MapAddressed", "MapCaptured", "MapDeferred", "MapShadowed", "MapEffect", "MapPointee", "TupleBorrowed", "TupleMixed", "TupleEscaped", "TupleNamed", "TupleDynamic", "TuplePointee", "TupleEffect", "TuplePointer", "TupleRecord", "TupleRecursiveBorrowed", "TupleAddress", "TupleClosure", "TupleDeferred", "SpareCapacity", "UnequalBounds", "EmptyExpansion", "ChangingBound", "ShadowedLength", "ChannelBounds", "CapturedBounds", "AddressedBounds", "ForcedPointee", "ForcedArgumentEffect", "ReturnedCappedDirect", "ReturnedCappedMixed", "ReturnedCappedNamed", "ReturnedCappedDynamic", "ReturnedCappedEmpty", "ReturnedCappedEffect", "ReturnedCappedPointee"} {
 		if len(resultNamed(t, report, name).Effects) == 0 {
 			t.Fatalf("%s loses borrowed storage or argument effects", name)
 		}
@@ -302,6 +320,13 @@ func Caller(){helper()}
 		f := findFunction(t, facts, name)
 		if f.Calls[len(f.Calls)-1].MutationTarget == quality.Local {
 			t.Fatalf("%s hides borrowed or escaped tuple storage: %+v", name, f.Calls)
+		}
+	}
+	for _, name := range []string{"MapShared", "MapBorrowed", "MapInserted", "MapCopied", "MapAliased", "MapPublished", "MapRanged", "MapAddressed", "MapCaptured", "MapDeferred"} {
+		f := findFunction(t, facts, name)
+		last := f.Mutations[len(f.Mutations)-1]
+		if last.Provenance == quality.Local {
+			t.Fatalf("%s hides borrowed or published entry storage: %+v", name, f.Mutations)
 		}
 	}
 	for _, name := range []string{"ChannelBounds", "CapturedBounds", "AddressedBounds"} {
