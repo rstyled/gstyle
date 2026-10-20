@@ -81,7 +81,7 @@ func (x *extractor) bindAssignments(places, values []ast.Expr) {
 		if object == nil {
 			continue
 		}
-		value := assignmentValue(values, index, len(places))
+		value := x.boundValue(values, index, len(places))
 		if x.selfSliceAssignment(object, value) {
 			continue
 		}
@@ -369,6 +369,9 @@ func (x *extractor) allocationOrigin(call *ast.CallExpr, seen map[types.Object]b
 }
 
 func (x *extractor) factoryOrigin(call *ast.CallExpr, result factoryResult, seen map[types.Object]bool) quality.Provenance {
+	if result.value == nil {
+		return quality.Unknown
+	}
 	if result.parameter == nil {
 		return quality.Local
 	}

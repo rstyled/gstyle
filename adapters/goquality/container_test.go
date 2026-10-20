@@ -172,6 +172,44 @@ func ReturnedCappedDynamic(input []int, get func([]int)[]int){out:=append(get(in
 func ReturnedCappedEmpty(input,extra []int){out:=append(capped(input),extra...);slices.Sort(out)}
 func ReturnedCappedEffect(input []int){out:=append(cappedEffect(input),1);slices.Sort(out)}
 func ReturnedCappedPointee(input []*int){out:=append(cappedReferences(input),nil);*out[0]=1}
+func tupleFresh(flag bool)(int,[]int){if flag{return 0,nil};return 1,[]int{1}}
+func tupleBorrowed(input []int)([]int,[]int){return []int{1},input}
+func tupleMixed(input []int,flag bool)(int,[]int){if flag{return 0,input};return 1,[]int{1}}
+func tupleEscaped()(int,[]int){out:=[]int{1};shared=out;return 0,out}
+func tuplePointees(input *int)(int,[]*int){return 0,[]*int{input}}
+func tupleEffect(input *int)(int,[]int){*input++;return 0,[]int{1}}
+func tupleNamed(input []int)(n int,out []int){defer func(){out=input}();return 0,[]int{1}}
+func tuplePointer(input *int)(*int,[]int){return input,[]int{1}}
+func tupleRecord(input []int)([]int,struct{Values []int}){return []int{1},struct{Values []int}{input}}
+func tupleGeneric[T any](input T)(int,[]T){return 0,[]T{input}}
+func tupleMap()(int,map[int]int){return 0,map[int]int{}}
+func TupleLocal(){_,out:=tupleFresh(false);slices.Sort(out)}
+func TupleGeneric(){_,out:=tupleGeneric(1);slices.Sort(out)}
+func TupleMap(){_,out:=tupleMap();maps.Copy(out,map[int]int{1:1})}
+func TupleBorrowed(input []int){out,borrowed:=tupleBorrowed(input);slices.Sort(out);slices.Sort(borrowed)}
+func TupleMixed(input []int){_,out:=tupleMixed(input,true);slices.Sort(out)}
+func TupleEscaped(){_,out:=tupleEscaped();slices.Sort(out)}
+func TupleNamed(input []int){_,out:=tupleNamed(input);slices.Sort(out)}
+func TupleDynamic(get func()(int,[]int)){_,out:=get();slices.Sort(out)}
+func TuplePointee(input *int){_,out:=tuplePointees(input);*out[0]=1}
+func TupleEffect(input *int){_,out:=tupleEffect(input);slices.Sort(out)}
+func TuplePointer(input *int){out,_:=tuplePointer(input);*out=1}
+func TupleRecord(input []int){_,out:=tupleRecord(input);out.Values[0]=1}
+func tupleForward()(int,[]int){return tupleFresh(false)}
+func tupleRecursive(n int)(int,[]int){if n==0{return 0,nil};_,out:=tupleMutual(n-1);return n,append(out,n)}
+func tupleMutual(n int)(int,[]int){return tupleRecursive(n)}
+func tupleBadA(input []int,n int)(int,[]int){if n==0{return 0,input};return tupleBadB(input,n-1)}
+func tupleBadB(input []int,n int)(int,[]int){return tupleBadA(input,n)}
+func tupleAddress()(int,[]int){out:=[]int{1};leakedElement=&out[0];return 0,out}
+func tupleClosure()(int,[]int){out:=[]int{1};f:=func(){shared=out};_ =f;return 0,out}
+func tupleDeferred()(int,[]int){out:=[]int{1};defer retain(out);return 0,out}
+func TupleMutate(){_,out:=tupleFresh(false);out[0]=2;out=append(out,3)}
+func TupleForward(){_,out:=tupleForward();slices.Sort(out)}
+func TupleRecursive(){_,out:=tupleMutual(2);slices.Sort(out)}
+func TupleRecursiveBorrowed(input []int){_,out:=tupleBadB(input,2);slices.Sort(out)}
+func TupleAddress(){_,out:=tupleAddress();slices.Sort(out)}
+func TupleClosure(){_,out:=tupleClosure();slices.Sort(out)}
+func TupleDeferred(){_,out:=tupleDeferred();slices.Sort(out)}
 func SpareCapacity(input []int){out:=append(input[:len(input):cap(input)],1);slices.Sort(out)}
 func UnequalBounds(input []int,n,m int){out:=append(input[:n:m],1);slices.Sort(out)}
 func EmptyExpansion(input,extra []int){out:=append(input[:len(input):len(input)],extra...);slices.Sort(out)}
@@ -231,14 +269,29 @@ func Caller(){helper()}
 			}
 		})
 	}
-	for _, name := range []string{"ForcedAppend", "ForcedBound", "ForcedConstant", "ReturnedForced", "ReturnedCapped", "ReturnedCappedBranches", "ReturnedCappedGeneric", "ReturnedCappedAppend"} {
+	for _, name := range []string{"TupleMutate", "TupleLocal", "TupleGeneric", "TupleMap", "TupleForward", "ForcedAppend", "ForcedBound", "ForcedConstant", "ReturnedForced", "ReturnedCapped", "ReturnedCappedBranches", "ReturnedCappedGeneric", "ReturnedCappedAppend"} {
 		if r := resultNamed(t, report, name); len(r.Effects) != 0 || !r.Complete {
 			t.Fatalf("%s loses fresh append ownership: %+v", name, r)
 		}
 	}
-	for _, name := range []string{"SpareCapacity", "UnequalBounds", "EmptyExpansion", "ChangingBound", "ShadowedLength", "ChannelBounds", "CapturedBounds", "AddressedBounds", "ForcedPointee", "ForcedArgumentEffect", "ReturnedCappedDirect", "ReturnedCappedMixed", "ReturnedCappedNamed", "ReturnedCappedDynamic", "ReturnedCappedEmpty", "ReturnedCappedEffect", "ReturnedCappedPointee"} {
+	for _, name := range []string{"TupleBorrowed", "TupleMixed", "TupleEscaped", "TupleNamed", "TupleDynamic", "TuplePointee", "TupleEffect", "TuplePointer", "TupleRecord", "TupleRecursiveBorrowed", "TupleAddress", "TupleClosure", "TupleDeferred", "SpareCapacity", "UnequalBounds", "EmptyExpansion", "ChangingBound", "ShadowedLength", "ChannelBounds", "CapturedBounds", "AddressedBounds", "ForcedPointee", "ForcedArgumentEffect", "ReturnedCappedDirect", "ReturnedCappedMixed", "ReturnedCappedNamed", "ReturnedCappedDynamic", "ReturnedCappedEmpty", "ReturnedCappedEffect", "ReturnedCappedPointee"} {
 		if len(resultNamed(t, report, name).Effects) == 0 {
 			t.Fatalf("%s loses borrowed storage or argument effects", name)
+		}
+	}
+	if f := findFunction(t, facts, "TupleBorrowed"); f.Calls[1].MutationTarget != quality.Local {
+		t.Fatalf("first tuple result loses fresh storage: %+v", f.Calls)
+	}
+	for _, name := range []string{"TupleRecursive", "TupleEffect"} {
+		f := findFunction(t, facts, name)
+		if f.Calls[len(f.Calls)-1].MutationTarget != quality.Local {
+			t.Fatalf("%s loses owned tuple storage: %+v", name, f.Calls)
+		}
+	}
+	for _, name := range []string{"TupleBorrowed", "TupleMixed", "TupleEscaped", "TupleNamed", "TupleDynamic", "TupleRecursiveBorrowed", "TupleAddress", "TupleClosure", "TupleDeferred"} {
+		f := findFunction(t, facts, name)
+		if f.Calls[len(f.Calls)-1].MutationTarget == quality.Local {
+			t.Fatalf("%s hides borrowed or escaped tuple storage: %+v", name, f.Calls)
 		}
 	}
 	for _, name := range []string{"ChannelBounds", "CapturedBounds", "AddressedBounds"} {

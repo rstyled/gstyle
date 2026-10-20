@@ -45,7 +45,7 @@ func localContainerReturn(pkg *packages.Package, fn *ast.FuncDecl, parameter *in
 	if !x.seedContainerParameter(signature.Params(), parameter) {
 		return nil
 	}
-	return x.ownedContainerReturn(fn.Body)
+	return x.ownedContainerReturn(fn.Body, 0, 1)
 }
 
 // A relative certificate substitutes a fresh input only for its selected formal.
@@ -74,7 +74,7 @@ func (x *extractor) seedContainerParameter(parameters *types.Tuple, index *int) 
 	return x.containerUses(parameter)
 }
 
-func (x *extractor) ownedContainerReturn(body *ast.BlockStmt) ast.Expr {
+func (x *extractor) ownedContainerReturn(body *ast.BlockStmt, index, count int) ast.Expr {
 	var result ast.Expr
 	valid := true
 	ast.Inspect(body, func(node ast.Node) bool {
@@ -82,8 +82,8 @@ func (x *extractor) ownedContainerReturn(body *ast.BlockStmt) ast.Expr {
 		case *ast.FuncLit:
 			return false
 		case *ast.ReturnStmt:
-			value := assignmentValue(node.Results, 0, 1)
-			if !x.returnedContainer(value) {
+			value := assignmentValue(node.Results, index, count)
+			if !x.returnedResult(node.Results, index, count) {
 				valid = false
 				return false
 			}
@@ -95,6 +95,14 @@ func (x *extractor) ownedContainerReturn(body *ast.BlockStmt) ast.Expr {
 		return nil
 	}
 	return result
+}
+
+func (x *extractor) returnedResult(values []ast.Expr, index, count int) bool {
+	value := assignmentValue(values, index, count)
+	if len(values) != count {
+		return x.ownedTuple(value, index)
+	}
+	return x.returnedContainer(value)
 }
 
 // Self recursion is an induction hypothesis: every terminating return must
