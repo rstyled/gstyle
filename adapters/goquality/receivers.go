@@ -206,7 +206,7 @@ func (p receiverProof) function(node ast.Node) ast.Node {
 }
 
 func (p receiverProof) variableUse(id *ast.Ident, object types.Object, name types.Object) bool {
-	if p.function(id) != p.function(p.defs[object]) {
+	if !p.sameReceiverLifetime(id, p.defs[object]) {
 		return false
 	}
 	node, parent := p.parent(id)
@@ -222,6 +222,36 @@ func (p receiverProof) variableUse(id *ast.Ident, object types.Object, name type
 		return p.fieldUse(selector)
 	}
 	return p.methodUse(selector, selection, name)
+}
+
+// A synchronous Inspect callback can borrow a receiver from its enclosing
+// function. Other captured uses still reject the closed-receiver proof.
+func (p receiverProof) sameReceiverLifetime(use, definition ast.Node) bool {
+	owner := p.function(definition)
+	for scope := p.function(use); scope != owner; {
+		closure, ok := scope.(*ast.FuncLit)
+		if !ok {
+			return false
+		}
+		scope = p.visitorOwner(closure)
+		if scope == nil {
+			return false
+		}
+	}
+	return true
+}
+
+func (p receiverProof) visitorOwner(closure *ast.FuncLit) ast.Node {
+	node, parent := p.parent(closure)
+	call, ok := parent.(*ast.CallExpr)
+	if !ok || call.Fun == node || !p.receiverInvocation(call, node) {
+		return nil
+	}
+	switch p.parents[call].(type) {
+	case *ast.GoStmt, *ast.DeferStmt:
+		return nil
+	}
+	return p.function(p.parents[call])
 }
 
 func (p receiverProof) methodUse(selector *ast.SelectorExpr, selection *types.Selection, name types.Object) bool {
