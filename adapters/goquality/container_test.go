@@ -13,7 +13,7 @@ import (
 
 func TestContainerStorageOwnership(t *testing.T) {
 	root := qualitySourceModule(t, []byte(`package repro
-import("bytes";"encoding/json";"maps";"slices";"sort";"strings")
+import("cmp";"bytes";"encoding/json";"maps";"slices";"sort";"strings")
 var shared = []int{2,1}
 var counter int
 type Numbers []int
@@ -243,6 +243,16 @@ func InlineReflectStable(){v:=[]int{2,1};sort.SliceStable(v,func(a,b int)bool{re
 func InlineShared(v []int){slices.SortFunc(v,func(a,b int)int{return a-b})}
 func NamedCallback(){v:=[]int{2,1};slices.SortFunc(v,compare)}
 func compare(a,b int)int{return a-b}
+func NamedStandard(){v:=[]int{2,1};slices.SortFunc(v,cmp.Compare[int])}
+func NamedStable(){v:=[]int{2,1};slices.SortStableFunc(v,compare)}
+func compareNoisy(a,b int)int{counter++;return compare(a,b)}
+func NamedNoisy(){v:=[]int{2,1};slices.SortFunc(v,compareNoisy)}
+func comparePointers(a,b *int)int{*a=1;return 0}
+func NamedPointee(a,b *int){v:=[]*int{a,b};slices.SortFunc(v,comparePointers)}
+func NamedShared(v []int){slices.SortFunc(v,compare)}
+type comparer struct{}
+func(comparer)Compare(a,b int)int{return a-b}
+func MethodCallback(){v:=[]int{2,1};slices.SortFunc(v,(comparer{}).Compare)}
 func VariableCallback(){v:=[]int{2,1};compare:=func(a,b int)int{return a-b};slices.SortFunc(v,compare)}
 func InlineOutput(){v:=[]int{2,1};slices.SortFunc(v,func(a,b int)int{println(a);return a-b})}
 func InlineCaptured(shared *int){v:=[]int{2,1};slices.SortFunc(v,func(a,b int)int{*shared++;return a-b})}
@@ -261,7 +271,7 @@ func Caller(){helper()}
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"ReturnedRelativeSelf", "ReturnedRelativeNil", "ReturnedRelativeLocal", "ReturnedRecursive", "ReturnedFinalAppend", "ReturnedDirectMake", "ReturnedDirectClone", "ReturnedSorted", "ReturnedCopied", "ReturnedReferences", "SelfView", "SelfViewAppend", "ReturnedQueue", "ReturnedFilled", "ReturnedMap", "InlineSort", "InlineStable", "InlineReflect", "InlineReflectStable", "InlinePolicy", "FreshContainers", "FreshBytes", "FreshRunes", "NamedString", "NilClone", "NilSelf", "NilSort", "NilDirect", "LocalSort", "NamedSort", "LocalCopy", "LocalReverse", "LocalCompact", "LocalDelete", "LocalInsert", "LocalReplace", "LocalInts", "LocalFloats", "LocalStrings", "LocalAlias", "LocalAppend", "SelfAppend", "CloneSort", "CloneCopy", "Caller"} {
+	for _, name := range []string{"ReturnedRelativeSelf", "ReturnedRelativeNil", "ReturnedRelativeLocal", "ReturnedRecursive", "ReturnedFinalAppend", "ReturnedDirectMake", "ReturnedDirectClone", "ReturnedSorted", "ReturnedCopied", "ReturnedReferences", "SelfView", "SelfViewAppend", "ReturnedQueue", "ReturnedFilled", "ReturnedMap", "NamedCallback", "NamedStandard", "NamedStable", "InlineSort", "InlineStable", "InlineReflect", "InlineReflectStable", "InlinePolicy", "FreshContainers", "FreshBytes", "FreshRunes", "NamedString", "NilClone", "NilSelf", "NilSort", "NilDirect", "LocalSort", "NamedSort", "LocalCopy", "LocalReverse", "LocalCompact", "LocalDelete", "LocalInsert", "LocalReplace", "LocalInts", "LocalFloats", "LocalStrings", "LocalAlias", "LocalAppend", "SelfAppend", "CloneSort", "CloneCopy", "Caller"} {
 		t.Run(name, func(t *testing.T) {
 			r := resultNamed(t, report, name)
 			if len(r.Effects) != 0 || !r.Complete {
@@ -347,7 +357,7 @@ func Caller(){helper()}
 			t.Fatalf("%s loses pointee or dynamic-call evidence", name)
 		}
 	}
-	for _, name := range []string{"Callback", "NamedCallback", "VariableCallback"} {
+	for _, name := range []string{"Callback", "MethodCallback", "VariableCallback"} {
 		callback := findFunction(t, facts, name)
 		if callback.Calls[0].MutationTarget != "" || callback.Calls[0].CallbackExpanded || len(resultNamed(t, report, name).Effects) == 0 {
 			t.Fatalf("unproved callback %s became local: %+v", name, callback)
@@ -357,6 +367,7 @@ func Caller(){helper()}
 		name string
 		kind quality.Kind
 	}{
+		{"NamedNoisy", quality.Global}, {"NamedPointee", quality.UnknownEffect}, {"NamedShared", quality.MutationEffect},
 		{"ReturnedRelativeEffect", quality.Global}, {"ReturnedCalled", quality.Global}, {"ReturnedOutput", quality.IO}, {"InlineOutput", quality.IO}, {"InlineCaptured", quality.MutationEffect}, {"InlineGlobal", quality.Global}, {"InlineLaunch", quality.UnknownEffect}, {"InlineChannel", quality.UnknownEffect},
 	} {
 		got := resultNamed(t, report, tc.name)
@@ -382,6 +393,15 @@ func Caller(){helper()}
 	}
 	if !reflect.DeepEqual(report, roundtrip) {
 		t.Fatal("saved ownership facts changed evaluation")
+	}
+	policy := quality.DefaultConfig()
+	policy.Prefixes = append(policy.Prefixes, quality.Prefix{Path: "example.com/quality-repro.compare", Kind: quality.IO})
+	callbackOverride, err := quality.Evaluate(restored, policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := resultNamed(t, callbackOverride, "NamedCallback"); len(got.Effects) != 1 || got.Effects[0].Kind != quality.IO {
+		t.Fatalf("named callback hides configured effect: %+v", got)
 	}
 	for _, path := range []string{"strings.Compare", "slices.SortFunc"} {
 		config := quality.DefaultConfig()

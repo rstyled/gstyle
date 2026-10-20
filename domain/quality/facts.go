@@ -77,7 +77,7 @@ type Call struct {
 	MemoryWriter bool `json:"memory_writer,omitempty"`
 	// LocalJSONDecode proves a closed decode writes only unaliased fresh storage.
 	LocalJSONDecode bool `json:"local_json_decode,omitempty"`
-	// CallbackExpanded retains inline callback evidence in the enclosing facts.
+	// CallbackExpanded retains inline or body-backed callback evidence in the enclosing facts.
 	CallbackExpanded bool `json:"callback_expanded,omitempty"`
 	// Site is the opening-parenthesis offset plus one; zero means legacy facts.
 	Site        int       `json:"site,omitempty"`
