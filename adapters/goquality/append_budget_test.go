@@ -20,6 +20,7 @@ func TestAppendAssignmentsShareBudgetSite(t *testing.T) {
  func Parenthesized(s *State) { s.Values=(append)(s.Values,1); s.Values=append(s.Values,2) }
  func Nested(s *State) { s.Values=append(append(s.Values,1),2) }
  func capped(xs []int)[]int{return xs[:len(xs):len(xs)]}
+ func CappedSpread(xs []int){ys:=capped(xs);ys=append(ys,[]int{1}...);_ =ys}
  func CappedSelf(xs []int){ys:=capped(xs);ys=append(ys,1);_ =ys}
  func Forced(xs []int) {var ys []int;ys=append(xs[:len(xs):len(xs)],1);_ =ys}
  `))
@@ -47,7 +48,7 @@ func TestAppendAssignmentsShareBudgetSite(t *testing.T) {
 		{"Local", 4, 0, false}, {"Shared", 4, 0, true}, {"Field", 4, 0, true},
 		{"Separate", 8, 1, false}, {"Other", 2, 0, true}, {"Ordinary", 4, 1, false},
 		{"Parenthesized", 4, 0, true}, {"Nested", 3, 0, true},
-		{"Forced", 2, 0, false}, {"CappedSelf", 2, 0, false},
+		{"Forced", 2, 0, false}, {"CappedSelf", 2, 0, false}, {"CappedSpread", 2, 0, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			f := findFunction(t, facts, test.name)

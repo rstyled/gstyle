@@ -10,10 +10,25 @@ import (
 // A nonempty append to a full slice with len == cap allocates new outer
 // storage. Referenced elements retain their borrowed provenance.
 func (x *extractor) freshAppend(call *ast.CallExpr) bool {
-	if call.Ellipsis.IsValid() || len(call.Args) < 2 {
+	if !x.appendAddsElements(call) {
 		return false
 	}
 	return x.fullSlice(call.Args[0])
+}
+
+func (x *extractor) appendAddsElements(call *ast.CallExpr) bool {
+	if len(call.Args) < 2 {
+		return false
+	}
+	if !call.Ellipsis.IsValid() {
+		return true
+	}
+	value := ast.Unparen(call.Args[1])
+	if literal, ok := value.(*ast.CompositeLit); ok {
+		return len(literal.Elts) > 0
+	}
+	literal := x.pkg.TypesInfo.Types[value].Value
+	return literal != nil && literal.Kind() == constant.String && constant.StringVal(literal) != ""
 }
 
 func (x *extractor) fullSlice(value ast.Expr) bool {

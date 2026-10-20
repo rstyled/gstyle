@@ -189,6 +189,15 @@ func LocalCappedReborrow(input []int){out:=capped(input);out=append(out,1);out=i
 func LocalCappedEmpty(input,extra []int){out:=capped(input);out=append(out,extra...);slices.Sort(out)}
 func LocalCappedEffect(input []int){out:=cappedEffect(input);out=append(out,1);slices.Sort(out)}
 func LocalCappedPointee(input []*int){out:=cappedReferences(input);out=append(out,nil);*out[0]=1}
+func ForcedSpread(input []int){out:=append(input[:len(input):len(input)],[]int{1}...);slices.Sort(out)}
+func ForcedSpreadKey(input []int){out:=append(capped(input),[]int{3:1}...);slices.Sort(out)}
+func LocalCappedSpread(input []int){out:=capped(input);out=append(out,[]int{1}...);slices.Sort(out)}
+func ForcedStringSpread(input []byte){const tail="x"+"y";out:=append(input[:len(input):len(input)],tail...);slices.Sort(out)}
+func ForcedEmptyLiteral(input []int){out:=append(capped(input),[]int{}...);slices.Sort(out)}
+func ForcedEmptyString(input []byte){out:=append(input[:len(input):len(input)],""...);slices.Sort(out)}
+func UncappedSpread(input []int){out:=append(input,[]int{1}...);slices.Sort(out)}
+func ForcedSpreadEffect(input []int){out:=append(capped(input),[]int{appendElement(input)}...);slices.Sort(out)}
+func ForcedSpreadPointee(input []*int){out:=append(cappedReferences(input),[]*int{nil}...);*out[0]=1}
 func tupleFresh(flag bool)(int,[]int){if flag{return 0,nil};return 1,[]int{1}}
 func tupleBorrowed(input []int)([]int,[]int){return []int{1},input}
 func tupleMixed(input []int,flag bool)(int,[]int){if flag{return 0,input};return 1,[]int{1}}
@@ -314,12 +323,12 @@ func Caller(){helper()}
 			}
 		})
 	}
-	for _, name := range []string{"TupleMutate", "TupleLocal", "TupleGeneric", "TupleMap", "TupleForward", "ForcedAppend", "ForcedBound", "ForcedConstant", "ReturnedForced", "ReturnedCapped", "ReturnedCappedBranches", "ReturnedCappedGeneric", "ReturnedCappedAppend", "LocalCapped", "LocalCappedView", "LocalCappedAlias", "LocalCappedReset", "LocalCappedTwice"} {
+	for _, name := range []string{"TupleMutate", "TupleLocal", "TupleGeneric", "TupleMap", "TupleForward", "ForcedAppend", "ForcedBound", "ForcedConstant", "ReturnedForced", "ReturnedCapped", "ReturnedCappedBranches", "ReturnedCappedGeneric", "ReturnedCappedAppend", "LocalCapped", "LocalCappedView", "LocalCappedAlias", "LocalCappedReset", "LocalCappedTwice", "ForcedSpread", "ForcedSpreadKey", "LocalCappedSpread", "ForcedStringSpread"} {
 		if r := resultNamed(t, report, name); len(r.Effects) != 0 || !r.Complete {
 			t.Fatalf("%s loses fresh append ownership: %+v", name, r)
 		}
 	}
-	for _, name := range []string{"MapShared", "MapBorrowed", "MapInserted", "MapCopied", "MapAliased", "MapPublished", "MapRanged", "MapAddressed", "MapCaptured", "MapDeferred", "MapShadowed", "MapEffect", "MapPointee", "TupleBorrowed", "TupleMixed", "TupleEscaped", "TupleNamed", "TupleDynamic", "TuplePointee", "TupleEffect", "TuplePointer", "TupleRecord", "TupleRecursiveBorrowed", "TupleAddress", "TupleClosure", "TupleDeferred", "SpareCapacity", "UnequalBounds", "EmptyExpansion", "ChangingBound", "ShadowedLength", "ChannelBounds", "CapturedBounds", "AddressedBounds", "ForcedPointee", "ForcedArgumentEffect", "ReturnedCappedDirect", "ReturnedCappedMixed", "ReturnedCappedNamed", "ReturnedCappedDynamic", "ReturnedCappedEmpty", "ReturnedCappedEffect", "ReturnedCappedPointee", "LocalCappedBefore", "LocalCappedMixed", "LocalCappedLoop", "LocalCappedRange", "LocalCappedReslice", "LocalCappedAddress", "LocalCappedCapture", "LocalCappedLabel", "LocalCappedReborrow", "LocalCappedEmpty", "LocalCappedEffect", "LocalCappedPointee"} {
+	for _, name := range []string{"MapShared", "MapBorrowed", "MapInserted", "MapCopied", "MapAliased", "MapPublished", "MapRanged", "MapAddressed", "MapCaptured", "MapDeferred", "MapShadowed", "MapEffect", "MapPointee", "TupleBorrowed", "TupleMixed", "TupleEscaped", "TupleNamed", "TupleDynamic", "TuplePointee", "TupleEffect", "TuplePointer", "TupleRecord", "TupleRecursiveBorrowed", "TupleAddress", "TupleClosure", "TupleDeferred", "SpareCapacity", "UnequalBounds", "EmptyExpansion", "ChangingBound", "ShadowedLength", "ChannelBounds", "CapturedBounds", "AddressedBounds", "ForcedPointee", "ForcedArgumentEffect", "ReturnedCappedDirect", "ReturnedCappedMixed", "ReturnedCappedNamed", "ReturnedCappedDynamic", "ReturnedCappedEmpty", "ReturnedCappedEffect", "ReturnedCappedPointee", "LocalCappedBefore", "LocalCappedMixed", "LocalCappedLoop", "LocalCappedRange", "LocalCappedReslice", "LocalCappedAddress", "LocalCappedCapture", "LocalCappedLabel", "LocalCappedReborrow", "LocalCappedEmpty", "LocalCappedEffect", "LocalCappedPointee", "ForcedEmptyLiteral", "ForcedEmptyString", "UncappedSpread", "ForcedSpreadEffect", "ForcedSpreadPointee"} {
 		if len(resultNamed(t, report, name).Effects) == 0 {
 			t.Fatalf("%s loses borrowed storage or argument effects", name)
 		}
