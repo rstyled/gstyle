@@ -148,6 +148,22 @@ func LocalFloats(){values:=[]float64{2,1}; sort.Float64s(values)}
 func LocalStrings(){values:=[]string{"b","a"}; sort.Strings(values)}
 func LocalAlias(){values:=[]int{2,1}; alias:=values[1:]; slices.Sort(alias)}
 func LocalAppend(){values:=append([]int{2,1},3); slices.Sort(values)}
+func ForcedAppend(input []int){out:=append(input[:len(input):len(input)],1);slices.Sort(out)}
+func ForcedBound(input []int,n int){out:=append(input[1:n:n],1);slices.Sort(out)}
+func ForcedConstant(input []int){out:=append(input[:1+1:2],1);slices.Sort(out)}
+func forcedReturn(input []int)[]int{return append(input[:len(input):len(input)],1)}
+func ReturnedForced(input []int){out:=forcedReturn(input);slices.Sort(out)}
+func SpareCapacity(input []int){out:=append(input[:len(input):cap(input)],1);slices.Sort(out)}
+func UnequalBounds(input []int,n,m int){out:=append(input[:n:m],1);slices.Sort(out)}
+func EmptyExpansion(input,extra []int){out:=append(input[:len(input):len(input)],extra...);slices.Sort(out)}
+func ChangingBound(input []int,next func([]int)int){out:=append(input[:next(input):next(input)],1);slices.Sort(out)}
+func ShadowedLength(input []int){len:=func(s []int)int{return cap(s)};out:=append(input[:len(input):len(input)],1);slices.Sort(out)}
+func ChannelBounds(input []int,ch chan int){out:=append(input[:len(ch):len(ch)],1);slices.Sort(out)}
+func CapturedBounds(input []int,n int){next:=func()int{n++;return 0};out:=append(input[next():n:n],1);slices.Sort(out)}
+func AddressedBounds(input []int,n *int){bound:=*n;alias:=&bound;out:=append(input[func()int{*alias++;return 0}():bound:bound],1);slices.Sort(out)}
+func ForcedPointee(input []*int){out:=append(input[:len(input):len(input)],nil);*out[0]=1}
+func appendElement(input []int)int{input[0]++;return 1}
+func ForcedArgumentEffect(input []int){out:=append(input[:len(input):len(input)],appendElement(input));slices.Sort(out)}
 func SelfAppend(){values:=[]int{2,1}; values=append(values,3); slices.Sort(values)}
 func CloneSort(values []int){local:=slices.Clone(values); slices.Sort(local)}
 func CloneCopy(dst,src map[int]int){local:=maps.Clone(dst); maps.Copy(local,src)}
@@ -195,6 +211,22 @@ func Caller(){helper()}
 				t.Fatalf("local container effects: %+v", r)
 			}
 		})
+	}
+	for _, name := range []string{"ForcedAppend", "ForcedBound", "ForcedConstant", "ReturnedForced"} {
+		if r := resultNamed(t, report, name); len(r.Effects) != 0 || !r.Complete {
+			t.Fatalf("%s loses fresh append ownership: %+v", name, r)
+		}
+	}
+	for _, name := range []string{"SpareCapacity", "UnequalBounds", "EmptyExpansion", "ChangingBound", "ShadowedLength", "ChannelBounds", "CapturedBounds", "AddressedBounds", "ForcedPointee", "ForcedArgumentEffect"} {
+		if len(resultNamed(t, report, name).Effects) == 0 {
+			t.Fatalf("%s loses borrowed storage or argument effects", name)
+		}
+	}
+	for _, name := range []string{"ChannelBounds", "CapturedBounds", "AddressedBounds"} {
+		f := findFunction(t, facts, name)
+		if f.Calls[len(f.Calls)-1].MutationTarget == quality.Local {
+			t.Fatalf("%s incorrectly proves stable capacity", name)
+		}
 	}
 	if result := resultNamed(t, report, "ViewBounds"); len(result.Effects) == 0 {
 		t.Fatal("self slice lost bound evaluation effect")

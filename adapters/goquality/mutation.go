@@ -392,6 +392,9 @@ func (x *extractor) builtinAllocationOrigin(call *ast.CallExpr, name string, see
 	case "make", "new":
 		return quality.Local
 	case "append":
+		if x.freshAppend(call) {
+			return quality.Local
+		}
 		return appendOrigin(x.origin(call.Args[0], seen))
 	default:
 		return quality.Unknown
