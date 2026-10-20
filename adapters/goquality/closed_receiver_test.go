@@ -12,6 +12,24 @@ import (
 func TestClosedReceiverStorageBoundaries(t *testing.T) {
 	root := qualitySourceModule(t, []byte(`package repro
 import("encoding/json";"go/ast")
+type snapshot struct{values map[int]int;n int}
+func readSnapshot(value snapshot)int{return value.n}
+type copiedRecord struct{value snapshot;n int}
+func(p *copiedRecord)CopiedRecord(){p.n++}
+func copiedRecordRun(){p:=copiedRecord{};_ =readSnapshot(p.value);p.CopiedRecord()}
+type copiedArray struct{value [2]int;n int}
+func readArray(value [2]int)int{return value[0]}
+func(p *copiedArray)CopiedArray(){p.n++}
+func copiedArrayRun(){p:=copiedArray{};_ =readArray(p.value);p.CopiedArray()}
+type copiedBorrowed struct{value snapshot}
+func(p *copiedBorrowed)CopiedBorrowed(){p.value.values[1]=1}
+func copiedBorrowedRun(values map[int]int){p:=copiedBorrowed{value:snapshot{values:values}};_ =readSnapshot(p.value);p.CopiedBorrowed()}
+type recordCell struct{n int}
+var publishedRecord *recordCell
+func(p *recordCell)Publish(){publishedRecord=p}
+type escapedRecord struct{value recordCell;n int}
+func(p *escapedRecord)EscapedRecord(){p.n++}
+func escapedRecordRun(){p:=escapedRecord{};p.value.Publish();p.EscapedRecord()}
 type cursor struct{ n int }
 func(p *cursor) ClosedCursor(){p.n++}
 func cursorRun(){p:=new(cursor);p.ClosedCursor()}
@@ -152,7 +170,7 @@ func borrowedRun(values map[string]int){p:=new(borrowed);p.values=values;p.Borro
 		name string
 		want quality.Provenance
 	}{
-		{"ClosedCursor", quality.Local}, {"ClosedError", quality.Local},
+		{"CopiedRecord", quality.Local}, {"CopiedArray", quality.Local}, {"CopiedBorrowed", quality.External}, {"EscapedRecord", quality.External}, {"ClosedCursor", quality.Local}, {"ClosedError", quality.Local},
 		{"LocalVisitor", quality.Local}, {"SavedVisitor", quality.External},
 		{"InlineVisitor", quality.Local}, {"NestedVisitor", quality.Local},
 		{"InlineSavedVisitor", quality.External}, {"InlineAsyncVisitor", quality.External},
