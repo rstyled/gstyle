@@ -8,7 +8,7 @@ import (
 )
 
 // Capacity describes the returned header, not ownership or function purity.
-// Only direct full-slice returns establish this certificate.
+// Explicit full-slice bounds establish this certificate, including local copies.
 func cappedReturns(pkg *packages.Package) map[*types.Func]bool {
 	results := map[*types.Func]bool{}
 	for _, file := range pkg.Syntax {

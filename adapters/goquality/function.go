@@ -22,6 +22,7 @@ type extractor struct {
 	stable         map[types.Object]bool
 	fact           quality.Function
 	bindings       map[types.Object]referenceBinding
+	sliceWrites    map[types.Object][]sliceWrite
 	fields         fieldOwnership
 	parameters     map[types.Object]bool
 	// paramIndex maps outer-function parameter objects to their ParamList

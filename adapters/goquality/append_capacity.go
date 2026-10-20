@@ -23,6 +23,8 @@ func (x *extractor) fullSlice(value ast.Expr) bool {
 	case *ast.CallExpr:
 		function, ok := x.calledObject(unwrappedCallee(value.Fun)).(*types.Func)
 		return ok && x.cappedReturns[function.Origin()]
+	case *ast.Ident:
+		return x.fullSlice(x.localSliceValue(value))
 	default:
 		return false
 	}
