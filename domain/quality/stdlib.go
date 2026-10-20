@@ -28,7 +28,7 @@ func (r stdlibRule) prefixes() []Prefix {
 	}
 	result := make([]Prefix, len(r.names))
 	for index, name := range r.names {
-		result[index] = Prefix{Path: r.pkg + "." + name, Kind: r.kind, plainJSON: r.pkg == "encoding/json" && (name == "Marshal" || name == "Unmarshal")}
+		result[index] = Prefix{Path: r.pkg + "." + name, Kind: r.kind, memoryWriter: MemoryWriterCall(r.pkg + "." + name), localMemoryRead: MemoryReadCall(r.pkg + "." + name), plainJSON: r.pkg == "encoding/json" && (name == "Marshal" || name == "Unmarshal")}
 	}
 	return result
 }

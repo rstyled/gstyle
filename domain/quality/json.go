@@ -15,6 +15,12 @@ func (call Call) HasPlainJSON() bool {
 
 func (call Call) policyKind(prefixes []Prefix) (Kind, bool) {
 	prefix, configured := selectedPrefix(NormalizeCallee(call.Callee), prefixes)
+	if prefix.refinesMemoryRead(call) {
+		return None, true
+	}
+	if prefix.refinesMemoryWriter(call) {
+		return MutationEffect, true
+	}
 	if call.HasPlainJSON() && prefix.plainJSON && prefix.Kind == UnknownEffect {
 		return None, true
 	}

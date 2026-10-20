@@ -12,7 +12,8 @@ import (
 // Prove the returned backing storage, not purity of the function or ownership
 // of referenced elements. Unrelated calls and effects keep their normal facts.
 func localContainerReturn(pkg *packages.Package, fn *ast.FuncDecl) ast.Expr {
-	signature := pkg.TypesInfo.Defs[fn.Name].Type().(*types.Signature)
+	function := pkg.TypesInfo.Defs[fn.Name].(*types.Func)
+	signature := function.Type().(*types.Signature)
 	if fn.Body == nil || signature.Results().Len() != 1 || signature.Results().At(0).Name() != "" {
 		return nil
 	}
@@ -21,7 +22,7 @@ func localContainerReturn(pkg *packages.Package, fn *ast.FuncDecl) ast.Expr {
 	default:
 		return nil
 	}
-	x := extractor{pkg: pkg, bindings: map[types.Object]referenceBinding{}, parameters: map[types.Object]bool{}}
+	x := extractor{pkg: pkg, factories: map[*types.Func]ast.Expr{function: fn.Name}, bindings: map[types.Object]referenceBinding{}, parameters: map[types.Object]bool{}}
 	x.addParameters(fn.Type.Params)
 	x.addParameters(fn.Recv)
 	x.collectBindings(fn.Body)
@@ -51,7 +52,30 @@ func (x *extractor) ownedContainerReturn(body *ast.BlockStmt) ast.Expr {
 	return result
 }
 
+// Self recursion is an induction hypothesis: every terminating return must
+// independently construct fresh outer storage. Borrowed branches reject it.
 func (x *extractor) returnedContainer(value ast.Expr) bool {
+	switch value := ast.Unparen(value).(type) {
+	case *ast.CompositeLit:
+		return true
+	case *ast.CallExpr:
+		return x.returnedContainerCall(value)
+	default:
+		return x.returnedContainerRoot(value)
+	}
+}
+
+func (x *extractor) returnedContainerCall(call *ast.CallExpr) bool {
+	if x.pkg.TypesInfo.Types[call.Fun].IsType() {
+		return false
+	}
+	if builtin, ok := x.calledObject(unwrappedCallee(call.Fun)).(*types.Builtin); ok && builtin.Name() == "append" {
+		return len(call.Args) > 0 && x.returnedContainer(call.Args[0])
+	}
+	return x.allocationOrigin(call, map[types.Object]bool{}) == quality.Local
+}
+
+func (x *extractor) returnedContainerRoot(value ast.Expr) bool {
 	id, ok := ast.Unparen(value).(*ast.Ident)
 	if !ok {
 		return false
@@ -146,12 +170,10 @@ func (x *extractor) returnedAppend(id *ast.Ident, call *ast.CallExpr) bool {
 	}
 	proof := receiverProof{parents: x.fields.parents}
 	_, parent := proof.parent(call)
-	assignment, ok := parent.(*ast.AssignStmt)
-	if !ok || len(assignment.Lhs) != 1 {
-		return false
+	if _, returned := parent.(*ast.ReturnStmt); returned {
+		return true
 	}
-	target, ok := ast.Unparen(assignment.Lhs[0]).(*ast.Ident)
-	return ok && x.pkg.TypesInfo.ObjectOf(target) == x.pkg.TypesInfo.ObjectOf(id)
+	return x.containerResult(id, call)
 }
 
 func (x *extractor) synchronousContainerCall(node ast.Node) bool {
