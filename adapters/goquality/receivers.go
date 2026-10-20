@@ -16,17 +16,24 @@ type receiverProof struct {
 	defs    map[types.Object]*ast.Ident
 }
 
-func closedReceiverTypes(pkg *packages.Package) map[types.Object]bool {
-	closed := map[types.Object]bool{}
-	if opaqueGlobals(pkg) {
-		return closed
-	}
+func newReceiverProof(pkg *packages.Package) receiverProof {
 	proof := receiverProof{pkg: pkg, parents: map[ast.Node]ast.Node{}, defs: map[types.Object]*ast.Ident{}}
 	for _, file := range pkg.Syntax {
 		indexParents(file, proof.parents)
 	}
 	for id, object := range pkg.TypesInfo.Defs {
 		proof.defs[object] = id
+	}
+	return proof
+}
+
+func closedReceiverTypes(pkg *packages.Package) map[types.Object]bool {
+	closed := map[types.Object]bool{}
+	if opaqueGlobals(pkg) {
+		return closed
+	}
+	proof := newReceiverProof(pkg)
+	for object := range proof.defs {
 		if privateReceiverType(object) {
 			closed[object] = true
 		}

@@ -243,8 +243,8 @@ func (au *antiUnifier) unifyAssignStmt(at *ast.AssignStmt, b ast.Node) ast.Node 
 	if !assignShapesMatch(at, bt) {
 		return au.freshHole(at, b)
 	}
-	lhs := unifyExprList(au, at.Lhs, bt.Lhs)
-	rhs := unifyExprList(au, at.Rhs, bt.Rhs)
+	lhs := au.unifyExprList(at.Lhs, bt.Lhs)
+	rhs := au.unifyExprList(at.Rhs, bt.Rhs)
 	return &ast.AssignStmt{Lhs: lhs, Tok: at.Tok, Rhs: rhs}
 }
 
@@ -495,7 +495,7 @@ func assignShapesMatch(at, bt *ast.AssignStmt) bool {
 }
 
 // unifyExprList unifies two expression lists element-wise.
-func unifyExprList(au *antiUnifier, a, b []ast.Expr) []ast.Expr {
+func (au *antiUnifier) unifyExprList(a, b []ast.Expr) []ast.Expr {
 	out := make([]ast.Expr, len(a))
 	for i := range a {
 		out[i] = au.unifyExpr(a[i], b[i])
