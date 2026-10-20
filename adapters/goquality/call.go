@@ -235,7 +235,11 @@ func (x *extractor) builtinMutation(call *ast.CallExpr, name string) {
 		return
 	}
 	before := len(x.fact.Mutations)
-	x.mutate(call.Args[0], call.Pos(), true)
+	place := call.Args[0]
+	if name == "append" && x.freshAppend(call) {
+		place = call
+	}
+	x.mutate(place, call.Pos(), true)
 	if name == "append" && len(x.fact.Mutations) > before {
 		x.fact.Mutations[before].Site = physicalPosition(x.pkg.Fset, call.Pos()).Offset + 1
 	}

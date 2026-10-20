@@ -115,7 +115,7 @@ func (x *extractor) returnedContainerCall(call *ast.CallExpr) bool {
 		return false
 	}
 	if builtin, ok := x.calledObject(unwrappedCallee(call.Fun)).(*types.Builtin); ok && builtin.Name() == "append" {
-		return len(call.Args) > 0 && x.returnedContainer(call.Args[0])
+		return x.freshAppend(call) || (len(call.Args) > 0 && x.returnedContainer(call.Args[0]))
 	}
 	return x.allocationOrigin(call, map[types.Object]bool{}) == quality.Local
 }
