@@ -47,7 +47,7 @@ func (p *previewRevision) show(output io.Writer) error {
 	}
 	sort.Strings(paths)
 	for _, path := range paths {
-		if _, err := showDiff(path, p.original[path], p.overlay[path], 0, output); err != nil {
+		if err := showDiff(path, p.original[path], p.overlay[path], output); err != nil {
 			return err
 		}
 	}

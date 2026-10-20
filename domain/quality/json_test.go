@@ -7,6 +7,7 @@ func TestPlainJSONEvidenceOnlyRefinesStaticMarshal(t *testing.T) {
 		{Callee: "encoding/json.Unmarshal", Line: 2},
 		{Callee: "other", Line: 2},
 		{Callee: "encoding/json.Marshal", Line: 2, Dynamic: true},
+		{Callee: "encoding/json.MarshalIndent", Line: 2, Dynamic: true},
 	} {
 		call.StorageArgs = []Storage{{PlainJSON: true, Provenance: Local}}
 		f := fact("caller", 1)

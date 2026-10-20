@@ -50,8 +50,9 @@ func canonicalCallable(target Callable) (Callable, bool) {
 	if target.Name == "" || !utf8.ValidString(target.Name) {
 		return Callable{}, false
 	}
-	target.Cells = slices.Clone(target.Cells)
-	slices.SortFunc(target.Cells, func(a, b CallableCell) int { return int(a.Symbol) - int(b.Symbol) })
+	cells := slices.Clone(target.Cells)
+	slices.SortFunc(cells, func(a, b CallableCell) int { return int(a.Symbol) - int(b.Symbol) })
+	target.Cells = cells
 	if !validCallableCells(target.Cells) || !validCallableRevision(target) {
 		return Callable{}, false
 	}

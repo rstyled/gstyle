@@ -10,19 +10,24 @@ import (
 
 // Index owned results once per typed package. Literal record fields retain
 // their initializer provenance; constructed containers own their backing storage.
-func factoryResults(pkg *packages.Package) map[*types.Func]ast.Expr {
-	result := map[*types.Func]ast.Expr{}
+type factoryResult struct {
+	value     ast.Expr
+	parameter *int
+}
+
+func factoryResults(pkg *packages.Package) map[*types.Func]factoryResult {
+	result := map[*types.Func]factoryResult{}
 	for _, file := range pkg.Syntax {
 		for _, declaration := range file.Decls {
 			if fn, ok := declaration.(*ast.FuncDecl); ok {
-				var value ast.Expr
+				var resultValue factoryResult
 				if literal := factoryReturn(fn); literal != nil {
-					value = literal
+					resultValue.value = literal
 				} else {
-					value = localContainerReturn(pkg, fn)
+					resultValue = containerFactory(pkg, fn)
 				}
-				if value != nil {
-					result[pkg.TypesInfo.Defs[fn.Name].(*types.Func)] = value
+				if resultValue.value != nil {
+					result[pkg.TypesInfo.Defs[fn.Name].(*types.Func)] = resultValue
 				}
 			}
 		}

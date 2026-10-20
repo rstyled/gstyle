@@ -60,7 +60,7 @@ func TestHelperOwnershipContextLimitRemainsUnknown(t *testing.T) {
 			}
 			storage[parameter] = Storage{Provenance: provenance}
 		}
-		f.Calls = append(f.Calls, Call{Callee: "helper", Line: 2, Local: true, StorageArgs: storage})
+		f.Calls = append(f.Calls, Call{Callee: "helper", Line: 2, Site: context + 1, Local: true, StorageArgs: storage})
 	}
 	report, err := Evaluate([]Function{f}, DefaultConfig())
 	if err != nil {
@@ -72,6 +72,9 @@ func TestHelperOwnershipContextLimitRemainsUnknown(t *testing.T) {
 	}
 	found := false
 	for _, effect := range result.Effects {
+		if effect.Site == 0 {
+			t.Fatalf("budget fallback lost source call site: %+v", effect)
+		}
 		found = found || strings.Contains(effect.Detail, "local context limit")
 	}
 	if !found {

@@ -108,11 +108,10 @@ func executeFixPlan(ctx context.Context, plan fixPlan, opts options, output io.W
 	}
 	var count int
 	for _, file := range plan.files {
-		n, err := showDiff(file.path, file.before, file.after, file.count, output)
-		if err != nil {
+		if err := showDiff(file.path, file.before, file.after, output); err != nil {
 			return 0, nil, err
 		}
-		count += n
+		count += file.count
 	}
 	return count, nil, nil
 }

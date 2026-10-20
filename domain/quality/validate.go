@@ -72,5 +72,9 @@ func validateCalls(f Function) error {
 }
 
 func (call Call) valid() bool {
-	return call.Site >= 0 && call.Callee != "" && call.Line >= 1 && call.validMutationTarget() && call.validJSONDecode()
+	return call.Site >= 0 && call.Callee != "" && call.Line >= 1 && call.validEvidence()
+}
+
+func (call Call) validEvidence() bool {
+	return call.validMutationTarget() && call.validJSONDecode() && call.validMemoryWriter() && call.validLocalMemoryRead()
 }

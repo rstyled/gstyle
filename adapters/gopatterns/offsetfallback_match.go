@@ -141,7 +141,7 @@ func offsetLenOf(expr, collection ast.Expr, info *types.Info) bool {
 		return false
 	}
 	name, ok := call.Fun.(*ast.Ident)
-	if !ok || info.ObjectOf(name) != types.Universe.Lookup("len") {
+	if !ok || !offsetBuiltin(info.ObjectOf(name), "len") {
 		return false
 	}
 	return offsetSameBinding(call.Args[0], collection, info)
@@ -177,5 +177,10 @@ func offsetFallbackAutoSafe(guard *offsetFallback, pkg *packages.Package) bool {
 	}
 	scope := pkg.Types.Scope().Innermost(guard.stmt.Pos())
 	_, obj := scope.LookupParent("min", guard.stmt.Pos())
-	return obj == types.Universe.Lookup("min")
+	return offsetBuiltin(obj, "min")
+}
+
+func offsetBuiltin(object types.Object, name string) bool {
+	builtin, ok := object.(*types.Builtin)
+	return ok && builtin.Name() == name
 }

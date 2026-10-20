@@ -502,7 +502,7 @@ func SimilarityMilli(a, b *Wl) uint32 {
 	h := levels(a, b)
 	denom := maxNodes(a, b)
 	w := weights(h)
-	num, den := weightedIntersection(a, b, w, denom, h)
+	num, den := weightedIntersection(a, b, w, denom)
 	if den == 0 {
 		return 0
 	}
@@ -540,11 +540,11 @@ func maxNodes(a, b *Wl) uint64 {
 	return denom
 }
 
-func weightedIntersection(a, b *Wl, w []uint64, denom uint64, h int) (uint64, uint64) {
+func weightedIntersection(a, b *Wl, w []uint64, denom uint64) (uint64, uint64) {
 	var num, den uint64
-	for i := 0; i < h; i++ {
-		num += w[i] * uint64(intersection(a.hists[i], b.hists[i]))
-		den += w[i] * denom
+	for i, weight := range w {
+		num += weight * uint64(intersection(a.hists[i], b.hists[i]))
+		den += weight * denom
 	}
 	return num, den
 }

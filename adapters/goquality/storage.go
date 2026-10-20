@@ -21,6 +21,10 @@ func (x *extractor) formalStorageSeen(value ast.Expr, seen map[types.Object]bool
 	if binding, rebound := x.bindings[object]; rebound {
 		return x.aliasParameter(object, binding, seen)
 	}
+	return x.parameterStorage(object)
+}
+
+func (x *extractor) parameterStorage(object types.Object) *int {
 	if object == x.receiver && object != nil {
 		index := -1
 		return &index
@@ -31,10 +35,16 @@ func (x *extractor) formalStorageSeen(value ast.Expr, seen map[types.Object]bool
 	return nil
 }
 
-// Only stable direct aliases retain a formal's storage identity. Reassigned
-// formals and range elements do not establish the same storage on every path.
+// Stable aliases and closed self updates retain a formal's outer storage.
+// Arbitrary reassignment and range elements cannot establish that identity.
 func (x *extractor) aliasParameter(object types.Object, binding referenceBinding, seen map[types.Object]bool) *int {
-	if x.parameters[object] || seen[object] {
+	if x.parameters[object] {
+		if !binding.closedSelf {
+			return nil
+		}
+		return x.parameterStorage(object)
+	}
+	if seen[object] {
 		return nil
 	}
 	seen[object] = true

@@ -49,15 +49,15 @@ func (c sourceRowCounter) count(start int, end int) int {
 		return 0
 	}
 
-	count := end - start + 1
 	firstLine, lastLine := c.function.Line+start, c.function.Line+end
-	count += sourceDeletedRowCount(c.function.DiffLines, firstLine, lastLine)
-	count += sourceAnnotationRowCount(c.annotations, firstLine, lastLine, c.width)
-	count += sourcePatternRowCount(c.patterns, c.patternPath, firstLine, lastLine, c.width)
+	count := end - start + 1 + sourceDeletedRowCount(c.function.DiffLines, firstLine, lastLine) +
+		sourceAnnotationRowCount(c.annotations, firstLine, lastLine, c.width) +
+		sourcePatternRowCount(c.patterns, c.patternPath, firstLine, lastLine, c.width)
+	trailing := 0
 	if start <= c.lastSourceIndex && c.lastSourceIndex <= end {
-		count += sourceDeletedRowCount(c.function.DiffLines, c.function.EndLine+1, c.function.EndLine+1)
+		trailing = sourceDeletedRowCount(c.function.DiffLines, c.function.EndLine+1, c.function.EndLine+1)
 	}
-	return count
+	return count + trailing
 }
 
 type annotationTarget struct {

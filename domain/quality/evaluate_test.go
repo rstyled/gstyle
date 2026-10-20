@@ -58,6 +58,7 @@ func TestPurePrefixesClassifyAsNone(t *testing.T) {
 		"go/types.Selection.Index",
 		"io/fs.FileMode.String", "io/fs.FileMode.IsDir", "io/fs.FileMode.IsRegular",
 		"io/fs.FileMode.Perm", "io/fs.FileMode.Type", "os.ProcessState.ExitCode",
+		"os.IsExist", "os.IsNotExist", "os.IsPermission", "net.IPMask.Size",
 	}
 	f := fact("calls", 1)
 	for index, callee := range pure {
@@ -67,6 +68,9 @@ func TestPurePrefixesClassifyAsNone(t *testing.T) {
 	result := report.Functions[0]
 	if len(result.Effects) != 0 || result.DensityMilli != 0 || !result.Complete {
 		t.Fatalf("pure calls should vanish: %+v", result)
+	}
+	if ClassifyCallee("os.IsTimeout") != UnknownEffect {
+		t.Fatal("timeout callback was classified as a pure value query")
 	}
 	// Narrow classifications still win where packages mix pure and effectful
 	// calls, and unknown callees still count.

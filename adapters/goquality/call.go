@@ -27,7 +27,13 @@ func (x *extractor) call(call *ast.CallExpr) {
 	var fact quality.Call
 	switch object := object.(type) {
 	case *types.Func:
-		fact = quality.Call{CallbackExpanded: x.inlineContainerCallback(object, call), Site: site, Line: line, Callee: resolvedName(object), Local: object.Pkg() == x.pkg.Types, Dynamic: interfaceCall(x.pkg.TypesInfo, fun), Args: args, MutationTarget: x.containerMutationTarget(object, call)}
+		callee := resolvedName(object)
+		fact = quality.Call{
+			MemoryWriter: x.memoryFormat(call, callee), LocalMemoryRead: x.localMemoryRead(call),
+			CallbackExpanded: x.inlineContainerCallback(object, call), Site: site, Line: line,
+			Callee: callee, Local: object.Pkg() == x.pkg.Types, Dynamic: interfaceCall(x.pkg.TypesInfo, fun),
+			Args: args, MutationTarget: x.containerMutationTarget(object, call),
+		}
 	case *types.Var:
 		fact = quality.Call{Site: site, Line: line, Callee: object.Name(), Dynamic: true, Args: args}
 	default:

@@ -14,6 +14,7 @@ type referenceBinding struct {
 	values       []ast.Expr
 	unknown      bool
 	selfReturned bool
+	closedSelf   bool
 }
 
 // Bindings retain all possible assignments. Provenance is conservative across
@@ -38,6 +39,18 @@ func (x *extractor) collectBindings(body *ast.BlockStmt) {
 		}
 		return true
 	})
+	x.closeSelfBindings()
+}
+
+// Bindings are complete before this derived noescape certificate is cached.
+func (x *extractor) closeSelfBindings() {
+	for object, binding := range x.bindings {
+		if !x.parameters[object] || binding.unknown || !binding.selfReturned || len(binding.values) != 0 {
+			continue
+		}
+		binding.closedSelf = x.containerUses(object)
+		x.bindings[object] = binding
+	}
 }
 
 // Range values from shared containers remain shared; fresh containers can
@@ -93,24 +106,31 @@ func (x *extractor) selfSliceAssignment(object types.Object, value ast.Expr) boo
 }
 
 // A self assignment from a modeled container operation keeps local ownership:
-// these calls return their first buffer, a view of it, or fresh storage.
+// these calls return their selected input, a view of it, or fresh storage.
 func (x *extractor) containerSelfAssignment(object types.Object, value ast.Expr) bool {
 	call, ok := ast.Unparen(value).(*ast.CallExpr)
-	if !ok || !x.selfContainerCall(call) {
+	if !ok {
 		return false
 	}
-	target, ok := ast.Unparen(x.containerArgs(call)[0]).(*ast.Ident)
+	target, ok := ast.Unparen(x.selfContainerInput(call)).(*ast.Ident)
 	return ok && x.pkg.TypesInfo.ObjectOf(target) == object
 }
 
-func (x *extractor) selfContainerCall(call *ast.CallExpr) bool {
+func (x *extractor) selfContainerInput(call *ast.CallExpr) ast.Expr {
 	switch object := x.calledObject(unwrappedCallee(call.Fun)).(type) {
 	case *types.Builtin:
-		return object.Name() == "append"
+		if object.Name() == "append" {
+			return call.Args[0]
+		}
 	case *types.Func:
-		return quality.ContainerMutation(resolvedName(object))
+		if result, ok := x.factories[object]; ok {
+			return x.factoryArgument(call, result)
+		}
+		if quality.ContainerMutation(resolvedName(object)) {
+			return x.containerArgs(call)[0]
+		}
 	}
-	return false
+	return nil
 }
 
 func (x *extractor) addressBinding(value ast.Node) {
@@ -305,14 +325,22 @@ func (x *extractor) fieldOrigin(value *ast.SelectorExpr, seen map[types.Object]b
 	if object == nil {
 		return quality.Unknown
 	}
-	if packageVariable(object) || x.parameters[object] {
-		return quality.External
+	if x.localReceiverStorage(value) {
+		return quality.Local
 	}
-	if _, pointer := underlying(object.Type()).(*types.Pointer); pointer && x.objectOrigin(object, seen) == quality.External {
+	if x.externalFieldRoot(object, seen) {
 		return quality.External
 	}
 	// Prove each field separately: fresh outer storage can hold borrowed data.
 	return x.ownedField(value, seen)
+}
+
+func (x *extractor) externalFieldRoot(object types.Object, seen map[types.Object]bool) bool {
+	if packageVariable(object) || x.parameters[object] {
+		return true
+	}
+	_, pointer := underlying(object.Type()).(*types.Pointer)
+	return pointer && x.objectOrigin(object, seen) == quality.External
 }
 
 func (x *extractor) sliceOrigin(value *ast.SliceExpr, seen map[types.Object]bool) quality.Provenance {
@@ -330,11 +358,33 @@ func (x *extractor) allocationOrigin(call *ast.CallExpr, seen map[types.Object]b
 	case *types.Builtin:
 		return x.builtinAllocationOrigin(call, object.Name(), seen)
 	case *types.Func:
-		if x.factories[object] != nil || quality.ContainerClone(resolvedName(object)) {
+		if result, ok := x.factories[object]; ok {
+			return x.factoryOrigin(call, result, seen)
+		}
+		if quality.ContainerClone(resolvedName(object)) {
 			return quality.Local
 		}
 	}
 	return quality.Unknown
+}
+
+func (x *extractor) factoryOrigin(call *ast.CallExpr, result factoryResult, seen map[types.Object]bool) quality.Provenance {
+	if result.parameter == nil {
+		return quality.Local
+	}
+	argument := x.factoryArgument(call, result)
+	if argument == nil {
+		return quality.Unknown
+	}
+	return appendOrigin(x.origin(argument, seen))
+}
+
+func (x *extractor) factoryArgument(call *ast.CallExpr, result factoryResult) ast.Expr {
+	arguments := x.containerArgs(call)
+	if result.parameter == nil || *result.parameter >= len(arguments) || call.Ellipsis.IsValid() {
+		return nil
+	}
+	return arguments[*result.parameter]
 }
 
 func (x *extractor) builtinAllocationOrigin(call *ast.CallExpr, name string, seen map[types.Object]bool) quality.Provenance {

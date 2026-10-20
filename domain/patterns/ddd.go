@@ -278,13 +278,13 @@ func factoryCandidate(k factoryTypeKey, facts []*MiningFacts, funcs map[string]b
 // on the type when it's local, a plain function otherwise (idiomatic Go;
 // the Evans Specification struct is not used).
 func specificationCandidates(facts []*MiningFacts) []Candidate {
-	byRule, first, fileOf := groupSpecRules(facts)
+	byRule := groupSpecRules(facts)
 	var out []Candidate
-	for k, funcs := range byRule {
-		if len(funcs) < 2 {
+	for k, group := range byRule {
+		if len(group.functions) < 2 {
 			continue
 		}
-		out = append(out, specificationCandidate(k, facts, funcs, first[k], fileOf[k]))
+		out = append(out, specificationCandidate(k, facts, group))
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Breakdown.Support != out[j].Breakdown.Support {
@@ -295,27 +295,31 @@ func specificationCandidates(facts []*MiningFacts) []Candidate {
 	return out
 }
 
+type specificationGroup struct {
+	functions map[string]bool
+	hit       SpecificationHit
+	file      string
+}
+
 // groupSpecRules groups specification hits by rule key, tracking the
 // functions containing each rule and the first hit for fixer context.
-func groupSpecRules(facts []*MiningFacts) (map[specRuleKey]map[string]bool, map[specRuleKey]SpecificationHit, map[specRuleKey]string) {
-	byRule := map[specRuleKey]map[string]bool{}
-	first := map[specRuleKey]SpecificationHit{}
-	fileOf := map[specRuleKey]string{}
+func groupSpecRules(facts []*MiningFacts) map[specRuleKey]specificationGroup {
+	byRule := map[specRuleKey]specificationGroup{}
 	for _, f := range facts {
 		for _, h := range f.SpecRules {
 			if h.RuleKey == "" || h.TypeName == "" {
 				continue
 			}
 			k := specRuleKey{h.RuleKey, h.TypeName}
-			if byRule[k] == nil {
-				byRule[k] = map[string]bool{}
-				first[k] = h
-				fileOf[k] = f.Path
+			group := byRule[k]
+			if group.functions == nil {
+				group = specificationGroup{functions: map[string]bool{}, hit: h, file: f.Path}
+				byRule[k] = group
 			}
-			byRule[k][f.ID] = true
+			group.functions[f.ID] = true
 		}
 	}
-	return byRule, first, fileOf
+	return byRule
 }
 
 // shortTypeName strips a package qualifier for display: "apidomain.AgentArgs" -> "AgentArgs".
@@ -327,9 +331,9 @@ func shortTypeName(typeName string) string {
 }
 
 // specificationCandidate builds the fixable candidate for a business rule.
-func specificationCandidate(k specRuleKey, facts []*MiningFacts, funcs map[string]bool, hit SpecificationHit, file string) Candidate {
-	names := make([]string, 0, len(funcs))
-	for id := range funcs {
+func specificationCandidate(k specRuleKey, facts []*MiningFacts, group specificationGroup) Candidate {
+	names := make([]string, 0, len(group.functions))
+	for id := range group.functions {
 		names = append(names, id)
 	}
 	sort.Strings(names)
@@ -337,22 +341,22 @@ func specificationCandidate(k specRuleKey, facts []*MiningFacts, funcs map[strin
 		Kind:       Specification,
 		ScoreMilli: specificationScoreMilli,
 		Breakdown: Breakdown{
-			Support:       len(funcs),
+			Support:       len(group.functions),
 			CoverageMilli: 1000,
 		},
-		Observation:      fmt.Sprintf("business rule on %s repeated in %d functions", shortTypeName(k.typeName), len(funcs)),
+		Observation:      fmt.Sprintf("business rule on %s repeated in %d functions", shortTypeName(k.typeName), len(group.functions)),
 		Inference:        "a boolean business rule scattered across callers wants a named predicate",
 		PossibleRefactor: fmt.Sprintf("extract a %s predicate method", shortTypeName(k.typeName)),
 		Sites:            candidateSites(facts, names),
 		FixSpec: &FixSpec{
 			Kind:    Specification,
-			File:    file,
-			Line:    hit.Line,
-			EndLine: hit.Line,
+			File:    group.file,
+			Line:    group.hit.Line,
+			EndLine: group.hit.Line,
 			Params: map[string]string{
 				"type":    k.typeName,
-				"varname": hit.VarName,
-				"cond":    hit.CondText,
+				"varname": group.hit.VarName,
+				"cond":    group.hit.CondText,
 				"rulekey": k.key,
 			},
 		},

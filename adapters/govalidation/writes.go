@@ -10,14 +10,14 @@ import (
 	"github.com/rstyled/gstyle/domain/pdg"
 )
 
-type sourceWrites struct {
+type sourceAccesses struct {
 	fset     *token.FileSet
 	info     *types.Info
 	refs     map[*types.Var]pdg.Ref
 	expected map[site][]pdg.Ref
 }
 
-func (a *sourceWrites) source(node ast.Node) bool {
+func (a *sourceAccesses) source(node ast.Node) bool {
 	switch node := node.(type) {
 	case *ast.AssignStmt:
 		category := pdg.Assignment
@@ -37,7 +37,7 @@ func (a *sourceWrites) source(node ast.Node) bool {
 	return true
 }
 
-func (a *sourceWrites) record(node ast.Node, category pdg.Category, expressions []ast.Expr) {
+func (a *sourceAccesses) record(node ast.Node, category pdg.Category, expressions []ast.Expr) {
 	key := site{sourceSpan(a.fset, node), category, false}
 	for _, expression := range expressions {
 		id, ok := unparen(expression).(*ast.Ident)
@@ -49,8 +49,7 @@ func (a *sourceWrites) record(node ast.Node, category pdg.Category, expressions 
 	}
 }
 
-func checkWrites(g *pdg.Graph, fn *ast.FuncDecl, fset *token.FileSet, info *types.Info, refs map[*types.Var]pdg.Ref) error {
-	a := sourceWrites{fset, info, refs, map[site][]pdg.Ref{}}
+func (a *sourceAccesses) checkWrites(g *pdg.Graph, fn *ast.FuncDecl) error {
 	ast.Inspect(fn.Body, a.source)
 	for _, node := range g.Nodes {
 		if node.Category != pdg.Assignment && node.Category != pdg.Declaration {

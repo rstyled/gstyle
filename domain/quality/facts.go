@@ -71,6 +71,10 @@ type Mutation struct {
 }
 
 type Call struct {
+	// LocalMemoryRead proves IO operates only on a closed fresh memory reader.
+	LocalMemoryRead bool `json:"local_memory_read,omitempty"`
+	// MemoryWriter proves fmt writes to a concrete in-memory writer with no callbacks.
+	MemoryWriter bool `json:"memory_writer,omitempty"`
 	// LocalJSONDecode proves a closed decode writes only unaliased fresh storage.
 	LocalJSONDecode bool `json:"local_json_decode,omitempty"`
 	// CallbackExpanded retains inline callback evidence in the enclosing facts.

@@ -23,7 +23,7 @@ func Bindings(g *pdg.Graph, fn *ast.FuncDecl, fset *token.FileSet, info *types.I
 	if err := verifyRoles(g, fn, info, refs); err != nil {
 		return err
 	}
-	return checkSourceAccesses(g, fn, fset, info, refs)
+	return (&sourceAccesses{fset, info, refs, map[site][]pdg.Ref{}}).check(g, fn)
 }
 
 func verifyRoles(g *pdg.Graph, fn *ast.FuncDecl, info *types.Info, refs map[*types.Var]pdg.Ref) error {
@@ -133,29 +133,29 @@ func bindingIndex(objects map[*types.Var]bool, path string, fset *token.FileSet)
 	return index, nil
 }
 
-func checkSourceAccesses(g *pdg.Graph, fn *ast.FuncDecl, fset *token.FileSet, info *types.Info, refs map[*types.Var]pdg.Ref) error {
+func (a *sourceAccesses) check(g *pdg.Graph, fn *ast.FuncDecl) error {
 	bySpan := map[pdg.Span][]*types.Var{}
 	ast.Inspect(fn, func(node ast.Node) bool {
 		id, ok := node.(*ast.Ident)
 		if !ok {
 			return true
 		}
-		variable, ok := info.ObjectOf(id).(*types.Var)
+		variable, ok := a.info.ObjectOf(id).(*types.Var)
 		if ok {
-			bySpan[sourceSpan(fset, id)] = []*types.Var{variable}
+			bySpan[sourceSpan(a.fset, id)] = []*types.Var{variable}
 		}
 		return true
 	})
-	bareReturnBindings(fn, fset, info, bySpan)
+	bareReturnBindings(fn, a.fset, a.info, bySpan)
 	for _, node := range g.Nodes {
 		if node.Category != pdg.Read {
 			continue
 		}
-		if err := checkRead(g, node, bySpan, refs); err != nil {
+		if err := checkRead(g, node, bySpan, a.refs); err != nil {
 			return err
 		}
 	}
-	return checkWrites(g, fn, fset, info, refs)
+	return a.checkWrites(g, fn)
 }
 
 func sourceSpan(fset *token.FileSet, node ast.Node) pdg.Span {

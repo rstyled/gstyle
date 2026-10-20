@@ -67,10 +67,10 @@ func (x *extractor) bindField(place, value ast.Expr) {
 
 func (x *extractor) fieldSelfReturn(key fieldKey, value ast.Expr) bool {
 	call, ok := ast.Unparen(value).(*ast.CallExpr)
-	if !ok || !x.selfContainerCall(call) {
+	if !ok {
 		return false
 	}
-	target, ok := x.directField(x.containerArgs(call)[0])
+	target, ok := x.directField(x.selfContainerInput(call))
 	return ok && target == key
 }
 
@@ -128,7 +128,7 @@ func (x *extractor) zeroFieldInitializer(value ast.Expr) bool {
 func (x *extractor) literalField(value ast.Expr, field types.Object) (ast.Expr, bool) {
 	if call, ok := ast.Unparen(value).(*ast.CallExpr); ok {
 		function, _ := x.calledObject(unwrappedCallee(call.Fun)).(*types.Func)
-		value = x.factories[function]
+		value = x.factories[function].value
 	}
 	value = ast.Unparen(value)
 	if address, ok := value.(*ast.UnaryExpr); ok && address.Op == token.AND {

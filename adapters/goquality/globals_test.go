@@ -23,6 +23,21 @@ func TestStableLiteralTableReads(t *testing.T) {
 		"tables.go": `package stable
 import "charm.land/lipgloss/v2"
 import "errors"
+type valueRecord struct{Value int;Name string;Numbers [1]int}
+func(r *valueRecord) Touch(){r.Value++}
+var fixedRecord=valueRecord{Value:1,Name:"fixed",Numbers:[1]int{2}}
+var writtenRecord=valueRecord{Value:1}
+var addressedRecord=valueRecord{Value:1}
+var methodRecord=valueRecord{Value:1}
+var ExportedRecord=valueRecord{Value:1}
+var referencedRecord=struct{Value *int}{Value:new(int)}
+func RecordValue()valueRecord{return fixedRecord}
+func RecordWritten()valueRecord{return writtenRecord}
+func RecordAddress()*valueRecord{return &addressedRecord}
+func RecordMethod(){methodRecord.Touch()}
+func RecordExported()valueRecord{return ExportedRecord}
+func RecordReference()*int{return referencedRecord.Value}
+func init(){writtenRecord.Value++}
 var sentinel = errors.New("fixed")
 var sentinelWritten = errors.New("fixed")
 var sentinelAddressed = errors.New("fixed")
@@ -74,6 +89,25 @@ var closureWritten = []int{1}
 var ranged = []int{1}
 var nested = [1][1]int{{1}}
 var methodCalled = [...]counter{1}
+var dispatch = map[string]func()int{"run": compute}
+var steps = []struct{run func()int}{{compute}}
+var callbacks = []func()int{func()int{callbackCount++;return callbackCount}}
+var callbackCount int
+var dispatchWritten = []func()int{compute}
+var dispatchEscaped = []func()int{compute}
+var dispatchAddressed = []func()int{compute}
+var dispatchVariable = []func()int{changingFunction}
+var changingFunction = compute
+var dispatchBound = []func(){receiver.change}
+var receiver counter
+func Dispatch()int{return dispatch["run"]()}
+func DispatchRecord()int{return steps[0].run()}
+func DispatchCallback()int{return callbacks[0]()}
+func DispatchWritten()int{dispatchWritten[0]=compute;return dispatchWritten[0]()}
+func DispatchEscaped()[]func()int{return dispatchEscaped}
+func DispatchAddressed()*func()int{return &dispatchAddressed[0]}
+func DispatchVariable()int{return dispatchVariable[0]()}
+func DispatchBound(){dispatchBound[0]()}
 type counter int
 func (c *counter) change() { *c++ }
 func compute() int { return 1 }
@@ -108,7 +142,7 @@ func closure() func() { return func() { closureWritten[0]++ } }
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"ErrorValue", "Fixed", "Records", "StyleValue", "StyleRender", "StyleMethodValue"} {
+	for _, name := range []string{"RecordValue", "ErrorValue", "Fixed", "Records", "Dispatch", "DispatchRecord", "DispatchCallback", "StyleValue", "StyleRender", "StyleMethodValue"} {
 		fact := findFunction(t, facts, name)
 		for _, effect := range fact.Effects {
 			if effect.Kind == quality.Global {
@@ -116,7 +150,7 @@ func closure() func() { return func() { closureWritten[0]++ } }
 			}
 		}
 	}
-	for _, name := range []string{"ErrorWritten", "ErrorAddressed", "ErrorExported", "ErrorDynamic", "ErrorIndirect", "Mutable", "Escape", "Address", "Reference", "Dynamic", "Public", "Initialized", "Closed", "Method", "RangeWrite", "Nested", "StyleWritten", "StyleAddressed", "StyleExported", "StyleDynamic", "StyleCallback", "StyleColorReference", "StyleAlias", "StyleOther"} {
+	for _, name := range []string{"RecordWritten", "RecordAddress", "RecordMethod", "RecordExported", "RecordReference", "ErrorWritten", "ErrorAddressed", "ErrorExported", "ErrorDynamic", "ErrorIndirect", "Mutable", "Escape", "Address", "Reference", "Dynamic", "Public", "Initialized", "Closed", "Method", "RangeWrite", "Nested", "DispatchWritten", "DispatchEscaped", "DispatchAddressed", "DispatchVariable", "DispatchBound", "StyleWritten", "StyleAddressed", "StyleExported", "StyleDynamic", "StyleCallback", "StyleColorReference", "StyleAlias", "StyleOther"} {
 		fact := findFunction(t, facts, name)
 		found := false
 		for _, effect := range fact.Effects {
@@ -124,6 +158,12 @@ func closure() func() { return func() { closureWritten[0]++ } }
 		}
 		if !found {
 			t.Errorf("%s loses observable global dependence", name)
+		}
+	}
+	for _, name := range []string{"Dispatch", "DispatchRecord", "DispatchCallback"} {
+		fact := findFunction(t, facts, name)
+		if len(fact.Calls) != 1 || !fact.Calls[0].Dynamic {
+			t.Errorf("%s loses dispatch call evidence: %+v", name, fact.Calls)
 		}
 	}
 	render := findFunction(t, facts, "StyleRender")
@@ -165,5 +205,71 @@ func TestAuditedStyleModule(t *testing.T) {
 				t.Fatalf("audited module=%v want=%v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestStableConstructedMetadata(t *testing.T) {
+	root := qualitySourceModule(t, []byte(`package repro
+import("reflect";"regexp")
+var expression=regexp.MustCompile("x")
+var mutable=regexp.MustCompile("x")
+var names=regexp.MustCompile("(?P<name>x)")
+var copied=regexp.MustCompile("x")
+var escaped=regexp.MustCompile("x")
+var alias=escaped
+var addressed=regexp.MustCompile("x")
+var exported=regexp.MustCompile("x")
+var Public=regexp.MustCompile("x")
+var typesTable=[]reflect.Type{reflect.TypeOf(0),reflect.TypeFor[string]()}
+var typeArray=[1]reflect.Type{reflect.TypeOf(struct{}{})}
+var written=[]reflect.Type{reflect.TypeOf(0)}
+var sliced=[]reflect.Type{reflect.TypeOf(0)}
+var tableAddress=[]reflect.Type{reflect.TypeOf(0)}
+type fakeType struct{reflect.Type}
+func customType()reflect.Type{return fakeType{}}
+var custom=[]reflect.Type{customType()}
+func Match()bool{return expression.MatchString("x")}
+func Mutate()bool{mutable.Longest();return mutable.MatchString("x")}
+func Names()[]string{return names.SubexpNames()}
+func Copy()*regexp.Regexp{return copied.Copy()}
+func Escaped()bool{return escaped.MatchString("x")}
+func Address()**regexp.Regexp{return &addressed}
+func Exported()bool{return Public.MatchString("x")}
+func Types()reflect.Type{return typesTable[0]}
+func TypeArray()reflect.Type{return typeArray[0]}
+func Written()reflect.Type{written[0]=reflect.TypeOf("");return written[0]}
+func Slice()[]reflect.Type{return sliced[:]}
+func TableAddress()*[]reflect.Type{return &tableAddress}
+func Custom()reflect.Type{return custom[0]}
+`))
+	facts, err := (Analyzer{Root: root}).Extract(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"Match", "Types", "TypeArray"} {
+		for _, effect := range findFunction(t, facts, name).Effects {
+			if effect.Kind == quality.Global {
+				t.Errorf("%s retains global read: %+v", name, effect)
+			}
+		}
+	}
+	for _, name := range []string{"Mutate", "Names", "Copy", "Escaped", "Address", "Exported", "Written", "Slice", "TableAddress", "Custom"} {
+		found := false
+		for _, effect := range findFunction(t, facts, name).Effects {
+			found = found || effect.Kind == quality.Global
+		}
+		if !found {
+			t.Errorf("%s loses shared metadata effect", name)
+		}
+	}
+	config := quality.DefaultConfig()
+	config.Prefixes = append(config.Prefixes, quality.Prefix{Path: "regexp.Regexp.MatchString", Kind: quality.IO})
+	report, err := quality.Evaluate(facts, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := resultNamed(t, report, "Match")
+	if len(result.Effects) != 1 || result.Effects[0].Kind != quality.IO {
+		t.Fatalf("metadata proof hid call override: %+v", result)
 	}
 }

@@ -170,7 +170,7 @@ func TestNumericalArithmeticDoesNotOverflow(t *testing.T) {
 }
 
 func TestConfigurationRejectsInvalidOverrides(t *testing.T) {
-	for _, data := range []string{`{"unknown":1}`, `{"final_threshold":"NaN"}`, `{"final_threshold":"1.01"}`, `{"final_threshold":"-0.1"}`, `{"scoring":"legacy"}`, `{} {}`, `null`, `[]`, `{"final_threshold":null}`} {
+	for _, data := range []string{`{"unknown":1}`, `{"final_threshold":"NaN"}`, `{"final_threshold":"1.01"}`, `{"final_threshold":"-0.1"}`, `{"final_threshold":"+0.1"}`, `{"final_threshold":"1e-1"}`, `{"final_threshold":"1/2"}`, `{"final_threshold":".5"}`, `{"final_threshold":"0."}`, `{"final_threshold":"0..5"}`, `{"final_threshold":"０.５"}`, `{"final_threshold":"0.5\n"}`, `{"final_threshold":" 0.5"}`, `{"scoring":"legacy"}`, `{} {}`, `null`, `[]`, `{"final_threshold":null}`} {
 		if _, err := ParseConfig([]byte(data)); err == nil {
 			t.Fatalf("accepted %s", data)
 		}

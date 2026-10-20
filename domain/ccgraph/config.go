@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"regexp"
+	"strings"
 )
 
 const Profile = "compat.ccgraph.strict/0.1.0"
@@ -37,7 +37,8 @@ func (d *Decimal) UnmarshalJSON(data []byte) error {
 }
 
 func (d Decimal) rational() (*big.Rat, error) {
-	if !decimalPattern.MatchString(string(d)) {
+	whole, fraction, point := strings.Cut(string(d), ".")
+	if !decimalDigits(whole) || (point && !decimalDigits(fraction)) {
 		return nil, fmt.Errorf("invalid decimal %q", d)
 	}
 	r, ok := new(big.Rat).SetString(string(d))
@@ -67,7 +68,9 @@ func (c Config) Validate() error {
 	return nil
 }
 
-var decimalPattern = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?$`)
+func decimalDigits(text string) bool {
+	return text != "" && strings.Trim(text, "0123456789") == ""
+}
 
 // Cosine records exact nonnegative components, avoiding square-root drift.
 type Cosine struct{ Dot, NormProduct *big.Int }

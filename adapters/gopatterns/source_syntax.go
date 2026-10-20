@@ -43,8 +43,6 @@ var syntaxTypes = []reflect.Type{
 
 var syntaxTags = makeSyntaxTags()
 
-var syntaxPosition = reflect.TypeOf(token.Pos(0))
-
 type syntaxEncoder struct {
 	source  string
 	base    int
@@ -126,7 +124,7 @@ func (e *syntaxEncoder) scalar(data []byte, value reflect.Value) []byte {
 
 func (e *syntaxEncoder) integer(data []byte, value reflect.Value) []byte {
 	number := value.Int()
-	if value.Type() == syntaxPosition && number != 0 {
+	if value.Type() == reflect.TypeFor[token.Pos]() && number != 0 {
 		number -= int64(e.base - 1)
 	}
 	return binary.AppendVarint(data, number)
@@ -269,7 +267,7 @@ func (d *syntaxDecoder) scalar(value reflect.Value, assign bool) error {
 	}
 	d.cursor += size
 	if assign {
-		if value.Type() == syntaxPosition && number != 0 {
+		if value.Type() == reflect.TypeFor[token.Pos]() && number != 0 {
 			number += int64(d.base - 1)
 		}
 		value.SetInt(number)

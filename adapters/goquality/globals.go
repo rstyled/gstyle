@@ -101,11 +101,11 @@ func stableVariable(object types.Object, value ast.Expr, pkg *packages.Package) 
 }
 
 func stableInitializer(typ types.Type, value ast.Expr, info *types.Info) bool {
-	if stableErrorInitializer(value, info) {
+	if stableErrorInitializer(value, info) || stableMetadataInitializer(typ, value, info) {
 		return true
 	}
 	literal, ok := value.(*ast.CompositeLit)
-	return ok && stableTableType(typ) && constantLiteral(literal, info)
+	return ok && (stableTableType(typ) || scalarValue(typ)) && constantLiteral(literal, info)
 }
 
 func stableTableType(typ types.Type) bool {
@@ -134,11 +134,14 @@ func scalarValue(typ types.Type) bool {
 		}
 		return true
 	}
-	return false
+	// A copied function value cannot replace the table's entry. Calls retain
+	// their own effect evidence, independently of reading a fixed dispatch table.
+	_, function := typ.Underlying().(*types.Signature)
+	return function
 }
 
 func constantLiteral(value ast.Expr, info *types.Info) bool {
-	if info.Types[value].Value != nil {
+	if info.Types[value].Value != nil || fixedFunctionValue(value, info) {
 		return true
 	}
 	literal, ok := value.(*ast.CompositeLit)
@@ -151,6 +154,20 @@ func constantLiteral(value ast.Expr, info *types.Info) bool {
 		}
 	}
 	return true
+}
+
+func fixedFunctionValue(value ast.Expr, info *types.Info) bool {
+	switch value := ast.Unparen(value).(type) {
+	case *ast.FuncLit:
+		return true // Captured state belongs to invocation effects, not table reads.
+	case *ast.Ident:
+		_, ok := info.ObjectOf(value).(*types.Func)
+		return ok
+	case *ast.SelectorExpr:
+		_, ok := info.ObjectOf(value.Sel).(*types.Func)
+		return ok && info.Selections[value] == nil
+	}
+	return false
 }
 
 func constantElement(value ast.Expr, info *types.Info) bool {

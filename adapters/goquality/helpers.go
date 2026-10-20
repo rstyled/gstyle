@@ -110,7 +110,7 @@ func boundSourceCalls(calls []quality.Call, proven map[string]bool) bool {
 }
 
 func boundSourceCall(call quality.Call, proven map[string]bool) bool {
-	if quality.ClassifyCallee(call.Callee) == quality.None {
+	if quality.ClassifyCallee(call.Callee) == quality.None || call.LocalMemoryRead {
 		return true
 	}
 	if call.Dynamic {
