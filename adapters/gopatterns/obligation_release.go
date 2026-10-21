@@ -71,7 +71,7 @@ func (a fileReleaseAnalysis) acquiredFacts(node ast.Node, ref pdg.Ref, call *ast
 	if a.graph.query.AfterAcquisition(a.graph.ref(call), ref, policy) {
 		return 0, nil
 	}
-	return 0, &patterns.ResourceAcquisition{Line: a.pkg.Fset.PositionFor(call.Pos(), false).Line, Resource: "file", AcquireCall: a.graph.query.AcquisitionName(a.graph.ref(call))}
+	return 0, &patterns.ResourceAcquisition{Line: a.pkg.Fset.PositionFor(call.Pos(), false).Line, Resource: "file", AcquireCall: a.graph.query.AcquisitionName(a.graph.ref(call)), DeferredCleanup: a.graph.observedCleanupDefers(a.fn.Body, call)}
 }
 
 // Typed syntax identifies a direct file-return site. Its actual producer must

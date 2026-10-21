@@ -44,7 +44,7 @@ func (a lifecycleAnalysis) functionFacts(fn *ast.FuncDecl) []patterns.ResourceLi
 			return false
 		}
 		evidence = append(evidence, a.returnCarrierFacts(node)...)
-		if fact := a.nodeFact(node); fact != nil {
+		if fact := a.nodeFact(node, fn.Body); fact != nil {
 			if fact.State == patterns.ResourceReturned && !a.returnsResource(fn) {
 				fact.State = patterns.ResourceReturnedOwner
 				fact.Reason = "resource is carried by the returned object; the object's cleanup lifecycle remains unverified"
@@ -141,7 +141,7 @@ func (a lifecycleAnalysis) attachWorker(body *ast.BlockStmt, node ast.Node, fact
 	}
 }
 
-func (a lifecycleAnalysis) nodeFact(node ast.Node) *patterns.ResourceLifecycle {
+func (a lifecycleAnalysis) nodeFact(node ast.Node, body *ast.BlockStmt) *patterns.ResourceLifecycle {
 	ref := a.graph.ref(node)
 	if !a.graph.query.Observed(ref) {
 		return nil
@@ -154,12 +154,12 @@ func (a lifecycleAnalysis) nodeFact(node ast.Node) *patterns.ResourceLifecycle {
 		return nil
 	}
 	fact := a.newFact(call)
-	if !a.graph.query.HasFlow() {
-		return &fact
-	}
 	policy := a.policy(call, ref)
 	fact.State = a.state(call, ref, policy)
 	fact.Reason = lifecycleReason(fact.State)
+	if fact.State == patterns.ResourceUnresolved {
+		fact.DeferredCleanup = a.graph.observedCleanupDefers(body, call)
+	}
 	return &fact
 }
 
