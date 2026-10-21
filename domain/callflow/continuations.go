@@ -38,10 +38,13 @@ func OrdinaryObservationsContext(ctx context.Context, queries Queries, summaries
 		return Observations{}, nil
 	}
 	body.ctx = ctx
-	evaluation := newExitEvaluation(body, summaries)
-	evaluation.callOutcomes = map[pdg.Ref]Outcomes{}
-	evaluation.operationOutcomes = map[pdg.Ref]Outcomes{}
-	evaluation.conditions = map[pdg.Ref]uint8{}
+	// Observation mode owns forward-state joins, without a completion cache.
+	evaluation := &exitEvaluation{
+		observing: true, memory: memoryProof{preserves: true, confined: true},
+		values: map[valueStateID]exitValues{}, body: body, summaries: summaries,
+		callOutcomes: map[pdg.Ref]Outcomes{}, operationOutcomes: map[pdg.Ref]Outcomes{},
+		conditions: map[pdg.Ref]uint8{},
+	}
 	evaluation.run(false, "")
 	if err := ctx.Err(); err != nil {
 		return Observations{}, err
