@@ -1,0 +1,305 @@
+{
+  "schema_version": 1,
+  "source_revision": "2c275674fb3f0862c1fa844ba002ad3454cf43c1",
+  "source_tree": "80ae8a749fb46e14588996575f14a4789c4c4193",
+  "command": "gstyle check --format json .",
+  "context": {
+    "GOARCH": "amd64",
+    "GOFLAGS": "",
+    "GOOS": "linux",
+    "GOVERSION": "go1.27.1"
+  },
+  "tests_included": false,
+  "policy": "default config at source_revision; thresholds and suppressions unchanged",
+  "report_archive_sha256": "1f564f37b6a7d79a87b12a73a358d075b70aa8b0fe684e786b1c57bcc903e188",
+  "analyzer_binary_sha256": "d89f05ba8608832c5a63b75c803855ee4848fb64dbe679e4ece1ef2731120bde",
+  "summary": {
+    "functions": 5030,
+    "mean_density_milli": 218,
+    "max_density_milli": 7000,
+    "incomplete_functions": 1040,
+    "effects": [
+      {
+        "kind": "mutation",
+        "count": 286510
+      },
+      {
+        "kind": "io",
+        "count": 1810
+      },
+      {
+        "kind": "network",
+        "count": 25
+      },
+      {
+        "kind": "global",
+        "count": 1097
+      },
+      {
+        "kind": "unsafe",
+        "count": 0
+      },
+      {
+        "kind": "time",
+        "count": 30
+      },
+      {
+        "kind": "random",
+        "count": 0
+      },
+      {
+        "kind": "panic",
+        "count": 35818
+      },
+      {
+        "kind": "unknown",
+        "count": 23554
+      }
+    ]
+  },
+  "finding_count": 665,
+  "first_batch": {
+    "reviewed": 50,
+    "counts": {
+      "valid_under_current_rule": 43,
+      "confirmed_false_positive": 7,
+      "unresolved": 615
+    },
+    "actual_reduction": null,
+    "decisions": {
+      "Q0057": {
+        "status": "valid_under_current_rule",
+        "lane": "ownership"
+      },
+      "Q0058": {
+        "status": "valid_under_current_rule",
+        "lane": "ownership"
+      },
+      "Q0233": {
+        "status": "valid_under_current_rule",
+        "lane": "ownership"
+      },
+      "Q0245": {
+        "status": "valid_under_current_rule",
+        "lane": "ownership"
+      },
+      "Q0299": {
+        "status": "confirmed_false_positive",
+        "lane": "ownership"
+      },
+      "Q0300": {
+        "status": "valid_under_current_rule",
+        "lane": "ownership"
+      },
+      "Q0301": {
+        "status": "confirmed_false_positive",
+        "lane": "ownership"
+      },
+      "Q0302": {
+        "status": "confirmed_false_positive",
+        "lane": "ownership"
+      },
+      "Q0303": {
+        "status": "valid_under_current_rule",
+        "lane": "ownership"
+      },
+      "Q0548": {
+        "status": "valid_under_current_rule",
+        "lane": "ownership"
+      },
+      "Q0549": {
+        "status": "confirmed_false_positive",
+        "lane": "ownership"
+      },
+      "Q0553": {
+        "status": "valid_under_current_rule",
+        "lane": "ownership"
+      },
+      "Q0582": {
+        "status": "valid_under_current_rule",
+        "lane": "ownership"
+      },
+      "Q0583": {
+        "status": "valid_under_current_rule",
+        "lane": "ownership"
+      },
+      "Q0002": {
+        "status": "valid_under_current_rule",
+        "lane": "summaries"
+      },
+      "Q0003": {
+        "status": "valid_under_current_rule",
+        "lane": "summaries"
+      },
+      "Q0004": {
+        "status": "valid_under_current_rule",
+        "lane": "summaries"
+      },
+      "Q0005": {
+        "status": "valid_under_current_rule",
+        "lane": "summaries"
+      },
+      "Q0006": {
+        "status": "valid_under_current_rule",
+        "lane": "summaries"
+      },
+      "Q0007": {
+        "status": "valid_under_current_rule",
+        "lane": "summaries"
+      },
+      "Q0008": {
+        "status": "valid_under_current_rule",
+        "lane": "summaries"
+      },
+      "Q0009": {
+        "status": "valid_under_current_rule",
+        "lane": "summaries"
+      },
+      "Q0306": {
+        "status": "confirmed_false_positive",
+        "lane": "summaries"
+      },
+      "Q0307": {
+        "status": "valid_under_current_rule",
+        "lane": "summaries"
+      },
+      "Q0334": {
+        "status": "valid_under_current_rule",
+        "lane": "summaries"
+      },
+      "Q0034": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0035": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0063": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0064": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0095": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0202": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0232": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0278": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0280": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0380": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0445": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0446": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0447": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0512": {
+        "status": "confirmed_false_positive",
+        "lane": "policy"
+      },
+      "Q0514": {
+        "status": "confirmed_false_positive",
+        "lane": "policy"
+      },
+      "Q0527": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0529": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0531": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0536": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0539": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0543": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0545": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0546": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0556": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      },
+      "Q0563": {
+        "status": "valid_under_current_rule",
+        "lane": "policy"
+      }
+    }
+  },
+  "note": "Source review classifies warnings under the current rule. Valid warnings may still contain imprecise effect evidence. Cases not reviewed stay unresolved. Candidate ceilings and code-cost estimates are not measured reductions.",
+  "milestones": [
+    {
+      "id": "fixed-table-reads",
+      "frozen_findings_before": 665,
+      "frozen_findings_after": 661,
+      "removed_ids": [
+        "Q0512",
+        "Q0514",
+        "Q0520",
+        "Q0589"
+      ],
+      "added_ids": [],
+      "current_source_findings": 661,
+      "current_source_functions": 5031,
+      "net_production_lines": 17,
+      "incomplete_functions_before": 1040,
+      "incomplete_functions_after": 1040,
+      "note": "Source review of the two additional removals confirms the same table-read evidence bug; initial first_batch remains historical. Frozen source and changed implementation are measured separately."
+    }
+  ],
+  "review_after_table_fix": {
+    "reviewed": 52,
+    "confirmed_false_positive_initial": 9,
+    "fixed_in_this_milestone": 4,
+    "confirmed_false_positive_remaining": 5,
+    "valid_under_current_rule": 43,
+    "unresolved": 613,
+    "new_reviewed_ids": [
+      "Q0520",
+      "Q0589"
+    ]
+  }
+}
