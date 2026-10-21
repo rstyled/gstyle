@@ -355,7 +355,7 @@ func candidateIntro(index int, candidate *Candidate) []string {
 		fmt.Sprintf("  observation: %s", candidate.Observation),
 		fmt.Sprintf("  inference: %s", candidate.Inference),
 		fmt.Sprintf("  possible refactor: %s", candidate.PossibleRefactor),
-	}, analysisLines(candidate.Analysis), []string{"  sites:"})
+	}, analysisLines(candidate.Analysis), workerLines(candidate.ResourceLifecycle), []string{"  sites:"})
 }
 
 func analysisLines(evidence *AnalysisEvidence) []string {
