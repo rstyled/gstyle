@@ -5,13 +5,14 @@ import (
 	"go/ast"
 	"go/printer"
 	"go/token"
+	"go/types"
 	"strings"
 )
 
 // TypeSwitchHit is one type switch whose arms all call the same method on
 // the case-bound value. It is the fixable subset of type switches: when
 // every arm does `v.Method(...)` with the same method name, the switch can
-// be replaced by a direct interface method call.
+// share an interface call within the original case set.
 //
 // Example:
 //
@@ -24,14 +25,14 @@ import (
 //
 // becomes:
 //
-//	if v, ok := x.(interface{ Speak() }); ok {
-//		v.Speak()
+//	switch v := x.(type) {
+//	case Dog, Cat:
+//		v.(interface{ Speak() }).Speak()
 //	}
 //
-// The comma-ok form preserves the no-match behavior of a switch without a
-// default clause. The interface signature is taken from the method
-// declarations found in the same file; if they are missing or differ, the
-// hit is skipped (the fixer re-validates).
+// Case types retain pointers. Each type must have the method in its method set;
+// implicit address-taking in a single case cannot justify an interface call.
+// The fixer also checks matching method declarations in the same file.
 type TypeSwitchHit struct {
 	// Line is the line of the switch statement.
 	Line int
@@ -41,7 +42,7 @@ type TypeSwitchHit struct {
 	Expr string
 	// Method is the method name called in every arm.
 	Method string
-	// Types are the case type names (Dog, Cat, ...).
+	// Types are the case types, including pointers (*Dog, Cat, ...).
 	Types []string
 	// Args is the source text of the call arguments, identical in every arm.
 	Args string
@@ -58,14 +59,14 @@ type typeArm struct {
 // findTypeSwitches scans fn for type switches in the fixable subset:
 // `switch v := x.(type)` with 2+ value cases, no default statements, each
 // arm a single `v.Method(...)` call with the same method name and args.
-func findTypeSwitches(fn *ast.FuncDecl, fset *token.FileSet) []TypeSwitchHit {
+func findTypeSwitches(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info) []TypeSwitchHit {
 	var hits []TypeSwitchHit
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
 		sw, ok := n.(*ast.TypeSwitchStmt)
 		if !ok {
 			return true
 		}
-		if hit, ok := asFixableTypeSwitch(sw, fset); ok {
+		if hit, ok := asFixableTypeSwitch(sw, fset); ok && typeSwitchMethodSets(sw, info) {
 			hits = append(hits, hit)
 		}
 		return true
@@ -211,14 +212,17 @@ func sameCall(arms []typeArm) bool {
 	return true
 }
 
-// typeNameOf returns the type name of a case clause expression.
-// Handles `Dog` and `*Dog` (pointer cases).
+// typeNameOf preserves the supported named and pointer case types.
 func typeNameOf(e ast.Expr) (string, bool) {
-	switch t := e.(type) {
+	switch t := ast.Unparen(e).(type) {
 	case *ast.Ident:
 		return t.Name, true
 	case *ast.StarExpr:
-		return typeNameOf(t.X)
+		name, ok := ast.Unparen(t.X).(*ast.Ident)
+		if !ok {
+			return "", false
+		}
+		return "*" + name.Name, true
 	default:
 		return "", false
 	}
@@ -311,14 +315,14 @@ func methodSigOf(decl ast.Decl, fset *token.FileSet, typ, method string) (string
 	return method + sig, true
 }
 
-// recvMatches reports whether the receiver list declares a receiver of
-// the named type (value or pointer).
+// recvMatches checks the method set of a supported case type. A pointer case
+// admits value or pointer receivers; a value case admits only value receivers.
 func recvMatches(recv *ast.FieldList, typ string) bool {
 	if recv == nil || len(recv.List) != 1 {
 		return false
 	}
 	name, ok := typeNameOf(recv.List[0].Type)
-	return ok && name == typ
+	return ok && (name == typ || "*"+name == typ)
 }
 
 // findTypeSwitchAtLine locates the type switch statement at the given line.
