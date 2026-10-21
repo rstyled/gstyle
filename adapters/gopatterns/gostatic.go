@@ -104,14 +104,14 @@ func expressionText(expression ast.Expr) string {
 }
 
 // findForceTypeAssertHits finds unchecked `x.(T)` type assertions.
-func findForceTypeAssertHits(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info) []patterns.ForceTypeAssertHit {
+func findForceTypeAssertHits(fn *ast.FuncDecl, fset *token.FileSet) []patterns.ForceTypeAssertHit {
 	var out []patterns.ForceTypeAssertHit
 	if fn.Body == nil {
 		return out
 	}
 	commaOk := collectCommaOk(fn.Body)
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
-		if hit := checkTypeAssert(n, fset, info, commaOk); hit != nil {
+		if hit := checkTypeAssert(n, fset, commaOk); hit != nil {
 			out = append(out, *hit)
 		}
 		return true
@@ -158,32 +158,17 @@ func markCommaOkAssertion(e ast.Expr, commaOk map[*ast.TypeAssertExpr]bool) {
 	commaOk[assertion] = true
 }
 
-// checkTypeAssert checks one node for an unchecked assertion.
-func checkTypeAssert(n ast.Node, fset *token.FileSet, info *types.Info, commaOk map[*ast.TypeAssertExpr]bool) *patterns.ForceTypeAssertHit {
+// checkTypeAssert checks one node for an unchecked assertion. Even an empty
+// interface target panics when the operand is a nil interface.
+func checkTypeAssert(n ast.Node, fset *token.FileSet, commaOk map[*ast.TypeAssertExpr]bool) *patterns.ForceTypeAssertHit {
 	tae, ok := n.(*ast.TypeAssertExpr)
 	if !ok || commaOk[tae] || tae.Type == nil {
-		return nil
-	}
-	if isEmptyInterface(info, tae.Type) {
 		return nil
 	}
 	return &patterns.ForceTypeAssertHit{
 		Line:     fset.Position(tae.Pos()).Line,
 		ExprText: expressionText(tae),
 	}
-}
-
-// isEmptyInterface reports whether e is `any` or empty interface.
-func isEmptyInterface(info *types.Info, e ast.Expr) bool {
-	if info == nil {
-		return false
-	}
-	t := info.TypeOf(e)
-	if t == nil {
-		return false
-	}
-	iface, ok := t.Underlying().(*types.Interface)
-	return ok && iface.Empty()
 }
 
 // findSuppressedKinds extracts suppressed pattern kinds from the function's
