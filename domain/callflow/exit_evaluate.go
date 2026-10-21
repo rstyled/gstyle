@@ -14,6 +14,7 @@ type exitPoint struct {
 }
 
 type exitEvaluation struct {
+	observing         bool
 	stateIndex        valueStateIndex
 	contexts          map[valueStateID]bindingflow.Evaluation
 	concrete          map[exitValue]bindingflow.Value
@@ -36,6 +37,14 @@ type exitEvaluation struct {
 }
 
 func (evaluation *exitEvaluation) visit(point exitPoint) completions {
+	if evaluation.observing {
+		evaluation.observe(point)
+		return completions{}
+	}
+	return evaluation.complete(point)
+}
+
+func (evaluation *exitEvaluation) complete(point exitPoint) completions {
 	if evaluation.body.canceled() {
 		return completions{}
 	}
