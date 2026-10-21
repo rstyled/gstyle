@@ -27,6 +27,7 @@ import (
 
 // FuncPdg is the dependence graph of one function.
 type FuncPdg struct {
+	ResourceLifecycles []patterns.ResourceLifecycle
 	// SuccessReturnOutputSites are zero-based ErrorCheckSites indices followed directly by a nil error return.
 	SuccessReturnOutputSites []int
 	// DeferredReleaseLines have explicit cleanup on modeled exits, with foreign calls unproved.
@@ -118,13 +119,15 @@ type Extraction struct {
 
 // extractCtx carries per-package maps for entity pairing.
 type extractCtx struct {
-	resourceQueries map[*pdg.Graph]*resourceflow.Query
-	exits           callflow.ExitSummaries
-	fileSources     map[types.Object]bool
-	fileFailures    map[types.Object]bool
-	helpers         map[types.Object]bool
-	structLocs      map[string]structLoc
-	mutated         map[string]bool
+	resourceFunctions map[types.Object]resourceFunction
+	protocols         []protocolFacts
+	resourceQueries   map[*pdg.Graph]*resourceflow.Query
+	exits             callflow.ExitSummaries
+	fileSources       map[types.Object]bool
+	fileFailures      map[types.Object]bool
+	helpers           map[types.Object]bool
+	structLocs        map[string]structLoc
+	mutated           map[string]bool
 }
 
 // newExtractCtx builds the struct location and mutation maps for pairing
@@ -137,12 +140,14 @@ func newExtractCtx(pkg *packages.Package, root string, resources packageResource
 		}
 	}
 	return extractCtx{
-		fileSources:  resources.sources,
-		exits:        resources.exits,
-		fileFailures: resources.failures,
-		helpers:      resources.helpers,
-		structLocs:   structLocs,
-		mutated:      collectMutatedStructs(pkg),
+		resourceFunctions: resources.functions,
+		protocols:         resources.protocols,
+		fileSources:       resources.sources,
+		exits:             resources.exits,
+		fileFailures:      resources.failures,
+		helpers:           resources.helpers,
+		structLocs:        structLocs,
+		mutated:           collectMutatedStructs(pkg),
 	}
 }
 
@@ -485,23 +490,25 @@ func extractFunc(pkg *packages.Package, source functionGraph, ctx extractCtx) (F
 	if err != nil {
 		return FuncPdg{}, err
 	}
+	lifecycles := resourceLifecycleFacts(pkg, fn, ctx, graph)
 	var bindings *bindingflow.Query
 	if query := ctx.resourceQueries[graph]; query != nil {
 		bindings = query.CallQueries().Bindings
 	}
 	return FuncPdg{
-		Name:            name,
-		Path:            path,
-		Line:            pos.Line,
-		EndLine:         end.Line,
-		SuppressedKinds: findSuppressedKinds(fn),
-		Pdg:             *graph,
-		AstTypes:        patterns.AstNodeMultiset(fn),
-		SelfTy:          selfTy,
-		GuardClauses:    findGuardClauses(fn, pkg.Fset),
-		EnumDispatches:  findEnumDispatches(fn, pkg.Fset, pkg.TypesInfo),
-		TypeSwitches:    findTypeSwitches(fn, pkg.Fset),
-		Params:          primitiveParams(fn, pkg.TypesInfo),
+		ResourceLifecycles: lifecycles,
+		Name:               name,
+		Path:               path,
+		Line:               pos.Line,
+		EndLine:            end.Line,
+		SuppressedKinds:    findSuppressedKinds(fn),
+		Pdg:                *graph,
+		AstTypes:           patterns.AstNodeMultiset(fn),
+		SelfTy:             selfTy,
+		GuardClauses:       findGuardClauses(fn, pkg.Fset),
+		EnumDispatches:     findEnumDispatches(fn, pkg.Fset, pkg.TypesInfo),
+		TypeSwitches:       findTypeSwitches(fn, pkg.Fset),
+		Params:             primitiveParams(fn, pkg.TypesInfo),
 		// EntityIdentities suggest reviewing attribute-based equality.
 		// Existing and missing IDs both require a domain invariant before edits.
 		EntityIdentities: append(

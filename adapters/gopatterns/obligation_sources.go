@@ -11,15 +11,19 @@ import (
 )
 
 type resourceFunction struct {
+	declaration  *ast.FuncDecl
 	object       types.Object
 	graph        *pdg.Graph
 	query        *resourceflow.Query
+	observation  *resourceflow.Query
 	helperSymbol pdg.Ref
 	errorSecond  bool
 }
 type packageResourceFacts struct {
+	functions                  map[types.Object]resourceFunction
 	sources, failures, helpers map[types.Object]bool
 	exits                      callflow.ExitSummaries
+	protocols                  []protocolFacts
 }
 
 func summarizeResources(functions map[string]resourceFunction) (packageResourceFacts, error) {
@@ -39,6 +43,11 @@ func summarizeResourcesWithExits(functions map[string]resourceFunction, exits ca
 		facts.sources[function.object] = summary.Fresh
 		facts.failures[function.object] = summary.Fresh && summary.FailureEmpty && function.errorSecond
 		facts.helpers[function.object] = helpers[identity]
+	}
+	facts.protocols = summarizeProtocols(functions, exits)
+	facts.functions = make(map[types.Object]resourceFunction, len(functions))
+	for _, function := range functions {
+		facts.functions[function.object] = function
 	}
 	return facts, nil
 }
@@ -64,7 +73,14 @@ func resourceFunctionQuery(pkg *packages.Package, source functionGraph) (resourc
 	if err != nil {
 		return resourceFunction{}, err
 	}
-	function := resourceFunction{object: object, graph: graph, query: query, errorSecond: factoryErrorSecond(signature)}
+	function := resourceFunction{declaration: fn, object: object, graph: graph, query: query, errorSecond: factoryErrorSecond(signature)}
+	function.observation = query
+	if query == nil {
+		function.observation, err = resourceflow.Observe(graph)
+		if err != nil {
+			return resourceFunction{}, err
+		}
+	}
 	if releaseHelperShape(pkg.TypesInfo, fn) {
 		function.helperSymbol = graph.Function.Inputs[0].Symbol
 	}

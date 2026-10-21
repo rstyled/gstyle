@@ -72,6 +72,9 @@ func (q *Query) deferredReturns(ref pdg.Ref) bool {
 }
 
 func (q *Query) cleanupMethod(ref pdg.Ref, policy Policy) bool {
+	if q.protocol.Resource != "" {
+		return q.closeMethod(ref)
+	}
 	if policy.recognizeDeferred {
 		return strings.HasSuffix(q.methods[ref], "."+policy.releaseMethod)
 	}

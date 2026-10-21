@@ -172,7 +172,7 @@ func (q *Query) After(owner pdg.Ref, policy Policy) bool {
 }
 
 func (q *Query) FromEntry(policy Policy) bool {
-	if q == nil {
+	if !q.HasFlow() {
 		return false
 	}
 	return q.prove(point{block: int(q.flow.Entry - 1), present: true}, policy)
