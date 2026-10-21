@@ -80,8 +80,9 @@ type ResourceAcquisition struct {
 
 // ObligationViolation is an acquired resource with no deferred release.
 type ObligationViolation struct {
-	FuncID string
-	Line   int
+	Lifecycle *ResourceLifecycle
+	FuncID    string
+	Line      int
 	// Resource is the human name, e.g. "file".
 	Resource string
 	// AcquireCall is the acquiring callee suffix, e.g. "os.Open".
@@ -113,6 +114,7 @@ func FindObligationViolations(facts []*MiningFacts) []ObligationViolation {
 		}
 		out = append(out, violationsInFunc(f)...)
 		out = append(out, returnedFileViolations(f)...)
+		out = append(out, lifecycleViolations(f)...)
 	}
 	return out
 }
@@ -133,6 +135,9 @@ func violationsInFunc(f *MiningFacts) []ObligationViolation {
 	var out []ObligationViolation
 	acquisitions := findAcquisitions(pdg, f.ID)
 	for _, acq := range acquisitions {
+		if hasLifecycle(f, acq) {
+			continue
+		}
 		if dischargedFile(f.ReleasedFileLines, acquisitions, acq) || dischargedLine(f.DeferredReleaseLines, acquisitions, acq) {
 			continue
 		}
@@ -324,13 +329,12 @@ func ObligationCandidates(violations []ObligationViolation, facts []*MiningFacts
 			continue
 		}
 		out = append(out, Candidate{
-			Kind:        Obligation,
-			ScoreMilli:  800, // High: a leaked resource is a bug.
-			Observation: fmt.Sprintf("%s acquired via `%s` has no deferred release", v.Resource, v.AcquireCall),
-			Inference:   v.Reason,
-			PossibleRefactor: fmt.Sprintf(
-				"add `defer` for the release right after acquiring the %s", v.Resource,
-			),
+			Kind:              Obligation,
+			ScoreMilli:        800, // Review priority, not confidence that a leak exists.
+			Observation:       fmt.Sprintf("%s acquired via `%s` has unresolved cleanup ownership", v.Resource, v.AcquireCall),
+			Inference:         v.Reason,
+			PossibleRefactor:  fmt.Sprintf("ensure the owner releases the %s when its work ends; use defer only when cleanup belongs to this function", v.Resource),
+			ResourceLifecycle: v.Lifecycle,
 			Sites: []Site{
 				{Path: f.Path, Line: v.Line, Name: f.Name},
 			},

@@ -163,6 +163,7 @@ func toFacts(pdgs []gopatterns.FuncPdg) []*patterns.FuncFacts {
 // funcFactsOf converts one extracted function to miner facts.
 func funcFactsOf(fp gopatterns.FuncPdg) *patterns.FuncFacts {
 	return &patterns.FuncFacts{
+		ResourceLifecycles:  fp.ResourceLifecycles,
 		ID:                  fp.Name,
 		Name:                fp.Name,
 		Path:                fp.Path,

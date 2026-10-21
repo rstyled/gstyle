@@ -24,6 +24,7 @@ func Run(facts []*FuncFacts, options Options) PatternsReport {
 
 func miningFacts(f *FuncFacts) *MiningFacts {
 	return &MiningFacts{
+		ResourceLifecycles:  f.ResourceLifecycles,
 		Canonical:           f.Pdg,
 		ID:                  f.ID,
 		Name:                f.Name,
@@ -75,7 +76,9 @@ func MiningView(g *pdg.Graph) *MiningGraph {
 			continue
 		}
 		indexes[i] = len(view.Nodes)
-		view.Nodes = append(view.Nodes, miningNode(g, n))
+		projected := miningNode(g, n)
+		projected.SourceNode = uint32(i + 1)
+		view.Nodes = append(view.Nodes, projected)
 	}
 	// Matching labels select the compact abstraction. Canonical dependencies
 	// through unlabelled operations still connect its visible producers.

@@ -101,7 +101,7 @@ func (q *Query) OSFileAcquisition(ref pdg.Ref) bool {
 }
 
 func (q *Query) factory(helpers, isolated map[string]bool) factoryDescriptor {
-	if q == nil || len(q.graph.Function.Outputs) == 0 {
+	if !q.HasFlow() || len(q.graph.Function.Outputs) == 0 {
 		return factoryDescriptor{}
 	}
 	analysis := factoryAnalysis{isolated: isolated, query: q, helpers: helpers, values: map[factoryValueKey]bindingflow.Origins{}, inputs: make([]factoryState, len(q.flow.Blocks))}
@@ -113,11 +113,10 @@ func (q *Query) factory(helpers, isolated map[string]bool) factoryDescriptor {
 }
 
 func (q *Query) primitiveFile(ref pdg.Ref) bool {
-	attrs := q.graph.NodeAttributes(q.graph.Nodes[ref-1])
-	if attrs.CallForm == pdg.DirectCall && attrs.Callee.Status == pdg.Known && primitiveFileName(q.graph.Tables.Text(attrs.Callee.Value)) {
+	if q.primitiveResource(directResourceCall(q.graph, q.graph.Nodes[ref-1])) {
 		return true
 	}
-	return q.methods[ref] == "io/fs.FS.Open"
+	return q.protocol.Resource == "" && q.methods[ref] == "io/fs.FS.Open"
 }
 
 func (q *Query) sourceRequirement(source bindingflow.ValueSource, state factoryState) (factoryRequirement, bool) {
@@ -150,8 +149,7 @@ func (q *Query) emptySource(source bindingflow.ValueSource) bool {
 }
 
 func (q *Query) isolatedPrimitive(ref pdg.Ref) bool {
-	attrs := q.graph.NodeAttributes(q.graph.Nodes[ref-1])
-	return attrs.CallForm == pdg.DirectCall && attrs.Callee.Status == pdg.Known && primitiveFileName(q.graph.Tables.Text(attrs.Callee.Value))
+	return q.primitiveResource(directResourceCall(q.graph, q.graph.Nodes[ref-1]))
 }
 
 func primitiveFileName(name string) bool {

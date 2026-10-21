@@ -4,6 +4,7 @@ import (
 	"github.com/rstyled/gstyle/domain/bindingflow"
 	"github.com/rstyled/gstyle/domain/deferflow"
 	"github.com/rstyled/gstyle/domain/pdg"
+	"maps"
 	"slices"
 )
 
@@ -76,13 +77,38 @@ func (q *Query) carriedResource(ref pdg.Ref, policy Policy, seen map[pdg.Ref]boo
 	}
 	seen[ref] = true
 	if !q.carrierOperation(ref) {
-		return false
+		return q.carrierOrigins(ref, policy, seen)
 	}
 	inputs, known := q.paths.InputValues(ref)
 	if !known {
 		return false
 	}
 	return q.inputsCarryResource(inputs, policy, seen)
+}
+
+// A returned object can carry a resource through a local binding. Every
+// canonical origin must carry it; a mixed branch cannot establish transfer.
+func (q *Query) carrierOrigins(ref pdg.Ref, policy Policy, seen map[pdg.Ref]bool) bool {
+	if q.protocol.Resource == "" {
+		return false
+	}
+	origins := q.paths.OriginsOf(ref, q.facts)
+	if !origins.Known || len(origins.Sources) == 0 {
+		return false
+	}
+	for _, source := range origins.Sources {
+		if !q.originCarriesResource(source, policy, seen) {
+			return false
+		}
+	}
+	return true
+}
+
+func (q *Query) originCarriesResource(source bindingflow.ValueSource, policy Policy, seen map[pdg.Ref]bool) bool {
+	if source.Zero || source.Representation != bindingflow.UnchangedRepresentation {
+		return false
+	}
+	return q.carriedResource(source.Node, policy, maps.Clone(seen))
 }
 
 func (q *Query) inputsCarryResource(inputs []pdg.Ref, policy Policy, seen map[pdg.Ref]bool) bool {
@@ -99,6 +125,9 @@ func (q *Query) carrierOperation(ref pdg.Ref) bool {
 	switch q.graph.Tables.Text(attrs.Operator.Value) {
 	case "composite", "key-value":
 		return true
+	case "&":
+		input := q.paths.Operand(ref, 1)
+		return q.protocol.Resource != "" && input != 0 && q.graph.Tables.Text(q.graph.NodeAttributes(q.graph.Nodes[input-1]).Operator.Value) == "composite"
 	default:
 		return false
 	}

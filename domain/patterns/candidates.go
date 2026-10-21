@@ -288,14 +288,15 @@ type Breakdown struct {
 
 // Candidate is one ranked abstraction proposal.
 type Candidate struct {
-	Security         *SecurityFinding  `json:"security,omitempty"`
-	Analysis         *AnalysisEvidence `json:"analysis_evidence,omitempty"`
-	Kind             CandidateKind
-	ScoreMilli       uint32
-	Breakdown        Breakdown
-	Observation      string
-	Inference        string
-	PossibleRefactor string
+	ResourceLifecycle *ResourceLifecycle `json:"resource_lifecycle,omitempty"`
+	Security          *SecurityFinding   `json:"security,omitempty"`
+	Analysis          *AnalysisEvidence  `json:"analysis_evidence,omitempty"`
+	Kind              CandidateKind
+	ScoreMilli        uint32
+	Breakdown         Breakdown
+	Observation       string
+	Inference         string
+	PossibleRefactor  string
 	// Sites is every function that shows the pattern.
 	Sites []Site
 	// Definitions are the functions that fill the method holes.

@@ -89,7 +89,9 @@ const (
 
 // PdgNode mirrors rstyle's facts::PdgNode.
 type PdgNode struct {
-	Kind NodeKind
+	// SourceNode is the one-based canonical node reference. It is never a matching label.
+	SourceNode uint32 `json:"-"`
+	Kind       NodeKind
 	// TyClass is the normalized type class of the value this node produces
 	// (Param labels use it): primitives kept ("string"), named user types are
 	// "_", stdlib ADTs keep their short name, e.g. "*_", "[_]".

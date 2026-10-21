@@ -35,6 +35,7 @@ type point struct {
 }
 
 type Query struct {
+	protocol   Protocol
 	prepared   callflow.Queries
 	graph      *pdg.Graph
 	flow       *pdg.NormalFlow
@@ -149,7 +150,12 @@ func (q *Query) helper(ref pdg.Ref, policy Policy) bool {
 	return attrs.CallForm == pdg.DirectCall && attrs.Callee.Status == pdg.Known && policy.Helpers[q.graph.Tables.Text(attrs.Callee.Value)]
 }
 
-func (q *Query) closeMethod(ref pdg.Ref) bool { return strings.HasSuffix(q.methods[ref], ".Close") }
+func (q *Query) closeMethod(ref pdg.Ref) bool {
+	if q.protocol.Resource != "" {
+		return slices.Contains(q.protocol.Release, q.methods[ref])
+	}
+	return strings.HasSuffix(q.methods[ref], ".Close")
+}
 
 func (q *Query) oneInput(ref pdg.Ref) bool {
 	inputs, known := q.paths.RequiredOperands(ref)
