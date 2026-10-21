@@ -19,6 +19,13 @@ func finiteWorker(ctx context.Context,t *time.Ticker){defer t.Stop()}
 func finite(ctx context.Context){t:=time.NewTicker(time.Second);go finiteWorker(ctx,t)}
 func start(ctx context.Context){t:=time.NewTicker(time.Second);go worker(ctx,t)}
 func background(){t:=time.NewTicker(time.Second);go worker(context.Background(),t)}
+func todo(){t:=time.NewTicker(time.Second);go worker(context.TODO(),t)}
+func detached(ctx context.Context){t:=time.NewTicker(time.Second);go worker(context.WithoutCancel(ctx),t)}
+func parenthesized(ctx context.Context){t:=time.NewTicker(time.Second);go worker((context.WithoutCancel(ctx)),t)}
+func recancellable(ctx context.Context){child,cancel:=context.WithCancel(context.WithoutCancel(ctx));defer cancel();t:=time.NewTicker(time.Second);go worker(child,t)}
+func timeout(ctx context.Context){child,cancel:=context.WithTimeout(ctx,time.Minute);defer cancel();t:=time.NewTicker(time.Second);go worker(child,t)}
+func WithoutCancel(ctx context.Context)context.Context{return ctx}
+func sameName(ctx context.Context){t:=time.NewTicker(time.Second);go worker(WithoutCancel(ctx),t)}
 func missing(ctx context.Context){t:=time.NewTicker(time.Second);go withoutCleanup(ctx,t)}
 func blocked(ctx context.Context){t:=time.NewTicker(time.Second);go never(ctx,t)}
 type owner struct{}
@@ -44,17 +51,23 @@ func rebound(ctx context.Context){t:=time.NewTicker(time.Second);t=other;go work
 		cleanup  bool
 		shutdown string
 	}{
-		"start":       {true, "cancellation_receive; caller_cancellation_unverified"},
-		"background":  {true, "non_cancellable_context"},
-		"missing":     {false, "cancellation_receive; caller_cancellation_unverified"},
-		"blocked":     {true, "unresolved"},
-		"method":      {true, "cancellation_receive; caller_cancellation_unverified"},
-		"expression":  {true, "cancellation_receive; caller_cancellation_unverified"},
-		"wrong":       {false, "cancellation_receive; caller_cancellation_unverified"},
-		"conditional": {true, "cancellation_receive; caller_cancellation_unverified"},
-		"otherDone":   {true, "unresolved"},
-		"rebound":     {true, "cancellation_receive; caller_cancellation_unverified"},
-		"finite":      {true, "unresolved"},
+		"start":         {true, "cancellation_receive; caller_cancellation_unverified"},
+		"background":    {true, "non_cancellable_context"},
+		"todo":          {true, "non_cancellable_context"},
+		"detached":      {true, "non_cancellable_context"},
+		"parenthesized": {true, "non_cancellable_context"},
+		"recancellable": {true, "cancellation_receive; caller_cancellation_unverified"},
+		"timeout":       {true, "cancellation_receive; caller_cancellation_unverified"},
+		"sameName":      {true, "cancellation_receive; caller_cancellation_unverified"},
+		"missing":       {false, "cancellation_receive; caller_cancellation_unverified"},
+		"blocked":       {true, "unresolved"},
+		"method":        {true, "cancellation_receive; caller_cancellation_unverified"},
+		"expression":    {true, "cancellation_receive; caller_cancellation_unverified"},
+		"wrong":         {false, "cancellation_receive; caller_cancellation_unverified"},
+		"conditional":   {true, "cancellation_receive; caller_cancellation_unverified"},
+		"otherDone":     {true, "unresolved"},
+		"rebound":       {true, "cancellation_receive; caller_cancellation_unverified"},
+		"finite":        {true, "unresolved"},
 	}
 	for _, function := range extraction.Funcs {
 		name := function.Name[strings.LastIndex(function.Name, ".")+1:]

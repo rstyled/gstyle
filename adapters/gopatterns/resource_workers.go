@@ -104,8 +104,8 @@ func contextType(typ types.Type) bool {
 }
 
 func (a lifecycleAnalysis) contextShutdown(argument ast.Expr) string {
-	name := a.graph.query.AcquisitionName(a.graph.ref(argument))
-	if name == "context.Background" || name == "context.TODO" {
+	name := a.graph.query.AcquisitionName(a.graph.ref(ast.Unparen(argument)))
+	if name == "context.Background" || name == "context.TODO" || name == "context.WithoutCancel" {
 		return "non_cancellable_context"
 	}
 	return "cancellation_receive; caller_cancellation_unverified"
