@@ -15,6 +15,30 @@ func TestGuardedAssertions(t *testing.T) {
 		name, body string
 		want       int
 	}{
+		{"repeated assertion", `_=v.(string);_=v.(string)`, 1},
+		{"repeated expression", `_=len(v.(string))+len(v.(string))`, 1},
+		{"different type", `_=v.(string);_=v.(int)`, 2},
+		{"different input", `_=other.(string);_=v.(string)`, 2},
+		{"write between", `_=v.(string);v=7;_=v.(string)`, 2},
+		{"conditional write between", `_=v.(string);if flag{v=7};_=v.(string)`, 2},
+		{"proof after write", `v="ok";_=v.(string);_=v.(string)`, 1},
+		{"all branches assert", `if flag{_=v.(string)}else{_=v.(string)};_=v.(string)`, 2},
+		{"one branch asserts", `if flag{_=v.(string)};_=v.(string)`, 2},
+		{"short circuit bypass", `if flag && len(v.(string))>0{};_=v.(string)`, 2},
+		{"short circuit second", `if len(v.(string))>0 && len(v.(string))>1{}`, 1},
+		{"escaping repeated", `_=v.(string);replace(&v);_=v.(string)`, 2},
+		{"captured repeated", `_=v.(string);func(){v=7}();_=v.(string)`, 2},
+		{"unchecked comma ok", `_,ok:=v.(string);_=ok;_=v.(string)`, 1},
+		{"unchecked var comma ok", `var _,ok=v.(string);_=ok;_=v.(string)`, 1},
+		{"loop overwrite repeated", `_=v.(string);for flag{_=v.(string);v=7}`, 2},
+		{"goto bypass assertion", `if flag{goto use};_=v.(string);use:_=v.(string)`, 2},
+		{"shared repeated", `_=box.value.(string);touch();_=box.value.(string)`, 2},
+		{"global repeated", `_=global.(string);touch();_=global.(string)`, 2},
+		{"closure alone", `func(){_=v.(string)}();_=v.(string)`, 2},
+		{"defer does not run yet", `defer func(){_=v.(string)}();_=v.(string)`, 2},
+		{"parenthesized repeated", `_=(v).(string);_=(v).(string)`, 1},
+		{"shadowed repeated", `_=v.(string);{var v any=7;_=v.(string)}`, 2},
+		{"nested comma ok operand", `_,ok:=v.(any).(interface{M()});_=ok;_=v.(any)`, 1},
 		{"type case", `switch v.(type){case string:_=v.(string)}`, 0},
 		{"bytes case loop", `switch v.(type){case []byte:for range v.([]byte){_ = len(v.([]byte))}}`, 0},
 		{"guard return", `if _,ok:=v.(string);!ok{return};_=v.(string)`, 0},
@@ -97,6 +121,7 @@ func TestGuardedAssertionUsesCanonicalFlow(t *testing.T) {
 func TestGuardedAssertionNeedsCanonicalOperands(t *testing.T) {
 	for _, test := range []struct{ name, body, kind string }{
 		{"case input", `switch v.(type){case string:_=v.(string)}`, "control-value"},
+		{"prior assertion input", `_=v.(string);_=v.(string)`, "prior-operand"},
 		{"assertion input", `if _,ok:=v.(string);!ok{return};_=v.(string)`, "source-value"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -111,7 +136,9 @@ func TestGuardedAssertionNeedsCanonicalOperands(t *testing.T) {
 			kept := graph.Edges[:0]
 			removed := 0
 			for _, edge := range graph.Edges {
-				if graph.Tables.Text(edge.Subkind) == test.kind {
+				target := graph.Nodes[edge.Target-1]
+				priorOperand := test.kind == "prior-operand" && edge.Kind == pdg.Data && edge.Position == 1 && graph.Tables.Text(graph.NodeAttributes(target).Operator.Value) == "type-assert"
+				if graph.Tables.Text(edge.Subkind) == test.kind || priorOperand {
 					removed++
 					continue
 				}
@@ -130,4 +157,35 @@ func TestGuardedAssertionNeedsCanonicalOperands(t *testing.T) {
 
 func guardedAssertionsForTest(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info, graph *pdg.Graph) map[*ast.TypeAssertExpr]bool {
 	return provenTypeAssertions(&packages.Package{Fset: fset, TypesInfo: info}, functionGraph{declaration: fn, graph: graph}, nil)
+}
+
+func TestRepeatedAssertionNeedsExecutedOperation(t *testing.T) {
+	fn, fs, info := parseNilErrFunc(t, `package p;func check(v any){_=v.(string);_=v.(string)}`)
+	graph, err := buildGraph(&packages.Package{Fset: fs, TypesInfo: info}, fn, "test.go", pdg.NewBuilder())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(guardedAssertionsForTest(fn, fs, info, &graph)) != 1 {
+		t.Fatal("missing repeated assertion proof")
+	}
+	source, _ := assertionSources(fn, fs, &graph)
+	first := pdg.Ref(0)
+	for ref, node := range source {
+		if _, assertion := node.(*ast.TypeAssertExpr); assertion && (first == 0 || node.Pos() < source[first].Pos()) {
+			first = ref
+		}
+	}
+	flow := pdg.BodyFlow(&graph)
+	for index, block := range flow.Blocks {
+		kept := []pdg.Ref{}
+		for _, ref := range block.Operations {
+			if ref != first {
+				kept = append(kept, ref)
+			}
+		}
+		flow.Blocks[index].Operations = kept
+	}
+	if proven := guardedAssertionsForTest(fn, fs, info, &graph); len(proven) != 0 {
+		t.Fatalf("source syntax without executed assertions proves safety: %v", proven)
+	}
 }

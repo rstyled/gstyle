@@ -22,6 +22,7 @@ type assertionGuardQuery struct {
 	conditions map[ast.Expr]*ast.IfStmt
 	previous   [][]assertionEdge
 	controls   map[pdg.Ref][]pdg.Ref
+	commaOK    map[*ast.TypeAssertExpr]bool
 }
 
 // Syntax identifies typed guard and return boundaries. Only canonical operands,
@@ -44,12 +45,13 @@ func provenTypeAssertions(pkg *packages.Package, source functionGraph, summaries
 	}
 	flow := pdg.BodyFlow(graph)
 	sourceNodes, refs := assertionSources(fn, fset, graph)
-	query := assertionGuardQuery{graph: graph, flow: flow, bindings: bindings, facts: facts, info: info, source: sourceNodes, refs: refs, conditions: assertionConditions(fn), previous: assertionPredecessors(flow), controls: assertionControlOperands(graph)}
+	query := assertionGuardQuery{graph: graph, flow: flow, bindings: bindings, facts: facts, info: info, source: sourceNodes, refs: refs, conditions: assertionConditions(fn), previous: assertionPredecessors(flow), controls: assertionControlOperands(graph), commaOK: collectCommaOk(fn.Body)}
 	return query.proven(summaries)
 }
 
 func assertionProofNeeded(fn *ast.FuncDecl, fset *token.FileSet, summaries map[types.Object]types.Type) bool {
-	return len(findForceTypeAssertHits(fn, fset)) > 0 && (len(summaries) > 0 || hasAssertionGuard(fn))
+	hits := len(findForceTypeAssertHits(fn, fset))
+	return hits > 0 && (hits > 1 || len(summaries) > 0 || hasAssertionGuard(fn))
 }
 
 func assertionGuardAvailable(fn *ast.FuncDecl, info *types.Info, graph *pdg.Graph) bool {
