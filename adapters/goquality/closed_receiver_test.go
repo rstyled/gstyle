@@ -16,10 +16,12 @@ type snapshot struct{values map[int]int;n int}
 func readSnapshot(value snapshot)int{return value.n}
 type copiedRecord struct{value snapshot;n int}
 func(p *copiedRecord)CopiedRecord(){p.n++}
+func(p *copiedRecord)InlineRecord(){p.value=snapshot{n:1}}
 func copiedRecordRun(){p:=copiedRecord{};_ =readSnapshot(p.value);p.CopiedRecord()}
 type copiedArray struct{value [2]int;n int}
 func readArray(value [2]int)int{return value[0]}
 func(p *copiedArray)CopiedArray(){p.n++}
+func(p *copiedArray)InlineArray(){p.value[0]=1}
 func copiedArrayRun(){p:=copiedArray{};_ =readArray(p.value);p.CopiedArray()}
 type copiedBorrowed struct{value snapshot}
 func(p *copiedBorrowed)CopiedBorrowed(){p.value.values[1]=1}
@@ -170,7 +172,8 @@ func borrowedRun(values map[string]int){p:=new(borrowed);p.values=values;p.Borro
 		name string
 		want quality.Provenance
 	}{
-		{"CopiedRecord", quality.Local}, {"CopiedArray", quality.Local}, {"CopiedBorrowed", quality.External}, {"EscapedRecord", quality.External}, {"ClosedCursor", quality.Local}, {"ClosedError", quality.Local},
+		{"CopiedRecord", quality.Local}, {"CopiedArray", quality.Local},
+		{"InlineRecord", quality.Local}, {"InlineArray", quality.Local}, {"CopiedBorrowed", quality.External}, {"EscapedRecord", quality.External}, {"ClosedCursor", quality.Local}, {"ClosedError", quality.Local},
 		{"LocalVisitor", quality.Local}, {"SavedVisitor", quality.External},
 		{"InlineVisitor", quality.Local}, {"NestedVisitor", quality.Local},
 		{"InlineSavedVisitor", quality.External}, {"InlineAsyncVisitor", quality.External},

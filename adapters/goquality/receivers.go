@@ -288,7 +288,7 @@ func (p receiverProof) receiverInvocation(call *ast.CallExpr, node ast.Node) boo
 func (p receiverProof) fieldUse(selector *ast.SelectorExpr) bool {
 	switch underlying(p.pkg.TypesInfo.TypeOf(selector)).(type) {
 	case *types.Struct, *types.Array:
-		return copiedTableValue(selector, p.parents, p.pkg.TypesInfo)
+		return (receiverFields{receiverProof: p}).elementUse(selector)
 	}
 	_, parent := p.parent(selector)
 	switch parent := parent.(type) {
