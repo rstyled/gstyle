@@ -1,6 +1,7 @@
 package callflow
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/rstyled/gstyle/domain/bindingflow"
@@ -138,6 +139,7 @@ func (calls *CallSites) outcomesWithValues(summaries exitSummaryReader, ref pdg.
 }
 
 type exitBody struct {
+	ctx        context.Context
 	captures   []pdg.Ref
 	graph      *pdg.Graph
 	flow       *pdg.NormalFlow
@@ -187,28 +189,44 @@ func externalExitOutcomes(name string) Outcomes {
 // Admitted Boolean/nil/callable arguments and lexical cells use canonical facts.
 // Closure identities compose only when their canonical body graphs are supplied.
 func ExitEffects(graphs map[string]*pdg.Graph) (ExitSummaries, error) {
+	return ExitEffectsContext(context.Background(), graphs)
+}
+
+// ExitEffectsContext returns no summaries when analysis is canceled.
+func ExitEffectsContext(ctx context.Context, graphs map[string]*pdg.Graph) (ExitSummaries, error) {
 	prepared := make(map[string]Queries, len(graphs))
 	for name, graph := range graphs {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		queries, err := NewQueries(graph)
 		if err != nil {
 			return nil, fmt.Errorf("exit summary %s: %w", name, err)
 		}
 		prepared[name] = queries
 	}
-	return ExitEffectsWithQueries(prepared)
+	return ExitEffectsWithQueriesContext(ctx, prepared)
 }
 
 // ExitEffectsWithQueries reuses the immutable indexes prepared by NewQueries.
 func ExitEffectsWithQueries(prepared map[string]Queries) (ExitSummaries, error) {
-	bodies := make(map[string]*exitBody, len(prepared))
-	for name, queries := range prepared {
-		body := exitBodyWithQueries(queries)
-		if body != nil && body.graph.Tables.Text(body.graph.Function.ID) != name {
-			return nil, fmt.Errorf("exit summary identity mismatch: %s", name)
-		}
-		bodies[name] = body
+	return ExitEffectsWithQueriesContext(context.Background(), prepared)
+}
+
+// ExitEffectsWithQueriesContext reuses indexes and discards canceled results.
+func ExitEffectsWithQueriesContext(ctx context.Context, prepared map[string]Queries) (ExitSummaries, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
-	return solveExitBodies(bodies), nil
+	bodies, err := prepareExitBodies(ctx, prepared)
+	if err != nil {
+		return nil, err
+	}
+	result := solveExitBodiesContext(ctx, bodies)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func validSummaryOutcomes(result Outcomes, inherited bool) bool {
@@ -217,4 +235,19 @@ func validSummaryOutcomes(result Outcomes, inherited bool) bool {
 		allowed |= RecoversInherited
 	}
 	return result&^allowed == 0
+}
+
+func prepareExitBodies(ctx context.Context, prepared map[string]Queries) (map[string]*exitBody, error) {
+	bodies := make(map[string]*exitBody, len(prepared))
+	for name, queries := range prepared {
+		body := exitBodyWithQueries(queries)
+		if body != nil && body.graph.Tables.Text(body.graph.Function.ID) != name {
+			return nil, fmt.Errorf("exit summary identity mismatch: %s", name)
+		}
+		if body != nil {
+			body.ctx = ctx
+		}
+		bodies[name] = body
+	}
+	return bodies, nil
 }

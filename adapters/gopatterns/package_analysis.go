@@ -1,6 +1,7 @@
 package gopatterns
 
 import (
+	"context"
 	"fmt"
 	"github.com/rstyled/gstyle/domain/callflow"
 	"go/ast"
@@ -21,6 +22,7 @@ type functionGraph struct {
 	graph       *pdg.Graph
 }
 type packageAnalysis struct {
+	ctx                context.Context
 	closurePackageView *packages.Package
 	program            *callflow.Program
 	exits              callflow.ExitSummaries
@@ -34,6 +36,12 @@ type packageAnalysis struct {
 }
 
 func (p *packageAnalysis) build() error {
+	if p.ctx == nil {
+		p.ctx = context.Background()
+	}
+	if err := p.ctx.Err(); err != nil {
+		return err
+	}
 	for _, file := range p.pkg.Syntax {
 		graphs, err := p.fileGraphs(file)
 		if err != nil {
@@ -129,7 +137,7 @@ func (p *packageAnalysis) finalizeGraphs() error {
 	if p.program == nil {
 		p.program = callflow.NewProgram()
 	}
-	exits, err := p.program.ExitEffects(graphs)
+	exits, err := p.program.ExitEffectsContext(p.ctx, graphs)
 	if err != nil {
 		return err
 	}
@@ -139,7 +147,7 @@ func (p *packageAnalysis) finalizeGraphs() error {
 
 func (p *packageAnalysis) publishGraphs(exits callflow.ExitSummaries) error {
 	for i := range p.graphs {
-		if err := p.graphs[i].finalize(exits); err != nil {
+		if err := p.graphs[i].finalize(p.ctx, exits); err != nil {
 			return err
 		}
 		if err := p.program.Add(p.graphs[i].graph); err != nil {
@@ -150,7 +158,7 @@ func (p *packageAnalysis) publishGraphs(exits callflow.ExitSummaries) error {
 	return nil
 }
 
-func (source *functionGraph) finalize(exits callflow.ExitSummaries) error {
+func (source *functionGraph) finalize(ctx context.Context, exits callflow.ExitSummaries) error {
 	if pdg.ExitBodyFlow(source.graph) == nil {
 		source.inventory = nil
 		return nil
@@ -160,7 +168,11 @@ func (source *functionGraph) finalize(exits callflow.ExitSummaries) error {
 		return err
 	}
 	b := source.inventory
-	b.recordExitObservations(callflow.OrdinaryObservations(queries, exits))
+	observations, err := callflow.OrdinaryObservationsContext(ctx, queries, exits)
+	if err != nil {
+		return err
+	}
+	b.recordExitObservations(observations)
 	if len(b.operationExits)+len(b.conditionValues) == 0 {
 		source.inventory = nil
 		return nil
