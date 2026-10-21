@@ -289,7 +289,7 @@ func shallowRun(input *int)[]*int{p:=shallowSlice{values:[]*int{input}};p.Borrow
 		{"OwnedMap", true}, {"OwnedSlice", true}, {"ResetMap", true},
 		{"FinishedSlice", true}, {"FinishedMap", true}, {"DeferredPublication", false},
 		{"BorrowedField", false}, {"ReplacedField", false}, {"PublishedField", false}, {"ReturnedField", false},
-		{"AliasedField", false}, {"PassedField", false}, {"AddressedElement", false}, {"ElementMethod", false}, {"BorrowedElement", false},
+		{"AliasedField", false}, {"PassedField", true}, {"AddressedElement", false}, {"ElementMethod", false}, {"BorrowedElement", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fact := findFunction(t, facts, tc.name)
@@ -331,6 +331,95 @@ func(p *privateCache)publish(){published=p.values}
 		}
 		if other := findFunction(t, facts, "OtherCacheWrite"); other.Mutations[0].Provenance != quality.Local {
 			t.Fatalf("same-named field loses independent proof: %+v", other.Mutations)
+		}
+	}
+}
+
+func TestClosedMapHelperRetention(t *testing.T) {
+	root := qualitySourceModule(t, []byte(`package repro
+func inspect(v map[int][]int)int{return len(v[0])}
+func forward(v map[int][]int)int{return inspect(v)}
+func identity(v map[int][]int)map[int][]int{return v}
+type holder struct{v map[int][]int}
+func retain(v map[int][]int)holder{return holder{v}}
+func capture(v map[int][]int){f:=func(){_ =len(v)};_ =f}
+func opaque(v map[int][]int,f func(map[int][]int)){f(v)}
+func left(v map[int][]int){right(v)}
+func right(v map[int][]int){left(v)}
+func address(v map[int][]int){takeAddress(&v)}
+var escaped *map[int][]int
+func takeAddress(v *map[int][]int){escaped=v}
+func noisy(v map[int][]int){println(len(v))}
+var counter int
+func argument()int{counter++;return counter}
+func withArgument(v map[int][]int,n int){_ =len(v)}
+type good struct{values map[int][]int}
+func(p *good)Good(){p.values[0]=[]int{1};_ =forward(p.values)}
+func goodRun(){p:=good{values:map[int][]int{}};p.Good()}
+type returned struct{values map[int][]int}
+func(p *returned)Returned(){p.values[0]=[]int{1};_ =identity(p.values)}
+func returnedRun(){p:=returned{values:map[int][]int{}};p.Returned()}
+type retained struct{values map[int][]int}
+func(p *retained)Retained(){p.values[0]=[]int{1};_ =retain(p.values)}
+func retainedRun(){p:=retained{values:map[int][]int{}};p.Retained()}
+type captured struct{values map[int][]int}
+func(p *captured)Captured(){p.values[0]=[]int{1};capture(p.values)}
+func capturedRun(){p:=captured{values:map[int][]int{}};p.Captured()}
+type dynamic struct{values map[int][]int}
+func(p *dynamic)Dynamic(f func(map[int][]int)){p.values[0]=[]int{1};opaque(p.values,f)}
+func dynamicRun(f func(map[int][]int)){p:=dynamic{values:map[int][]int{}};p.Dynamic(f)}
+type cycle struct{values map[int][]int}
+func(p *cycle)Cycle(){p.values[0]=[]int{1};left(p.values)}
+func cycleRun(){p:=cycle{values:map[int][]int{}};p.Cycle()}
+type addressed struct{values map[int][]int}
+func(p *addressed)Addressed(){p.values[0]=[]int{1};address(p.values)}
+func addressedRun(){p:=addressed{values:map[int][]int{}};p.Addressed()}
+type async struct{values map[int][]int}
+func(p *async)Async(){p.values[0]=[]int{1};go inspect(p.values)}
+func asyncRun(){p:=async{values:map[int][]int{}};p.Async()}
+type deferred struct{values map[int][]int}
+func(p *deferred)Deferred(){p.values[0]=[]int{1};defer inspect(p.values)}
+func deferredRun(){p:=deferred{values:map[int][]int{}};p.Deferred()}
+type effects struct{values map[int][]int}
+func(p *effects)Effects(){p.values[0]=[]int{1};noisy(p.values);withArgument(p.values,argument())}
+func effectsRun(){p:=effects{values:map[int][]int{}};p.Effects()}
+type borrowed struct{values map[int][]int}
+func(p *borrowed)BorrowedChild(){_ =inspect(p.values);p.values[0][0]=1}
+func borrowedRun(child []int){p:=borrowed{values:map[int][]int{0:child}};p.BorrowedChild()}
+func inspectInterface(v map[int]any){_ =v[0]}
+type open struct{values map[int]any}
+func(p *open)InterfaceChild(){p.values[0]=1;inspectInterface(p.values)}
+func openRun(){p:=open{values:map[int]any{}};p.InterfaceChild()}
+type recursiveMap map[int]recursiveMap
+func inspectRecursive(v recursiveMap){_ =v[0]}
+type recursive struct{values recursiveMap}
+func(p *recursive)RecursiveChild(){p.values[0]=nil;inspectRecursive(p.values)}
+func recursiveRun(){p:=recursive{values:recursiveMap{}};p.RecursiveChild()}
+`))
+	facts, err := (Analyzer{Root: root}).Extract(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"Good", "Effects", "Returned", "Retained", "Captured", "Dynamic", "Cycle", "Addressed", "Async", "Deferred", "BorrowedChild", "InterfaceChild", "RecursiveChild"} {
+		t.Run(name, func(t *testing.T) {
+			fact := findFunction(t, facts, name)
+			want := name == "Good" || name == "Effects"
+			if got := fact.Mutations[0].Provenance; (got == quality.Local) != want {
+				t.Fatalf("mutation=%s want local=%t", got, want)
+			}
+		})
+	}
+	report, err := quality.Evaluate(facts, quality.DefaultConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, kind := range []quality.Kind{quality.IO, quality.Global} {
+		found := false
+		for _, effect := range resultNamed(t, report, "Effects").Effects {
+			found = found || effect.Kind == kind
+		}
+		if !found {
+			t.Fatalf("helper or argument lost %s effect", kind)
 		}
 	}
 }
