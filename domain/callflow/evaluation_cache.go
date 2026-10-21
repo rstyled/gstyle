@@ -119,7 +119,9 @@ func (cache bodyEvaluationCache) evaluate(key bodyEvaluationKey, summaries ExitS
 	}
 	observed := observedSummaries{source: summaries, reads: map[string]*summaryObservation{}}
 	result := evaluateBodyResult(key.body, observed, key.inherited, key.inputs)
-	cache[key] = cachedBodyEvaluation{result: result, reads: observed.reads}
+	if !key.body.canceled() {
+		cache[key] = cachedBodyEvaluation{result: result, reads: observed.reads}
+	}
 	return result
 }
 

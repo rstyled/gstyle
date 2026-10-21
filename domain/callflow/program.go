@@ -1,6 +1,7 @@
 package callflow
 
 import (
+	"context"
 	"fmt"
 	"github.com/rstyled/gstyle/domain/pdg"
 )
@@ -31,11 +32,19 @@ func (program *Program) Add(graph *pdg.Graph) error {
 // Missing targets retain the normal UnknownExit contract. The current graphs
 // override older registrations without publishing provisional graph storage.
 func (program *Program) ExitEffects(graphs map[string]*pdg.Graph) (ExitSummaries, error) {
+	return program.ExitEffectsContext(context.Background(), graphs)
+}
+
+// ExitEffectsContext solves without publishing a canceled analysis.
+func (program *Program) ExitEffectsContext(ctx context.Context, graphs map[string]*pdg.Graph) (ExitSummaries, error) {
 	if program == nil {
 		return nil, fmt.Errorf("program queries are required")
 	}
 	prepared := make(map[string]Queries, len(graphs))
 	for name, graph := range graphs {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		queries, err := NewQueries(graph)
 		if err != nil {
 			return nil, fmt.Errorf("program exit %s: %w", name, err)
@@ -43,7 +52,7 @@ func (program *Program) ExitEffects(graphs map[string]*pdg.Graph) (ExitSummaries
 		prepared[name] = queries
 	}
 	program.includeCallees(prepared)
-	return ExitEffectsWithQueries(prepared)
+	return ExitEffectsWithQueriesContext(ctx, prepared)
 }
 
 func (program *Program) includeCallees(prepared map[string]Queries) {

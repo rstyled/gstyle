@@ -1,6 +1,9 @@
 package callflow
 
-import "github.com/rstyled/gstyle/domain/pdg"
+import (
+	"context"
+	"github.com/rstyled/gstyle/domain/pdg"
+)
 
 // OrdinaryCallOutcomes joins invocation outcomes over the existing exit
 // evaluator's reachable ordinary states. Assignments, branch paths, loop states
@@ -21,16 +24,29 @@ type Observations struct {
 }
 
 func OrdinaryObservations(queries Queries, summaries ExitSummaries) Observations {
+	result, _ := OrdinaryObservationsContext(context.Background(), queries, summaries)
+	return result
+}
+
+// OrdinaryObservationsContext returns no observations when analysis is canceled.
+func OrdinaryObservationsContext(ctx context.Context, queries Queries, summaries ExitSummaries) (Observations, error) {
+	if err := ctx.Err(); err != nil {
+		return Observations{}, err
+	}
 	body := exitBodyWithQueries(queries)
 	if body == nil || body.flow == nil {
-		return Observations{}
+		return Observations{}, nil
 	}
+	body.ctx = ctx
 	evaluation := newExitEvaluation(body, summaries)
 	evaluation.callOutcomes = map[pdg.Ref]Outcomes{}
 	evaluation.operationOutcomes = map[pdg.Ref]Outcomes{}
 	evaluation.conditions = map[pdg.Ref]uint8{}
 	evaluation.run(false, "")
-	return Observations{Calls: evaluation.callOutcomes, Operations: evaluation.operationOutcomes, Conditions: conditionFacts(evaluation.conditions)}
+	if err := ctx.Err(); err != nil {
+		return Observations{}, err
+	}
+	return Observations{Calls: evaluation.callOutcomes, Operations: evaluation.operationOutcomes, Conditions: conditionFacts(evaluation.conditions)}, nil
 }
 
 func conditionFacts(values map[pdg.Ref]uint8) map[pdg.Ref]pdg.BooleanFact {

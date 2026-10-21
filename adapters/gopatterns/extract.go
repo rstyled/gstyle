@@ -302,7 +302,7 @@ func extractNormalPackages(ctx context.Context, abs string, paths []string, opti
 		// Validation visits shared tables; bound them to this package.
 		packagePool := pdg.NewBuilder()
 		packagePool.Tables.Sources = sources
-		analysis := packageAnalysis{pkg: pkg, root: abs, pool: packagePool, sources: sourceIdentities, program: program}
+		analysis := packageAnalysis{ctx: ctx, pkg: pkg, root: abs, pool: packagePool, sources: sourceIdentities, program: program}
 		funcs, err := analysis.run()
 		if err != nil {
 			return nil, err

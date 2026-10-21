@@ -36,6 +36,9 @@ type exitEvaluation struct {
 }
 
 func (evaluation *exitEvaluation) visit(point exitPoint) completions {
+	if evaluation.body.canceled() {
+		return completions{}
+	}
 	if evaluation.active[point] {
 		evaluation.cyclic = true
 		result := terminalCompletion(Diverges)
@@ -49,6 +52,9 @@ func (evaluation *exitEvaluation) visit(point exitPoint) completions {
 	evaluation.active[point] = true
 	result := evaluation.step(point)
 	delete(evaluation.active, point)
+	if evaluation.body.canceled() {
+		return completions{}
+	}
 	old := evaluation.results[point]
 	if old.add(result) {
 		evaluation.changed = true

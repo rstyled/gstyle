@@ -150,6 +150,9 @@ func (solver exitPassSolver) solveInputs(body *exitBody, invocations *exitInvoca
 	}
 	changed := false
 	for key, old := range invocations.states {
+		if body.canceled() {
+			return false
+		}
 		ordinary := solver.cache.evaluate(bodyEvaluationKey{body: body, inputs: key}, solver.summaries)
 		inherited := solver.cache.evaluate(bodyEvaluationKey{body: body, inputs: key, inherited: true}, solver.summaries)
 		next := exitInvocation{

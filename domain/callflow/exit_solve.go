@@ -1,6 +1,9 @@
 package callflow
 
-import "github.com/rstyled/gstyle/domain/pdg"
+import (
+	"context"
+	"github.com/rstyled/gstyle/domain/pdg"
+)
 
 type exitPass uint8
 
@@ -19,15 +22,20 @@ const (
 // Finite completions grow from bottom. Possible divergence then descends from
 // top with those completions fixed. Registration alone is not execution.
 func solveExitBodies(bodies map[string]*exitBody) ExitSummaries {
+	return solveExitBodiesContext(context.Background(), bodies)
+}
+func solveExitBodiesContext(ctx context.Context, bodies map[string]*exitBody) ExitSummaries {
 	summaries := seedExitSummaries(bodies)
 	seedCallInputs(bodies, summaries)
-	cache := bodyEvaluationCache{}
-	for {
+	solver := exitPassSolver{ctx: ctx, summaries: summaries, cache: bodyEvaluationCache{}}
+	for ctx.Err() == nil {
 		setInputPass(summaries, finitePass)
-		solveExitPass(bodies, summaries, finitePass, cache)
+		solver.pass = finitePass
+		solver.solve(bodies)
 		seedPossibleDivergence(bodies, summaries)
 		count := invocationCount(summaries)
-		solveExitPass(bodies, summaries, infinitePass, cache)
+		solver.pass = infinitePass
+		solver.solve(bodies)
 		if invocationCount(summaries) == count {
 			break
 		}
@@ -37,20 +45,23 @@ func solveExitBodies(bodies map[string]*exitBody) ExitSummaries {
 }
 
 type exitPassSolver struct {
+	ctx       context.Context
 	summaries ExitSummaries
 	pass      exitPass
 	cache     bodyEvaluationCache
 }
 
-func solveExitPass(bodies map[string]*exitBody, summaries ExitSummaries, pass exitPass, cache bodyEvaluationCache) {
-	solver := exitPassSolver{summaries: summaries, pass: pass, cache: cache}
+func (solver exitPassSolver) solve(bodies map[string]*exitBody) {
 	for changed := true; changed; {
 		changed = false
-		count := invocationCount(summaries)
+		count := invocationCount(solver.summaries)
 		for name, body := range bodies {
+			if solver.ctx.Err() != nil {
+				return
+			}
 			changed = solver.solveBody(name, body) || changed
 		}
-		changed = changed || invocationCount(summaries) != count
+		changed = changed || invocationCount(solver.summaries) != count
 	}
 }
 
