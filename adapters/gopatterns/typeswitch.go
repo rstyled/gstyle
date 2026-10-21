@@ -271,7 +271,7 @@ func boundSelector(call *ast.CallExpr, bound string) (*ast.SelectorExpr, *ast.Id
 	return sel, recv, true
 }
 
-// argsText renders the call arguments as source text.
+// argsText renders the call arguments, preserving variadic slice expansion.
 func argsText(call *ast.CallExpr) string {
 	var buf bytes.Buffer
 	fset := token.NewFileSet()
@@ -282,6 +282,9 @@ func argsText(call *ast.CallExpr) string {
 		if err := printer.Fprint(&buf, fset, arg); err != nil {
 			return ""
 		}
+	}
+	if call.Ellipsis.IsValid() {
+		buf.WriteString("...")
 	}
 	return buf.String()
 }
