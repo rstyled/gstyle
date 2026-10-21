@@ -127,10 +127,6 @@ those transformations for manual review.
 Coverage can be partial; no finding does not establish that a dependency or bug
 is absent.
 
-Resource findings distinguish local cleanup from ownership transfer. Worker
-cleanup and shutdown observations stay advisory. See [resource lifecycle
-contracts and limits](docs/resource-lifecycles.md) before changing a constructor.
-
 `fix` previews changes by default. Apply a specific kind after reviewing it:
 
 ```sh
