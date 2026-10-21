@@ -2,6 +2,7 @@ package gopatterns
 
 import (
 	"go/ast"
+	"go/format"
 	"go/token"
 	"go/types"
 	"strings"
@@ -92,13 +93,14 @@ func isErrorExpr(info *types.Info, e ast.Expr) bool {
 	return types.Implements(t, errorType)
 }
 
-// condText returns the source text of a condition.
-func condText(fset *token.FileSet, cond ast.Expr) string {
-	var sb strings.Builder
-	// Simple printer: just use the position info.
-	// For the spike, we'll use a basic format.
-	sb.WriteString("(condition)")
-	return sb.String()
+// expressionText normalizes expression layout while preserving literal contents.
+func expressionText(expression ast.Expr) string {
+	var text strings.Builder
+	if err := format.Node(&text, token.NewFileSet(), expression); err != nil {
+		// Keep the finding even if the full formatter cannot print the AST.
+		return types.ExprString(expression)
+	}
+	return text.String()
 }
 
 // findForceTypeAssertHits finds unchecked `x.(T)` type assertions.
@@ -167,7 +169,7 @@ func checkTypeAssert(n ast.Node, fset *token.FileSet, info *types.Info, commaOk 
 	}
 	return &patterns.ForceTypeAssertHit{
 		Line:     fset.Position(tae.Pos()).Line,
-		ExprText: "(type assertion)",
+		ExprText: expressionText(tae),
 	}
 }
 

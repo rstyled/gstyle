@@ -201,7 +201,7 @@ func (c *nilErrCollector) graphGuardFinding(q *nilErrGraph, state nilErrGraphSta
 	if !q.lostGraphPath(successor, context) {
 		return nil
 	}
-	return &nilErrGraphFinding{position: branch.Pos(), hit: patterns.NilErrHit{Line: c.fset.Position(branch.Pos()).Line, CondText: condText(c.fset, branch.Cond), Kind: "returns nil when err != nil"}}
+	return &nilErrGraphFinding{position: branch.Pos(), hit: patterns.NilErrHit{Line: c.fset.Position(branch.Pos()).Line, CondText: expressionText(branch.Cond), Kind: "returns nil when err != nil"}}
 }
 
 func (c *nilErrCollector) graphGuardAvailable(branch *ast.IfStmt, state nilErrGraphState, block pdg.FlowBlock) bool {
