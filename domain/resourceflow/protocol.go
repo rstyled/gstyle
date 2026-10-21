@@ -20,7 +20,7 @@ func Protocols() []Protocol {
 	return []Protocol{
 		{Resource: "ticker", Acquire: []string{"time.NewTicker"}, Release: []string{"time.Ticker.Stop"}},
 		{Resource: "timer", Acquire: []string{"time.NewTimer"}, Release: []string{"time.Timer.Stop"}},
-		{Resource: "connection", Acquire: []string{"net.Dial", "net.DialTimeout"}, Release: []string{"net.Conn.Close", "net.TCPConn.Close", "net.UnixConn.Close", "net.UDPConn.Close"}},
+		{Resource: "connection", Acquire: []string{"net.Dial", "net.DialTimeout", "net.Dialer.DialContext"}, Release: []string{"net.Conn.Close", "net.TCPConn.Close", "net.UnixConn.Close", "net.UDPConn.Close"}},
 		{Resource: "listener", Acquire: []string{"net.Listen"}, Release: []string{"net.Listener.Close", "net.TCPListener.Close", "net.UnixListener.Close"}},
 		{Resource: "database", Acquire: []string{"database/sql.Open", "database/sql.OpenDB"}, Release: []string{"database/sql.DB.Close"}},
 	}
