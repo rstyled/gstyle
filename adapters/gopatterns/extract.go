@@ -507,7 +507,7 @@ func extractFunc(pkg *packages.Package, source functionGraph, ctx extractCtx) (F
 		SelfTy:             selfTy,
 		GuardClauses:       findGuardClauses(fn, pkg.Fset),
 		EnumDispatches:     findEnumDispatches(fn, pkg.Fset, pkg.TypesInfo),
-		TypeSwitches:       findTypeSwitches(fn, pkg.Fset),
+		TypeSwitches:       findTypeSwitches(fn, pkg.Fset, pkg.TypesInfo),
 		Params:             primitiveParams(fn, pkg.TypesInfo),
 		// EntityIdentities suggest reviewing attribute-based equality.
 		// Existing and missing IDs both require a domain invariant before edits.

@@ -37,7 +37,7 @@ func typeSwitchCandidates(facts []*MiningFacts) []Candidate {
 				Observation: fmt.Sprintf("the type switch at line %d calls %s() in every arm (%s)",
 					hit.Line, hit.Method, strings.Join(hit.Types, ", ")),
 				Inference:        "every arm calls the same method on the case-bound value",
-				PossibleRefactor: fmt.Sprintf("replace the switch with a direct method call on %s via an interface", hit.Expr),
+				PossibleRefactor: fmt.Sprintf("combine the existing cases and call %s() via an interface; preserve the case types of %s", hit.Method, hit.Expr),
 				Sites: []Site{{
 					Path:    f.Path,
 					Line:    f.Line,

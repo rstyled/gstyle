@@ -40,7 +40,7 @@ func f(x interface{}) {
 }
 `
 	fn, fset := parseTypeSwitchFunc(t, src)
-	hits := findTypeSwitches(fn, fset)
+	hits := findTypeSwitchShapes(fn, fset)
 	if len(hits) != 1 {
 		t.Fatalf("expected 1 hit, got %d", len(hits))
 	}
@@ -65,7 +65,7 @@ func f(x interface{}) {
 }
 `
 	fn, fset := parseTypeSwitchFunc(t, src)
-	if hits := findTypeSwitches(fn, fset); len(hits) != 0 {
+	if hits := findTypeSwitchShapes(fn, fset); len(hits) != 0 {
 		t.Errorf("expected 0 hits for different methods, got %d", len(hits))
 	}
 }
@@ -84,7 +84,7 @@ func f(x interface{}) {
 }
 `
 	fn, fset := parseTypeSwitchFunc(t, src)
-	if hits := findTypeSwitches(fn, fset); len(hits) != 0 {
+	if hits := findTypeSwitchShapes(fn, fset); len(hits) != 0 {
 		t.Errorf("expected 0 hits for default with body, got %d", len(hits))
 	}
 }
@@ -99,7 +99,7 @@ func f(x interface{}) {
 }
 `
 	fn, fset := parseTypeSwitchFunc(t, src)
-	if hits := findTypeSwitches(fn, fset); len(hits) != 0 {
+	if hits := findTypeSwitchShapes(fn, fset); len(hits) != 0 {
 		t.Errorf("expected 0 hits for single case, got %d", len(hits))
 	}
 }
@@ -117,7 +117,7 @@ func f(x interface{}) {
 }
 `
 	fn, fset := parseTypeSwitchFunc(t, src)
-	if hits := findTypeSwitches(fn, fset); len(hits) != 0 {
+	if hits := findTypeSwitchShapes(fn, fset); len(hits) != 0 {
 		t.Errorf("expected 0 hits for multi-stmt arm, got %d", len(hits))
 	}
 }
@@ -134,7 +134,7 @@ func f(x int) {
 }
 `
 	fn, fset := parseTypeSwitchFunc(t, src)
-	if hits := findTypeSwitches(fn, fset); len(hits) != 0 {
+	if hits := findTypeSwitchShapes(fn, fset); len(hits) != 0 {
 		t.Errorf("expected 0 hits for value switch, got %d", len(hits))
 	}
 }
@@ -152,7 +152,7 @@ func f(x interface{}) {
 }
 `
 	fn, fset := parseTypeSwitchFunc(t, src)
-	if hits := findTypeSwitches(fn, fset); len(hits) != 1 {
+	if hits := findTypeSwitchShapes(fn, fset); len(hits) != 1 {
 		t.Errorf("expected 1 hit for empty default, got %d", len(hits))
 	}
 }
@@ -169,7 +169,7 @@ func f(x interface{}) {
 }
 `
 	fn, fset := parseTypeSwitchFunc(t, src)
-	hits := findTypeSwitches(fn, fset)
+	hits := findTypeSwitchShapes(fn, fset)
 	if len(hits) != 1 {
 		t.Fatalf("expected 1 hit, got %d", len(hits))
 	}
@@ -190,7 +190,22 @@ func f(x interface{}) {
 }
 `
 	fn, fset := parseTypeSwitchFunc(t, src)
-	if hits := findTypeSwitches(fn, fset); len(hits) != 0 {
+	if hits := findTypeSwitchShapes(fn, fset); len(hits) != 0 {
 		t.Errorf("expected 0 hits for different args, got %d", len(hits))
 	}
+}
+
+// Shape fixtures intentionally omit declarations. Typed eligibility is tested
+// with complete programs in TestTypeSwitchPointerBehavior.
+func findTypeSwitchShapes(fn *ast.FuncDecl, fset *token.FileSet) []TypeSwitchHit {
+	var hits []TypeSwitchHit
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		if sw, ok := node.(*ast.TypeSwitchStmt); ok {
+			if hit, ok := asFixableTypeSwitch(sw, fset); ok {
+				hits = append(hits, hit)
+			}
+		}
+		return true
+	})
+	return hits
 }
