@@ -104,12 +104,17 @@ func expressionText(expression ast.Expr) string {
 }
 
 // findForceTypeAssertHits finds unchecked `x.(T)` type assertions.
-func findForceTypeAssertHits(fn *ast.FuncDecl, fset *token.FileSet) []patterns.ForceTypeAssertHit {
+func findForceTypeAssertHits(fn *ast.FuncDecl, fset *token.FileSet, proven ...map[*ast.TypeAssertExpr]bool) []patterns.ForceTypeAssertHit {
 	var out []patterns.ForceTypeAssertHit
 	if fn.Body == nil {
 		return out
 	}
 	commaOk := collectCommaOk(fn.Body)
+	for _, assertions := range proven {
+		for assertion := range assertions {
+			commaOk[assertion] = true
+		}
+	}
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
 		if hit := checkTypeAssert(n, fset, commaOk); hit != nil {
 			out = append(out, *hit)

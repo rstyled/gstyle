@@ -533,7 +533,7 @@ func extractFunc(pkg *packages.Package, source functionGraph, ctx extractCtx) (F
 		// NilErrHits are `if err != nil { return nil }` (gostaticanalysis).
 		NilErrHits: findNilErrGraphHits(fn, pkg.Fset, pkg.TypesInfo, graph, bindings),
 		// ForceTypeAssertHits are unchecked `x.(T)` (gostaticanalysis).
-		ForceTypeAssertHits: findForceTypeAssertHits(fn, pkg.Fset),
+		ForceTypeAssertHits: findForceTypeAssertHits(fn, pkg.Fset, guardedTypeAssertions(pkg, source, bindings)),
 		// TypedNilHits are typed-nil comparisons (gostaticanalysis).
 		TypedNilHits: nil,
 		// ErrorCheckSites tracks per-call error checking for deviant_behavior.
