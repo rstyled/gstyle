@@ -240,6 +240,13 @@ func singleBoundCall(body []ast.Stmt, bound string) (method, args string, ok boo
 	if !ok {
 		return "", "", false
 	}
+	// Combining cases changes the case variable's static type. Conservatively
+	// skip arguments containing its name, including shadowed or nested uses.
+	for _, arg := range call.Args {
+		if identifierNames(arg)[bound] {
+			return "", "", false
+		}
+	}
 	return sel.Sel.Name, argsText(call), true
 }
 
