@@ -307,6 +307,32 @@
       "incomplete_functions_after": 1040,
       "current_source_incomplete_functions": 1042,
       "note": "The frozen source remains unchanged. Two newly incomplete functions in the changed implementation come from unknown ownership for p.uses field-map slice-entry appends and its caller; no new warning is added. Independent review retains alias, escape, child-storage and actual-effect controls."
+    },
+    {
+      "id": "private-inline-field-writes",
+      "frozen_findings_before": 658,
+      "frozen_findings_after": 648,
+      "removed_ids": [
+        "Q0204",
+        "Q0212",
+        "Q0214",
+        "Q0457",
+        "Q0461",
+        "Q0462",
+        "Q0480",
+        "Q0518",
+        "Q0620",
+        "Q0622"
+      ],
+      "added_ids": [],
+      "changed_production_lines": 1,
+      "net_production_lines": 0,
+      "incomplete_functions_before": 1040,
+      "incomplete_functions_after": 1040,
+      "note": "Private receiver inline-slot writes reuse the existing no-address/no-slice-view/no-implicit-pointer-method guard rather than the read-only fixed-table guard. Borrowed referenced children and global-table stability checks remain separate. Frozen source measurements do not claim all remaining warnings are false positives.",
+      "current_source_findings": 648,
+      "current_source_functions": 5040,
+      "current_source_incomplete_functions": 1042
     }
   ],
   "review_after_table_fix": {
