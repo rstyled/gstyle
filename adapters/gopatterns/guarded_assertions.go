@@ -24,11 +24,14 @@ type assertionGuardQuery struct {
 	controls   map[pdg.Ref][]pdg.Ref
 }
 
-// Syntax identifies typed guard boundaries. Only canonical operands, writes
-// and paths can prove an assertion safe. Missing flow leaves warnings intact.
-func guardedTypeAssertions(pkg *packages.Package, source functionGraph, prepared ...*bindingflow.Query) map[*ast.TypeAssertExpr]bool {
+// Syntax identifies typed guard and return boundaries. Only canonical operands,
+// writes and paths can prove an assertion safe. Missing flow keeps warnings.
+func provenTypeAssertions(pkg *packages.Package, source functionGraph, summaries map[types.Object]types.Type, prepared ...*bindingflow.Query) map[*ast.TypeAssertExpr]bool {
 	fn, fset, info, graph := source.declaration, pkg.Fset, pkg.TypesInfo, source.graph
-	if !assertionGuardAvailable(fn, info, graph) || !hasAssertionGuard(fn) || len(findForceTypeAssertHits(fn, fset)) == 0 {
+	if !assertionGuardAvailable(fn, info, graph) {
+		return nil
+	}
+	if !assertionProofNeeded(fn, fset, summaries) {
 		return nil
 	}
 	bindings, err := nilErrBindings(graph, prepared)
@@ -42,7 +45,11 @@ func guardedTypeAssertions(pkg *packages.Package, source functionGraph, prepared
 	flow := pdg.BodyFlow(graph)
 	sourceNodes, refs := assertionSources(fn, fset, graph)
 	query := assertionGuardQuery{graph: graph, flow: flow, bindings: bindings, facts: facts, info: info, source: sourceNodes, refs: refs, conditions: assertionConditions(fn), previous: assertionPredecessors(flow), controls: assertionControlOperands(graph)}
-	return query.proven()
+	return query.proven(summaries)
+}
+
+func assertionProofNeeded(fn *ast.FuncDecl, fset *token.FileSet, summaries map[types.Object]types.Type) bool {
+	return len(findForceTypeAssertHits(fn, fset)) > 0 && (len(summaries) > 0 || hasAssertionGuard(fn))
 }
 
 func assertionGuardAvailable(fn *ast.FuncDecl, info *types.Info, graph *pdg.Graph) bool {
@@ -96,19 +103,23 @@ func assertionConditions(fn *ast.FuncDecl) map[ast.Expr]*ast.IfStmt {
 	return conditions
 }
 
-func (q *assertionGuardQuery) proven() map[*ast.TypeAssertExpr]bool {
+func (q *assertionGuardQuery) proven(summaries map[types.Object]types.Type) map[*ast.TypeAssertExpr]bool {
 	proven := map[*ast.TypeAssertExpr]bool{}
 	for source, ref := range q.refs {
 		assertion, ok := source.(*ast.TypeAssertExpr)
 		if !ok || assertion.Type == nil {
 			continue
 		}
-		path := q.localPath(assertion.X, q.bindings.Operand(ref, 1))
-		if path.Root != 0 && q.protected(ref, assertionRequirement{path, q.info.TypeOf(assertion.Type)}) {
+		if q.protectedAssertion(ref, assertion) || q.returnedType(ref, assertion, summaries) {
 			proven[assertion] = true
 		}
 	}
 	return proven
+}
+
+func (q *assertionGuardQuery) protectedAssertion(ref pdg.Ref, assertion *ast.TypeAssertExpr) bool {
+	path := q.localPath(assertion.X, q.bindings.Operand(ref, 1))
+	return path.Root != 0 && q.protected(ref, assertionRequirement{path, q.info.TypeOf(assertion.Type)})
 }
 
 func (q *assertionGuardQuery) localPath(expression ast.Expr, ref pdg.Ref) bindingflow.Path {

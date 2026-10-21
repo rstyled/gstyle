@@ -129,5 +129,5 @@ func TestGuardedAssertionNeedsCanonicalOperands(t *testing.T) {
 }
 
 func guardedAssertionsForTest(fn *ast.FuncDecl, fset *token.FileSet, info *types.Info, graph *pdg.Graph) map[*ast.TypeAssertExpr]bool {
-	return guardedTypeAssertions(&packages.Package{Fset: fset, TypesInfo: info}, functionGraph{declaration: fn, graph: graph})
+	return provenTypeAssertions(&packages.Package{Fset: fset, TypesInfo: info}, functionGraph{declaration: fn, graph: graph}, nil)
 }
