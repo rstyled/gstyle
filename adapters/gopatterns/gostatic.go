@@ -118,8 +118,8 @@ func findForceTypeAssertHits(fn *ast.FuncDecl, fset *token.FileSet, info *types.
 }
 
 // collectCommaOk finds type assertions in comma-ok form: `v, ok := x.(T)`.
-func collectCommaOk(body ast.Node) map[token.Pos]bool {
-	commaOk := map[token.Pos]bool{}
+func collectCommaOk(body ast.Node) map[*ast.TypeAssertExpr]bool {
+	commaOk := map[*ast.TypeAssertExpr]bool{}
 	ast.Inspect(body, func(n ast.Node) bool {
 		collectAssignCommaOk(n, commaOk)
 		collectValueSpecCommaOk(n, commaOk)
@@ -129,41 +129,37 @@ func collectCommaOk(body ast.Node) map[token.Pos]bool {
 }
 
 // collectAssignCommaOk marks assertions in `v, ok := x.(T)`.
-func collectAssignCommaOk(n ast.Node, commaOk map[token.Pos]bool) {
+func collectAssignCommaOk(n ast.Node, commaOk map[*ast.TypeAssertExpr]bool) {
 	assign, ok := n.(*ast.AssignStmt)
 	if !ok || len(assign.Lhs) != 2 || len(assign.Rhs) != 1 {
 		return
 	}
-	for _, rhs := range assign.Rhs {
-		markAssertExprs(rhs, commaOk)
-	}
+	markCommaOkAssertion(assign.Rhs[0], commaOk)
 }
 
 // collectValueSpecCommaOk marks assertions in `var v, ok = x.(T)`.
-func collectValueSpecCommaOk(n ast.Node, commaOk map[token.Pos]bool) {
+func collectValueSpecCommaOk(n ast.Node, commaOk map[*ast.TypeAssertExpr]bool) {
 	vs, ok := n.(*ast.ValueSpec)
 	if !ok || len(vs.Names) != 2 || len(vs.Values) != 1 {
 		return
 	}
-	for _, v := range vs.Values {
-		markAssertExprs(v, commaOk)
-	}
+	markCommaOkAssertion(vs.Values[0], commaOk)
 }
 
-// markAssertExprs marks all type assertions under e.
-func markAssertExprs(e ast.Expr, commaOk map[token.Pos]bool) {
-	ast.Inspect(e, func(m ast.Node) bool {
-		if tae, ok := m.(*ast.TypeAssertExpr); ok {
-			commaOk[tae.Pos()] = true
-		}
-		return true
-	})
+// markCommaOkAssertion marks only the assertion that supplies both results.
+// Assertions inside its operand or a function call can still panic.
+func markCommaOkAssertion(e ast.Expr, commaOk map[*ast.TypeAssertExpr]bool) {
+	assertion, ok := ast.Unparen(e).(*ast.TypeAssertExpr)
+	if !ok {
+		return
+	}
+	commaOk[assertion] = true
 }
 
 // checkTypeAssert checks one node for an unchecked assertion.
-func checkTypeAssert(n ast.Node, fset *token.FileSet, info *types.Info, commaOk map[token.Pos]bool) *patterns.ForceTypeAssertHit {
+func checkTypeAssert(n ast.Node, fset *token.FileSet, info *types.Info, commaOk map[*ast.TypeAssertExpr]bool) *patterns.ForceTypeAssertHit {
 	tae, ok := n.(*ast.TypeAssertExpr)
-	if !ok || commaOk[tae.Pos()] || tae.Type == nil {
+	if !ok || commaOk[tae] || tae.Type == nil {
 		return nil
 	}
 	if isEmptyInterface(info, tae.Type) {
