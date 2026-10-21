@@ -47,6 +47,9 @@ func Analyze(graphs map[string]*pdg.Graph, models Models) ([]Finding, error) {
 	if err := linkEnvironments(queries); err != nil {
 		return nil, err
 	}
+	if !hasEndpoints(queries) {
+		return nil, nil
+	}
 	summaries := map[string]summary{}
 	for name := range queries {
 		summaries[name] = emptySummary()
