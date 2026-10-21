@@ -9,8 +9,8 @@ import (
 
 func TestAuditForceAssertMultiAssignment(t *testing.T) {
 	src := `package p;func f(x any){a,b:=x.(int),2;_,_=a,b}`
-	fn, fs, info := parseNilErrFunc(t, src)
-	if got := findForceTypeAssertHits(fn, fs, info); len(got) != 1 {
+	fn, fs, _ := parseNilErrFunc(t, src)
+	if got := findForceTypeAssertHits(fn, fs); len(got) != 1 {
 		t.Fatalf("panic-producing assertion: got %d findings,want 1", len(got))
 	}
 }
