@@ -75,14 +75,22 @@ type ResourceAcquisition struct {
 	// Resource is the human name, e.g. "file".
 	Resource string
 	// AcquireCall is the acquiring callee suffix, e.g. "os.Open".
-	AcquireCall string
+	AcquireCall     string
+	DeferredCleanup []DeferredCleanup `json:"deferred_cleanup,omitempty"`
 }
 
-// ObligationViolation is an acquired resource with no deferred release.
+// DeferredCleanup records a matching saved call, not proof that it runs.
+type DeferredCleanup struct {
+	Line int
+	Call string
+}
+
+// ObligationViolation is an acquired resource without established cleanup.
 type ObligationViolation struct {
-	Lifecycle *ResourceLifecycle
-	FuncID    string
-	Line      int
+	DeferredCleanup []DeferredCleanup
+	Lifecycle       *ResourceLifecycle
+	FuncID          string
+	Line            int
 	// Resource is the human name, e.g. "file".
 	Resource string
 	// AcquireCall is the acquiring callee suffix, e.g. "os.Open".
@@ -122,7 +130,7 @@ func FindObligationViolations(facts []*MiningFacts) []ObligationViolation {
 func returnedFileViolations(f *MiningFacts) []ObligationViolation {
 	var out []ObligationViolation
 	for _, site := range f.FileObligationSites {
-		out = append(out, ObligationViolation{FuncID: f.ID, Line: site.Line, Resource: site.Resource, AcquireCall: site.AcquireCall, Reason: "returned file has no recognized close or further ownership transfer"})
+		out = append(out, ObligationViolation{FuncID: f.ID, Line: site.Line, Resource: site.Resource, AcquireCall: site.AcquireCall, Reason: "returned file has no recognized close or further ownership transfer", DeferredCleanup: site.DeferredCleanup})
 	}
 	return out
 }
@@ -335,6 +343,7 @@ func ObligationCandidates(violations []ObligationViolation, facts []*MiningFacts
 			Inference:         v.Reason,
 			PossibleRefactor:  fmt.Sprintf("ensure the owner releases the %s when its work ends; use defer only when cleanup belongs to this function", v.Resource),
 			ResourceLifecycle: v.Lifecycle,
+			CounterEvidence:   cleanupCounterEvidence(v.DeferredCleanup),
 			Sites: []Site{
 				{Path: f.Path, Line: v.Line, Name: f.Name},
 			},
@@ -354,4 +363,12 @@ func AcquisitionRelease(callee string) (method, field string, receiver bool) {
 		field = "Body"
 	}
 	return rule.release, field, rule.receiverIsResource
+}
+
+func cleanupCounterEvidence(defers []DeferredCleanup) []string {
+	var evidence []string
+	for _, cleanup := range defers {
+		evidence = append(evidence, fmt.Sprintf("defer %s observed at line %d for this resource; registration and cleanup execution on all paths remain unproved", cleanup.Call, cleanup.Line))
+	}
+	return evidence
 }

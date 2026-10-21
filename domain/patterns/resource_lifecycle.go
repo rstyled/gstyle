@@ -39,7 +39,7 @@ func lifecycleViolations(f *MiningFacts) []ObligationViolation {
 		}
 		violations = append(violations, ObligationViolation{
 			FuncID: f.ID, Line: evidence.Line, Resource: evidence.Resource,
-			AcquireCall: evidence.AcquireCall, Reason: evidence.Reason, Lifecycle: &evidence,
+			AcquireCall: evidence.AcquireCall, Reason: evidence.Reason, Lifecycle: &evidence, DeferredCleanup: evidence.DeferredCleanup,
 		})
 	}
 	return violations
