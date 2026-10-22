@@ -3,7 +3,7 @@ package quality
 // MemoryReadCall identifies operations with a typed closed-memory proof.
 func MemoryReadCall(callee string) bool {
 	switch NormalizeCallee(callee) {
-	case "io.ReadAll", "io.Closer.Close":
+	case "io.ReadAll", "io.Closer.Close", "encoding/json.Decoder.Token", "encoding/json.Decoder.More":
 		return true
 	}
 	return false
