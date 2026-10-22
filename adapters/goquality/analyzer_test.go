@@ -168,8 +168,8 @@ func TestTupleAliasesAndTemporaryTargetsStayVisible(t *testing.T) {
 	if f.Mutations[0].Provenance != quality.Unknown {
 		t.Fatal("tuple return incorrectly considered local")
 	}
-	if f.Mutations[1].Root != "<temporary>" || f.Mutations[1].Provenance != quality.Unknown {
-		t.Fatal("temporary write missing")
+	if f.Mutations[1].Root != "<temporary>" || f.Mutations[1].Provenance != quality.Local {
+		t.Fatal("fresh boxResult temporary loses its mutation or ownership")
 	}
 	if f.Mutations[2].Root != "values" || f.Mutations[2].Provenance != quality.External {
 		t.Fatal("slice projection loses root/provenance")

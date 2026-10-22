@@ -126,7 +126,7 @@ func (x *extractor) selfContainerInput(call *ast.CallExpr) ast.Expr {
 			return call.Args[0]
 		}
 	case *types.Func:
-		if result, ok := x.factories[object]; ok {
+		if result, ok := x.factories[object.Origin()]; ok {
 			return x.factoryArgument(call, result)
 		}
 		if quality.ContainerMutation(resolvedName(object)) {
@@ -360,7 +360,7 @@ func (x *extractor) allocationOrigin(call *ast.CallExpr, seen map[types.Object]b
 	case *types.Builtin:
 		return x.builtinAllocationOrigin(call, object.Name(), seen)
 	case *types.Func:
-		if result, ok := x.factories[object]; ok {
+		if result, ok := x.factories[object.Origin()]; ok {
 			return x.factoryOrigin(call, result, seen)
 		}
 		if freshCallResult(resolvedName(object)) {
@@ -377,6 +377,9 @@ func freshCallResult(callee string) bool {
 }
 
 func (x *extractor) factoryOrigin(call *ast.CallExpr, result factoryResult, seen map[types.Object]bool) quality.Provenance {
+	if result.pointer {
+		return x.pointerFactoryOrigin(call, result, seen)
+	}
 	if result.value == nil {
 		return quality.Unknown
 	}

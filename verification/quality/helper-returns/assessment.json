@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "before_revision": "08ea36d3ed8ad554fa1193a0d89849c6aa3e8b72",
+  "after_revision": "cfb7871933789293fd74b77539efffda553edc49",
+  "checker_revision": "cfb7871933789293fd74b77539efffda553edc49",
+  "go_environment": {
+    "GOARCH": "amd64",
+    "GOFLAGS": "",
+    "GOOS": "linux",
+    "GOTOOLCHAIN": "auto",
+    "GOVERSION": "go1.27.1"
+  },
+  "binary_hashes": {
+    "before": "16f644e34228f721914bd937f3b2a5b584f44c8f5f1c7b80c7553bebe0c43d97",
+    "after": "a7277fdb542aad848a673ddef19051eddaf3bb652e16d19181deec8f3d19d602"
+  },
+  "checker_hashes": {
+    "examples/quality-hunt/assurance_test.go": "0dee5c0df70d5a795b0962aa6d37ee7aed76e594c9dc044ea791f289149ee0f1",
+    "examples/quality-hunt/assurance_oracle_test.go": "b931f163e9e4cbe6faf1d84e3398599ef538dfa5fbf9f0d2d818fc005203f114",
+    "examples/quality-hunt/helper_return_runtime_test.go": "355ff387e00d4d36e6d905dcc60de51cfce262d0199130ca0aae6d7a188d6cc7",
+    "examples/quality-hunt/helper_return_evaluation_test.go": "1ef3ea5925a0d8da018cd046a2d33f83fa7c3419ceebd31a06e981d479abef50",
+    "verification/quality/helper-returns/run.py": "4ad87db05c80626553605e1b115b64fc22089069967610c96eca1538cdb0e9cd"
+  },
+  "external_sources": {
+    "schema_version": 1,
+    "selection": "Fixed before production edits or baseline evaluation. Syntax-selected external-source helpers, not a statistical project sample; Method is an upstream test fixture.",
+    "sources": [
+      {
+        "name": "ptr",
+        "module": "golang.org/x/tools",
+        "version": "v0.43.0",
+        "path": "internal/mcp/jsonschema/schema.go",
+        "url": "https://github.com/golang/tools/blob/v0.43.0/internal/mcp/jsonschema/schema.go",
+        "full_file_sha256": "018faabffaf65d4f87b1529aab9c07f9bfd44dcda7fac793a28e9585925e8191",
+        "excerpt_sha256": "435993b194c474fae0a72b5fc8df90b17c106248fed9ad808d96c0f947d18446",
+        "line": 358
+      },
+      {
+        "name": "method",
+        "module": "golang.org/x/tools",
+        "version": "v0.8.0",
+        "path": "cmd/guru/testdata/src/lib/lib.go",
+        "url": "https://github.com/golang/tools/blob/v0.8.0/cmd/guru/testdata/src/lib/lib.go",
+        "full_file_sha256": "2e7d6865d9f4e4526bc3fbca1d280a9a11fbe17d0e19b8ee608f4a56a0cef612",
+        "excerpt_sha256": "149ff6a2dccffe1b6d140cf37c8fd7fdaa572397c9ef2b4a566cd5650627c7f9",
+        "line": 5
+      },
+      {
+        "name": "maxptr",
+        "module": "modernc.org/mathutil",
+        "version": "v1.7.1",
+        "path": "mathutil.go",
+        "url": "https://gitlab.com/cznic/mathutil/-/blob/v1.7.1/mathutil.go",
+        "full_file_sha256": "854305b822fcc15df3141aa63cf2af69b4d6da74d7ebce61ed11b9cfc2c09562",
+        "excerpt_sha256": "d6364dfeb05c0fef067c9649517cbc0b7120ba675b2070ac44f179c604e7f7fb",
+        "line": 657
+      },
+      {
+        "name": "ident",
+        "module": "Go standard library go/ast",
+        "version": "go1.27.1",
+        "path": "src/go/ast/ast.go",
+        "url": "https://github.com/golang/go/blob/go1.27.1/src/go/ast/ast.go",
+        "full_file_sha256": "3dfde677a97a1f6435e9befbc8523a975b34d2d7ee79e93151778c17cd596b41",
+        "excerpt_sha256": "d33e8e2527662225c601b3c2a3ae951df4ee2107868b2b610b681a32d727d3c7",
+        "line": 603
+      }
+    ]
+  },
+  "comparisons": {
+    "matrix": {
+      "before": {
+        "BinaryHash": "16f644e34228f721914bd937f3b2a5b584f44c8f5f1c7b80c7553bebe0c43d97",
+        "SourceHash": "6711173c270844b53b0dc40ad38b46622c75ce43e792481afde91ec7873fd0ff",
+        "TraceHash": "5ba9659b50a28545967ffa4ee26688cc7dbca717587f5379f77c4633cdafe37c",
+        "Executions": 291,
+        "Classified": 201,
+        "Uncertain": 102,
+        "Missing": 0
+      },
+      "after": {
+        "BinaryHash": "a7277fdb542aad848a673ddef19051eddaf3bb652e16d19181deec8f3d19d602",
+        "SourceHash": "6711173c270844b53b0dc40ad38b46622c75ce43e792481afde91ec7873fd0ff",
+        "TraceHash": "5ba9659b50a28545967ffa4ee26688cc7dbca717587f5379f77c4633cdafe37c",
+        "Executions": 291,
+        "Classified": 219,
+        "Uncertain": 84,
+        "Missing": 0
+      }
+    },
+    "development": {
+      "before": {
+        "BinaryHash": "16f644e34228f721914bd937f3b2a5b584f44c8f5f1c7b80c7553bebe0c43d97",
+        "SourceHash": "3cd2e6186888fe39e89280b5ec79e799b8b2348a104ee680157e9f447df1ef11",
+        "TraceHash": "52d2eb610d64deafb7518e4538c77cd22e8fea99c111cd1d8c37f0a5130afdda",
+        "Executions": 21,
+        "Classified": 0,
+        "Uncertain": 14,
+        "Missing": 0
+      },
+      "after": {
+        "BinaryHash": "a7277fdb542aad848a673ddef19051eddaf3bb652e16d19181deec8f3d19d602",
+        "SourceHash": "3cd2e6186888fe39e89280b5ec79e799b8b2348a104ee680157e9f447df1ef11",
+        "TraceHash": "52d2eb610d64deafb7518e4538c77cd22e8fea99c111cd1d8c37f0a5130afdda",
+        "Executions": 21,
+        "Classified": 6,
+        "Uncertain": 8,
+        "Missing": 0
+      }
+    },
+    "external": {
+      "before": {
+        "BinaryHash": "16f644e34228f721914bd937f3b2a5b584f44c8f5f1c7b80c7553bebe0c43d97",
+        "SourceHash": "95c5aff1e2ebf662da62760af4c668d57f07a04fb41f63c6b5cbc95267d970ac",
+        "TraceHash": "17c95e061725479d5341b1fd03263cc62296190515786a0aa9bb096690fb3df2",
+        "Executions": 21,
+        "Classified": 0,
+        "Uncertain": 12,
+        "Missing": 0
+      },
+      "after": {
+        "BinaryHash": "a7277fdb542aad848a673ddef19051eddaf3bb652e16d19181deec8f3d19d602",
+        "SourceHash": "95c5aff1e2ebf662da62760af4c668d57f07a04fb41f63c6b5cbc95267d970ac",
+        "TraceHash": "17c95e061725479d5341b1fd03263cc62296190515786a0aa9bb096690fb3df2",
+        "Executions": 21,
+        "Classified": 6,
+        "Uncertain": 6,
+        "Missing": 0
+      }
+    }
+  },
+  "unsafe_variants": {
+    "baseline": {
+      "binary_sha256": "a7277fdb542aad848a673ddef19051eddaf3bb652e16d19181deec8f3d19d602",
+      "exit": 0,
+      "executions": 291,
+      "classified": 219,
+      "uncertain": 84,
+      "missing": 0
+    },
+    "external-mutations-ignored": {
+      "binary_sha256": "566ef25e23a2414df0679d97fa5cc0695b0ac810a9f1f7498387aefc6c53fb2e",
+      "exit": 1,
+      "executions": 291,
+      "classified": 0,
+      "uncertain": 84,
+      "missing": 219
+    },
+    "local-elements-owned": {
+      "binary_sha256": "3e77c58d17841beb9831383c03ef9cc50210179da939360f788c3fa77dca6488",
+      "exit": 1,
+      "executions": 291,
+      "classified": 219,
+      "uncertain": 48,
+      "missing": 36
+    },
+    "mixed-binding-owned": {
+      "binary_sha256": "70e11dfc190952541e209950deb134570b3dd1928acea9d381734399dd702716",
+      "exit": 1,
+      "executions": 291,
+      "classified": 219,
+      "uncertain": 72,
+      "missing": 12
+    }
+  },
+  "evidence": {
+    "path": "evidence.tar.gz",
+    "sha256": "5d24d102f3adda56736ded9c1d0bbfd50ec05eb461c176aab433b1a500b7755c",
+    "files": 190,
+    "bytes": 609629
+  },
+  "first_after_external": {
+    "BinaryHash": "a7277fdb542aad848a673ddef19051eddaf3bb652e16d19181deec8f3d19d602",
+    "SourceHash": "95c5aff1e2ebf662da62760af4c668d57f07a04fb41f63c6b5cbc95267d970ac",
+    "TraceHash": "17c95e061725479d5341b1fd03263cc62296190515786a0aa9bb096690fb3df2",
+    "Executions": 21,
+    "Classified": 6,
+    "Uncertain": 6,
+    "Missing": 0
+  },
+  "limitations": [
+    "Finite repeated witnesses, not statistical precision/recall",
+    "Initial caller-owned built-in int cells only",
+    "External bodies isolated in same-package fixture, not upstream whole-package analysis",
+    "Newly published cells, concurrency and non-mutation effects need separate typed controls",
+    "Three-iteration profiles do not establish stable timing"
+  ],
+  "combined_validation": {
+    "revision": "443df0a",
+    "upstream_master": "dc1e449b4b2d54ce99b7de7378ab00d924f85c5b",
+    "commands": [
+      "make check",
+      "make quality-baseline",
+      "make quality-gate",
+      "make lint cognitive gstyle-check",
+      "go test -buildvcs=false -race ./adapters/goquality ./domain/quality ./examples/quality-hunt -count=1"
+    ],
+    "status": "pass",
+    "production_ownership_code_identical_to_frozen_candidate": true
+  }
+}

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "summary": {
     "functions": 14,
-    "mean_density_milli": 615,
+    "mean_density_milli": 601,
     "max_density_milli": 2666,
     "incomplete_functions": 3,
     "effects": [
@@ -40,7 +40,7 @@
       },
       {
         "kind": "unknown",
-        "count": 4
+        "count": 3
       }
     ]
   },
@@ -74,7 +74,7 @@
       "line": 7,
       "column": 1,
       "name": "example.com/sample.TupleAndTemporary",
-      "density_milli": 600,
+      "density_milli": 400,
       "mutations": 3,
       "mutated_targets": 3,
       "unclassified_calls": 0,
@@ -84,11 +84,6 @@
           "kind": "unknown",
           "detail": "alias",
           "line": 10
-        },
-        {
-          "kind": "unknown",
-          "detail": "\u003ctemporary\u003e.Count",
-          "line": 11
         },
         {
           "kind": "mutation",
@@ -336,39 +331,6 @@
   ],
   "diagnostics": [
     {
-      "path": "edge.go",
-      "line": 7,
-      "column": 1,
-      "name": "example.com/sample.TupleAndTemporary",
-      "rule_id": "side_effect_density",
-      "actual": 600,
-      "limit": 500,
-      "message": "side_effect_density 600 \u003e 500: weight 3 over 5 statements (unknown 2, mutation 1)",
-      "effects": [
-        {
-          "kind": "unknown",
-          "detail": "alias",
-          "line": 10
-        },
-        {
-          "kind": "unknown",
-          "detail": "\u003ctemporary\u003e.Count",
-          "line": 11
-        },
-        {
-          "kind": "mutation",
-          "detail": "values",
-          "line": 12
-        }
-      ],
-      "weight": 3,
-      "statements": 5,
-      "kind_weights": {
-        "mutation": 1,
-        "unknown": 2
-      }
-    },
-    {
       "path": "sample.go",
       "line": 23,
       "column": 1,
@@ -496,21 +458,6 @@
       "id": 1,
       "functions": [
         {
-          "path": "edge.go",
-          "line": 7,
-          "column": 1,
-          "name": "example.com/sample.TupleAndTemporary",
-          "rules": [
-            "side_effect_density"
-          ]
-        }
-      ],
-      "stacked": false
-    },
-    {
-      "id": 2,
-      "functions": [
-        {
           "path": "sample.go",
           "line": 23,
           "column": 1,
@@ -525,7 +472,7 @@
       "stacked": false
     },
     {
-      "id": 3,
+      "id": 2,
       "functions": [
         {
           "path": "unsafe.go",
