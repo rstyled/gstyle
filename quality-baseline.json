@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generated_at": "2026-10-22T18:35:49Z",
-  "commit": "3da9cc3",
+  "generated_at": "2026-10-22T19:03:09Z",
+  "commit": "83092bb",
   "functions": 5203,
   "tolerance": 0.05,
   "rules": {
@@ -27,8 +27,8 @@
     },
     "side_effect_density": {
       "limit": 500,
-      "excess": 270710,
-      "per_1000_functions": 52029.59830866808
+      "excess": 267081,
+      "per_1000_functions": 51332.11608687296
     }
   }
 }

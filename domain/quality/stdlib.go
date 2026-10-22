@@ -355,6 +355,8 @@ var stdlibRules = []stdlibRule{
 		"Transport.RoundTrip",
 	}},
 	{pkg: "net/http", kind: Global, names: []string{"Handle", "HandleFunc"}},
+	// Header.Set only replaces a map entry; sending headers is a separate operation.
+	{pkg: "net/http", kind: MutationEffect, names: []string{"Header.Set"}},
 	{pkg: "net/http", kind: IO, names: []string{
 		"ServeFile", "ServeContent", "ServeCookie", "Error", "Redirect",
 		"Request.ParseForm", "Request.ParseMultipartForm",
