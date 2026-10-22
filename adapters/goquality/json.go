@@ -150,11 +150,25 @@ func (x *extractor) returnedJSONUses(object types.Object, destination *ast.Ident
 		if use == destination {
 			continue
 		}
-		if !x.outerFieldReturn(use) || !x.scalarJSONUse(use) {
+		if !x.outerFieldReturn(use) || !(x.scalarJSONUse(use) || x.returnedJSONAddress(use)) {
 			return false
 		}
 	}
 	return true
+}
+
+// A direct outer return publishes the local slot only after construction ends.
+// Field addresses and intermediate aliases do not establish that boundary.
+func (x *extractor) returnedJSONAddress(use *ast.Ident) bool {
+	proof := receiverProof{parents: x.fields.parents}
+	_, parent := proof.parent(use)
+	address, ok := parent.(*ast.UnaryExpr)
+	if !ok || address.Op != token.AND {
+		return false
+	}
+	_, parent = proof.parent(address)
+	_, returned := parent.(*ast.ReturnStmt)
+	return returned
 }
 
 func (x *extractor) synchronousJSONCall(call *ast.CallExpr) bool {
