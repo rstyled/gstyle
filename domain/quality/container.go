@@ -19,11 +19,12 @@ func ContainerMutation(callee string) bool {
 	}
 }
 
-// ContainerClone identifies callback-free standard calls that return fresh
-// container storage. Element references in the result can still be shared.
+// ContainerClone identifies standard calls that return fresh container storage.
+// This proves storage ownership only: elements can be shared and callbacks
+// can have effects of their own.
 func ContainerClone(callee string) bool {
 	switch NormalizeCallee(callee) {
-	case "slices.Clone", "maps.Clone", "slices.Concat", "slices.Repeat",
+	case "slices.Clone", "maps.Clone", "slices.Concat", "slices.Repeat", "slices.Collect",
 		"strings.Split", "strings.SplitN", "strings.SplitAfter", "strings.SplitAfterN", "strings.Fields",
 		"bytes.Clone", "bytes.Repeat", "bytes.Split", "bytes.SplitN", "bytes.SplitAfter", "bytes.SplitAfterN", "bytes.Fields":
 		return true
