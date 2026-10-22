@@ -172,7 +172,7 @@ func (source *functionGraph) finalize(ctx context.Context, exits callflow.ExitSu
 	if err != nil {
 		return err
 	}
-	b.recordExitObservations(observations)
+	source.recordExitObservations(observations)
 	if len(b.operationExits)+len(b.conditionValues) == 0 {
 		source.inventory = nil
 		return nil
@@ -187,6 +187,17 @@ func (source *functionGraph) finalize(ctx context.Context, exits callflow.ExitSu
 	*source.graph = graph
 	source.inventory = nil
 	return nil
+}
+
+func (source *functionGraph) recordExitObservations(observations callflow.Observations) {
+	if observations.Limited {
+		pool := source.inventory.pool
+		source.graph.Diagnostics = append(source.graph.Diagnostics, pdg.Diagnostic{
+			Code: pool.Text("pdg.observation-work-limit"), Severity: pdg.Warning,
+			Message: pool.Text("Optional path refinement exceeded its work limit; partial facts were discarded and conservative flow was retained."),
+		})
+	}
+	source.inventory.recordExitObservations(observations)
 }
 
 // Translate joined domain observations into the adapter's refinement inputs.
