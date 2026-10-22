@@ -2,6 +2,7 @@ package goquality
 
 import (
 	"go/ast"
+	"go/token"
 	"go/types"
 
 	"github.com/rstyled/gstyle/domain/quality"
@@ -78,9 +79,17 @@ func (x *extractor) privateMapEntryUse(entry *ast.IndexExpr, object types.Object
 		return x.mapEntryAppend(parent, object) && ast.Unparen(parent.Args[0]) == entry && x.mapAppendWrite(parent, object)
 	case *ast.AssignStmt:
 		return x.mapEntryAssignment(parent, object)
+	case *ast.BinaryExpr:
+		return x.nilComparison(parent)
 	default:
 		return false
 	}
+}
+
+// Comparing with the predeclared nil observes a header without exposing storage.
+func (x *extractor) nilComparison(value *ast.BinaryExpr) bool {
+	return (value.Op == token.EQL || value.Op == token.NEQ) &&
+		(x.pkg.TypesInfo.Types[value.X].IsNil() || x.pkg.TypesInfo.Types[value.Y].IsNil())
 }
 
 func (x *extractor) mapAppendWrite(call *ast.CallExpr, object types.Object) bool {
