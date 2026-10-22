@@ -19,7 +19,8 @@ It compiles and executes the generated programs in one temporary Go module,
 records whether each changes caller-owned state, extracts typed quality facts,
 and checks three invariants:
 
-- A runtime caller-state change cannot receive a complete, effect-free report.
+- A runtime caller-state change in a complete report must retain a mutation
+  effect; unrelated IO does not cover the write.
 - The explicitly known owned-storage examples remain complete and effect-free.
 - Equivalent syntax preserves mutation target grouping, field paths and
   provenance, effect kinds, completeness, and unclassified-call counts.
@@ -66,8 +67,30 @@ go run ./examples/quality-hunt --gstyle /path/to/frozen-gstyle --recheck /tmp/ne
 
 PASS exits 0. A confirmed mismatch, invalid candidate, timeout, or operational
 failure exits nonzero, with a diagnostic identifying the reason. The external
-analyzer must support `check --format facts`; classification uses the current
-checkout's default policy so the comparison focuses on extracted facts.
+analyzer must support `check --format facts` and `check --format json --facts-in`.
+Both extraction and classification use that binary. Findings exit 1 is accepted
+only with a valid JSON report; analysis failure is not a semantic pass.
+
+## Bounded mutation assurance
+
+`go test ./examples/quality-hunt -run '^TestMutationAssurance$' -count=1 -v`
+runs 291 original and 291 instrumented executions. The runtime observer identifies
+initial caller cells by `*int` identity and records each supported integer write,
+including writes that restore the original value. It never consults analyzer
+ownership facts. The uninstrumented program is analyzed separately. Each witness
+requires mutation or explicit unknown evidence at its enclosing case's source
+site; an unrelated effect at another site does not cover it. Uncertainty is
+reported separately from classified mutation.
+
+This is a finite straight-line/conditional integer-cell contract, not a general
+runtime purity checker. The observer rejects effectful places. It excludes maps,
+concurrency, new cells published after entry, library-internal writes, arbitrary
+destination graphs, and multiple-target helper calls. Compilation, execution,
+type-checking, and observation errors abort the experiment.
+
+The fixed matrix, pinned analyzer/policy, independent controls, three unsafe
+analyzer builds, reduced witnesses, raw evidence, and limits are documented in
+[`verification/quality/mutation-assurance`](../../verification/quality/mutation-assurance/README.md).
 
 ## Validation
 

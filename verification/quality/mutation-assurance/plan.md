@@ -61,9 +61,18 @@ mutant's exact overlay and result. Evaluate frozen binaries with their own
 classification policy. Report per-case matched mutation, covered uncertainty,
 missing evidence, and private-storage false effects; do not call these population
 precision or recall. The frozen quality assessment labels findings from a
-development corpus and does not measure unreported defects. Existing Lean
-theorems have their documented source bindings and scope; they do not prove
-this ownership contract end to end.
+development corpus and does not measure unreported defects. The separate
+[Lean audit](../../lean/MUTATION_ASSURANCE.md) records the proof boundary.
+
+### Recorded setup deviation
+
+The first parameter-provenance mutant compiled, but saved-fact validation rejected
+its inconsistent call-storage certificate (`invalid call storage ...helperChain`).
+This is a boundary-validation rejection, not a runtime semantic kill. Preserve
+that failed attempt. Replace that one mutant with a policy mutant that ignores
+external mutation evidence while leaving valid extracted facts intact. This also
+tests that the external binary supplies its own classification policy. The corpus,
+holdout inputs, contract, and budget of three semantic mutants remain unchanged.
 
 Stop after the fixed matrix, controls, three mutants, reduction of any confirmed
 counterexample, and required repository checks. Fix only confirmed defects with
