@@ -77,7 +77,11 @@ func (q *assertionGuardQuery) assertionPoint(ref pdg.Ref) (assertionPoint, bool)
 
 func (q *assertionGuardQuery) priorPoints(point assertionPoint, required assertionRequirement) ([]assertionPoint, bool) {
 	block := q.flow.Blocks[point.block-1]
-	if point.block == q.flow.Entry || q.writesBinding(block.Operations[:point.offset], required.path.Root) {
+	proved, valid := q.priorAssertion(block.Operations[:point.offset], required)
+	if proved {
+		return nil, true
+	}
+	if !valid || point.block == q.flow.Entry {
 		return nil, false
 	}
 	var previous []assertionPoint
@@ -90,12 +94,25 @@ func (q *assertionGuardQuery) priorPoints(point assertionPoint, required asserti
 	return previous, len(q.previous[point.block-1]) > 0
 }
 
-func (q *assertionGuardQuery) writesBinding(operations []pdg.Ref, symbol pdg.Ref) bool {
-	for _, ref := range operations {
-		for _, write := range q.graph.NodeAttributes(q.graph.Nodes[ref-1]).Writes {
-			if write.Symbol == symbol {
-				return true
-			}
+// A prior single-result assertion must succeed for normal execution to reach
+// this point. Scan in reverse so an intervening write cancels that proof.
+func (q *assertionGuardQuery) priorAssertion(operations []pdg.Ref, required assertionRequirement) (bool, bool) {
+	for index := len(operations) - 1; index >= 0; index-- {
+		ref := operations[index]
+		if q.writesAssertionBinding(ref, required.path.Root) {
+			return false, false
+		}
+		if q.successfulAssertion(ref, required) {
+			return true, true
+		}
+	}
+	return false, true
+}
+
+func (q *assertionGuardQuery) writesAssertionBinding(ref, symbol pdg.Ref) bool {
+	for _, write := range q.graph.NodeAttributes(q.graph.Nodes[ref-1]).Writes {
+		if write.Symbol == symbol {
+			return true
 		}
 	}
 	return false
