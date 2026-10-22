@@ -7,7 +7,7 @@ import (
 
 // Each proof excludes callbacks and external IO while retaining memory writes.
 func (x *extractor) memoryWrite(call *ast.CallExpr, callee string) bool {
-	return x.memoryFormat(call, callee) || x.memoryScan(call, callee) || x.memoryXMLDecode(call, callee)
+	return x.memoryFormat(call, callee) || x.memoryScan(call, callee) || x.memoryXMLDecode(call, callee) || x.memoryJSONDecode(call, callee)
 }
 
 // The writer's concrete implementation cannot perform external IO. Retain a

@@ -6,7 +6,7 @@ func MemoryWriterCall(callee string) bool {
 		return true
 	case "fmt.Sscan", "fmt.Sscanf", "fmt.Sscanln":
 		return true
-	case "encoding/xml.Decoder.Decode":
+	case "encoding/xml.Decoder.Decode", "encoding/json.Decoder.Decode":
 		return true
 	}
 	return false
@@ -17,5 +17,5 @@ func (call Call) validMemoryWriter() bool {
 }
 
 func (prefix Prefix) refinesMemoryWriter(call Call) bool {
-	return prefix.memoryWriter && call.MemoryWriter && prefix.Kind == IO
+	return prefix.memoryWriter && call.MemoryWriter && (prefix.Kind == IO || (prefix.Kind == UnknownEffect && NormalizeCallee(call.Callee) == "encoding/json.Decoder.Decode"))
 }
