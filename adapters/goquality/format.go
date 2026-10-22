@@ -3,14 +3,22 @@ package goquality
 import (
 	"go/ast"
 	"go/types"
-
-	"github.com/rstyled/gstyle/domain/quality"
 )
+
+// Each proof excludes callbacks and external IO while retaining memory writes.
+func (x *extractor) memoryWrite(call *ast.CallExpr, callee string) bool {
+	return x.memoryFormat(call, callee) || x.memoryScan(call, callee) || x.memoryXMLDecode(call, callee)
+}
 
 // The writer's concrete implementation cannot perform external IO. Retain a
 // mutation even for fresh records: a Buffer can wrap borrowed backing bytes.
 func (x *extractor) memoryFormat(call *ast.CallExpr, callee string) bool {
-	if !quality.MemoryWriterCall(callee) || call.Ellipsis.IsValid() || len(call.Args) == 0 {
+	switch callee {
+	case "fmt.Fprint", "fmt.Fprintf", "fmt.Fprintln", "io.WriteString":
+	default:
+		return false
+	}
+	if call.Ellipsis.IsValid() || len(call.Args) == 0 {
 		return false
 	}
 	return memoryWriterType(x.pkg.TypesInfo.TypeOf(call.Args[0])) && x.formatScalars(call.Args[1:])
