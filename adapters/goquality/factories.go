@@ -16,25 +16,52 @@ type factoryResult struct {
 	tuple     []bool
 }
 
+// Grow only proven certificates. The bound keeps long dependency chains unknown.
+const factoryRounds = 8
+
 func factoryResults(pkg *packages.Package, capacity map[*types.Func]bool) map[*types.Func]factoryResult {
-	result := map[*types.Func]factoryResult{}
+	results := map[*types.Func]factoryResult{}
+	functions := factoryFunctions(pkg, results)
+	extraction := packageExtraction{pkg: pkg, factories: results, cappedReturns: capacity}
+	for range factoryRounds {
+		if !extraction.composeFactories(functions) {
+			break
+		}
+	}
+	tupleFactories(pkg, capacity, results)
+	return results
+}
+
+func factoryFunctions(pkg *packages.Package, results map[*types.Func]factoryResult) []*ast.FuncDecl {
+	var functions []*ast.FuncDecl
 	for _, file := range pkg.Syntax {
 		for _, declaration := range file.Decls {
-			if fn, ok := declaration.(*ast.FuncDecl); ok {
-				var resultValue factoryResult
-				if literal := factoryReturn(fn); literal != nil {
-					resultValue.value = literal
-				} else {
-					resultValue = containerFactory(pkg, fn, capacity)
-				}
-				if resultValue.value != nil {
-					result[pkg.TypesInfo.Defs[fn.Name].(*types.Func)] = resultValue
-				}
+			fn, ok := declaration.(*ast.FuncDecl)
+			if !ok {
+				continue
+			}
+			functions = append(functions, fn)
+			if literal := factoryReturn(fn); literal != nil {
+				results[pkg.TypesInfo.Defs[fn.Name].(*types.Func)] = factoryResult{value: literal}
 			}
 		}
 	}
-	tupleFactories(pkg, capacity, result)
-	return result
+	return functions
+}
+
+func (extraction packageExtraction) composeFactories(functions []*ast.FuncDecl) bool {
+	changed := false
+	for _, fn := range functions {
+		function := extraction.pkg.TypesInfo.Defs[fn.Name].(*types.Func)
+		if extraction.factories[function].value != nil {
+			continue
+		}
+		if result := extraction.containerFactory(fn); result.value != nil {
+			extraction.factories[function] = result
+			changed = true
+		}
+	}
+	return changed
 }
 
 func factoryReturn(fn *ast.FuncDecl) *ast.CompositeLit {
