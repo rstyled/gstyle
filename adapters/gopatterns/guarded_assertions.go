@@ -28,11 +28,19 @@ type assertionGuardQuery struct {
 // Syntax identifies typed guard and return boundaries. Only canonical operands,
 // writes and paths can prove an assertion safe. Missing flow keeps warnings.
 func provenTypeAssertions(pkg *packages.Package, source functionGraph, summaries map[types.Object]concreteReturn, prepared ...*bindingflow.Query) map[*ast.TypeAssertExpr]bool {
-	fn, fset, info, graph := source.declaration, pkg.Fset, pkg.TypesInfo, source.graph
-	if !assertionGuardAvailable(fn, info, graph) {
+	if !assertionProofNeeded(source.declaration, pkg.Fset, summaries) {
 		return nil
 	}
-	if !assertionProofNeeded(fn, fset, summaries) {
+	query := newAssertionGuardQuery(pkg, source, prepared)
+	if query == nil {
+		return nil
+	}
+	return query.proven(summaries)
+}
+
+func newAssertionGuardQuery(pkg *packages.Package, source functionGraph, prepared []*bindingflow.Query) *assertionGuardQuery {
+	fn, fset, info, graph := source.declaration, pkg.Fset, pkg.TypesInfo, source.graph
+	if !assertionGuardAvailable(fn, info, graph) {
 		return nil
 	}
 	bindings, err := nilErrBindings(graph, prepared)
@@ -46,7 +54,7 @@ func provenTypeAssertions(pkg *packages.Package, source functionGraph, summaries
 	flow := pdg.BodyFlow(graph)
 	sourceNodes, refs := assertionSources(fn, fset, graph)
 	query := assertionGuardQuery{graph: graph, flow: flow, bindings: bindings, facts: facts, info: info, source: sourceNodes, refs: refs, conditions: assertionConditions(fn), previous: assertionPredecessors(flow), controls: assertionControlOperands(graph), commaOK: collectCommaOk(fn.Body)}
-	return query.proven(summaries)
+	return &query
 }
 
 func assertionProofNeeded(fn *ast.FuncDecl, fset *token.FileSet, summaries map[types.Object]concreteReturn) bool {
