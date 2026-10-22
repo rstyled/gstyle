@@ -9,17 +9,17 @@ import (
 )
 
 func (x *extractor) indexedOrigin(value *ast.IndexExpr, seen map[types.Object]bool) quality.Provenance {
-	if object := x.mapEntryRoot(value); x.privateMapEntries(object) {
+	if object := x.mapEntryRoot(value); x.privateAppendEntries(object) {
 		return quality.Local
 	}
 	return referencedOrigin(x.origin(value.X, seen))
 }
 
-// An empty private map starts with nil slice entries. Updating entries only by
-// append from that same map preserves owned outer storage, across all keys.
+// A fresh private map or slice starts with nil slice entries. Updating entries
+// only by append from that same container preserves owned row storage.
 // Element references retain their usual borrowed provenance.
-func (x *extractor) privateMapEntries(object types.Object) bool {
-	if !x.emptyLocalMap(object) || x.fields.deferred {
+func (x *extractor) privateAppendEntries(object types.Object) bool {
+	if !x.emptyLocalEntries(object) || x.fields.deferred {
 		return false
 	}
 	proof := receiverProof{parents: x.fields.parents}
@@ -31,23 +31,31 @@ func (x *extractor) privateMapEntries(object types.Object) bool {
 	return true
 }
 
-func (x *extractor) emptyLocalMap(object types.Object) bool {
+func (x *extractor) emptyLocalEntries(object types.Object) bool {
 	if !x.localContainerRoot(object) {
 		return false
 	}
-	shape, ok := underlying(object.Type()).(*types.Map)
-	if !ok {
+	if !sliceEntryContainer(object.Type()) {
 		return false
 	}
-	_, slice := underlying(shape.Elem()).(*types.Slice)
 	binding := x.bindings[object]
-	return slice && !binding.unknown && len(binding.values) == 1 && x.emptyMap(binding.values[0])
+	return !binding.unknown && len(binding.values) == 1 && x.emptyEntries(binding.values[0])
 }
 
-func (x *extractor) emptyMap(value ast.Expr) bool {
-	if _, ok := underlying(x.pkg.TypesInfo.TypeOf(value)).(*types.Map); !ok {
+func sliceEntryContainer(typ types.Type) bool {
+	switch shape := underlying(typ).(type) {
+	case *types.Map:
+		typ = shape.Elem()
+	case *types.Slice:
+		typ = shape.Elem()
+	default:
 		return false
 	}
+	_, slice := underlying(typ).(*types.Slice)
+	return slice
+}
+
+func (x *extractor) emptyEntries(value ast.Expr) bool {
 	switch value := ast.Unparen(value).(type) {
 	case *ast.CompositeLit:
 		return len(value.Elts) == 0
