@@ -119,6 +119,7 @@ type Extraction struct {
 
 // extractCtx carries per-package maps for entity pairing.
 type extractCtx struct {
+	privateAssertions map[*ast.TypeAssertExpr]bool
 	concreteReturns   map[types.Object]concreteReturn
 	resourceFunctions map[types.Object]resourceFunction
 	protocols         []protocolFacts
@@ -141,6 +142,7 @@ func newExtractCtx(pkg *packages.Package, root string, resources packageResource
 		}
 	}
 	return extractCtx{
+		privateAssertions: privateAssertionProofs(pkg, resources.functions),
 		concreteReturns:   concreteReturnTypes(pkg, resources.functions),
 		resourceFunctions: resources.functions,
 		protocols:         resources.protocols,
@@ -535,7 +537,7 @@ func extractFunc(pkg *packages.Package, source functionGraph, ctx extractCtx) (F
 		// NilErrHits are `if err != nil { return nil }` (gostaticanalysis).
 		NilErrHits: findNilErrGraphHits(fn, pkg.Fset, pkg.TypesInfo, graph, bindings),
 		// ForceTypeAssertHits are unchecked `x.(T)` (gostaticanalysis).
-		ForceTypeAssertHits: findForceTypeAssertHits(fn, pkg.Fset, provenTypeAssertions(pkg, source, ctx.concreteReturns, bindings)),
+		ForceTypeAssertHits: findForceTypeAssertHits(fn, pkg.Fset, provenTypeAssertions(pkg, source, ctx.concreteReturns, bindings), ctx.privateAssertions),
 		// TypedNilHits are typed-nil comparisons (gostaticanalysis).
 		TypedNilHits: nil,
 		// ErrorCheckSites tracks per-call error checking for deviant_behavior.
