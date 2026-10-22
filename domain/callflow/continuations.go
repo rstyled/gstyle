@@ -21,6 +21,9 @@ type Observations struct {
 	Calls      map[pdg.Ref]Outcomes
 	Operations map[pdg.Ref]Outcomes
 	Conditions map[pdg.Ref]pdg.BooleanFact
+	// Limited means optional path refinement exceeded its work budget. All
+	// facts are discarded: a partial traversal cannot justify pruning flow.
+	Limited bool
 }
 
 func OrdinaryObservations(queries Queries, summaries ExitSummaries) Observations {
@@ -48,6 +51,9 @@ func OrdinaryObservationsContext(ctx context.Context, queries Queries, summaries
 	evaluation.run(false, "")
 	if err := ctx.Err(); err != nil {
 		return Observations{}, err
+	}
+	if evaluation.observationLimit {
+		return Observations{Limited: true}, nil
 	}
 	return Observations{Calls: evaluation.callOutcomes, Operations: evaluation.operationOutcomes, Conditions: conditionFacts(evaluation.conditions)}, nil
 }

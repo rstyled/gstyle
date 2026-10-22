@@ -15,6 +15,8 @@ type exitPoint struct {
 
 type exitEvaluation struct {
 	observing         bool
+	observationWork   int
+	observationLimit  bool
 	stateIndex        valueStateIndex
 	contexts          map[valueStateID]bindingflow.Evaluation
 	concrete          map[exitValue]bindingflow.Value
