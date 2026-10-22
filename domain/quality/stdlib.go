@@ -228,11 +228,12 @@ var stdlibRules = []stdlibRule{
 		"Getpid", "Getppid", "Getuid", "Geteuid", "Getgid", "Getegid",
 		"Getpagesize", "Args", "ProcessState.ExitCode",
 		"IsExist", "IsNotExist", "IsPermission",
+		"File.Name", // Returns the stored name without consulting the filesystem.
 	}},
 	{pkg: "os", kind: IO, names: []string{
 		"File.Read", "File.ReadAt", "File.Write", "File.WriteAt", "File.WriteString",
 		"File.Close", "File.Seek", "File.Sync", "File.Stat", "File.Truncate",
-		"File.Chmod", "File.Chown", "File.Readdir", "File.ReadDir", "File.Name",
+		"File.Chmod", "File.Chown", "File.Readdir", "File.ReadDir",
 	}},
 	{pkg: "os/exec", kind: None, names: []string{"Command", "CommandContext"}},
 	{pkg: "os/exec", kind: IO, names: []string{
