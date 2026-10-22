@@ -506,6 +506,8 @@ var stdlibRules = []stdlibRule{
 	// FlagSet methods: Parse reads os.Args and may print usage; the Var family,
 	// Set, SetOutput, Visit and Init mutate the set; the rest are pure accessors.
 	{pkg: "flag", kind: IO, names: []string{"FlagSet.Parse", "FlagSet.PrintDefaults"}},
+	// SetOutput only stores a writer on this set; it does not call the writer.
+	{pkg: "flag", kind: MutationEffect, names: []string{"FlagSet.SetOutput"}},
 	{pkg: "flag", kind: None, names: []string{
 		"FlagSet.Arg", "FlagSet.Args", "FlagSet.Lookup", "FlagSet.NArg", "FlagSet.NFlag",
 		"FlagSet.Name", "FlagSet.Output", "FlagSet.ErrorHandling", "FlagSet.Parsed",
@@ -516,7 +518,7 @@ var stdlibRules = []stdlibRule{
 		"FlagSet.Uint64Var", "FlagSet.Uint64", "FlagSet.StringVar", "FlagSet.String",
 		"FlagSet.Float64Var", "FlagSet.Float64", "FlagSet.DurationVar", "FlagSet.Duration",
 		"FlagSet.Func", "FlagSet.BoolFunc", "FlagSet.TextVar",
-		"FlagSet.Set", "FlagSet.SetOutput", "FlagSet.Visit", "FlagSet.VisitAll", "FlagSet.Init",
+		"FlagSet.Set", "FlagSet.Visit", "FlagSet.VisitAll", "FlagSet.Init",
 	}},
 	{pkg: "flag", kind: None, names: []string{"NewFlagSet"}},
 	{pkg: "unsafe", kind: Unsafe},
