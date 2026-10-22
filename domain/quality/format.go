@@ -6,6 +6,8 @@ func MemoryWriterCall(callee string) bool {
 		return true
 	case "fmt.Sscan", "fmt.Sscanf", "fmt.Sscanln":
 		return true
+	case "encoding/xml.Decoder.Decode":
+		return true
 	}
 	return false
 }
