@@ -23,6 +23,7 @@ func FieldCaller(b *lib.Box){b.Put()}
 func BorrowedFieldCaller(m map[string]int){b:=lib.Box{Values:m};b.Put()}
 func FieldSortCaller(b *lib.Box){b.Sort()}
 func UnknownWriteCaller(p **int){lib.UnknownWrite(p)}
+func SharedIndirectWriteCaller(p **int){lib.SharedIndirectWrite(p)}
 func UnsafeCaller(p *int){lib.Unsafe(p)}
 func RecursiveCaller(){lib.Recurse()}
 func MutualCaller()bool{return lib.Even(4)}
@@ -47,7 +48,8 @@ func Set(p *int){*p=1}
 type Box struct{Values map[string]int;Items []int}
 func(b *Box)Put(){b.Values["x"]=1}
 func(b *Box)Sort(){slices.Sort(b.Items)}
-func UnknownWrite(p **int){**p=1}
+func UnknownWrite(p **int){holder:=&p;***holder=1}
+func SharedIndirectWrite(p **int){**p=1}
 func Unsafe(p *int){_ = unsafe.Pointer(p)}
 func Recurse(){Recurse()}
 func Even(n int)bool{if n==0{return true};return Odd(n-1)}
@@ -92,6 +94,7 @@ func Identity(v string)string{return v}
 		{"IOCaller", quality.UnknownEffect, false}, {"GlobalCaller", quality.UnknownEffect, false}, {"MutationCaller", quality.MutationEffect, true},
 		{"FieldCaller", quality.MutationEffect, true}, {"BorrowedFieldCaller", quality.MutationEffect, true}, {"FieldSortCaller", quality.UnknownEffect, false},
 		{"UnknownWriteCaller", quality.UnknownEffect, false}, {"UnsafeCaller", quality.UnknownEffect, false},
+		{"SharedIndirectWriteCaller", quality.MutationEffect, true},
 		{"RecursiveCaller", quality.None, true}, {"MutualCaller", quality.None, true},
 		{"RecursiveIOCaller", quality.UnknownEffect, false}, {"DynamicCaller", quality.UnknownEffect, false},
 		{"PanicCaller", quality.Panic, true}, {"PanicOwned", quality.Panic, true}, {"PanicWrapped", quality.Panic, true},
@@ -133,6 +136,14 @@ func Identity(v string)string{return v}
 	}
 	if findFunction(t, facts, "UnknownWriteCaller").Calls[0].Local {
 		t.Fatal("unknown unbound mutation was admitted")
+	}
+	indirect := findFunction(t, facts, "SharedIndirectWriteCaller")
+	if !indirect.Calls[0].Local || len(indirect.Helpers) != 1 || len(indirect.Helpers[0].Mutations) != 1 {
+		t.Fatal("shared indirect write lost its helper body")
+	}
+	write := indirect.Helpers[0].Mutations[0]
+	if write.Provenance != quality.External || write.Parameter != nil {
+		t.Fatalf("indirect write must not bind to outer pointer: %+v", write)
 	}
 	override := quality.DefaultConfig()
 	override.Weights.Panic = 2
