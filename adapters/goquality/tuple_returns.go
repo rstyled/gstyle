@@ -92,5 +92,12 @@ func (x *extractor) ownedTuple(value ast.Expr, index int) bool {
 		return false
 	}
 	owned := x.factories[function.Origin()].tuple
-	return index < len(owned) && owned[index]
+	return ownedJSONResult(resolvedName(function), index) || index < len(owned) && owned[index]
+}
+
+// Marshal copies its encoded bytes out of the pooled state; MarshalIndent
+// builds a separate buffer. Errors return nil. Callbacks and argument effects
+// still belong to the call; only its first result owns byte storage.
+func ownedJSONResult(callee string, index int) bool {
+	return index == 0 && (callee == "encoding/json.Marshal" || callee == "encoding/json.MarshalIndent")
 }
