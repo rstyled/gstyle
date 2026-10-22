@@ -229,6 +229,21 @@ a different path's abort outcome. Missing observations retain the existing
 conservative call query. Deferred invocations keep their separate saved-input
 and unwind rules.
 
+Ordinary observations have a per-function budget of 65,536 work units. Each new
+program point charges one unit plus the number of tracked entries in its value
+state. This bounds optional path enumeration when independent Boolean/nil
+branches create exponentially many states. Repeated visits to the same point
+and state do not consume more work.
+
+If this budget is exhausted, all observation maps for that function are
+discarded. `Observations.Limited` is true and the Go adapter retains its
+conservative graph with a `pdg.observation-work-limit` warning. It never prunes
+using the first paths visited. Analysis can lose refinement precision in that
+function; missing facts do not establish successful execution or cleanup. This
+budget covers ordinary observations, not a process-wide memory ceiling or all
+summary solvers. Callers that execute untrusted workloads still need hard
+process/container limits.
+
 `TestResourceReleaseUsesSelectedCallbackStates` compares native Go cleanup for
 safe and leaking paths, then checks the report. Missing cleanup, possible process
 exit, mixed targets and unknown callbacks still produce resource warnings. This
