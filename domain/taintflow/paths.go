@@ -1,6 +1,9 @@
 package taintflow
 
-import "strings"
+import (
+	"maps"
+	"strings"
+)
 
 func pathValue(store state, base value, fields string) value {
 	if fields == "" {
@@ -20,7 +23,12 @@ func pathComponent(store state, base value, field string) value {
 	}
 	result := emptyValue()
 	for root := range base.Objects {
-		result = joinValue(result, readCell(store, cellKey(root, field)))
+		item := readCell(store, cellKey(root, field))
+		result.Opaque = result.Opaque || item.Opaque
+		result.Nil = result.Nil || item.Nil
+		maps.Copy(result.Functions, item.Functions)
+		maps.Copy(result.Data, item.Data)
+		maps.Copy(result.Objects, item.Objects)
 	}
 	return result
 }
