@@ -1,0 +1,3 @@
+func (Type) Method(x *int) *int {
+	return x
+}
