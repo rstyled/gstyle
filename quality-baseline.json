@@ -1,14 +1,14 @@
 {
   "version": 1,
-  "generated_at": "2026-10-22T22:16:37Z",
-  "commit": "f3540f2",
+  "generated_at": "2026-10-22T22:25:01Z",
+  "commit": "4f4bd19",
   "functions": 5221,
   "tolerance": 0.05,
   "rules": {
     "aggregate": {
       "limit": 1,
-      "excess": 19,
-      "per_1000_functions": 3.639149588201494
+      "excess": 18,
+      "per_1000_functions": 3.4476153993487837
     },
     "fn_params": {
       "limit": 4,
@@ -27,8 +27,8 @@
     },
     "side_effect_density": {
       "limit": 500,
-      "excess": 258246,
-      "per_1000_functions": 49462.938134457
+      "excess": 257906,
+      "per_1000_functions": 49397.81651024708
     }
   }
 }

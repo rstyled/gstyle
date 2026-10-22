@@ -370,10 +370,10 @@ func (x *extractor) allocationOrigin(call *ast.CallExpr, seen map[types.Object]b
 	return quality.Unknown
 }
 
-// Command allocates a new Cmd. This owns its outer slots only; reference
-// fields still need their own ownership proof, and calls retain their effects.
+// Command and CommandContext allocate a new Cmd. This owns its outer slots
+// only; reference fields need their own proof, and calls retain their effects.
 func freshCallResult(callee string) bool {
-	return callee == "os/exec.Command" || quality.ContainerClone(callee)
+	return callee == "os/exec.Command" || callee == "os/exec.CommandContext" || quality.ContainerClone(callee)
 }
 
 func (x *extractor) factoryOrigin(call *ast.CallExpr, result factoryResult, seen map[types.Object]bool) quality.Provenance {
