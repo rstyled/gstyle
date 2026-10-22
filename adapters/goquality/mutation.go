@@ -271,6 +271,8 @@ func (x *extractor) origin(value ast.Expr, seen map[types.Object]bool) quality.P
 		return x.origin(value.X, seen)
 	case *ast.SliceExpr:
 		return x.sliceOrigin(value, seen)
+	case *ast.StarExpr:
+		return referencedOrigin(x.origin(value.X, seen))
 	default:
 		return x.constructedOrigin(value, seen)
 	}
