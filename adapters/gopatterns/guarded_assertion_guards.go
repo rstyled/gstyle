@@ -14,14 +14,21 @@ func (q *assertionGuardQuery) guards(edge assertionEdge, required assertionRequi
 	if condition == 0 || len(block.Successors) != 2 {
 		return false
 	}
+	if required.typ == nil {
+		return q.nonNilGuard(condition, edge.outcome, required.path)
+	}
+	return q.typedGuard(condition, edge.outcome, required)
+}
+
+func (q *assertionGuardQuery) typedGuard(condition pdg.Ref, outcome int, required assertionRequirement) bool {
 	if clause, ok := q.source[condition].(*ast.CaseClause); ok {
-		return edge.outcome == 0 && q.caseGuard(condition, clause, required)
+		return outcome == 0 && q.caseGuard(condition, clause, required)
 	}
 	branch := q.conditionBranch(condition)
 	if branch == nil {
 		return false
 	}
-	return q.checkedGuard(condition, branch, edge.outcome, required)
+	return q.checkedGuard(condition, branch, outcome, required)
 }
 
 func (q *assertionGuardQuery) caseGuard(ref pdg.Ref, clause *ast.CaseClause, required assertionRequirement) bool {

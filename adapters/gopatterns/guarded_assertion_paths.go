@@ -9,7 +9,8 @@ import (
 
 type assertionRequirement struct {
 	path bindingflow.Path
-	typ  types.Type
+	// A nil type requests only a non-nil interface proof.
+	typ types.Type
 }
 
 type assertionEdge struct {

@@ -9,28 +9,34 @@ import (
 )
 
 // These package-local contracts describe the dynamic type of the first
-// interface result. Nil, mixed, named, generic and deferred results stay unknown.
-func concreteReturnTypes(pkg *packages.Package, functions map[types.Object]resourceFunction) map[types.Object]types.Type {
-	known := map[types.Object]types.Type{}
+// interface result. Nullable contracts require a caller-side non-nil proof.
+// Mixed, named, generic and interface-valued results stay unknown.
+type concreteReturn struct {
+	typ      types.Type
+	nullable bool
+}
+
+func concreteReturnTypes(pkg *packages.Package, functions map[types.Object]resourceFunction) map[types.Object]concreteReturn {
+	known := map[types.Object]concreteReturn{}
 	for object, function := range functions {
-		if typ := concreteReturnType(pkg, function); typ != nil {
+		if typ := concreteReturnType(pkg, function); typ.typ != nil {
 			known[object] = typ
 		}
 	}
 	return known
 }
 
-func concreteReturnType(pkg *packages.Package, function resourceFunction) types.Type {
-	if !interfaceReturnSignature(function.object.Type().(*types.Signature)) || pdg.ReachableProjection(function.graph) == nil {
-		return nil
+func concreteReturnType(pkg *packages.Package, function resourceFunction) concreteReturn {
+	if !interfaceReturnSignature(function.object.Type().(*types.Signature)) || pdg.BodyFlow(function.graph) == nil {
+		return concreteReturn{}
 	}
 	typ, returns := concreteReturnCandidate(function.declaration, pkg.TypesInfo)
-	if typ == nil || function.query == nil {
-		return nil
+	if typ.typ == nil || function.query == nil {
+		return concreteReturn{}
 	}
 	source := releaseGraph{graph: function.graph, query: function.query, nodes: releaseSourceNodes(function.graph), fset: pkg.Fset}
 	if !concreteReturnOperands(source, returns) {
-		return nil
+		return concreteReturn{}
 	}
 	return typ
 }
@@ -44,35 +50,51 @@ func interfaceReturnSignature(signature *types.Signature) bool {
 	return iface && result.Name() == ""
 }
 
-func concreteReturnCandidate(fn *ast.FuncDecl, info *types.Info) (types.Type, []*ast.ReturnStmt) {
-	returns, valid := concreteReturnStatements(fn)
-	if !valid || len(returns) == 0 {
-		return nil, nil
-	}
-	typ := concreteReturnExpression(returns[0], info)
+func concreteReturnCandidate(fn *ast.FuncDecl, info *types.Info) (concreteReturn, []*ast.ReturnStmt) {
+	returns, deferred := concreteReturnStatements(fn)
+	candidate := concreteReturn{typ: firstConcreteReturn(returns, info), nullable: deferred}
 	for _, statement := range returns {
-		if !matchingConcreteReturn(typ, concreteReturnExpression(statement, info)) {
-			return nil, nil
+		if nilReturnExpression(statement, info) {
+			candidate.nullable = true
+			continue
+		}
+		if !matchingConcreteReturn(candidate.typ, concreteReturnExpression(statement, info)) {
+			return concreteReturn{}, nil
 		}
 	}
-	return typ, returns
+	return candidate, returns
 }
 
+func firstConcreteReturn(returns []*ast.ReturnStmt, info *types.Info) types.Type {
+	for _, statement := range returns {
+		if typ := concreteReturnExpression(statement, info); typ != nil {
+			return typ
+		}
+	}
+	return nil
+}
+
+func nilReturnExpression(statement *ast.ReturnStmt, info *types.Info) bool {
+	return len(statement.Results) > 0 && info.Types[statement.Results[0]].IsNil()
+}
+
+// Unnamed results are fixed before defers run. Recovery can instead return the
+// zero interface result, so every deferred body makes the contract nullable.
 func concreteReturnStatements(fn *ast.FuncDecl) ([]*ast.ReturnStmt, bool) {
 	var returns []*ast.ReturnStmt
-	valid := true
+	deferred := false
 	ast.Inspect(fn.Body, func(node ast.Node) bool {
 		switch node := node.(type) {
 		case *ast.FuncLit:
 			return false
 		case *ast.DeferStmt:
-			valid = false
+			deferred = true
 		case *ast.ReturnStmt:
 			returns = append(returns, node)
 		}
-		return valid
+		return true
 	})
-	return returns, valid
+	return returns, deferred
 }
 
 func matchingConcreteReturn(previous, next types.Type) bool {
@@ -104,6 +126,8 @@ func concreteInterfaceValueType(typ types.Type) types.Type {
 	return typ
 }
 
+// Body flow supplies explicit return inputs before deferred unwind. The
+// nullable contract accounts for recovery; named result writes are excluded.
 // Compiler types identify each explicit result. Canonical inputs must agree
 // with that expression, and at least one modeled return must be reachable.
 func concreteReturnOperands(source releaseGraph, returns []*ast.ReturnStmt) bool {

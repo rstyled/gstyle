@@ -10,7 +10,7 @@ import (
 	"golang.org/x/tools/go/types/typeutil"
 )
 
-func (q *assertionGuardQuery) returnedType(ref pdg.Ref, assertion *ast.TypeAssertExpr, summaries map[types.Object]types.Type) bool {
+func (q *assertionGuardQuery) returnedType(ref pdg.Ref, assertion *ast.TypeAssertExpr, summaries map[types.Object]concreteReturn) bool {
 	if !q.stableReturnInput(ref, assertion.X) {
 		return false
 	}
@@ -18,13 +18,19 @@ func (q *assertionGuardQuery) returnedType(ref pdg.Ref, assertion *ast.TypeAsser
 	if !origins.Known || len(origins.Sources) == 0 {
 		return false
 	}
-	for _, origin := range origins.Sources {
-		typ := q.returnedConcreteType(origin, summaries)
-		if !satisfiesTypeAssertion(typ, q.info.TypeOf(assertion.Type)) {
+	return q.returnOriginsProve(ref, assertion, origins.Sources, summaries)
+}
+
+func (q *assertionGuardQuery) returnOriginsProve(ref pdg.Ref, assertion *ast.TypeAssertExpr, origins []bindingflow.ValueSource, summaries map[types.Object]concreteReturn) bool {
+	nullable := false
+	for _, origin := range origins {
+		result := q.returnedConcreteType(origin, summaries)
+		if !satisfiesTypeAssertion(result.typ, q.info.TypeOf(assertion.Type)) {
 			return false
 		}
+		nullable = nullable || result.nullable
 	}
-	return true
+	return !nullable || q.nonNilAssertion(ref, assertion)
 }
 
 func (q *assertionGuardQuery) stableReturnInput(ref pdg.Ref, expression ast.Expr) bool {
@@ -38,17 +44,17 @@ func (q *assertionGuardQuery) stableReturnInput(ref pdg.Ref, expression ast.Expr
 	}
 }
 
-func (q *assertionGuardQuery) returnedConcreteType(origin bindingflow.ValueSource, summaries map[types.Object]types.Type) types.Type {
+func (q *assertionGuardQuery) returnedConcreteType(origin bindingflow.ValueSource, summaries map[types.Object]concreteReturn) concreteReturn {
 	if origin.Zero || origin.Node == 0 || origin.Result > 1 {
-		return nil
+		return concreteReturn{}
 	}
 	call, ok := q.source[origin.Node].(*ast.CallExpr)
 	if !ok {
-		return nil
+		return concreteReturn{}
 	}
 	object := typeutil.Callee(q.info, call)
 	if !q.resolvedReturnCall(origin.Node, object) {
-		return nil
+		return concreteReturn{}
 	}
 	return summaries[object]
 }
