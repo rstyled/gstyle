@@ -44,7 +44,8 @@ func (x *extractor) memoryReader(value ast.Expr, seen map[types.Object]bool) boo
 	switch value := ast.Unparen(value).(type) {
 	case *ast.CallExpr:
 		switch x.readerCallee(value) {
-		case "strings.NewReader", "bytes.NewReader":
+		case "strings.NewReader", "bytes.NewReader", "bytes.NewBuffer", "bytes.NewBufferString":
+			// Buffer reads change only the private header, never borrowed bytes.
 			return len(value.Args) == 1
 		case "compress/flate.NewReader", "io.LimitReader", "encoding/json.NewDecoder":
 			return len(value.Args) != 0 && x.memoryReader(value.Args[0], seen)
