@@ -71,6 +71,7 @@ def summarize(assessment):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True, help="new artifact directory")
+    parser.add_argument("--revision", default=BASE, help="frozen analyzer revision; default is the original registered baseline")
     args = parser.parse_args()
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=False)
@@ -79,11 +80,12 @@ def main():
     env = dict(os.environ, TMPDIR=str(temp))
     source = out / "source"
     source.mkdir()
-    archive = subprocess.check_output(["git", "archive", BASE], cwd=ROOT)
+    revision = subprocess.check_output(["git", "rev-parse", "--verify", args.revision + "^{commit}"], cwd=ROOT, text=True).strip()
+    archive = subprocess.check_output(["git", "archive", revision], cwd=ROOT)
     subprocess.run(["tar", "-x", "-C", str(source)], input=archive, check=True)
     env_data = require(["go", "env", "-json", "GOVERSION", "GOOS", "GOARCH", "GOFLAGS", "GOTOOLCHAIN"], ROOT, out / "go-env.log", env)
     manifest = {
-        "schema_version": 1, "baseline_revision": BASE,
+        "schema_version": 1, "baseline_revision": revision,
         "checker_revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
         "go_environment": json.loads(env_data.stdout),
         "checker_files": {str(p.relative_to(ROOT)): digest(p) for p in [

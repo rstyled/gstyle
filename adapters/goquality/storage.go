@@ -13,6 +13,9 @@ func (x *extractor) formalStorage(value ast.Expr) *int {
 }
 
 func (x *extractor) formalStorageSeen(value ast.Expr, seen map[types.Object]bool) *int {
+	if call, ok := ast.Unparen(value).(*ast.CallExpr); ok {
+		return x.formalStorageSeen(x.pointerReturnArgument(call), seen)
+	}
 	id, ok := ast.Unparen(value).(*ast.Ident)
 	if !ok {
 		return nil

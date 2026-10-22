@@ -59,6 +59,11 @@ func TestMutationAssurance(t *testing.T) {
 			t.Fatalf("unknown assurance case %q", selected)
 		}
 	}
+	assuranceAssess(t, cases, families, source)
+}
+
+func assuranceAssess(t *testing.T, cases []specimen, families map[string]assuranceFamily, source []byte) {
+	t.Helper()
 	if err := equivalentSource(source, cases); err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +214,11 @@ func assuranceSave(t *testing.T, assessment assuranceAssessment, source, tracedS
 			if c.Name == row.Name {
 				// Preserve the first witness as a standalone seed. A reduction must
 				// re-run this oracle; legacy boolean checks cannot validate it.
-				assuranceWrite(t, directory, "counterexample-seed.go.txt", assuranceProgram([]specimen{c}))
+				seed := assuranceProgram([]specimen{c})
+				if strings.HasPrefix(c.Family, "external-") {
+					seed = source
+				}
+				assuranceWrite(t, directory, "counterexample-seed.go.txt", seed)
 				return
 			}
 		}

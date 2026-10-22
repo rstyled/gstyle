@@ -14,6 +14,7 @@ type factoryResult struct {
 	value     ast.Expr
 	parameter *int
 	tuple     []bool
+	pointer   bool // Exact outer pointer, with a non-publishing returned formal.
 }
 
 // Grow only proven certificates. The bound keeps long dependency chains unknown.
@@ -56,12 +57,19 @@ func (extraction packageExtraction) composeFactories(functions []*ast.FuncDecl) 
 		if extraction.factories[function].value != nil {
 			continue
 		}
-		if result := extraction.containerFactory(fn); result.value != nil {
+		if result := extraction.resultFactory(fn); result.value != nil {
 			extraction.factories[function] = result
 			changed = true
 		}
 	}
 	return changed
+}
+
+func (extraction packageExtraction) resultFactory(fn *ast.FuncDecl) factoryResult {
+	if result := extraction.pointerFactory(fn); result.value != nil {
+		return result
+	}
+	return extraction.containerFactory(fn)
 }
 
 func factoryReturn(fn *ast.FuncDecl) *ast.CompositeLit {
