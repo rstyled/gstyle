@@ -361,11 +361,17 @@ func (x *extractor) allocationOrigin(call *ast.CallExpr, seen map[types.Object]b
 		if result, ok := x.factories[object]; ok {
 			return x.factoryOrigin(call, result, seen)
 		}
-		if quality.ContainerClone(resolvedName(object)) {
+		if freshCallResult(resolvedName(object)) {
 			return quality.Local
 		}
 	}
 	return quality.Unknown
+}
+
+// Command allocates a new Cmd. This owns its outer slots only; reference
+// fields still need their own ownership proof, and calls retain their effects.
+func freshCallResult(callee string) bool {
+	return callee == "os/exec.Command" || quality.ContainerClone(callee)
 }
 
 func (x *extractor) factoryOrigin(call *ast.CallExpr, result factoryResult, seen map[types.Object]bool) quality.Provenance {
