@@ -2,7 +2,7 @@ package quality
 
 func MemoryWriterCall(callee string) bool {
 	switch NormalizeCallee(callee) {
-	case "fmt.Fprint", "fmt.Fprintf", "fmt.Fprintln":
+	case "fmt.Fprint", "fmt.Fprintf", "fmt.Fprintln", "io.WriteString":
 		return true
 	case "fmt.Sscan", "fmt.Sscanf", "fmt.Sscanln":
 		return true
