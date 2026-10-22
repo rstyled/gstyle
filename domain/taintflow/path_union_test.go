@@ -67,7 +67,7 @@ func TestPathUnionKeepsStoredMaps(t *testing.T) {
 }
 
 func BenchmarkPathComponentFanout(b *testing.B) {
-	for _, size := range []int{64, 256, 1024} {
+	for _, size := range []int{1, 4, 64, 256, 1024} {
 		b.Run(fmt.Sprint(size), func(b *testing.B) {
 			base := emptyValue()
 			for i := 1; i <= size; i++ {
