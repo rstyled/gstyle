@@ -4,6 +4,8 @@ func MemoryWriterCall(callee string) bool {
 	switch NormalizeCallee(callee) {
 	case "fmt.Fprint", "fmt.Fprintf", "fmt.Fprintln":
 		return true
+	case "fmt.Sscan", "fmt.Sscanf", "fmt.Sscanln":
+		return true
 	}
 	return false
 }
