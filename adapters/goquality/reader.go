@@ -88,12 +88,15 @@ func readerArgument(parent, node ast.Node) *ast.CallExpr {
 
 func (x *extractor) readerMethodUse(selector *ast.SelectorExpr) bool {
 	call, ok := x.fields.parents[selector].(*ast.CallExpr)
-	if !ok || call.Fun != selector || len(call.Args) != 0 {
+	if !ok || call.Fun != selector {
 		return false
 	}
 	switch x.readerCallee(call) {
-	case "io.Closer.Close", "encoding/json.Decoder.Token", "encoding/json.Decoder.More":
-		return true
+	case "io.Closer.Close", "encoding/json.Decoder.Token", "encoding/json.Decoder.More",
+		"encoding/json.Decoder.DisallowUnknownFields", "encoding/json.Decoder.UseNumber":
+		return len(call.Args) == 0
+	case "encoding/json.Decoder.Decode":
+		return len(call.Args) == 1 && plainJSONType(x.pkg.TypesInfo.TypeOf(call.Args[0]), map[types.Type]bool{}, "Unmarshal")
 	}
 	return false
 }

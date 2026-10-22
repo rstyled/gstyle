@@ -12,6 +12,8 @@ func TestMemoryWriterEvidenceRejectsOtherCalls(t *testing.T) {
 		{Callee: "io.WriteString", Line: 2, Dynamic: true, MemoryWriter: true},
 		{Callee: "encoding/xml.Decoder.Decode", Line: 2, Dynamic: true, MemoryWriter: true},
 		{Callee: "encoding/xml.Unmarshal", Line: 2, MemoryWriter: true},
+		{Callee: "encoding/json.Decoder.Decode", Line: 2, Dynamic: true, MemoryWriter: true},
+		{Callee: "encoding/json.Unmarshal", Line: 2, MemoryWriter: true},
 	} {
 		f := fact("caller", 1)
 		f.Calls = []Call{call}
