@@ -4,30 +4,31 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"maps"
 
 	"github.com/rstyled/gstyle/domain/quality"
-	"golang.org/x/tools/go/packages"
 )
 
 // Prove the returned backing storage, not purity of the function or ownership
 // of referenced elements. Unrelated calls and effects keep their normal facts.
-func containerFactory(pkg *packages.Package, fn *ast.FuncDecl, capacity map[*types.Func]bool) factoryResult {
-	if value := localContainerReturn(pkg, fn, nil, capacity); value != nil {
+func (extraction packageExtraction) containerFactory(fn *ast.FuncDecl) factoryResult {
+	if value := extraction.localContainerReturn(fn, nil); value != nil {
 		return factoryResult{value: value}
 	}
-	signature := pkg.TypesInfo.Defs[fn.Name].Type().(*types.Signature)
+	signature := extraction.pkg.TypesInfo.Defs[fn.Name].Type().(*types.Signature)
 	for index := range signature.Params().Len() {
 		if signature.Variadic() && index == signature.Params().Len()-1 {
 			continue
 		}
-		if value := localContainerReturn(pkg, fn, &index, capacity); value != nil {
+		if value := extraction.localContainerReturn(fn, &index); value != nil {
 			return factoryResult{value: value, parameter: &index}
 		}
 	}
 	return factoryResult{}
 }
 
-func localContainerReturn(pkg *packages.Package, fn *ast.FuncDecl, parameter *int, capacity map[*types.Func]bool) ast.Expr {
+func (extraction packageExtraction) localContainerReturn(fn *ast.FuncDecl, parameter *int) ast.Expr {
+	pkg := extraction.pkg
 	function := pkg.TypesInfo.Defs[fn.Name].(*types.Func)
 	signature := function.Type().(*types.Signature)
 	if fn.Body == nil || signature.Results().Len() != 1 || signature.Results().At(0).Name() != "" {
@@ -38,7 +39,9 @@ func localContainerReturn(pkg *packages.Package, fn *ast.FuncDecl, parameter *in
 	default:
 		return nil
 	}
-	x := extractor{pkg: pkg, cappedReturns: capacity, factories: map[*types.Func]factoryResult{function: {value: fn.Name, parameter: parameter}}, bindings: map[types.Object]referenceBinding{}, parameters: map[types.Object]bool{}}
+	factories := maps.Clone(extraction.factories)
+	factories[function] = factoryResult{value: fn.Name, parameter: parameter}
+	x := extractor{pkg: pkg, cappedReturns: extraction.cappedReturns, factories: factories, bindings: map[types.Object]referenceBinding{}, parameters: map[types.Object]bool{}}
 	x.addParameters(fn.Type.Params)
 	x.addParameters(fn.Recv)
 	x.collectBindings(fn.Body)
