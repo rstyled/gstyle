@@ -9,6 +9,7 @@ func TestMemoryWriterEvidenceRejectsOtherCalls(t *testing.T) {
 		{Callee: "other.Fprint", Line: 2, MemoryWriter: true},
 		{Callee: "fmt.Sscan", Line: 2, Dynamic: true, MemoryWriter: true},
 		{Callee: "fmt.Fscan", Line: 2, MemoryWriter: true},
+		{Callee: "io.WriteString", Line: 2, Dynamic: true, MemoryWriter: true},
 	} {
 		f := fact("caller", 1)
 		f.Calls = []Call{call}
