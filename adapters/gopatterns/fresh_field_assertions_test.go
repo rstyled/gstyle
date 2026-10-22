@@ -1,6 +1,9 @@
 package gopatterns
 
 import (
+	"github.com/rstyled/gstyle/domain/pdg"
+	"go/ast"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -55,6 +58,81 @@ func TestFreshFieldAssertions(t *testing.T) {
 				}
 			}
 			t.Fatal("missing check function")
+		})
+	}
+}
+
+func TestFreshFieldRequiresCanonicalEvidence(t *testing.T) {
+	for _, missing := range []string{"allocation", "field path", "initializer", "literal input", "assertion input", "flow"} {
+		t.Run(missing, func(t *testing.T) {
+			pkg := loadTestPackage(t, `package p;type Target struct{};type Box struct{Value any};func check(){box:=&Box{Value:&Target{}};_=box.Value.(*Target)}`)
+			analysis := packageAnalysis{pkg: pkg, root: filepath.Dir(pkg.Fset.PositionFor(pkg.Syntax[0].Pos(), false).Filename), pool: pdg.NewBuilder()}
+			if err := analysis.build(); err != nil {
+				t.Fatal(err)
+			}
+			if err := analysis.summarize(); err != nil {
+				t.Fatal(err)
+			}
+			if err := analysis.analyze(); err != nil {
+				t.Fatal(err)
+			}
+			assertNullableWarnings(t, analysis.result, 0)
+			changed := false
+			for _, source := range analysis.graphs {
+				graph := source.graph
+				if missing == "flow" {
+					graph.NormalFlow, graph.ValueFlow, graph.Extensions = nil, nil, nil
+					changed = true
+					continue
+				}
+				if missing == "allocation" {
+					for i := range graph.Locations {
+						graph.Locations[i].Extensions = nil
+						changed = true
+					}
+					continue
+				}
+				if missing == "field path" {
+					for i, extensions := range graph.AttributeTables.Extensions {
+						kept := extensions[:0]
+						for _, extension := range extensions {
+							if graph.Tables.Text(extension.Name) == "gstyle.go:field-path" {
+								changed = true
+								continue
+							}
+							kept = append(kept, extension)
+						}
+						graph.AttributeTables.Extensions[i] = kept
+					}
+					continue
+				}
+				nodes, _ := assertionSources(source.declaration, pkg.Fset, graph)
+				kept := graph.Edges[:0]
+				for _, edge := range graph.Edges {
+					target := nodes[edge.Target]
+					_, initializer := target.(*ast.KeyValueExpr)
+					_, literal := target.(*ast.CompositeLit)
+					_, assertion := target.(*ast.TypeAssertExpr)
+					selected := missing == "initializer" && initializer && edge.Position == 2 || missing == "literal input" && literal || missing == "assertion input" && assertion
+					if edge.Kind == pdg.Data && selected {
+						changed = true
+						continue
+					}
+					kept = append(kept, edge)
+				}
+				graph.Edges = kept
+			}
+			if !changed {
+				t.Fatal("fixture lacks selected evidence")
+			}
+			if err := analysis.summarize(); err != nil {
+				t.Fatal(err)
+			}
+			analysis.result = nil
+			if err := analysis.analyze(); err != nil {
+				t.Fatal(err)
+			}
+			assertNullableWarnings(t, analysis.result, 1)
 		})
 	}
 }
