@@ -4,13 +4,23 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/rstyled/gstyle/domain/quality"
 )
 
 func TestCommandOwnsOnlyOuterRecord(t *testing.T) {
-	root := qualitySourceModule(t, []byte(`package repro
+	testCommandOwnsOnlyOuterRecord(t, false)
+}
+
+func TestCommandContextOwnsOnlyOuterRecord(t *testing.T) {
+	testCommandOwnsOnlyOuterRecord(t, true)
+}
+
+func testCommandOwnsOnlyOuterRecord(t *testing.T, withContext bool) {
+	t.Helper()
+	source := `package repro
 import "os/exec"
 func GitOutput(dir string, args ...string)(string,error){
  command:=exec.Command("git",args...)
@@ -19,6 +29,7 @@ func GitOutput(dir string, args ...string)(string,error){
  return string(output),err
 }
 func Local(){command:=exec.Command("git");command.Dir="."}
+func LocalStderr(){command:=exec.Command("git");command.Stderr=nil}
 func Alias(){command:=exec.Command("git");alias:=command;alias.Dir="."}
 func Shared(command *exec.Cmd){command.Dir="."}
 func Mixed(input *exec.Cmd, flag bool){command:=exec.Command("git");if flag{command=input};command.Dir="."}
@@ -34,12 +45,22 @@ var shared *exec.Cmd
 type Builder struct{}
 func (Builder) Command(string,...string)*exec.Cmd{return shared}
 func Shadow(){exec:=Builder{};command:=exec.Command("git");command.Dir="."}
-`))
+`
+	constructor := "os/exec.Command"
+	if withContext {
+		constructor = "os/exec.CommandContext"
+		source = strings.NewReplacer(
+			`import "os/exec"`, `import ("os/exec"; "context")`,
+			"exec.Command(", "exec.CommandContext(context.Background(),",
+			"(Builder) Command(", "(Builder) CommandContext(context.Context,",
+		).Replace(source)
+	}
+	root := qualitySourceModule(t, []byte(source))
 	facts, err := (Analyzer{Root: root}).Extract(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"GitOutput", "Local", "Alias", "ArgumentEffect"} {
+	for _, name := range []string{"GitOutput", "Local", "LocalStderr", "Alias", "ArgumentEffect"} {
 		function := findFunction(t, facts, name)
 		if len(function.Mutations) != 1 || function.Mutations[0].Provenance != quality.Local {
 			t.Errorf("%s must own the command slot: %+v", name, function.Mutations)
@@ -84,7 +105,7 @@ func Shadow(){exec:=Builder{};command:=exec.Command("git");command.Dir="."}
 		t.Fatal("saved command ownership changes evaluation", err)
 	}
 	config := quality.DefaultConfig()
-	config.Prefixes = append(config.Prefixes, quality.Prefix{Path: "os/exec.Command", Kind: quality.IO})
+	config.Prefixes = append(config.Prefixes, quality.Prefix{Path: constructor, Kind: quality.IO})
 	overridden, err := quality.Evaluate(restored, config)
 	if err != nil {
 		t.Fatal(err)
