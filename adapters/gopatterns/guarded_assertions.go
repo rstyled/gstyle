@@ -12,6 +12,7 @@ import (
 )
 
 type assertionGuardQuery struct {
+	body       *ast.BlockStmt
 	graph      *pdg.Graph
 	flow       *pdg.NormalFlow
 	bindings   *bindingflow.Query
@@ -53,25 +54,27 @@ func newAssertionGuardQuery(pkg *packages.Package, source functionGraph, prepare
 	}
 	flow := pdg.BodyFlow(graph)
 	sourceNodes, refs := assertionSources(fn, fset, graph)
-	query := assertionGuardQuery{graph: graph, flow: flow, bindings: bindings, facts: facts, info: info, source: sourceNodes, refs: refs, conditions: assertionConditions(fn), previous: assertionPredecessors(flow), controls: assertionControlOperands(graph), commaOK: collectCommaOk(fn.Body)}
+	query := assertionGuardQuery{body: fn.Body, graph: graph, flow: flow, bindings: bindings, facts: facts, info: info, source: sourceNodes, refs: refs, conditions: assertionConditions(fn), previous: assertionPredecessors(flow), controls: assertionControlOperands(graph), commaOK: collectCommaOk(fn.Body)}
 	return &query
 }
 
 func assertionProofNeeded(fn *ast.FuncDecl, fset *token.FileSet, summaries map[types.Object]concreteReturn) bool {
 	hits := len(findForceTypeAssertHits(fn, fset))
-	return hits > 0 && (hits > 1 || len(summaries) > 0 || hasAssertionGuard(fn))
+	return hits > 0 && (hits > 1 || len(summaries) > 0 || hasAssertionProofSource(fn))
 }
 
 func assertionGuardAvailable(fn *ast.FuncDecl, info *types.Info, graph *pdg.Graph) bool {
 	return fn.Body != nil && info != nil && graph != nil && pdg.ReachableProjection(graph) != nil
 }
 
-func hasAssertionGuard(fn *ast.FuncDecl) bool {
+func hasAssertionProofSource(fn *ast.FuncDecl) bool {
 	found := false
 	ast.Inspect(fn.Body, func(node ast.Node) bool {
 		switch node := node.(type) {
 		case *ast.FuncLit:
 			return false
+		case *ast.TypeAssertExpr:
+			_, found = ast.Unparen(node.X).(*ast.SelectorExpr)
 		case *ast.TypeSwitchStmt:
 			found = true
 		case *ast.IfStmt:
@@ -120,7 +123,7 @@ func (q *assertionGuardQuery) proven(summaries map[types.Object]concreteReturn) 
 		if !ok || assertion.Type == nil {
 			continue
 		}
-		if q.protectedAssertion(ref, assertion) || q.returnedType(ref, assertion, summaries) {
+		if q.assertionProven(ref, assertion, summaries) {
 			proven[assertion] = true
 		}
 	}
@@ -163,4 +166,8 @@ func (q *assertionGuardQuery) stablePath(ref pdg.Ref) bindingflow.Path {
 		return bindingflow.Path{}
 	}
 	return path
+}
+
+func (q *assertionGuardQuery) assertionProven(ref pdg.Ref, assertion *ast.TypeAssertExpr, summaries map[types.Object]concreteReturn) bool {
+	return q.protectedAssertion(ref, assertion) || q.returnedType(ref, assertion, summaries) || q.freshFieldType(ref, assertion)
 }
