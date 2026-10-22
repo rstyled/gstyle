@@ -119,7 +119,7 @@ type Extraction struct {
 
 // extractCtx carries per-package maps for entity pairing.
 type extractCtx struct {
-	concreteReturns   map[types.Object]types.Type
+	concreteReturns   map[types.Object]concreteReturn
 	resourceFunctions map[types.Object]resourceFunction
 	protocols         []protocolFacts
 	resourceQueries   map[*pdg.Graph]*resourceflow.Query
