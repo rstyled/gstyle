@@ -34,12 +34,50 @@ func stableStyle(pkg *packages.Package, value ast.Expr) bool {
 	if styleCall(selector.X, "NewStyle", 0, pkg.TypesInfo) == nil {
 		return false
 	}
-	color := styleCall(foreground.Args[0], "Color", 1, pkg.TypesInfo)
+	return constantStyleColor(foreground.Args[0], pkg.TypesInfo) || privateStyleColor(pkg, foreground.Args[0])
+}
+
+func constantStyleColor(value ast.Expr, info *types.Info) bool {
+	color := styleCall(value, "Color", 1, info)
 	if color == nil {
 		return false
 	}
-	constantColor := pkg.TypesInfo.Types[color.Args[0]].Value
+	constantColor := info.Types[color.Args[0]].Value
 	return constantColor != nil && constantColor.Kind() == constant.String
+}
+
+// A private color consumed only by this initializer cannot be rebound or have
+// its slot exposed. Keep aliases and other uses outside this bounded proof.
+func privateStyleColor(pkg *packages.Package, value ast.Expr) bool {
+	id, _ := ast.Unparen(value).(*ast.Ident)
+	variable, ok := pkg.TypesInfo.Uses[id].(*types.Var)
+	if !ok || variable.Exported() || !packageVariable(variable) || variable.Pkg() != pkg.Types {
+		return false
+	}
+	return soleColorUse(pkg.TypesInfo, variable, id) && colorDeclaration(pkg, variable)
+}
+
+func soleColorUse(info *types.Info, variable *types.Var, current *ast.Ident) bool {
+	for use, object := range info.Uses {
+		if object == variable && use != current {
+			return false
+		}
+	}
+	return true
+}
+
+func colorDeclaration(pkg *packages.Package, variable *types.Var) bool {
+	found := false
+	for _, file := range pkg.Syntax {
+		ast.Inspect(file, func(node ast.Node) bool {
+			spec, ok := node.(*ast.ValueSpec)
+			if ok && len(spec.Names) == 1 && len(spec.Values) == 1 && pkg.TypesInfo.Defs[spec.Names[0]] == variable {
+				found = constantStyleColor(spec.Values[0], pkg.TypesInfo)
+			}
+			return !found
+		})
+	}
+	return found
 }
 
 func auditedStyleModule(pkg *packages.Package) bool {

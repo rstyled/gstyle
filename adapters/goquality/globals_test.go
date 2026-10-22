@@ -2,10 +2,12 @@ package goquality
 
 import (
 	"context"
+	"encoding/json"
 	"go/ast"
 	"golang.org/x/tools/go/packages"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/rstyled/gstyle/domain/quality"
@@ -62,6 +64,23 @@ var styleDynamic = lipgloss.NewStyle().Foreground(lipgloss.Color(string([]byte(t
 var styleCallback = lipgloss.NewStyle().Foreground(lipgloss.Color(tone)).Transform(func(s string) string { println(s); return s })
 var colorReference = lipgloss.Color(tone)
 var styleColorReference = lipgloss.NewStyle().Foreground(colorReference)
+var colorWritten = lipgloss.Color(tone)
+var colorAddressed = lipgloss.Color(tone)
+var ColorExported = lipgloss.Color(tone)
+var colorDynamic = lipgloss.Color(computeText())
+var anotherColor = lipgloss.Color(tone)
+var colorIndirect = anotherColor
+var styleColorWritten = lipgloss.NewStyle().Foreground(colorWritten)
+var styleColorAddressed = lipgloss.NewStyle().Foreground(colorAddressed)
+var styleColorExported = lipgloss.NewStyle().Foreground(ColorExported)
+var styleColorDynamic = lipgloss.NewStyle().Foreground(colorDynamic)
+var styleColorIndirect = lipgloss.NewStyle().Foreground(colorIndirect)
+func StyleColorRender() string { return styleColorReference.Render("text") }
+func StyleColorWritten() lipgloss.Style { return styleColorWritten }
+func StyleColorAddressed() lipgloss.Style { return styleColorAddressed }
+func StyleColorExported() lipgloss.Style { return styleColorExported }
+func StyleColorDynamic() lipgloss.Style { return styleColorDynamic }
+func StyleColorIndirect() lipgloss.Style { return styleColorIndirect }
 var newStyle = lipgloss.NewStyle
 var styleAlias = newStyle().Foreground(lipgloss.Color(tone))
 var styleOther any = lipgloss.NewStyle().Foreground(lipgloss.Color(tone))
@@ -161,6 +180,8 @@ func Method() { methodCalled[0].change() }
 		"writes.go": `package stable
 import "charm.land/lipgloss/v2"
 func replaceError() { sentinelWritten = nil }
+func replaceColor() { colorWritten = lipgloss.Color("#ffffff") }
+var colorSlot = &colorAddressed
 func write() { mutated["a"] = 2 }
 func init() { initWritten[0] = 2; styleWritten = lipgloss.NewStyle() }
 func closure() func() { return func() { closureWritten[0]++ } }
@@ -175,7 +196,7 @@ func closure() func() { return func() { closureWritten[0]++ } }
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"LocalIndex", "NestedIndex", "BorrowedIndex", "FixedContains", "ParenthesizedContains", "ParenthesizedIndex", "GenericContains", "RecordValue", "ErrorValue", "Fixed", "Records", "Dispatch", "DispatchRecord", "DispatchCallback", "StyleValue", "StyleRender", "StyleMethodValue"} {
+	for _, name := range []string{"LocalIndex", "NestedIndex", "BorrowedIndex", "FixedContains", "ParenthesizedContains", "ParenthesizedIndex", "GenericContains", "RecordValue", "ErrorValue", "Fixed", "Records", "Dispatch", "DispatchRecord", "DispatchCallback", "StyleValue", "StyleRender", "StyleMethodValue", "StyleColorReference", "StyleColorRender"} {
 		fact := findFunction(t, facts, name)
 		for _, effect := range fact.Effects {
 			if effect.Kind == quality.Global {
@@ -183,7 +204,7 @@ func closure() func() { return func() { closureWritten[0]++ } }
 			}
 		}
 	}
-	for _, name := range []string{"CallbackContains", "ReferenceContains", "ChangingIndex", "ChangedContains", "SelfIndex", "AddressedIndex", "EscapedIndex", "ShadowedContains", "RecordWritten", "RecordAddress", "RecordMethod", "RecordExported", "RecordReference", "ErrorWritten", "ErrorAddressed", "ErrorExported", "ErrorDynamic", "ErrorIndirect", "Mutable", "Escape", "Address", "Reference", "Dynamic", "Public", "Initialized", "Closed", "Method", "RangeWrite", "Nested", "DispatchWritten", "DispatchEscaped", "DispatchAddressed", "DispatchVariable", "DispatchBound", "StyleWritten", "StyleAddressed", "StyleExported", "StyleDynamic", "StyleCallback", "StyleColorReference", "StyleAlias", "StyleOther"} {
+	for _, name := range []string{"CallbackContains", "ReferenceContains", "ChangingIndex", "ChangedContains", "SelfIndex", "AddressedIndex", "EscapedIndex", "ShadowedContains", "RecordWritten", "RecordAddress", "RecordMethod", "RecordExported", "RecordReference", "ErrorWritten", "ErrorAddressed", "ErrorExported", "ErrorDynamic", "ErrorIndirect", "Mutable", "Escape", "Address", "Reference", "Dynamic", "Public", "Initialized", "Closed", "Method", "RangeWrite", "Nested", "DispatchWritten", "DispatchEscaped", "DispatchAddressed", "DispatchVariable", "DispatchBound", "StyleWritten", "StyleAddressed", "StyleExported", "StyleDynamic", "StyleCallback", "StyleColorWritten", "StyleColorAddressed", "StyleColorExported", "StyleColorDynamic", "StyleColorIndirect", "StyleAlias", "StyleOther"} {
 		fact := findFunction(t, facts, name)
 		found := false
 		for _, effect := range fact.Effects {
@@ -206,6 +227,40 @@ func closure() func() { return func() { closureWritten[0]++ } }
 	key := findFunction(t, facts, "EffectfulIndex")
 	if len(key.Calls) != 1 || key.Calls[0].Callee != "example.com/stable.effectKey" {
 		t.Fatalf("table lookup loses evaluated key: %+v", key.Calls)
+	}
+	encoded, err := json.Marshal(facts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var restored []quality.Function
+	if err := json.Unmarshal(encoded, &restored); err != nil {
+		t.Fatal(err)
+	}
+	report, err := quality.Evaluate(facts, quality.DefaultConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	replay, err := quality.Evaluate(restored, quality.DefaultConfig())
+	if err != nil || !reflect.DeepEqual(report, replay) {
+		t.Fatal("saved style facts change report", err)
+	}
+	for _, kind := range []quality.Kind{quality.IO, quality.Global, quality.None} {
+		config := quality.DefaultConfig()
+		config.Prefixes = append(config.Prefixes, quality.Prefix{Path: lipglossPackage + ".Style.Render", Kind: kind})
+		overridden, err := quality.Evaluate(restored, config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		result := resultNamed(t, overridden, "StyleColorRender")
+		if kind == quality.None {
+			if len(result.Effects) != 0 {
+				t.Errorf("pure style policy lost: %+v", result)
+			}
+			continue
+		}
+		if len(result.Effects) != 1 || result.Effects[0].Kind != kind {
+			t.Errorf("%s style policy lost: %+v", kind, result)
+		}
 	}
 	render := findFunction(t, facts, "StyleRender")
 	if len(render.Calls) != 1 || render.Calls[0].Callee != lipglossPackage+".Style.Render" {
