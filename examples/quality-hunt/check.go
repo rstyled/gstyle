@@ -41,7 +41,7 @@ func (r runner) assess(ctx context.Context, source []byte, cases []specimen) (fa
 	if err != nil {
 		return failure{}, err
 	}
-	report, err := quality.Evaluate(facts, quality.DefaultConfig())
+	report, err := r.evaluate(ctx, facts)
 	if err != nil {
 		return failure{}, err
 	}
@@ -102,6 +102,50 @@ func (r runner) extract(ctx context.Context) ([]quality.Function, error) {
 		return nil, err
 	}
 	return facts.Functions, nil
+}
+
+// A frozen extractor must also use its own policy, not this checkout's policy.
+func (r runner) evaluate(ctx context.Context, facts []quality.Function) (quality.Report, error) {
+	if r.binary == "" {
+		return quality.Evaluate(facts, quality.DefaultConfig())
+	}
+	input := struct {
+		SchemaVersion int                `json:"schema_version"`
+		Functions     []quality.Function `json:"functions"`
+	}{2, facts}
+	data, err := json.Marshal(input)
+	if err != nil {
+		return quality.Report{}, err
+	}
+	path := filepath.Join(r.root, "frozen-facts.json")
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		return quality.Report{}, err
+	}
+	return r.frozenReport(ctx, path)
+}
+
+func (r runner) frozenReport(ctx context.Context, path string) (quality.Report, error) {
+	command := exec.CommandContext(ctx, r.binary, "check", "--format", "json", "--facts-in", path)
+	command.Dir = r.root
+	var stderr bytes.Buffer
+	command.Stderr = &stderr
+	output, err := command.Output()
+	if !reportExit(err) {
+		return quality.Report{}, fmt.Errorf("frozen policy failed: %w: %s", err, stderr.String())
+	}
+	var report quality.Report
+	if err := json.Unmarshal(output, &report); err != nil {
+		return report, err
+	}
+	if report.SchemaVersion != 1 {
+		return report, fmt.Errorf("unsupported frozen report version: %d", report.SchemaVersion)
+	}
+	return report, nil
+}
+
+func reportExit(err error) bool {
+	var exited *exec.ExitError
+	return err == nil || errors.As(err, &exited) && exited.ExitCode() == 1
 }
 
 type failure struct{ Name, Base, Rule string }
@@ -177,7 +221,16 @@ func signature(f quality.Function, result quality.FunctionResult) evidence {
 func shortName(name string) string { return name[strings.LastIndex(name, ".")+1:] }
 
 func hiddenWrite(changed bool, result quality.FunctionResult) bool {
-	return changed && result.Complete && len(result.Effects) == 0
+	return changed && result.Complete && !hasMutation(result.Effects)
+}
+
+func hasMutation(effects []quality.Effect) bool {
+	for _, effect := range effects {
+		if effect.Kind == quality.MutationEffect {
+			return true
+		}
+	}
+	return false
 }
 
 func ownedEffect(clean bool, result quality.FunctionResult) bool {

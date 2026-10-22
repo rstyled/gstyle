@@ -81,6 +81,17 @@ func TestInvariantChecksDetectHiddenWritesAndPhantomMutations(t *testing.T) {
 	}
 }
 
+func TestHiddenWriteCannotHideBehindUnrelatedIO(t *testing.T) {
+	result := quality.FunctionResult{Complete: true, Effects: []quality.Effect{{Kind: quality.IO, Detail: "println"}}}
+	if !hiddenWrite(true, result) {
+		t.Fatal("unrelated IO hides an observed caller write")
+	}
+	result.Effects = append(result.Effects, quality.Effect{Kind: quality.MutationEffect})
+	if hiddenWrite(true, result) {
+		t.Fatal("a classified mutation is reported missing")
+	}
+}
+
 func TestSavedReducedCounterexamplePassesFixedAnalyzer(t *testing.T) {
 	for _, name := range []string{"phantom-discard", "parenthesized-allocation"} {
 		t.Run(name, func(t *testing.T) {

@@ -1,0 +1,809 @@
+{
+  "schema_version": 1,
+  "preregistered_plan_commit": "9c53c7b",
+  "baseline_revision": "98ad52cb09ef1a38090edd9cad9c1248a36cca2c",
+  "candidate_base_revision": "bc94341",
+  "go_environment": {
+    "GOARCH": "amd64",
+    "GOFLAGS": "",
+    "GOOS": "linux",
+    "GOTOOLCHAIN": "auto",
+    "GOVERSION": "go1.27.1"
+  },
+  "claim": "Each observed initial caller int-cell write has mutation or unknown evidence at the relevant case source site, within the declared finite corpus.",
+  "input_sha256": "6711173c270844b53b0dc40ad38b46622c75ce43e792481afde91ec7873fd0ff",
+  "traced_input_sha256": "5ba9659b50a28545967ffa4ee26688cc7dbca717587f5379f77c4633cdafe37c",
+  "baseline": {
+    "executions": 291,
+    "original_and_traced_executions": 582,
+    "write_witnesses": 303,
+    "classified": 201,
+    "uncertain": 102,
+    "missing": 0,
+    "holdout_executions": 72,
+    "holdout_write_witnesses": 126,
+    "holdout_missing": 0
+  },
+  "runs": {
+    "baseline": {
+      "binary_sha256": "0712f2ea7c194f476dfb058cd41c84630eb5be0056db69752b6872c45e09f552",
+      "exit": 0,
+      "input_sha256": "6711173c270844b53b0dc40ad38b46622c75ce43e792481afde91ec7873fd0ff",
+      "trace_sha256": "5ba9659b50a28545967ffa4ee26688cc7dbca717587f5379f77c4633cdafe37c",
+      "executions": 291,
+      "classified": 201,
+      "uncertain": 102,
+      "missing": 0,
+      "families": {
+        "borrowed-pointer": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 18,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "private-pointer": {
+          "executions": 18,
+          "runtime_writes": 0,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "borrowed-slice": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 18,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "cloned-scalar-slice": {
+          "executions": 18,
+          "runtime_writes": 0,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "container-shared-element": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "copied-container-shared-element": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "mixed-rebind": {
+          "executions": 18,
+          "runtime_writes": 12,
+          "classified": 0,
+          "uncertain": 12,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 6,
+          "holdout": false
+        },
+        "indirect-rebind": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "borrowed-helper-return": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "private-helper-return": {
+          "executions": 18,
+          "runtime_writes": 0,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 18,
+          "holdout": false
+        },
+        "inline-callback": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "restore-with-io": {
+          "executions": 18,
+          "runtime_writes": 36,
+          "classified": 36,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "holdout-reverse": {
+          "executions": 18,
+          "runtime_writes": 36,
+          "classified": 36,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": true
+        },
+        "holdout-swap-fields": {
+          "executions": 18,
+          "runtime_writes": 36,
+          "classified": 36,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": true
+        },
+        "holdout-detached-alias": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 18,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": true
+        },
+        "holdout-restoring-helper": {
+          "executions": 18,
+          "runtime_writes": 36,
+          "classified": 36,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": true
+        },
+        "same-value-control": {
+          "executions": 3,
+          "runtime_writes": 3,
+          "classified": 3,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        }
+      }
+    },
+    "external-mutations-ignored": {
+      "binary_sha256": "fca12fbb0facc77ff3f7e29442e90ee1edc0f7e0ab687eaed1ba10486d67a219",
+      "exit": 1,
+      "input_sha256": "6711173c270844b53b0dc40ad38b46622c75ce43e792481afde91ec7873fd0ff",
+      "trace_sha256": "5ba9659b50a28545967ffa4ee26688cc7dbca717587f5379f77c4633cdafe37c",
+      "executions": 291,
+      "classified": 0,
+      "uncertain": 102,
+      "missing": 201,
+      "families": {
+        "borrowed-pointer": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 18,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "private-pointer": {
+          "executions": 18,
+          "runtime_writes": 0,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "borrowed-slice": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 18,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "cloned-scalar-slice": {
+          "executions": 18,
+          "runtime_writes": 0,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "container-shared-element": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "copied-container-shared-element": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "mixed-rebind": {
+          "executions": 18,
+          "runtime_writes": 12,
+          "classified": 0,
+          "uncertain": 12,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 6,
+          "holdout": false
+        },
+        "indirect-rebind": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "borrowed-helper-return": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "private-helper-return": {
+          "executions": 18,
+          "runtime_writes": 0,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 18,
+          "holdout": false
+        },
+        "inline-callback": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "restore-with-io": {
+          "executions": 18,
+          "runtime_writes": 36,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 36,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "holdout-reverse": {
+          "executions": 18,
+          "runtime_writes": 36,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 36,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": true
+        },
+        "holdout-swap-fields": {
+          "executions": 18,
+          "runtime_writes": 36,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 36,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": true
+        },
+        "holdout-detached-alias": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 18,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": true
+        },
+        "holdout-restoring-helper": {
+          "executions": 18,
+          "runtime_writes": 36,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 36,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": true
+        },
+        "same-value-control": {
+          "executions": 3,
+          "runtime_writes": 3,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 3,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        }
+      },
+      "reduced": {
+        "case": "Assure0_base",
+        "source_sha256": "c0e52cf622dbcd6dedec70d2512f600c0de6904141c73b5854d2772f5f2864ae",
+        "source_bytes": 171,
+        "missing": 3
+      }
+    },
+    "local-elements-owned": {
+      "binary_sha256": "f308d5a887f61daaea26814816fa9a3c1280c24e397d4deca3e1f87866518fbb",
+      "exit": 1,
+      "input_sha256": "6711173c270844b53b0dc40ad38b46622c75ce43e792481afde91ec7873fd0ff",
+      "trace_sha256": "5ba9659b50a28545967ffa4ee26688cc7dbca717587f5379f77c4633cdafe37c",
+      "executions": 291,
+      "classified": 201,
+      "uncertain": 66,
+      "missing": 36,
+      "families": {
+        "borrowed-pointer": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 18,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "private-pointer": {
+          "executions": 18,
+          "runtime_writes": 0,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "borrowed-slice": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 18,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "cloned-scalar-slice": {
+          "executions": 18,
+          "runtime_writes": 0,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "container-shared-element": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 18,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "copied-container-shared-element": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 18,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "mixed-rebind": {
+          "executions": 18,
+          "runtime_writes": 12,
+          "classified": 0,
+          "uncertain": 12,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 6,
+          "holdout": false
+        },
+        "indirect-rebind": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "borrowed-helper-return": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "private-helper-return": {
+          "executions": 18,
+          "runtime_writes": 0,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 18,
+          "holdout": false
+        },
+        "inline-callback": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "restore-with-io": {
+          "executions": 18,
+          "runtime_writes": 36,
+          "classified": 36,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "holdout-reverse": {
+          "executions": 18,
+          "runtime_writes": 36,
+          "classified": 36,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": true
+        },
+        "holdout-swap-fields": {
+          "executions": 18,
+          "runtime_writes": 36,
+          "classified": 36,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": true
+        },
+        "holdout-detached-alias": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 18,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": true
+        },
+        "holdout-restoring-helper": {
+          "executions": 18,
+          "runtime_writes": 36,
+          "classified": 36,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": true
+        },
+        "same-value-control": {
+          "executions": 3,
+          "runtime_writes": 3,
+          "classified": 3,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        }
+      },
+      "reduced": {
+        "case": "Assure4_base",
+        "source_sha256": "dbfc1b70ed37e67e5d5f452b739aad987b608f88095366d9514bc72014d806e6",
+        "source_bytes": 184,
+        "missing": 3
+      }
+    },
+    "mixed-binding-owned": {
+      "binary_sha256": "4f411908627fa7c115a397c314000acc7c856e2fa0345186d503a67116671732",
+      "exit": 1,
+      "input_sha256": "6711173c270844b53b0dc40ad38b46622c75ce43e792481afde91ec7873fd0ff",
+      "trace_sha256": "5ba9659b50a28545967ffa4ee26688cc7dbca717587f5379f77c4633cdafe37c",
+      "executions": 291,
+      "classified": 201,
+      "uncertain": 90,
+      "missing": 12,
+      "families": {
+        "borrowed-pointer": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 18,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "private-pointer": {
+          "executions": 18,
+          "runtime_writes": 0,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "borrowed-slice": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 18,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "cloned-scalar-slice": {
+          "executions": 18,
+          "runtime_writes": 0,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "container-shared-element": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "copied-container-shared-element": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "mixed-rebind": {
+          "executions": 18,
+          "runtime_writes": 12,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 12,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "indirect-rebind": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "borrowed-helper-return": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "private-helper-return": {
+          "executions": 18,
+          "runtime_writes": 0,
+          "classified": 0,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 18,
+          "holdout": false
+        },
+        "inline-callback": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 0,
+          "uncertain": 18,
+          "missing": 0,
+          "incomplete": 18,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "restore-with-io": {
+          "executions": 18,
+          "runtime_writes": 36,
+          "classified": 36,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        },
+        "holdout-reverse": {
+          "executions": 18,
+          "runtime_writes": 36,
+          "classified": 36,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": true
+        },
+        "holdout-swap-fields": {
+          "executions": 18,
+          "runtime_writes": 36,
+          "classified": 36,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": true
+        },
+        "holdout-detached-alias": {
+          "executions": 18,
+          "runtime_writes": 18,
+          "classified": 18,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": true
+        },
+        "holdout-restoring-helper": {
+          "executions": 18,
+          "runtime_writes": 36,
+          "classified": 36,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": true
+        },
+        "same-value-control": {
+          "executions": 3,
+          "runtime_writes": 3,
+          "classified": 3,
+          "uncertain": 0,
+          "missing": 0,
+          "incomplete": 0,
+          "effects_without_observed_write": 0,
+          "holdout": false
+        }
+      },
+      "reduced": {
+        "case": "Assure6_base",
+        "source_sha256": "ef0365f43dbe059b950345b0c4db1055fc8ed38baf4f363cbb28813e45b235c4",
+        "source_bytes": 219,
+        "missing": 2
+      }
+    }
+  },
+  "boundary_rejection": {
+    "variant": "parameter-owned",
+    "compiled": true,
+    "semantic_kill": false,
+    "reason": "saved-fact validation: invalid call storage in example.com/quality-hunt.helperChain",
+    "binary_sha256": "e8dbef5efa1005e17dcf61a7db93504b98134dd6326c19626dc9e99df5aaeafa"
+  },
+  "evidence_archive_sha256": "1f78cf49b23a2c66ecc255c8e79fe3e9300d031e9a01e13027ef85dfe89b35ee",
+  "manifest_sha256": "33ab485ac8013816addea5b1f17304a4002d15487ce1e93e9566e09df46a1439",
+  "scope": "predeclared handwritten development and holdout idioms; not independent external projects or a universal soundness/precision/recall claim",
+  "candidate": {
+    "BinaryHash": "0d9f924a149a16f442c93c3b61f6981fce8f131b28db272e3c34f07993438965",
+    "SourceHash": "6711173c270844b53b0dc40ad38b46622c75ce43e792481afde91ec7873fd0ff",
+    "TraceHash": "5ba9659b50a28545967ffa4ee26688cc7dbca717587f5379f77c4633cdafe37c",
+    "Executions": 291,
+    "Classified": 201,
+    "Uncertain": 102,
+    "Missing": 0
+  },
+  "validation": [
+    "make check",
+    "make quality-gate",
+    "make lint",
+    "make cognitive gstyle-check",
+    "go test -buildvcs=false -race -count=1 ./examples/quality-hunt",
+    "git diff --check"
+  ],
+  "retained_quality_finding": {
+    "function": "examples/quality-hunt.runner.evaluate",
+    "rule_id": "side_effect_density",
+    "actual": 727,
+    "limit": 500,
+    "reason": "IO boundary serializes saved facts and runs frozen policy; no suppression or metric-only split"
+  }
+}
