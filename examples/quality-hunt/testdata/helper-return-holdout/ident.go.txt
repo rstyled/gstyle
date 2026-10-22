@@ -1,0 +1,1 @@
+func NewIdent(name string) *Ident { return &Ident{token.NoPos, name, nil} }

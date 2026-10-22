@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "selection": "Fixed before production edits or baseline evaluation. Syntax-selected external-source helpers, not a statistical project sample; Method is an upstream test fixture.",
+  "sources": [
+    {
+      "name": "ptr",
+      "module": "golang.org/x/tools",
+      "version": "v0.43.0",
+      "path": "internal/mcp/jsonschema/schema.go",
+      "url": "https://github.com/golang/tools/blob/v0.43.0/internal/mcp/jsonschema/schema.go",
+      "full_file_sha256": "018faabffaf65d4f87b1529aab9c07f9bfd44dcda7fac793a28e9585925e8191",
+      "excerpt_sha256": "435993b194c474fae0a72b5fc8df90b17c106248fed9ad808d96c0f947d18446",
+      "line": 358
+    },
+    {
+      "name": "method",
+      "module": "golang.org/x/tools",
+      "version": "v0.8.0",
+      "path": "cmd/guru/testdata/src/lib/lib.go",
+      "url": "https://github.com/golang/tools/blob/v0.8.0/cmd/guru/testdata/src/lib/lib.go",
+      "full_file_sha256": "2e7d6865d9f4e4526bc3fbca1d280a9a11fbe17d0e19b8ee608f4a56a0cef612",
+      "excerpt_sha256": "149ff6a2dccffe1b6d140cf37c8fd7fdaa572397c9ef2b4a566cd5650627c7f9",
+      "line": 5
+    },
+    {
+      "name": "maxptr",
+      "module": "modernc.org/mathutil",
+      "version": "v1.7.1",
+      "path": "mathutil.go",
+      "url": "https://gitlab.com/cznic/mathutil/-/blob/v1.7.1/mathutil.go",
+      "full_file_sha256": "854305b822fcc15df3141aa63cf2af69b4d6da74d7ebce61ed11b9cfc2c09562",
+      "excerpt_sha256": "d6364dfeb05c0fef067c9649517cbc0b7120ba675b2070ac44f179c604e7f7fb",
+      "line": 657
+    },
+    {
+      "name": "ident",
+      "module": "Go standard library go/ast",
+      "version": "go1.27.1",
+      "path": "src/go/ast/ast.go",
+      "url": "https://github.com/golang/go/blob/go1.27.1/src/go/ast/ast.go",
+      "full_file_sha256": "3dfde677a97a1f6435e9befbc8523a975b34d2d7ee79e93151778c17cd596b41",
+      "excerpt_sha256": "d33e8e2527662225c601b3c2a3ae951df4ee2107868b2b610b681a32d727d3c7",
+      "line": 603
+    }
+  ]
+}
