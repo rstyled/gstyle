@@ -1170,6 +1170,10 @@ def worklist_profile():
         'WorkState.edge_valid', 'edgePrefix_shape', 'edgePrefix_valid',
         'edgePrefix_queue_invariant', 'wp_successors', 'wp_successors_invariant',
         'wp_attrs_snapshot_full', 'wp_attrs_snapshot',
+        'wp_incrementValue_scalar', 'wp_interfaceAssignment_scalar', 'wp_rangeWrite_scalar',
+        'wp_invalidateFields_scalar', 'wp_transfer_no_writes', 'wp_transfer_scalar_write',
+        'wp_assignmentValue', 'wp_assign_nonpointer', 'scalarState_insert', 'scalar_store_sound',
+        'scalar_store_valid', 'ScalarStep.preserves_scalar', 'wp_transfer_scalar_step', 'wp_block_scalar',
     )
     changes = {
         "enqueue-ignores-mark": ("if a.queued[ref-1] {", "if false {"),
@@ -1214,6 +1218,20 @@ def worklist_profile():
         "traversal-loses-joined-input": ("a.inputs[next-1] = joined", "_ = joined"),
         "traversal-drops-enqueue": ("a.enqueue(next)", "_ = next"),
     })
+    changes.update({
+        "scalar-wrong-rhs": ("value = a.view.value(a.view.operand(ref, 0), state)", "value = a.view.value(a.view.operand(ref, 1), state)"),
+        "scalar-skips-rhs": ("if singleValueWrite(a.view.graph.Nodes[ref-1].Category, form, len(attrs.Writes)) {", "if false && singleValueWrite(a.view.graph.Nodes[ref-1].Category, form, len(attrs.Writes)) {"),
+        "scalar-retains-guard": ("value.Guarded = false", "value.Guarded = true"),
+        "scalar-skips-tracked-write": ("if !a.view.trackedBinding(write.Symbol) {", "if a.view.trackedBinding(write.Symbol) {"),
+        "scalar-wrong-symbol": ("a.view.assign(ref, write.Symbol, assigned, state)", "a.view.assign(ref, write.Symbol+1, assigned, state)"),
+        "scalar-loses-assignment": ("a.view.assign(ref, write.Symbol, assigned, state)", "_ = assigned"),
+        "scalar-increment-loses-fallback": ("return fallback", "return Value{}", "domain/runtimeguard/increment.go"),
+        "scalar-interface-loses-value": ('if v.kinds[symbol-1] != `"interface"` {\n\t\treturn value', 'if v.kinds[symbol-1] != `"interface"` {\n\t\treturn Value{}', "domain/runtimeguard/interface_value.go"),
+        "scalar-range-writes-on-error": ("if err == nil && pdg.Ref(index) == symbol {", "if err != nil || pdg.Ref(index) == symbol {"),
+        "block-drops-transfer": ("a.transfer(ref, state)", "_ = ref"),
+        "block-wrong-reference": ("a.transfer(ref, state)", "a.transfer(ref+1, state)"),
+        "block-wrong-state": ("a.transfer(ref, state)", "a.transfer(ref, nil)"),
+    })
     modules = {name: proof if name.startswith("queue-") else enqueue for name in changes}
     modules.update({name: "Gstyle/Proof/Worklist/ExactComparison.lean" for name in changes if name.startswith("exact-")})
     modules.update({name: "Gstyle/Proof/Worklist/KnownComparison.lean" for name in changes if name.startswith("known-")})
@@ -1222,16 +1240,22 @@ def worklist_profile():
     modules["snapshot-wrong-construct"] = "Gstyle/Proof/Pdg/Attributes.lean"
     modules.update({name: "Gstyle/Proof/Worklist/Traversal.lean" for name in changes if name.startswith("traversal-")})
     modules["inputs-corrupts-neighbor"] = "Gstyle/Proof/Worklist/Inputs.lean"
+    modules.update({name: "Gstyle/Proof/Worklist/ScalarTransfer.lean" for name in changes if name.startswith("scalar-")})
+    modules.update({name: "Gstyle/Proof/Worklist/ScalarGuards.lean" for name in changes if name.startswith(("scalar-increment-", "scalar-interface-", "scalar-range-"))})
+    modules.update({name: "Gstyle/Proof/Worklist/ScalarBlock.lean" for name in changes if name.startswith("block-")})
     sources = tuple(PROJECT / "Gstyle/Proof/Worklist" / (name + ".lean")
-                    for name in ('Layout', 'Enqueue', 'Queue', 'ExactComparison', 'KnownComparison', 'KnownBoolean', 'Successor', 'FlowLayout', 'Inputs', 'InputJoin', 'Decision', 'StepModel', 'Traversal'))
+                    for name in ('Layout', 'Enqueue', 'Queue', 'ExactComparison', 'KnownComparison', 'KnownBoolean', 'Successor', 'FlowLayout', 'Inputs', 'InputJoin', 'Decision', 'StepModel', 'Traversal', 'ScalarGuards', 'ScalarTransfer', 'ScalarBlock'))
     return replace(base, report=ROOT / "dist/verification/worklist", source=ROOT / "domain/runtimeguard/flow.go",
                    sources=base.sources + sources + (PROJECT / "Gstyle/Proof/Transfer/FactSnapshot.lean",
-                                                     PROJECT / "Gstyle/Proof/Pdg/GraphLayout.lean"),
+                                                     PROJECT / "Gstyle/Proof/Pdg/GraphLayout.lean",
+                                                     PROJECT / "Gstyle/Proof/Transfer/Assignment.lean",
+                                                     PROJECT / "Gstyle/Proof/Transfer/LocalInvalidation.lean"),
                    theorems={"Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name for name in names},
                    mutations=changes, audit="AuditWorklist.lean", proof_file=proof,
                    mutation_modules=modules,
-                   verified="actual ordered successor traversal composes copy, comparison/refinement, nil-aware join, equality and enqueue; input ownership and queue invariants are preserved",
-                   unverified=("complete transfer/block execution", "whole solve/report composition and termination",
+                   verified="actual scalar transfer and nil-report block traversal compose selected RHS evaluation, scalar guards and assignment; successor traversal preserves exact inputs and queue invariants",
+                   unverified=("non-scalar transfer and nonnil-report block execution", "whole solve/report composition and termination",
+                               "ParseInt and empty-input ParseUint standard-library execution contracts",
                                "source-to-CFG correspondence and metadata construction", "package initialization and resource exhaustion"))
 
 

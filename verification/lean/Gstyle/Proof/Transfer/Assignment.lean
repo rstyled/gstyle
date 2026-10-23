@@ -57,13 +57,13 @@ theorem wp_singleValueWrite (category : w8) (form : GoString) (writes : w64) :
 theorem wp_assignmentValue (receiver : Loc) (view : graphView) (kinds : List GoString)
     (key : w32) (kind : GoString) (v : Value)
     (hk : 0 < uint.Z key ∧ uint.Z key ≤ kinds.length)
-    (hkind : kinds[(uint.Z key - 1).toNat]? = some kind) :
-    {{ isPkgInit (PROP := IProp GF) pkg ∗ (receiver ↦ view ∗ view.kinds' ↦* kinds) }}
+    (hkind : kinds[(uint.Z key - 1).toNat]? = some kind) (dq : DFrac := DFrac.own 1) :
+    {{ isPkgInit (PROP := IProp GF) pkg ∗ (receiver ↦{dq} view ∗ view.kinds' ↦*{dq} kinds) }}
       (App (App (Val #(methods (go.PointerType graphView.ty) go!"assignmentValue" #receiver)) (Val #key)) (Val #v))
-    {{ RET #(assignedValue kind v); receiver ↦ view ∗ view.kinds' ↦* kinds }} := by
+    {{ RET #(assignedValue kind v); receiver ↦{dq} view ∗ view.kinds' ↦*{dq} kinds }} := by
   wp_start as ⟨Hview, Hkinds⟩
   wp_auto
-  wp_apply wp_base receiver view kinds key kind hk hkind $$ [Hview Hkinds] with ⟨Hview, Hkinds⟩
+  wp_apply wp_base receiver view kinds key kind hk hkind dq $$ [Hview Hkinds] with ⟨Hview, Hkinds⟩
   · iframe
   by_cases hu : kind = go!"\"unsigned\"" <;> cases hl : v.HasLower'
   all_goals iterate 8 (try simp [assignedValue, baseKind, hu, hl]; try wp_auto)
@@ -72,19 +72,19 @@ theorem wp_assignmentValue (receiver : Loc) (view : graphView) (kinds : List GoS
 theorem wp_assign_nonpointer (receiver : Loc) (view : graphView) (kinds : List GoString)
     (state : Loc) (m : StateData) (ref key : w32) (kind : GoString) (v : Value)
     (hk : 0 < uint.Z key ∧ uint.Z key ≤ kinds.length)
-    (hkind : kinds[(uint.Z key - 1).toNat]? = some kind) (hn : kind ≠ go!"\"pointer\"") :
-    {{ isPkgInit (PROP := IProp GF) pkg ∗ (receiver ↦ view ∗ view.kinds' ↦* kinds ∗ state ↦$ m) }}
+    (hkind : kinds[(uint.Z key - 1).toNat]? = some kind) (hn : kind ≠ go!"\"pointer\"") (dq : DFrac := DFrac.own 1) :
+    {{ isPkgInit (PROP := IProp GF) pkg ∗ (receiver ↦{dq} view ∗ view.kinds' ↦*{dq} kinds ∗ state ↦$ m) }}
       (App (App (App (App (Val #(methods (go.PointerType graphView.ty) go!"assign" #receiver)) (Val #ref)) (Val #key)) (Val #v)) (Val #state))
-    {{ RET #(); receiver ↦ view ∗ view.kinds' ↦* kinds ∗ state ↦$ (<[key := assignedValue kind v]>m) }} := by
+    {{ RET #(); receiver ↦{dq} view ∗ view.kinds' ↦*{dq} kinds ∗ state ↦$ (<[key := assignedValue kind v]>m) }} := by
   wp_start as ⟨Hview, Hkinds, Hstate⟩
   ihave %Hlen := ownSlice_len $$ Hkinds
   wp_auto
-  wp_apply wp_assignmentValue receiver view kinds key kind v hk hkind $$ [Hview Hkinds] with ⟨Hview, Hkinds⟩
+  wp_apply wp_assignmentValue receiver view kinds key kind v hk hkind dq $$ [Hview Hkinds] with ⟨Hview, Hkinds⟩
   · iframe
   have Hi : sint.Z (W64 (uint.Z (key - W32 1))) = uint.Z key - 1 := by obtain ⟨_, _⟩ := hk; word
   rw [Hi]
   rw [ite_eq_left (by obtain ⟨_, _⟩ := hk; constructor <;> word : 0 ≤ uint.Z key - 1 ∧ uint.Z key - 1 < sint.Z view.kinds'.len)]
-  wp_apply wp_load_slice_index view.kinds' (uint.Z key - 1) kinds (DFrac.own 1) kind (by obtain ⟨_, _⟩ := hk; word) $$ [Hkinds] with Hkinds
+  wp_apply wp_load_slice_index view.kinds' (uint.Z key - 1) kinds dq kind (by obtain ⟨_, _⟩ := hk; word) $$ [Hkinds] with Hkinds
   · iframe; ipureintro; exact hkind
   simp [hn]
   wp_auto

@@ -1,4 +1,5 @@
 import Gstyle.Proof.Worklist.Traversal
+import Gstyle.Proof.Worklist.ScalarBlock
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_enqueue
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.queueIndex_lt
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.queueIndex_injective
@@ -52,3 +53,17 @@ import Gstyle.Proof.Worklist.Traversal
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_successors_invariant
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_attrs_snapshot_full
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_attrs_snapshot
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_incrementValue_scalar
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_interfaceAssignment_scalar
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_rangeWrite_scalar
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_invalidateFields_scalar
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_transfer_no_writes
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_transfer_scalar_write
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_assignmentValue
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_assign_nonpointer
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.scalarState_insert
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.scalar_store_sound
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.scalar_store_valid
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.ScalarStep.preserves_scalar
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_transfer_scalar_step
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_block_scalar

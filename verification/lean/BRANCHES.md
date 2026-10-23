@@ -113,12 +113,14 @@ particular, a successful `checkReport` is not a substitute for these obligations
    `runtimeFlowCFG`, `runtimeBlock`, `runtimeCondition`, operand edges and the
    scalar/control CFG builders in `adapters/gopatterns`. Trusting the Go parser
    does not establish this lowering theorem.
-2. Prove the complete `analysis.transfer` and `analysis.block` execution
-   contracts in `domain/runtimeguard/flow.go`. Compose the existing value,
-   assume, assignment, copy, join and equality contracts with a concrete-state
-   invariant. Establish the snapshot, reference, metadata and parse-contract
-   premises from the admitted source; do not assume the conclusion as a
-   sound-child or sound-result premise.
+2. Connect the proved scalar `analysis.transfer` and solver-mode
+   `analysis.block` execution contracts to the admitted source. These contracts
+   now execute the actual bodies for zero writes or a tracked single signed
+   write, including field invalidation, RHS evaluation and scalar helper guards.
+   Establish their snapshot, reference, metadata, scalar-state and finite-value
+   derivation premises from the source. The existing ParseInt and newly explicit
+   empty-input ParseUint execution contracts remain standard-library boundaries. Do not assume the
+   conclusion as a sound-child or sound-result premise.
 3. Compose the proved `analysis.successors` execution with concrete source
    meaning, then prove `solve` preserves that invariant for the production FIFO
    queue. The successor-array prefix/metadata/queue proof is complete; it does
@@ -132,9 +134,10 @@ The generated runtimeguard translation now includes the actual enqueue body and
 comparison and successor-state bodies. [Local proofs](WORKLIST.md) cover enqueue
 execution and pending-queue flags, direct/wrapped comparison dispatch over
 represented operands, and complete successor-array traversal with nil-aware
-join/equality and valid queue/input metadata. These are prerequisites; they do
-not cover the outer solve/report worklist or establish source metadata. The
-remaining bodies need translation, source comparison and axiom audits when
+join/equality and valid queue/input metadata. Scalar transfer and the actual
+nil-report block loop are also covered. These are prerequisites; they do not
+cover non-nil report mode, the outer solve/report worklist or establish source
+metadata. The remaining bodies need translation, source comparison and axiom audits when
 proving them. An opaque function name is not an execution proof.
 Only that composition, with the source-meaning boundary stated,
 can remove the checked-report premise for every admitted source. Arbitrary Go

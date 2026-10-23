@@ -1,7 +1,7 @@
 # Production worklist proof components
 
 `make verify-worklist` regenerates the selected production translation, checks
-source identity and pinned dependencies, audits 53 named theorems, and runs 32
+source identity and pinned dependencies, audits 67 named theorems, and runs 44
 fault controls. CI splits those controls into two shards. This is component
 verification. The unconditional source-to-range theorem remains unfinished;
 see [BRANCHES.md](BRANCHES.md).
@@ -35,6 +35,20 @@ see [BRANCHES.md](BRANCHES.md).
   changed input and call actual enqueue. The original source map is preserved.
   `wp_successors_invariant` composes that execution with valid input metadata
   and the pending-suffix queue invariant. It does not prove the outer solve loop.
+- `ScalarGuards.lean` executes the scalar paths of `incrementValue`,
+  `interfaceAssignment` and `rangeWrite`. `ScalarTransfer.lean` executes actual
+  `analysis.transfer` for a no-write operation or one tracked signed write.
+  It calls real field invalidation, evaluates the selected RHS, clears `Guarded`,
+  executes the helper guards and stores the exact target. Other map entries
+  remain unchanged. Assignment contracts accept read-only metadata ownership;
+  their state-map ownership stays exclusive.
+- `ScalarBlock.lean` proves the entire actual `analysis.block` loop in solver
+  mode (`report == nil`). It composes those steps for any finite operation list,
+  preserving the scalar-state invariant and exact resulting map. `ScalarStep`
+  and `ScalarExecution` contain metadata and finite value-evaluation derivations,
+  not assumed child Hoare triples or a successful checker/report premise.
+  `scalar_store_sound` preserves the numeric meaning under a concrete assignment;
+  `scalar_store_valid` preserves the metadata required by successor traversal.
 - `FactSnapshot.lean` returns equality of the full expanded attributes record.
   This exposes scalar fields and row handles without asserting their source
   meaning. The existing operator/callee contract follows from that equality.
@@ -54,8 +68,24 @@ snapshot meaning. These premises must follow from admitted source lowering and
 the outer worklist invariant in the final theorem. They are not established by
 queue flags alone.
 
-Complete transfer/block execution, solve invariants and termination, report
-projection, source lowering and producer metadata construction remain open.
+The scalar transfer proof also takes `parseEmptyUint32Contract`: actual
+`strconv.ParseUint("", 10, 32)` returns a non-nil error. This is an explicit,
+unproved standard-library execution premise, not an asserted axiom. The pinned
+Perennial translation names this function but has no body/specification for it.
+The inspected Go 1.27 implementation forwards parsing to `internal/strconv` and
+wraps its errors. This checkpoint does not prove those implementations. The
+premise applies only to absent range metadata; it grants no behavior on other
+strings. It is visible in `wp_rangeWrite_scalar`, scalar transfer and block
+signatures. The existing ParseInt execution boundary remains separate.
+
+Non-scalar/multiple writes, non-nil-report block execution, solve invariants and
+termination, report projection, source lowering and producer metadata
+construction remain open. In particular, lowering must establish that admitted
+operations have zero writes or the supported single signed write, absent step
+and range metadata, correct operand edges and scalar value derivations. These
+facts are not established merely by naming a `ScalarWriteSite`. The solver
+invariant must also establish preservation of scalar identities through numeric
+refinement and joins; the current queue/metadata invariant alone does not do so.
 Other decision forms and arbitrary Go features are outside this checkpoint.
 A successful structural report check remains separate from these obligations.
 
@@ -71,6 +101,13 @@ outcome, retain a rejected edge, join the wrong state, confuse nil with empty,
 requeue an equal reachable input, store to the wrong slot, omit the input write,
 or omit enqueue. Each must fail in its affected proof. Compiler, setup, syntax,
 type and unrelated proof failures do not count as successful rejection.
+
+Scalar faults change the selected RHS, skip RHS evaluation, retain `Guarded`,
+invert tracking, change the target, omit assignment, discard scalar fallback or
+interface values, or invert the range-parser error guard. Block faults omit a
+transfer, use the wrong operation reference or pass the wrong state. Each runs
+against the source-bound execution theorem for that body; deliberate faults are
+not claims that those defects existed in production.
 
 ## Refactoring boundary
 

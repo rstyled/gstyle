@@ -412,6 +412,20 @@ instance Attributes_access_load_Callee (l : Loc) (v : github_com.rstyled.gstyle.
       (typedPointsto l v dq) (typedPointsto l v dq) := by
   solve_pointsto_access_struct
 
+instance Attributes_access_load_Writes (l : Loc) (v : github_com.rstyled.gstyle.domain.pdg.Attributes) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"Writes" l) v.Writes' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"Writes" l) v.Writes' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) := by
+  solve_pointsto_access_struct
+
+instance Attributes_access_load_WriteForm (l : Loc) (v : github_com.rstyled.gstyle.domain.pdg.Attributes) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"WriteForm" l) v.WriteForm' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"WriteForm" l) v.WriteForm' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) := by
+  solve_pointsto_access_struct
+
 end def_
 end Attributes
 

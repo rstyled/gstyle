@@ -20,7 +20,9 @@ an unconditional implementation theorem for the production worklist.
 [Worklist components](WORKLIST.md) cover actual enqueue execution, pending-queue
 flags, direct/wrapped comparison dispatch and the complete production successor
 array traversal. Run `make verify-worklist` for source binding, axiom audits and
-fault controls. Outer solve/report composition and source lowering remain open.
+fault controls. Scalar transfer and the actual solver-mode block loop are also
+proved; their source metadata and standard-library premises remain explicit.
+Outer solve/report composition and source lowering remain open.
 
 ## Function-length profile
 

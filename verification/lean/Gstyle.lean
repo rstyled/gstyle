@@ -74,3 +74,5 @@ public import Gstyle.Proof.Programs.Structural
 public import Gstyle.Proof.Worklist.Queue
 
 public import Gstyle.Proof.Worklist.Traversal
+
+public import Gstyle.Proof.Worklist.ScalarBlock

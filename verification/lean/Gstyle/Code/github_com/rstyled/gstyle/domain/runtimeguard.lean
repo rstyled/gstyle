@@ -728,6 +728,203 @@ noncomputable def analysis.successors.impl [FfiSyntax] [GoGlobalContext] : val :
   (App (Val doExecute)
   (App (Val (GoInstruction (GoStore _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.FlowBlock.ty))) (Pair (Var "block") (Var "$r0")))))))))))))))
 
+/-- go: flow.go:41:20 -/
+noncomputable def analysis.block.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "a"
+  (Lam "block"
+  (Lam "state"
+  (Lam "report"
+  (App (Val exceptionDo)
+  (Let "a" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType analysis.ty)))) (Var "a"))
+  (Let "report" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType Report.ty)))) (Var "report"))
+  (Let "state" (App (Val (GoInstruction (GoAlloc State.ty))) (Var "state"))
+  (Let "block" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.FlowBlock.ty))) (Var "block"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Val #()))))
+  (Let "$range" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty)))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.FlowBlock.ty go!"Operations"))) (Var "block")))
+  (Let "ref" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (App (Val (GoInstruction (GoZeroVal _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Val #())))
+  (App (App (Val (slice.forRange _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty)) (Var "$range"))
+  (Lam "$key"
+  (Lam "$value"
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doExecute)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad State.ty))) (Var "state"))
+  (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType analysis.ty) go!"transfer"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType analysis.ty)))) (Var "a"))) (Var "$a0")) (Var "$a1")))))))
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoOp GoEquals (go.GoType.PointerType Report.ty)))) (Pair (App (Val (GoInstruction (GoLoad (go.GoType.PointerType Report.ty)))) (Var "report")) (App (Val (GoInstruction (Convert go.untypedNil (go.GoType.PointerType Report.ty)))) (Val UntypedNil))))))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doExecute)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad State.ty))) (Var "state"))
+  (Let "$a2" (App (Val (GoInstruction (GoLoad (go.GoType.PointerType Report.ty)))) (Var "report"))
+  (App (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType analysis.ty) go!"call"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType analysis.ty)))) (Var "a"))) (Var "$a0")) (Var "$a1")) (Var "$a2"))))))))
+  (App (Val doExecute)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad State.ty))) (Var "state"))
+  (Let "$a2" (App (Val (GoInstruction (GoLoad (go.GoType.PointerType Report.ty)))) (Var "report"))
+  (App (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType analysis.ty) go!"access"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType analysis.ty)))) (Var "a"))) (Var "$a0")) (Var "$a1")) (Var "$a2")))))))
+  (App (Val doExecute)
+  (Val #()))))))
+  (App (Val doExecute)
+  (Var "$key")))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Pair (Var "ref") (Var "$value"))))))))))))))))))))
+
+/-- go: flow.go:51:20 -/
+noncomputable def analysis.transfer.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "a"
+  (Lam "ref"
+  (Lam "state"
+  (App (Val exceptionDo)
+  (Let "a" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType analysis.ty)))) (Var "a"))
+  (Let "state" (App (Val (GoInstruction (GoAlloc State.ty))) (Var "state"))
+  (Let "ref" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Val #()))))
+  (Let "$r0" (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"attrs"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (App (Val (GoInstruction (StructFieldRef analysis.ty go!"view"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType analysis.ty)))) (Var "a"))))) (Var "$a0")))
+  (Let "attrs" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Attributes.ty))) (App (Val (GoInstruction (GoZeroVal _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Attributes.ty))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (App (Val (GoInstruction (CompositeLiteral Value.ty))) (LiteralValue []))
+  (Let "value" (App (Val (GoInstruction (GoAlloc Value.ty))) (App (Val (GoInstruction (GoZeroVal Value.ty))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Text.ty))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Attributes.ty go!"WriteForm"))) (Var "attrs")))
+  (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Tables.ty) go!"Text"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Tables.ty)))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Graph.ty go!"Tables"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Graph.ty)))) (App (Val (GoInstruction (StructFieldRef graphView.ty go!"graph"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (App (Val (GoInstruction (StructFieldRef analysis.ty go!"view"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType analysis.ty)))) (Var "a"))))))))) (Var "$a0")))
+  (Let "form" (App (Val (GoInstruction (GoAlloc go.string))) (App (Val (GoInstruction (GoZeroVal go.string))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (Val #false)
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$range" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty)))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Attributes.ty go!"Writes"))) (Var "attrs")))
+  (Let "write" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty))) (App (Val (GoInstruction (GoZeroVal _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty))) (Val #())))
+  (App (App (Val (slice.forRange _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty)) (Var "$range"))
+  (Lam "$key"
+  (Lam "$value"
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty go!"Symbol"))) (Var "write")))
+  (Let "$a2" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "value"))
+  (Let "$a3" (App (Val (GoInstruction (GoLoad State.ty))) (Var "state"))
+  (App (App (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"incrementValue"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (App (Val (GoInstruction (StructFieldRef analysis.ty go!"view"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType analysis.ty)))) (Var "a"))))) (Var "$a0")) (Var "$a1")) (Var "$a2")) (Var "$a3"))))))
+  (Let "assigned" (App (Val (GoInstruction (GoAlloc Value.ty))) (App (Val (GoInstruction (GoZeroVal Value.ty))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty go!"Symbol"))) (Var "write")))
+  (Let "$a2" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "assigned"))
+  (App (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"interfaceAssignment"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (App (Val (GoInstruction (StructFieldRef analysis.ty go!"view"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType analysis.ty)))) (Var "a"))))) (Var "$a0")) (Var "$a1")) (Var "$a2")))))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doExecute)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty go!"Symbol"))) (Var "write")))
+  (Let "$a2" (App (Val (GoInstruction (GoLoad State.ty))) (Var "state"))
+  (App (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType analysis.ty) go!"rangeWrite"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType analysis.ty)))) (Var "a"))) (Var "$a0")) (Var "$a1")) (Var "$a2"))))))))
+  (App (Val doExecute)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty go!"Symbol"))) (Var "write")))
+  (Let "$a2" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "assigned"))
+  (Let "$a3" (App (Val (GoInstruction (GoLoad State.ty))) (Var "state"))
+  (App (App (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"assign"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (App (Val (GoInstruction (StructFieldRef analysis.ty go!"view"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType analysis.ty)))) (Var "a"))))) (Var "$a0")) (Var "$a1")) (Var "$a2")) (Var "$a3"))))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore Value.ty))) (Pair (Var "assigned") (Var "$r0"))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore Value.ty))) (Pair (Var "assigned") (Var "$r0")))))))))
+  (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty go!"Symbol"))) (Var "write")))
+  (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"trackedBinding"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (App (Val (GoInstruction (StructFieldRef analysis.ty go!"view"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType analysis.ty)))) (Var "a"))))) (Var "$a0"))))
+  (App (Val doContinue) (Val #()))
+  (App (Val doExecute)
+  (Val #()))))))
+  (App (Val doExecute)
+  (Var "$key")))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty))) (Pair (Var "write") (Var "$value"))))))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.bool))) (Pair (App (Val (GoInstruction (StructFieldRef Value.ty go!"Guarded"))) (Var "value")) (Var "$r0"))))))))
+  (If (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Category.ty))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Node.ty go!"Category"))) (App (Val (GoInstruction (IndexRef (go.GoType.SliceType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Node.ty)))) (Pair (App (Val (GoInstruction (GoLoad (go.GoType.SliceType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Node.ty)))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Graph.ty go!"Nodes"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Graph.ty)))) (App (Val (GoInstruction (StructFieldRef graphView.ty go!"graph"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (App (Val (GoInstruction (StructFieldRef analysis.ty go!"view"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType analysis.ty)))) (Var "a")))))))) (App (Val (GoInstruction (Convert _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty go.int))) (App (Val (GoInstruction (GoOp GoSub _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Pair (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref")) (Val #(W32 1)))))))))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad go.string))) (Var "form"))
+  (Let "$a2" (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty)))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Attributes.ty go!"Writes"))) (Var "attrs")))
+  (App (App (Val (GoInstruction (FuncResolve go.len [(go.GoType.SliceType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty)]))) (Val #())) (Var "$a0")))
+  (App (App (App (App (Val (GoInstruction (FuncResolve singleValueWrite []))) (Val #())) (Var "$a0")) (Var "$a1")) (Var "$a2")))))
+  (Let "$r0" (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (App (Val (GoInstruction (StructFieldRef analysis.ty go!"view"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType analysis.ty)))) (Var "a"))))
+  (Let "_order1" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType graphView.ty)))) (App (Val (GoInstruction (GoZeroVal (go.GoType.PointerType graphView.ty)))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (Let "$a0" (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (Let "$a1" (Val #(W64 0))
+  (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"operand"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (App (Val (GoInstruction (StructFieldRef analysis.ty go!"view"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType analysis.ty)))) (Var "a"))))) (Var "$a0")) (Var "$a1"))))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad State.ty))) (Var "state"))
+  (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"value"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "_order1"))) (Var "$a0")) (Var "$a1"))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore Value.ty))) (Pair (Var "value") (Var "$r0")))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore (go.GoType.PointerType graphView.ty)))) (Pair (Var "_order1") (Var "$r0")))))))
+  (App (Val doExecute)
+  (Val #()))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.string))) (Pair (Var "form") (Var "$r0")))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore Value.ty))) (Pair (Var "value") (Var "$r0")))))))))
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (App (Val (GoInstruction (GoOp GoEquals go.int))) (Pair (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty)))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Attributes.ty go!"Writes"))) (Var "attrs")))
+  (App (App (Val (GoInstruction (FuncResolve go.len [(go.GoType.SliceType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty)]))) (Val #())) (Var "$a0"))) (Val #(W64 0)))))
+  (App (Val doReturn)
+  (Val #()))
+  (App (Val doExecute)
+  (Val #()))))))
+  (App (Val doExecute)
+  (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad State.ty))) (Var "state"))
+  (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"invalidateFields"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (App (Val (GoInstruction (StructFieldRef analysis.ty go!"view"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType analysis.ty)))) (Var "a"))))) (Var "$a0")) (Var "$a1"))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Attributes.ty))) (Pair (Var "attrs") (Var "$r0")))))))))))))))
+
+/-- go: flow.go:111:20 -/
+noncomputable def analysis.rangeWrite.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "a"
+  (Lam "ref"
+  (Lam "symbol"
+  (Lam "state"
+  (App (Val exceptionDo)
+  (Let "a" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType analysis.ty)))) (Var "a"))
+  (Let "state" (App (Val (GoInstruction (GoAlloc State.ty))) (Var "state"))
+  (Let "symbol" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol"))
+  (Let "ref" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Val #()))))
+  (Let "__p" (Let "$a0" (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (Let "$a1" (Val #(go!"range-index"))
+  (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"fact"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (App (Val (GoInstruction (StructFieldRef analysis.ty go!"view"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType analysis.ty)))) (Var "a"))))) (Var "$a0")) (Var "$a1"))))
+  (Let "$a1" (Val #(W64 10))
+  (Let "$a2" (Val #(W64 32))
+  (App (App (App (App (Val (GoInstruction (FuncResolve _root_.Perennial.strconv.ParseUint []))) (Val #())) (Var "$a0")) (Var "$a1")) (Var "$a2")))))
+  (Let "$ret0" (Fst (Var "__p"))
+  (Let "$ret1" (Snd (Var "__p"))
+  (Let "$r0" (Var "$ret0")
+  (Let "$r1" (Var "$ret1")
+  (Let "err" (App (Val (GoInstruction (GoAlloc go.error))) (App (Val (GoInstruction (GoZeroVal go.error))) (Val #())))
+  (Let "index" (App (Val (GoInstruction (GoAlloc go.uint64))) (App (Val (GoInstruction (GoZeroVal go.uint64))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (If (App (Val (GoInstruction (GoOp GoEquals go.error))) (Pair (App (Val (GoInstruction (GoLoad go.error))) (Var "err")) (App (Val (GoInstruction (Convert go.untypedNil go.error))) (Val UntypedNil)))) (App (Val (GoInstruction (GoOp GoEquals _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Pair (App (Val (GoInstruction (Convert go.uint64 _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (App (Val (GoInstruction (GoLoad go.uint64))) (Var "index"))) (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol")))) (Val #false)))
+  (Let "$r0" (Let "$v0" (Val #true)
+  (Let "$v1" (Val #(W64 0))
+  (App (Val (GoInstruction (CompositeLiteral Value.ty))) (LiteralValue [(KeyedElement (some (KeyField go!"HasLower")) (ElementExpression go.bool (Var "$v0"))), (KeyedElement (some (KeyField go!"Lower")) (ElementExpression go.int64 (Var "$v1")))]))))
+  (App (Val doExecute)
+  (App (App (App (Val (map.insert _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty)) (App (Val (GoInstruction (GoLoad State.ty))) (Var "state"))) (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol"))) (Var "$r0"))))
+  (App (Val doExecute)
+  (Val #())))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.error))) (Pair (Var "err") (Var "$r1")))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.uint64))) (Pair (Var "index") (Var "$r0"))))))))))))))))))))))
+
 /-- go: flow.go:138:21 -/
 noncomputable def graphView.join.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "v"
@@ -1384,6 +1581,39 @@ noncomputable def directBindingRead.impl [FfiSyntax] [GoGlobalContext] : val :=
   (If (If (App (Val (GoInstruction (GoOp GoEquals _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Category.ty))) (Pair (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Category.ty))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Node.ty go!"Category"))) (Var "node"))) (Val _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Read))) (App (Val (GoInstruction (GoOp GoEquals go.int))) (Pair (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty)))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Attributes.ty go!"Reads"))) (Var "attrs")))
   (App (App (Val (GoInstruction (FuncResolve go.len [(go.GoType.SliceType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty)]))) (Val #())) (Var "$a0"))) (Val #(W64 1)))) (Val #false)) (App (Val (GoInstruction (GoOp GoEquals _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Pair (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty go!"Location"))) (App (Val (GoInstruction (IndexRef (go.GoType.SliceType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty)))) (Pair (App (Val (GoInstruction (GoLoad (go.GoType.SliceType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty)))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Attributes.ty go!"Reads"))) (Var "attrs"))) (Val #(W64 0)))))) (Val #(W32 0)))) (Val #false))))))))
 
+/-- go: increment.go:5:21 -/
+noncomputable def graphView.incrementValue.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "v"
+  (Lam "ref"
+  (Lam "symbol"
+  (Lam "fallback"
+  (Lam "state"
+  (App (Val exceptionDo)
+  (Let "v" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType graphView.ty)))) (Var "v"))
+  (Let "state" (App (Val (GoInstruction (GoAlloc State.ty))) (Var "state"))
+  (Let "fallback" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "fallback"))
+  (Let "symbol" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol"))
+  (Let "ref" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (Let "$r0" (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (Let "$a1" (Val #(go!"signed-step64"))
+  (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"fact"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v"))) (Var "$a0")) (Var "$a1"))))
+  (Let "operator" (App (Val (GoInstruction (GoAlloc go.string))) (App (Val (GoInstruction (GoZeroVal go.string))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Let "$a0" (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol"))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad State.ty))) (Var "state"))
+  (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"binding"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v"))) (Var "$a0")) (Var "$a1"))))
+  (Let "$a1" (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "operator")) (Val #(go!"\"++\""))))
+  (App (App (App (Val (GoInstruction (FuncResolve integerStep []))) (Val #())) (Var "$a0")) (Var "$a1")))))))
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "operator")) (Val #(go!"\"++\""))))) (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (Var "operator")) (Val #(go!"\"--\""))))) (Val #false)))
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoLoad Value.ty))) (Var "fallback")))
+  (App (Val doExecute)
+  (Val #()))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore go.string))) (Pair (Var "operator") (Var "$r0"))))))))))))))))))
+
 /-- go: increment.go:13:6 -/
 noncomputable def integerStep.impl [FfiSyntax] [GoGlobalContext] : val :=
   (LamV "value"
@@ -1433,6 +1663,80 @@ noncomputable def decrementInteger.impl [FfiSyntax] [GoGlobalContext] : val :=
   (App (Val (GoInstruction (CompositeLiteral Value.ty))) (LiteralValue [])))
   (App (Val doExecute)
   (Val #())))))))
+
+/-- An interface holding a typed nil pointer is non-nil. Keep its whole-value
+    nil state separate from pointer identity and payload nilness.
+
+    go: interface_value.go:11:21 -/
+noncomputable def graphView.interfaceAssignment.impl [FfiSyntax] [GoGlobalContext] : val :=
+  (LamV "v"
+  (Lam "ref"
+  (Lam "symbol"
+  (Lam "value"
+  (App (Val exceptionDo)
+  (Let "v" (App (Val (GoInstruction (GoAlloc (go.GoType.PointerType graphView.ty)))) (Var "v"))
+  (Let "value" (App (Val (GoInstruction (GoAlloc Value.ty))) (Var "value"))
+  (Let "symbol" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol"))
+  (Let "ref" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"attrs"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v"))) (Var "$a0")))
+  (Let "attrs" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Attributes.ty))) (App (Val (GoInstruction (GoZeroVal _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Attributes.ty))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (Let "$r0" (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (Let "$a1" (Val #(W64 0))
+  (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"operand"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v"))) (Var "$a0")) (Var "$a1"))))
+  (Let "source" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (App (Val (GoInstruction (GoZeroVal _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (App (Val doReturn)
+  (Let "$a0" (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "source"))
+  (Let "$a1" (Val #(go!"interface-value"))
+  (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"fact"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v"))) (Var "$a0")) (Var "$a1"))))
+  (Let "$a1" (App (Val (GoInstruction (GoLoad Value.ty))) (Var "value"))
+  (App (App (App (Val (GoInstruction (FuncResolve interfaceSourceValue []))) (Val #())) (Var "$a0")) (Var "$a1")))))))
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "source"))
+  (Let "$a1" (Val #(go!"nil"))
+  (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"fact"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v"))) (Var "$a0")) (Var "$a1")))) (Val #(go!"true")))))
+  (App (Val doReturn)
+  (Let "$v0" (Val #true)
+  (App (Val (GoInstruction (CompositeLiteral Value.ty))) (LiteralValue [(KeyedElement (some (KeyField go!"Nil")) (ElementExpression go.bool (Var "$v0")))]))))
+  (App (Val doExecute)
+  (Val #()))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Pair (Var "source") (Var "$r0")))))))))
+  (Let "$r0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Category.ty))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Node.ty go!"Category"))) (App (Val (GoInstruction (IndexRef (go.GoType.SliceType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Node.ty)))) (Pair (App (Val (GoInstruction (GoLoad (go.GoType.SliceType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Node.ty)))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Graph.ty go!"Nodes"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Graph.ty)))) (App (Val (GoInstruction (StructFieldRef graphView.ty go!"graph"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v")))))) (App (Val (GoInstruction (Convert _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty go.int))) (App (Val (GoInstruction (GoOp GoSub _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Pair (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref")) (Val #(W32 1)))))))))
+  (Let "_order1" (App (Val (GoInstruction (GoAlloc _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Category.ty))) (App (Val (GoInstruction (GoZeroVal _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Category.ty))) (Val #())))
+  (App (App (Val exceptionSeq) (Lam BAnon
+  (If (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Category.ty))) (Var "_order1"))
+  (Let "$a1" (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Text.ty))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Attributes.ty go!"WriteForm"))) (Var "attrs")))
+  (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Tables.ty) go!"Text"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Tables.ty)))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Graph.ty go!"Tables"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Graph.ty)))) (App (Val (GoInstruction (StructFieldRef graphView.ty go!"graph"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v"))))))) (Var "$a0")))
+  (Let "$a2" (Let "$a0" (App (Val (GoInstruction (GoLoad (go.GoType.SliceType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty)))) (App (Val (GoInstruction (StructFieldRef _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Attributes.ty go!"Writes"))) (Var "attrs")))
+  (App (App (Val (GoInstruction (FuncResolve go.len [(go.GoType.SliceType _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Access.ty)]))) (Val #())) (Var "$a0")))
+  (App (App (App (App (Val (GoInstruction (FuncResolve singleValueWrite []))) (Val #())) (Var "$a0")) (Var "$a1")) (Var "$a2"))))))
+  (App (Val doReturn)
+  (App (Val (GoInstruction (CompositeLiteral Value.ty))) (LiteralValue [])))
+  (App (Val doExecute)
+  (Val #())))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Category.ty))) (Pair (Var "_order1") (Var "$r0"))))))))))
+  (App (Val doExecute)
+  (App (Val (GoInstruction (GoStore _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Attributes.ty))) (Pair (Var "attrs") (Var "$r0")))))))))
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (Let "$a0" (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "ref"))
+  (Let "$a1" (Val #(go!"zero-initialized"))
+  (App (App (App (Val (GoInstruction (MethodResolve (go.GoType.PointerType graphView.ty) go!"fact"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v"))) (Var "$a0")) (Var "$a1")))) (Val #(go!"true")))))
+  (App (Val doReturn)
+  (Let "$v0" (Val #true)
+  (App (Val (GoInstruction (CompositeLiteral Value.ty))) (LiteralValue [(KeyedElement (some (KeyField go!"Nil")) (ElementExpression go.bool (Var "$v0")))]))))
+  (App (Val doExecute)
+  (Val #()))))))
+  (If (App (Val (GoInstruction (Convert go.untypedBool go.bool))) (App (Val (GoInstruction (GoUnOp GoNot go.bool))) (App (Val (GoInstruction (GoOp GoEquals go.string))) (Pair (App (Val (GoInstruction (GoLoad go.string))) (App (Val (GoInstruction (IndexRef (go.GoType.SliceType go.string)))) (Pair (App (Val (GoInstruction (GoLoad (go.GoType.SliceType go.string)))) (App (Val (GoInstruction (StructFieldRef graphView.ty go!"kinds"))) (App (Val (GoInstruction (GoLoad (go.GoType.PointerType graphView.ty)))) (Var "v")))) (App (Val (GoInstruction (Convert _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty go.int))) (App (Val (GoInstruction (GoOp GoSub _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Pair (App (Val (GoInstruction (GoLoad _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.Ref.ty))) (Var "symbol")) (Val #(W32 1)))))))) (Val #(go!"\"interface\""))))))
+  (App (Val doReturn)
+  (App (Val (GoInstruction (GoLoad Value.ty))) (Var "value")))
+  (App (Val doExecute)
+  (Val #())))))))))))))
 
 /-- Exact evaluated operands can reject an edge even when neither operand is a
     binding. In particular, len of a known empty collection equals zero.
@@ -2091,8 +2395,11 @@ class analysis.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [G
   set_queued : ∀ (x : analysis) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet analysis.underlying go!"queued") (PairV #x #y) (Val #(({ x with queued' := y } : analysis)))
   get_queue : ∀ (x : analysis), go.IsGoStepPureDetTagged under (StructFieldGet analysis.underlying go!"queue") #x (Val #(x.queue'))
   set_queue : ∀ (x : analysis) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet analysis.underlying go!"queue") (PairV #x #y) (Val #(({ x with queue' := y } : analysis)))
+  ptr_block_unfold : MethodUnfold (go.GoType.PointerType analysis.ty) go!"block" analysis.block.impl
   ptr_enqueue_unfold : MethodUnfold (go.GoType.PointerType analysis.ty) go!"enqueue" analysis.enqueue.impl
+  ptr_rangeWrite_unfold : MethodUnfold (go.GoType.PointerType analysis.ty) go!"rangeWrite" analysis.rangeWrite.impl
   ptr_successors_unfold : MethodUnfold (go.GoType.PointerType analysis.ty) go!"successors" analysis.successors.impl
+  ptr_transfer_unfold : MethodUnfold (go.GoType.PointerType analysis.ty) go!"transfer" analysis.transfer.impl
 
 attribute [instance] analysis.TypeAssumptions.type_repr
   analysis.TypeAssumptions.underlying
@@ -2105,8 +2412,11 @@ attribute [instance] analysis.TypeAssumptions.type_repr
   analysis.TypeAssumptions.set_queued
   analysis.TypeAssumptions.get_queue
   analysis.TypeAssumptions.set_queue
+  analysis.TypeAssumptions.ptr_block_unfold
   analysis.TypeAssumptions.ptr_enqueue_unfold
+  analysis.TypeAssumptions.ptr_rangeWrite_unfold
   analysis.TypeAssumptions.ptr_successors_unfold
+  analysis.TypeAssumptions.ptr_transfer_unfold
 
 structure graphView [FfiSyntax] where
   mk ::
@@ -2178,7 +2488,9 @@ class graphView.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [
   ptr_conversionValue_unfold : MethodUnfold (go.GoType.PointerType graphView.ty) go!"conversionValue" graphView.conversionValue.impl
   ptr_fact_unfold : MethodUnfold (go.GoType.PointerType graphView.ty) go!"fact" graphView.fact.impl
   ptr_impossibleSignedComparison_unfold : MethodUnfold (go.GoType.PointerType graphView.ty) go!"impossibleSignedComparison" graphView.impossibleSignedComparison.impl
+  ptr_incrementValue_unfold : MethodUnfold (go.GoType.PointerType graphView.ty) go!"incrementValue" graphView.incrementValue.impl
   ptr_infeasibleConstraint_unfold : MethodUnfold (go.GoType.PointerType graphView.ty) go!"infeasibleConstraint" graphView.infeasibleConstraint.impl
+  ptr_interfaceAssignment_unfold : MethodUnfold (go.GoType.PointerType graphView.ty) go!"interfaceAssignment" graphView.interfaceAssignment.impl
   ptr_invalidateFields_unfold : MethodUnfold (go.GoType.PointerType graphView.ty) go!"invalidateFields" graphView.invalidateFields.impl
   ptr_invalidatesField_unfold : MethodUnfold (go.GoType.PointerType graphView.ty) go!"invalidatesField" graphView.invalidatesField.impl
   ptr_join_unfold : MethodUnfold (go.GoType.PointerType graphView.ty) go!"join" graphView.join.impl
@@ -2225,7 +2537,9 @@ attribute [instance] graphView.TypeAssumptions.type_repr
   graphView.TypeAssumptions.ptr_conversionValue_unfold
   graphView.TypeAssumptions.ptr_fact_unfold
   graphView.TypeAssumptions.ptr_impossibleSignedComparison_unfold
+  graphView.TypeAssumptions.ptr_incrementValue_unfold
   graphView.TypeAssumptions.ptr_infeasibleConstraint_unfold
+  graphView.TypeAssumptions.ptr_interfaceAssignment_unfold
   graphView.TypeAssumptions.ptr_invalidateFields_unfold
   graphView.TypeAssumptions.ptr_invalidatesField_unfold
   graphView.TypeAssumptions.ptr_join_unfold
