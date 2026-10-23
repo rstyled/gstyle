@@ -52,7 +52,7 @@ func collect(ctx context.Context, cases []observation, source string, inputs []i
 	if err != nil {
 		return nil, err
 	}
-	reports, err := observedRanges(extraction.Funcs)
+	reports, err := observedRanges(extraction.Funcs, cases)
 	if err != nil {
 		return nil, err
 	}
@@ -74,11 +74,15 @@ func attachReports(cases []observation, reports map[string]runtimeguard.Value) (
 	return cases, nil
 }
 
-func observedRanges(functions []gopatterns.FuncPdg) (map[string]runtimeguard.Value, error) {
+func observedRanges(functions []gopatterns.FuncPdg, cases []observation) (map[string]runtimeguard.Value, error) {
+	wanted := make(map[string]bool, len(cases))
+	for _, c := range cases {
+		wanted[c.Name] = true
+	}
 	out := make(map[string]runtimeguard.Value)
 	for _, function := range functions {
 		name := function.Name[strings.LastIndex(function.Name, ".")+1:]
-		if !strings.HasPrefix(name, "Case") {
+		if !wanted[name] {
 			continue
 		}
 		if _, exists := out[name]; exists {

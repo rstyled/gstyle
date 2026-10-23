@@ -130,14 +130,18 @@ jobs:
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
       - name: Certify source-to-range results and reject controls
-        run: make verify-programs
+        run: |
+          make verify-programs
+          make verify-branches
 
       - name: Preserve program certificates and counterexamples
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: scalar-program-certificates
-          path: dist/verification/programs/
+          path: |
+            dist/verification/programs/
+            dist/verification/branches/
 
   verify-cache:
     name: Lean / source, axioms and cache

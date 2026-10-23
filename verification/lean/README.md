@@ -12,6 +12,11 @@ Each has its own verification profile, axiom audit and mutation controls.
 programs and kernel-checked range claims over every signed 64-bit input. Run
 `make verify-programs` for the bounded source-to-range contract and its controls.
 
+[Arbitrary-depth branch checking](BRANCHES.md) proves a structural result checker
+for every finite branch tree and connects it to supplied-source production
+reports. Run `make verify-branches`; this remains checked-result validation, not
+an unconditional implementation theorem for the production worklist.
+
 ## Function-length profile
 
 The production metric counts physical lines containing Go tokens. Blank lines,
