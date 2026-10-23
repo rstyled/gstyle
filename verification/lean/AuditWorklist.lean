@@ -1,0 +1,31 @@
+import Gstyle.Proof.Worklist.Successor
+import Gstyle.Proof.Worklist.Queue
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_enqueue
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.queueIndex_lt
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.queueIndex_injective
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.QueueInvariant.enqueue
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.QueueInvariant.advance
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.QueueInvariant.exhausted
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_enqueue_invariant
+
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.exactComparisonResult_known
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.exactComparisonResult_truth
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_compareExactOrder
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_compareExactIntegers
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.exactValue_denotes
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.knownComparisonResult_correct
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.knownComparisonResult_keeps_feasible
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.knownComparisonResult_no_false_rejection
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_knownComparison
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_knownComparison_sound
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_attrs_snapshot_full
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_attrs_snapshot
+
+
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.comparisonOperator_dispatch
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_knownBoolean_comparison
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_knownBoolean_comparison_sound
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_successorState_zero
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_successorState_if_feasible
+
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_successorState_if_sound

@@ -124,13 +124,13 @@ theorem wp_attrs_snapshot_absent (receiver : Loc) (s : QuerySnapshot) (ref : w32
   wp_end
   all_goals iexact Hsnapshot
 
-theorem wp_attrs_snapshot (receiver : Loc) (s : QuerySnapshot) (ref : w32)
+theorem wp_attrs_snapshot_full (receiver : Loc) (s : QuerySnapshot) (ref : w32)
     (hvalid : validSymbolRef s ref)
     (halloc : ∀ a ∈ s.attributes, (pdg.rowContents s.referenceRows a.Outcomes').length ≤ 2^46) :
     {{ isPkgInit (PROP := IProp GF) pkg ∗ querySnapshotOwn receiver s }}
       (App (Val #(methods (go.PointerType graphView.ty) go!"attrs" #receiver)) (Val #ref))
     {{ (attrs : pdg.Attributes), RET #attrs; querySnapshotOwn receiver s ∗
-      ⌜attrs.Operator' = (snapshotRecord s ref).Operator' ∧ attrs.Callee' = (snapshotRecord s ref).Callee'⌝ }} := by
+      ⌜attrs = pdg.expandedAttributes (snapshotRecord s ref) s.references s.accesses s.extensions attrs.Outcomes'⌝ }} := by
   wp_start_folded as #Hsnapshot
   by_cases hz : ref = W32 0
   · subst ref
@@ -138,7 +138,7 @@ theorem wp_attrs_snapshot (receiver : Loc) (s : QuerySnapshot) (ref : w32)
     wp_apply wp_attrs_zero receiver
     wp_end
     all_goals iframe Hsnapshot
-    all_goals ipureintro; constructor <;> rfl
+    all_goals ipureintro; rfl
   · have href : 0 < uint.Z ref ∧ uint.Z ref ≤ s.nodes.length := hvalid.resolve_left hz
     have hni : (uint.Z ref - 1).toNat < s.nodes.length := by omega
     let node := s.nodes[(uint.Z ref - 1).toNat]'hni
@@ -161,7 +161,7 @@ theorem wp_attrs_snapshot (receiver : Loc) (s : QuerySnapshot) (ref : w32)
       · iframe Hview Hgraph Hnodes Hrecords Hreferences Haccesses Hextensions Hvalues
       wp_end
       all_goals iframe Hsnapshot
-      all_goals ipureintro; constructor <;> rfl
+      all_goals ipureintro; rfl
     · have hm : snapshotRecord s ref = zero_val pdg.AttributeSet := by
         simp only [snapshotRecord, hz, ite_false, hnode]
         by_cases ha0 : node.Attributes' = W32 0
@@ -176,7 +176,23 @@ theorem wp_attrs_snapshot (receiver : Loc) (s : QuerySnapshot) (ref : w32)
       · iframe Hsnapshot
       wp_end
       all_goals iframe Hsnapshot
-      all_goals ipureintro; constructor <;> rfl
+      all_goals ipureintro; rfl
+
+theorem wp_attrs_snapshot (receiver : Loc) (s : QuerySnapshot) (ref : w32)
+    (hvalid : validSymbolRef s ref)
+    (halloc : ∀ a ∈ s.attributes, (pdg.rowContents s.referenceRows a.Outcomes').length ≤ 2^46) :
+    {{ isPkgInit (PROP := IProp GF) pkg ∗ querySnapshotOwn receiver s }}
+      (App (Val #(methods (go.PointerType graphView.ty) go!"attrs" #receiver)) (Val #ref))
+    {{ (attrs : pdg.Attributes), RET #attrs; querySnapshotOwn receiver s ∗
+      ⌜attrs.Operator' = (snapshotRecord s ref).Operator' ∧ attrs.Callee' = (snapshotRecord s ref).Callee'⌝ }} := by
+  wp_start_folded as #Hsnapshot
+  wp_apply wp_attrs_snapshot_full receiver s ref hvalid halloc
+      $$ [Hsnapshot] with %attrs ⟨Hsnapshot, %hattrs⟩
+  · iframe Hsnapshot
+  iapply HΦ
+  iframe Hsnapshot
+  ipureintro
+  exact ⟨congrArg pdg.Attributes.Operator' hattrs, congrArg pdg.Attributes.Callee' hattrs⟩
 
 theorem wp_operatorText_snapshot (receiver : Loc) (s : QuerySnapshot) (fact : pdg.Fact) :
     {{ isPkgInit (PROP := IProp GF) pkg ∗ querySnapshotOwn receiver s }}

@@ -70,3 +70,7 @@ public import Gstyle.Proof.Transfer.LocalInvalidation
 
 public import Gstyle.Proof.Programs.Contract
 public import Gstyle.Proof.Programs.Structural
+
+public import Gstyle.Proof.Worklist.Queue
+
+public import Gstyle.Proof.Worklist.Successor

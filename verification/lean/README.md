@@ -17,6 +17,11 @@ for every finite branch tree and connects it to supplied-source production
 reports. Run `make verify-branches`; this remains checked-result validation, not
 an unconditional implementation theorem for the production worklist.
 
+[Worklist components](WORKLIST.md) cover actual enqueue execution, pending-queue
+flags, signed comparison dispatch and feasible `if`-successor refinement. Run
+`make verify-worklist` for their source binding, axiom audit and fault controls.
+Complete traversal and source lowering remain open.
+
 ## Function-length profile
 
 The production metric counts physical lines containing Go tokens. Blank lines,

@@ -125,10 +125,13 @@ particular, a successful `checkReport` is not a substitute for these obligations
    fixed syntax-depth limit. Then connect `analysis.report`/`analysis.call` to
    the final typed observation and its `FirstArgument` range.
 
-The current generated runtimeguard translation selects helper bodies, but does
-not yet select those worklist bodies; an opaque function name is not an execution
-proof. Their translation, source comparison and axiom audits must be added when
-proving them. Only that composition, with the source-meaning boundary stated,
+The generated runtimeguard translation now includes the actual enqueue body and
+comparison and successor-state bodies. [Local proofs](WORKLIST.md) cover enqueue
+execution and pending-queue flags, comparison dispatch over represented operands,
+and feasible `if`-successor refinement. These are prerequisites; they do not cover the complete worklist or establish source
+metadata. The remaining bodies need translation, source comparison and axiom
+audits when proving them. An opaque function name is not an execution proof.
+Only that composition, with the source-meaning boundary stated,
 can remove the checked-report premise for every admitted source. Arbitrary Go
 features remain a later scope.
 

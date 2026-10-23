@@ -278,5 +278,12 @@
     "shard": "1/2",
     "argument": "--assume",
     "cache-index": 39
+  },
+  {
+    "profile": "worklist",
+    "target": "verify-worklist",
+    "shard": "0/1",
+    "argument": "--worklist",
+    "cache-index": 40
   }
 ]

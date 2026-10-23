@@ -188,3 +188,8 @@ verify-programs:
 verify-branches:
 	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
 	python3 -B verification/lean/verify_branches.py
+
+.PHONY: verify-worklist
+verify-worklist:
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --worklist

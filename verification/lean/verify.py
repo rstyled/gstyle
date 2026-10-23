@@ -1147,6 +1147,66 @@ def assume_profile():
                                "Go operational total-correctness adequacy"))
 
 
+def worklist_profile():
+    base = runtime_value_profile()
+    proof = "Gstyle/Proof/Worklist/Queue.lean"
+    enqueue = "Gstyle/Proof/Worklist/Enqueue.lean"
+    names = ("wp_enqueue", "queueIndex_lt", "queueIndex_injective", "QueueInvariant.enqueue",
+             "QueueInvariant.advance", "QueueInvariant.exhausted", "wp_enqueue_invariant",
+             "exactComparisonResult_known", "exactComparisonResult_truth", "wp_compareExactOrder",
+             "wp_compareExactIntegers", "exactValue_denotes", "knownComparisonResult_correct",
+             "knownComparisonResult_keeps_feasible", "knownComparisonResult_no_false_rejection",
+             "wp_knownComparison", "wp_knownComparison_sound", "wp_attrs_snapshot_full", "wp_attrs_snapshot",
+             "comparisonOperator_dispatch", "wp_knownBoolean_comparison", "wp_knownBoolean_comparison_sound",
+             "wp_successorState_zero", "wp_successorState_if_feasible", "wp_successorState_if_sound")
+    changes = {
+        "enqueue-ignores-mark": ("if a.queued[ref-1] {", "if false {"),
+        "enqueue-inverts-mark": ("if a.queued[ref-1] {", "if !a.queued[ref-1] {"),
+        "enqueue-loses-mark": ("a.queued[ref-1] = true", "a.queued[ref-1] = false"),
+        "enqueue-wrong-reference": ("a.queue = append(a.queue, ref)", "a.queue = append(a.queue, ref+1)"),
+        "enqueue-duplicates-reference": ("a.queue = append(a.queue, ref)", "a.queue = append(a.queue, ref, ref)"),
+        "enqueue-clobbers-inputs": ("a.queue = append(a.queue, ref)", "a.queue = append(a.queue, ref); a.inputs = nil"),
+        "queue-retains-processed-mark": ("QueueInvariant (flags.set (queueIndex ref) false) (cursor + 1) queue",
+                                         "QueueInvariant (flags.set (queueIndex ref) true) (cursor + 1) queue",
+                                         "verification/lean/" + proof),
+    }
+    comparison_source = "domain/runtimeguard/known_boolean.go"
+    changes.update({
+        "exact-reversed-order": ("return left < right, true", "return right < left, true", comparison_source),
+        "exact-unsigned-order": ("return left < right, true", "return uint64(left) < uint64(right), true", comparison_source),
+        "exact-forges-known-operator": ("default:\n\t\treturn false, false", "default:\n\t\treturn false, true", comparison_source),
+        "known-wrong-right-operand": ("v.value(v.operand(ref, 1), state)", "v.value(v.operand(ref, 0), state)", comparison_source),
+        "known-accepts-partial-bounds": ("if !exactInteger(left) || !exactInteger(right) {", "if !exactInteger(left) && !exactInteger(right) {", comparison_source),
+    })
+    changes.update({
+        "boolean-wrong-fact": ('if value := v.fact(ref, "boolean"); value ==', 'if value := v.fact(ref, "integer"); value ==', comparison_source),
+        "boolean-wrong-comparison-ref": ("return v.knownComparison(ref, operator, state)", "return v.knownComparison(ref+1, operator, state)", comparison_source),
+        "boolean-forges-false": ("return v.knownComparison(ref, operator, state)", "return false, true", comparison_source),
+        "successor-wrong-condition": ('case "if", "for", "short-circuit":\n\t\tcondition = v.operand(condition, 0)', 'case "if", "for", "short-circuit":\n\t\tcondition = v.operand(condition, 1)', comparison_source),
+        "successor-inverts-pruning": ("known && value != truth", "known && value == truth", comparison_source),
+        "successor-skips-assume": ("return v.assume(condition, truth, state)", "return state", comparison_source),
+        "successor-drops-unconditional-state": ("if condition == 0 {\n\t\treturn state", "if condition == 0 {\n\t\treturn nil", comparison_source),
+        "snapshot-wrong-construct": ('Construct: a.Construct, WriteForm: a.WriteForm, Description: a.Description,\n\t\tPosition: a.Position, CallForm: a.CallForm, ExitKind: a.ExitKind,\n\t\tExtensions: listAt', 'Construct: a.WriteForm, WriteForm: a.WriteForm, Description: a.Description,\n\t\tPosition: a.Position, CallForm: a.CallForm, ExitKind: a.ExitKind,\n\t\tExtensions: listAt', "domain/pdg/attributes.go"),
+    })
+    modules = {name: proof if name.startswith("queue-") else enqueue for name in changes}
+    modules.update({name: "Gstyle/Proof/Worklist/ExactComparison.lean" for name in changes if name.startswith("exact-")})
+    modules.update({name: "Gstyle/Proof/Worklist/KnownComparison.lean" for name in changes if name.startswith("known-")})
+    modules.update({name: "Gstyle/Proof/Worklist/KnownBoolean.lean" for name in changes if name.startswith("boolean-")})
+    modules.update({name: "Gstyle/Proof/Worklist/Successor.lean" for name in changes if name.startswith("successor-")})
+    modules["snapshot-wrong-construct"] = "Gstyle/Proof/Pdg/Attributes.lean"
+    sources = tuple(PROJECT / "Gstyle/Proof/Worklist" / (name + ".lean")
+                    for name in ("Layout", "Enqueue", "Queue", "ExactComparison", "KnownComparison", "KnownBoolean", "Successor"))
+    return replace(base, report=ROOT / "dist/verification/worklist", source=ROOT / "domain/runtimeguard/flow.go",
+                   sources=base.sources + sources + (PROJECT / "Gstyle/Proof/Transfer/FactSnapshot.lean",
+                                                     PROJECT / "Gstyle/Proof/Pdg/GraphLayout.lean"),
+                   theorems={"Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name for name in names},
+                   mutations=changes, audit="AuditWorklist.lean", proof_file=proof,
+                   mutation_modules=modules,
+                   verified="actual enqueue preserves pending-suffix flags; comparison dispatch and feasible if-successors compose with interval refinement",
+                   unverified=("complete transfer and successor traversal", "whole solve/report composition and termination",
+                               "source-to-CFG correspondence and metadata construction", "package initialization and resource exhaustion"))
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix, *, environment=None):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -1361,7 +1421,7 @@ def main(profile=None):
 
 
 
-PROFILE_FACTORIES = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile, ("--shared-flow",): shared_flow_profile, ("--assume",): assume_profile}
+PROFILE_FACTORIES = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile, ("--shared-flow",): shared_flow_profile, ("--assume",): assume_profile, ("--worklist",): worklist_profile}
 
 
 if __name__ == "__main__":
@@ -1370,7 +1430,7 @@ if __name__ == "__main__":
 
         arguments = tuple(sys.argv[1:])
         if arguments not in PROFILE_FACTORIES:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison | --one-sided | --shared-flow | --assume]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison | --one-sided | --shared-flow | --assume | --worklist]")
         main(PROFILE_FACTORIES[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error
