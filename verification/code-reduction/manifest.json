@@ -1,0 +1,74 @@
+{
+  "base_revision": "dc1e449b4b2d54ce99b7de7378ab00d924f85c5b",
+  "production_revision": "d49a4edb144a75ff817fd973a9827e21e4a18444",
+  "go_version": "go1.27.1",
+  "before_size": {
+    "files": 536,
+    "lines": 78332,
+    "nonblank": 71515
+  },
+  "after_size": {
+    "files": 537,
+    "lines": 77623,
+    "nonblank": 70859
+  },
+  "full_quality_same_frozen_input": {
+    "before": {
+      "functions": 5227,
+      "diagnostics": 650
+    },
+    "sha256": "74f45525a6eba201de76df886a08d04578876eb8dddc5ee77f70a84be88394d4",
+    "before_after_byte_identical": true
+  },
+  "targeted_patterns_same_frozen_input": {
+    "functions_in_coverage": 861,
+    "candidates": 14,
+    "sha256": "394109b970722e1058163352f587bd4a6d1898fd07aa3b5d0764c3f77801f7d0",
+    "before_after_byte_identical": true
+  },
+  "cli_comparison": {
+    "cases": 55,
+    "before_sha256": "94ea7c4ea338c40f6b11b6a09e31024c8e9e54e70a8e5100b4451b0862d93d56",
+    "after_sha256": "94ea7c4ea338c40f6b11b6a09e31024c8e9e54e70a8e5100b4451b0862d93d56",
+    "byte_identical": true
+  },
+  "binaries": {
+    "before": "836ec29161cba91707fe78317ee46cbe0810d952af160c357e456e2a649d24ef",
+    "after": "aea204add1fcdfffdb230808496b085c47a4f67bff6a4b811ff1d461139c3b36"
+  },
+  "tool": "golang.org/x/tools/cmd/deadcode v0.50.0, -test ./...; tool-only telemetry resolved outside project go.mod/go.sum",
+  "limitations": [
+    "Reachability is scoped to repository programs and tests; only private unreachable declarations are removed.",
+    "CLI differential corpus is finite and does not prove all inputs.",
+    "Full repository pattern mining did not complete within the audit budget; only targeted frozen report equality is claimed."
+  ],
+  "caller_mutation_runtime_harness_unchanged": true,
+  "validation": {
+    "make check": "pass",
+    "make quality-gate": "pass",
+    "make lint cognitive gstyle-check": "pass",
+    "affected race suites": "pass",
+    "git diff --check": "pass"
+  },
+  "profiles": {
+    "scope": "Report projection of 1,000 synthetic function records; three 1-second runs; GOMAXPROCS=2; host has other workloads; timing is not an end-to-end benchmark",
+    "before_ns_per_op": [
+      777876,
+      755511,
+      775094
+    ],
+    "after_ns_per_op": [
+      789700,
+      801259,
+      824306
+    ],
+    "allocated_bytes_per_op_approx": 2188195,
+    "allocations_per_op_before_and_after": 8001
+  },
+  "archive": {
+    "path": "evidence.tar.gz",
+    "sha256": "f0c7e9a1854ce8daab6ad564467c980069188bbb307dd0b51aa10e8c6121c071",
+    "bytes": 418769,
+    "files": 22
+  }
+}
