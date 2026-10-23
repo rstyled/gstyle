@@ -49,10 +49,16 @@ func writeCoverage(out *strings.Builder, cases []observation, s suite, index int
 }
 
 func writeSource(out *strings.Builder, cases []observation, source string) {
-	var names []string
+	const header = "package generated\nfunc observe(value int64) {}\n"
+	names := make([]string, 0, len(cases))
+	parts := []string{strconv.Quote(source[:len(header)])}
+	offset := len(header)
 	for _, c := range cases {
 		names = append(names, "c"+c.Name)
+		end := offset + len(c.Source)
+		parts = append(parts, strconv.Quote(source[offset:end]))
+		offset = end
 	}
-	fmt.Fprintf(out, "theorem source_file : \"package generated\\nfunc observe(value int64) {}\\n\" ++ String.join ([%s].map Certificate.source) = %s := by rfl\n", strings.Join(names, ", "), strconv.Quote(source))
+	fmt.Fprintf(out, "theorem source_file : [%s] ++ [%s].map Certificate.source = [%s] := by rfl\n", strconv.Quote(header), strings.Join(names, ", "), strings.Join(parts, ", "))
 	out.WriteString("#print axioms GeneratedPrograms.source_file\n")
 }

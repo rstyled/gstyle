@@ -46,8 +46,10 @@ CFG, or compute expected bounds using the analyzer's transfers.
 - `PreciseLiteral` requires exact bounds on direct literal results. An analyzer
   returning unknown for every case cannot pass the complete contract.
 - Each certificate proves its rendered Go function equals the captured source.
-  `source_file` checks the complete analyzed file, including helper and function
-  order. Coverage equality checks the full program inventory, not merely its size.
+  `source_file` checks the ordered source segments, including the helper. The
+  driver checks that their exact concatenation is the analyzed file, and that
+  certificate bounds equal the captured raw reports. Coverage equality checks
+  the full program inventory, not merely its size.
 - `certified_admitted` composes these certificates into the program-level claim.
 - `reported_interval` proves that certificate membership is exactly the interval
   membership used by the existing production interval proofs, under signed-word

@@ -86,6 +86,13 @@ def validate_artifacts(directory):
     expected = "package generated\nfunc observe(value int64) {}\n" + "".join(c["source"] for c in data["cases"])
     if source != expected.encode():
         raise RuntimeError("captured program sources do not match the analyzed file")
+    certificate = (directory / "Certificate.lean").read_text().splitlines()
+    for case in data["cases"]:
+        value = case["range"]
+        expected = (f"def r{case['name']} : Reported := ⟨({value['Lower']}), ({value['Upper']}), "
+                    f"{str(value['HasLower']).lower()}, {str(value['HasUpper']).lower()}⟩")
+        if certificate.count(expected) != 1:
+            raise RuntimeError("certificate range does not match the captured production report")
     names = [c["name"] for c in data["cases"]]
     if len(names) != len(set(names)):
         raise RuntimeError("duplicate program names")
@@ -143,6 +150,10 @@ def main():
     success.unlink(missing_ok=True)
     before = fingerprint()
     run(["lake", "build", "Gstyle.Proof.Programs.Contract"], PROJECT, REPORT / "build.log")
+    toolchain = {
+        "go": subprocess.check_output(["go", "version"], cwd=ROOT, text=True).strip(),
+        "lean": subprocess.check_output(["lake", "env", "lean", "--version"], cwd=PROJECT, text=True).strip(),
+    }
     verify.check_dependencies(REPORT)
     audit = run(["lake", "env", "lean", "AuditPrograms.lean"], PROJECT, REPORT / "axioms.log")
     verify.check_axioms(audit, THEOREMS)
@@ -159,7 +170,7 @@ def main():
     success.write_text(json.dumps({
         "verified": "captured production ranges contain every result of each enumerated scalar program",
         "programs": len(data["cases"]), "input_domain": "all signed 64-bit integers",
-        "source_sha256": data["source_sha256"], "sources_sha256": before,
+        "source_sha256": data["source_sha256"], "sources_sha256": before, "toolchain": toolchain,
         "controls": ["forged-lower", "erased-bounds", "omitted-program", "wrong-source"],
         "unverified": ["arbitrary program sizes and Go syntax", "formal Go operational semantics of the source renderer",
                        "universal correctness or termination of the analyzer implementation", "CLI finding and presentation projection"],

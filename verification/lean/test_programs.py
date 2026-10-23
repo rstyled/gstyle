@@ -28,6 +28,7 @@ class ProgramCertificateGuardTests(unittest.TestCase):
             data = {"source_sha256": hashlib.sha256(source).hexdigest(), "cases": []}
             (path / "input.go.txt").write_bytes(source)
             (path / "observations.json").write_text(json.dumps(data))
+            (path / "Certificate.lean").write_text("")
             verify_programs.validate_artifacts(path)
             (path / "input.go.txt").write_bytes(source + b"changed")
             with self.assertRaisesRegex(RuntimeError, "hash"):
