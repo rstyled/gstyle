@@ -83,9 +83,10 @@ termination, report projection, source lowering and producer metadata
 construction remain open. In particular, lowering must establish that admitted
 operations have zero writes or the supported single signed write, absent step
 and range metadata, correct operand edges and scalar value derivations. These
-facts are not established merely by naming a `ScalarWriteSite`. The solver
-invariant must also establish preservation of scalar identities through numeric
-refinement and joins; the current queue/metadata invariant alone does not do so.
+facts are not established merely by naming a `ScalarWriteSite`. The [scalar-flow profile](SCALAR_FLOW.md) now establishes scalar identities and
+concrete meaning through finite numeric refinement, joins and the actual block
+and successor bodies. The outer solver still must compose these contracts and
+establish their source premises.
 Other decision forms and arbitrary Go features are outside this checkpoint.
 A successful structural report check remains separate from these obligations.
 

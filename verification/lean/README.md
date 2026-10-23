@@ -24,6 +24,11 @@ fault controls. Scalar transfer and the actual solver-mode block loop are also
 proved; their source metadata and standard-library premises remain explicit.
 Outer solve/report composition and source lowering remain open.
 
+[Scalar flow meaning](SCALAR_FLOW.md) composes scalar identity, metadata and
+concrete range meaning with the actual block and successor loops. Run
+`make verify-scalar-flow`; source meaning and the outer solve/report connection
+remain open.
+
 ## Function-length profile
 
 The production metric counts physical lines containing Go tokens. Blank lines,

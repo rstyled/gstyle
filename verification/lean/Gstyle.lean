@@ -76,3 +76,6 @@ public import Gstyle.Proof.Worklist.Queue
 public import Gstyle.Proof.Worklist.Traversal
 
 public import Gstyle.Proof.Worklist.ScalarBlock
+
+public import Gstyle.Proof.Worklist.ScalarTraversal
+public import Gstyle.Proof.Worklist.ScalarBlockMeaning

@@ -292,5 +292,12 @@
     "shard": "1/2",
     "argument": "--worklist",
     "cache-index": 41
+  },
+  {
+    "profile": "scalar-flow",
+    "target": "verify-scalar-flow",
+    "shard": "0/1",
+    "argument": "--scalar-flow",
+    "cache-index": 42
   }
 ]

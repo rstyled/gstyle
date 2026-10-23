@@ -139,6 +139,9 @@ nil-report block loop are also covered. These are prerequisites; they do not
 cover non-nil report mode, the outer solve/report worklist or establish source
 metadata. The remaining bodies need translation, source comparison and axiom audits when
 proving them. An opaque function name is not an execution proof.
+[Scalar-flow contracts](SCALAR_FLOW.md) now add concrete meaning and scalar
+identity preservation to actual block and successor execution; the outer solve
+and source-lowering composition remains open.
 Only that composition, with the source-meaning boundary stated,
 can remove the checked-report premise for every admitted source. Arbitrary Go
 features remain a later scope.

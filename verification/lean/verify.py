@@ -1259,6 +1259,52 @@ def worklist_profile():
                                "source-to-CFG correspondence and metadata construction", "package initialization and resource exhaustion"))
 
 
+
+def scalar_flow_profile():
+    base = worklist_profile()
+    modules = ('ScalarRefinement', 'ValueDerivation', 'ScalarDecision',
+               'InputCoverage', 'ScalarTraversal', 'ScalarBlockMeaning')
+    names = (
+        'scalarState_empty', 'scalarState_update', 'baseKind_identity',
+        'bindingValue_scalar', 'numericConstrained_identity', 'constraintState_scalar',
+        'merged_scalar', 'joinedState_scalar', 'joinedInput_scalar',
+        'comparisonResultMap_scalar', 'numericExecution_scalar', 'finiteAssume_scalar',
+        'ValueEvaluation.resolve', 'ValueEvaluation.denotes', 'snapshotConstant_identity',
+        'conversionResult_identity', 'lengthCandidate_identity', 'lengthResult_identity',
+        'ValueEvaluation.scalar', 'ComparisonEvidence.scalar', 'DecisionEvidence.scalar',
+        'ComparisonEvidence.sound', 'DecisionEvidence.sound', 'inputsExtend_refl',
+        'inputsExtend_trans', 'WorkState.edge_extends', 'WorkState.edge_covers',
+        'WorkState.edge_scalar', 'edgePrefix_scalar', 'edgePrefix_extends_step',
+        'edgePrefix_extends', 'edgePrefix_covers', 'wp_decision_scalar_sound',
+        'wp_successors_scalar_sound', 'ScalarMeaningExecution.sound', 'ScalarMeaningExecution.erase',
+        'ScalarExecution.valid', 'wp_block_scalar_sound',
+    )
+    changes = {
+        "scalar-flow-integer-identity": ("value.Lower, value.Upper = r.Lower, r.Upper", "value.Lower, value.Upper = r.Lower, r.Upper; value.Identity = 1", "domain/runtimeguard/condition.go"),
+        "scalar-flow-merge-identity": ("out.Identity = v.Identity", "out.Identity = 1", "domain/runtimeguard/value.go"),
+        "scalar-flow-join-left": ("value.merge(v.binding(symbol, next))", "value.merge(v.binding(symbol, previous))"),
+        "scalar-flow-join-right": ("value.merge(v.binding(symbol, previous))", "value.merge(v.binding(symbol, next))"),
+        "scalar-flow-outcome": ("successorState(block.Condition, outcome == 0, branch)", "successorState(block.Condition, outcome != 0, branch)"),
+        "scalar-flow-condition-model": ("then valueChild s ref else ref", "then ref else valueChild s ref", "verification/lean/Gstyle/Proof/Worklist/ScalarDecision.lean"),
+    }
+    targets = {
+        "scalar-flow-integer-identity": "RuntimeValue/Constraint",
+        "scalar-flow-merge-identity": "RuntimeValue/MergePointers",
+        "scalar-flow-join-left": "StateMap/Join",
+        "scalar-flow-join-right": "StateMap/Join",
+        "scalar-flow-outcome": "Worklist/Traversal",
+        "scalar-flow-condition-model": "Worklist/ScalarDecision",
+    }
+    return replace(base, report=ROOT / "dist/verification/scalar-flow",
+                   sources=base.sources + tuple(PROJECT / "Gstyle/Proof/Worklist" / (name + ".lean") for name in modules),
+                   theorems={"Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name for name in names},
+                   mutations=changes, audit="AuditScalarFlow.lean", proof_file="Gstyle/Proof/Worklist/ScalarTraversal.lean",
+                   mutation_modules={name: "Gstyle/Proof/" + target + ".lean" for name, target in targets.items()},
+                   verified="actual scalar block and successor execution preserve scalar identity, metadata and concrete environments, retaining prior input coverage and each feasible outgoing edge",
+                   unverified=("whole solve/report execution and termination", "source lowering and metadata/primitive-meaning establishment",
+                               "nonscalar/multiple-write/nonnil-report block execution",
+                               "ParseInt and empty-input ParseUint execution contracts", "package initialization, Go adequacy and resource limits"))
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix, *, environment=None):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -1473,7 +1519,7 @@ def main(profile=None):
 
 
 
-PROFILE_FACTORIES = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile, ("--shared-flow",): shared_flow_profile, ("--assume",): assume_profile, ("--worklist",): worklist_profile}
+PROFILE_FACTORIES = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile, ("--shared-flow",): shared_flow_profile, ("--assume",): assume_profile, ("--worklist",): worklist_profile, ("--scalar-flow",): scalar_flow_profile}
 
 
 if __name__ == "__main__":
@@ -1482,7 +1528,7 @@ if __name__ == "__main__":
 
         arguments = tuple(sys.argv[1:])
         if arguments not in PROFILE_FACTORIES:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison | --one-sided | --shared-flow | --assume | --worklist]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison | --one-sided | --shared-flow | --assume | --worklist | --scalar-flow]")
         main(PROFILE_FACTORIES[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

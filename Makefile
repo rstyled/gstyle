@@ -193,3 +193,8 @@ verify-branches:
 verify-worklist:
 	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
 	python3 -B verification/lean/verify.py --worklist
+
+.PHONY: verify-scalar-flow
+verify-scalar-flow:
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --scalar-flow
