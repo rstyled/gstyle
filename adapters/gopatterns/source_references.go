@@ -53,10 +53,6 @@ func collectFileReferences(sources *pdg.SourceContext, pkg *packages.Package, fi
 	}
 }
 
-func withinNode(node ast.Node, parent ast.Node) bool {
-	return node.Pos() >= parent.Pos() && node.End() <= parent.End()
-}
-
 func recordDirectCall(direct map[*ast.Ident]*ast.CallExpr, node ast.Node) {
 	call, ok := node.(*ast.CallExpr)
 	if !ok {

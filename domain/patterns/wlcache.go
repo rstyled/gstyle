@@ -122,15 +122,6 @@ func (c *WlCache) Load(path string) error {
 	return nil
 }
 
-// cacheKeysForTest exposes entry keys for white-box tests.
-func (c *WlCache) cacheKeysForTest() []string {
-	keys := make([]string, 0, len(c.entries))
-	for k := range c.entries {
-		keys = append(keys, k)
-	}
-	return keys
-}
-
 // wlCacheVersion versions the cache format AND the WL computation. Bump it
 // whenever label(), the kernel, or canonicalization changes, so stale
 // entries from an older miner are never reused.

@@ -112,7 +112,7 @@ func GetReport(ctx context.Context, args []string) (*patterns.PatternsReport, er
 	// Extraction's AST and type-checking data are no longer needed. Reclaim
 	// that large temporary phase before allocating the mining graphs.
 	runtime.GC()
-	report := patterns.Run(toFacts(pdgs.Funcs), patterns.Options{
+	report := patterns.Run(pdgs.PatternFacts(), patterns.Options{
 		Callables:         pdgs.Callables,
 		DeclarationOrders: pdgs.DeclarationOrders,
 		OffsetFallbacks:   pdgs.OffsetFallbacks,
@@ -146,102 +146,6 @@ func openWlCache(enabled bool) (cache *patterns.WlCache, save func(), err error)
 		return nil, save, err
 	}
 	return cache, func() { _ = cache.Save(wlCachePath) }, nil
-}
-
-// toFacts converts extracted PDGs to miner facts. The signature key derives
-// from the parameter type classes, so functions with the same shape of
-// signature block together in sigmine.
-func toFacts(pdgs []gopatterns.FuncPdg) []*patterns.FuncFacts {
-	facts := make([]*patterns.FuncFacts, 0, len(pdgs))
-	for _, fp := range pdgs {
-		fp := fp
-		facts = append(facts, funcFactsOf(fp))
-	}
-	return facts
-}
-
-// funcFactsOf converts one extracted function to miner facts.
-func funcFactsOf(fp gopatterns.FuncPdg) *patterns.FuncFacts {
-	return &patterns.FuncFacts{
-		ResourceLifecycles:  fp.ResourceLifecycles,
-		ID:                  fp.Name,
-		Name:                fp.Name,
-		Path:                fp.Path,
-		Line:                fp.Line,
-		EndLine:             fp.EndLine,
-		Pdg:                 &fp.Pdg,
-		AstTypes:            fp.AstTypes,
-		SigKey:              gopatterns.SigKeyOf(fp),
-		SelfTy:              fp.SelfTy,
-		GuardClauses:        guardHits(fp.GuardClauses),
-		EnumDispatches:      dispatchHits(fp.EnumDispatches),
-		TypeSwitches:        typeSwitchHits(fp.TypeSwitches),
-		EntityIdentities:    entityHits(fp.EntityIdentities),
-		MutableIdentities:   mutableHits(fp.MutableIdentities),
-		AggregateMods:       fp.AggregateMods,
-		DbCalls:             fp.DbCalls,
-		FactoryLits:         fp.FactoryLits,
-		SpecRules:           fp.SpecRules,
-		NilErrHits:          fp.NilErrHits,
-		ForceTypeAssertHits: fp.ForceTypeAssertHits,
-		TypedNilHits:        fp.TypedNilHits,
-		ErrorCheckSites:     fp.ErrorCheckSites,
-		ReleasedFileLines:   fp.ReleasedFileLines,
-		FileObligationSites: fp.FileObligationSites,
-		SuppressedKinds:     fp.SuppressedKinds,
-		Params:              fp.Params,
-
-		DeferredReleaseLines:     fp.DeferredReleaseLines,
-		SuccessReturnOutputSites: fp.SuccessReturnOutputSites,
-	}
-}
-
-func guardHits(hits []gopatterns.GuardClauseHit) []patterns.GuardClauseHit {
-	var out []patterns.GuardClauseHit
-	for _, g := range hits {
-		out = append(out, patterns.GuardClauseHit{Line: g.Line, BodyStmts: g.BodyStmts})
-	}
-	return out
-}
-
-func dispatchHits(hits []gopatterns.EnumDispatchHit) []patterns.EnumDispatchHit {
-	var out []patterns.EnumDispatchHit
-	for _, d := range hits {
-		out = append(out, patterns.EnumDispatchHit{Line: d.Line, NumCases: d.NumCases})
-	}
-	return out
-}
-
-func typeSwitchHits(hits []gopatterns.TypeSwitchHit) []patterns.TypeSwitchHit {
-	var out []patterns.TypeSwitchHit
-	for _, t := range hits {
-		out = append(out, patterns.TypeSwitchHit{
-			Line: t.Line, Bound: t.Bound, Expr: t.Expr,
-			Method: t.Method, Types: t.Types, Args: t.Args,
-		})
-	}
-	return out
-}
-
-func entityHits(hits []patterns.EntityIdentityHit) []patterns.EntityIdentityHit {
-	var out []patterns.EntityIdentityHit
-	for _, e := range hits {
-		out = append(out, patterns.EntityIdentityHit{
-			Line: e.Line, TypeName: e.TypeName, IDField: e.IDField,
-			Fields: e.Fields, Left: e.Left, Right: e.Right,
-		})
-	}
-	return out
-}
-
-func mutableHits(hits []patterns.MutableIdentityHit) []patterns.MutableIdentityHit {
-	var out []patterns.MutableIdentityHit
-	for _, m := range hits {
-		out = append(out, patterns.MutableIdentityHit{
-			Line: m.Line, Field: m.Field, FuncName: m.FuncName,
-		})
-	}
-	return out
 }
 
 // Flags returns fresh flag definitions shared by command help and execution.
