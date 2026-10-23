@@ -73,4 +73,4 @@ public import Gstyle.Proof.Programs.Structural
 
 public import Gstyle.Proof.Worklist.Queue
 
-public import Gstyle.Proof.Worklist.Successor
+public import Gstyle.Proof.Worklist.Traversal

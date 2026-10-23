@@ -282,8 +282,15 @@
   {
     "profile": "worklist",
     "target": "verify-worklist",
-    "shard": "0/1",
+    "shard": "0/2",
     "argument": "--worklist",
     "cache-index": 40
+  },
+  {
+    "profile": "worklist",
+    "target": "verify-worklist",
+    "shard": "1/2",
+    "argument": "--worklist",
+    "cache-index": 41
   }
 ]

@@ -119,18 +119,23 @@ particular, a successful `checkReport` is not a substitute for these obligations
    invariant. Establish the snapshot, reference, metadata and parse-contract
    premises from the admitted source; do not assume the conclusion as a
    sound-child or sound-result premise.
-3. Prove `analysis.successors` and `solve` preserve that invariant for the
-   production FIFO queue, including re-enqueue, nil reachability, joins and queue
+3. Compose the proved `analysis.successors` execution with concrete source
+   meaning, then prove `solve` preserves that invariant for the production FIFO
+   queue. The successor-array prefix/metadata/queue proof is complete; it does
+   not establish that its snapshot and decision data follow from the source.
+   The outer proof must include re-enqueue, nil reachability, joins and queue
    exhaustion. For finite acyclic branch CFGs, establish termination without a
    fixed syntax-depth limit. Then connect `analysis.report`/`analysis.call` to
    the final typed observation and its `FirstArgument` range.
 
 The generated runtimeguard translation now includes the actual enqueue body and
 comparison and successor-state bodies. [Local proofs](WORKLIST.md) cover enqueue
-execution and pending-queue flags, comparison dispatch over represented operands,
-and feasible `if`-successor refinement. These are prerequisites; they do not cover the complete worklist or establish source
-metadata. The remaining bodies need translation, source comparison and axiom
-audits when proving them. An opaque function name is not an execution proof.
+execution and pending-queue flags, direct/wrapped comparison dispatch over
+represented operands, and complete successor-array traversal with nil-aware
+join/equality and valid queue/input metadata. These are prerequisites; they do
+not cover the outer solve/report worklist or establish source metadata. The
+remaining bodies need translation, source comparison and axiom audits when
+proving them. An opaque function name is not an execution proof.
 Only that composition, with the source-meaning boundary stated,
 can remove the checked-report premise for every admitted source. Arbitrary Go
 features remain a later scope.

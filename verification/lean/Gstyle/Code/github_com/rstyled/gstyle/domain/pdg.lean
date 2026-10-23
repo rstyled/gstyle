@@ -274,10 +274,6 @@ attribute [irreducible] validator.ty
 
 axiom attributeBuilder.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
-axiom NormalFlow.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
-axiom FlowBlock.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
 @[reducible] def Text.ty [FfiSyntax] [GoGlobalContext] : go.GoType :=
   _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text.ty
 
@@ -1021,31 +1017,107 @@ attribute [instance] attributeBuilder.TypeAssumptions.type_repr
   attributeBuilder.TypeAssumptions.underlying
   attributeBuilder.TypeAssumptions.isUnderlying
 
-axiom NormalFlow : Type
-axiom NormalFlow.zero_val : ZeroVal NormalFlow
-attribute [instance] NormalFlow.zero_val
+structure NormalFlow [FfiSyntax] where
+  mk ::
+  ExitContext' : Loc
+  Blocks' : GoSlice
+  Entry' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  ReadBindings' : w64
+
+instance NormalFlow.zero_val [FfiSyntax] : ZeroVal NormalFlow :=
+  ⟨NormalFlow.mk zeroValDef zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def NormalFlow.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"ExitContext" (go.GoType.PointerType NormalFlow.ty)),
+(go.field_decl.FieldDecl go!"Blocks" (go.GoType.SliceType FlowBlock.ty)),
+(go.field_decl.FieldDecl go!"Entry" Ref.ty),
+(go.field_decl.FieldDecl go!"ReadBindings" go.uint64)]
+
+@[irreducible] def NormalFlow.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  NormalFlow.fieldsUnsealed
+
+instance equals_unfold_NormalFlow [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold NormalFlow.fields NormalFlow.fieldsUnsealed :=
+  ⟨by unfold NormalFlow.fields; rfl⟩
+
+@[reducible] def NormalFlow.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType NormalFlow.fields)
 
 class NormalFlow.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying NormalFlow.underlying NormalFlow
   underlying : go.UnderlyingDirectedEq NormalFlow.ty NormalFlow.underlying
-  isUnderlying : go.IsUnderlying NormalFlow.underlying NormalFlow.underlying
+  layout : go.StructLayout NormalFlow [(go!"ExitContext", typeSize Loc, typeAlign Loc), (go!"Blocks", typeSize GoSlice, typeAlign GoSlice), (go!"Entry", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"ReadBindings", typeSize w64, typeAlign w64)]
+  get_ExitContext : ∀ (x : NormalFlow), go.IsGoStepPureDetTagged under (StructFieldGet NormalFlow.underlying go!"ExitContext") #x (Val #(x.ExitContext'))
+  set_ExitContext : ∀ (x : NormalFlow) (y : Loc), go.IsGoStepPureDetTagged under (StructFieldSet NormalFlow.underlying go!"ExitContext") (PairV #x #y) (Val #(({ x with ExitContext' := y } : NormalFlow)))
+  get_Blocks : ∀ (x : NormalFlow), go.IsGoStepPureDetTagged under (StructFieldGet NormalFlow.underlying go!"Blocks") #x (Val #(x.Blocks'))
+  set_Blocks : ∀ (x : NormalFlow) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet NormalFlow.underlying go!"Blocks") (PairV #x #y) (Val #(({ x with Blocks' := y } : NormalFlow)))
+  get_Entry : ∀ (x : NormalFlow), go.IsGoStepPureDetTagged under (StructFieldGet NormalFlow.underlying go!"Entry") #x (Val #(x.Entry'))
+  set_Entry : ∀ (x : NormalFlow) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet NormalFlow.underlying go!"Entry") (PairV #x #y) (Val #(({ x with Entry' := y } : NormalFlow)))
+  get_ReadBindings : ∀ (x : NormalFlow), go.IsGoStepPureDetTagged under (StructFieldGet NormalFlow.underlying go!"ReadBindings") #x (Val #(x.ReadBindings'))
+  set_ReadBindings : ∀ (x : NormalFlow) (y : w64), go.IsGoStepPureDetTagged under (StructFieldSet NormalFlow.underlying go!"ReadBindings") (PairV #x #y) (Val #(({ x with ReadBindings' := y } : NormalFlow)))
 
 attribute [instance] NormalFlow.TypeAssumptions.type_repr
   NormalFlow.TypeAssumptions.underlying
-  NormalFlow.TypeAssumptions.isUnderlying
+  NormalFlow.TypeAssumptions.layout
+  NormalFlow.TypeAssumptions.get_ExitContext
+  NormalFlow.TypeAssumptions.set_ExitContext
+  NormalFlow.TypeAssumptions.get_Blocks
+  NormalFlow.TypeAssumptions.set_Blocks
+  NormalFlow.TypeAssumptions.get_Entry
+  NormalFlow.TypeAssumptions.set_Entry
+  NormalFlow.TypeAssumptions.get_ReadBindings
+  NormalFlow.TypeAssumptions.set_ReadBindings
 
-axiom FlowBlock : Type
-axiom FlowBlock.zero_val : ZeroVal FlowBlock
-attribute [instance] FlowBlock.zero_val
+structure FlowBlock [FfiSyntax] where
+  mk ::
+  Operations' : GoSlice
+  Successors' : GoSlice
+  Condition' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Reachable' : Bool
+
+instance FlowBlock.zero_val [FfiSyntax] : ZeroVal FlowBlock :=
+  ⟨FlowBlock.mk zeroValDef zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def FlowBlock.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"Operations" (go.GoType.SliceType Ref.ty)),
+(go.field_decl.FieldDecl go!"Successors" (go.GoType.SliceType Ref.ty)),
+(go.field_decl.FieldDecl go!"Condition" Ref.ty),
+(go.field_decl.FieldDecl go!"Reachable" go.bool)]
+
+@[irreducible] def FlowBlock.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  FlowBlock.fieldsUnsealed
+
+instance equals_unfold_FlowBlock [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold FlowBlock.fields FlowBlock.fieldsUnsealed :=
+  ⟨by unfold FlowBlock.fields; rfl⟩
+
+@[reducible] def FlowBlock.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType FlowBlock.fields)
 
 class FlowBlock.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying FlowBlock.underlying FlowBlock
   underlying : go.UnderlyingDirectedEq FlowBlock.ty FlowBlock.underlying
-  isUnderlying : go.IsUnderlying FlowBlock.underlying FlowBlock.underlying
+  layout : go.StructLayout FlowBlock [(go!"Operations", typeSize GoSlice, typeAlign GoSlice), (go!"Successors", typeSize GoSlice, typeAlign GoSlice), (go!"Condition", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Reachable", typeSize Bool, typeAlign Bool)]
+  get_Operations : ∀ (x : FlowBlock), go.IsGoStepPureDetTagged under (StructFieldGet FlowBlock.underlying go!"Operations") #x (Val #(x.Operations'))
+  set_Operations : ∀ (x : FlowBlock) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet FlowBlock.underlying go!"Operations") (PairV #x #y) (Val #(({ x with Operations' := y } : FlowBlock)))
+  get_Successors : ∀ (x : FlowBlock), go.IsGoStepPureDetTagged under (StructFieldGet FlowBlock.underlying go!"Successors") #x (Val #(x.Successors'))
+  set_Successors : ∀ (x : FlowBlock) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet FlowBlock.underlying go!"Successors") (PairV #x #y) (Val #(({ x with Successors' := y } : FlowBlock)))
+  get_Condition : ∀ (x : FlowBlock), go.IsGoStepPureDetTagged under (StructFieldGet FlowBlock.underlying go!"Condition") #x (Val #(x.Condition'))
+  set_Condition : ∀ (x : FlowBlock) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet FlowBlock.underlying go!"Condition") (PairV #x #y) (Val #(({ x with Condition' := y } : FlowBlock)))
+  get_Reachable : ∀ (x : FlowBlock), go.IsGoStepPureDetTagged under (StructFieldGet FlowBlock.underlying go!"Reachable") #x (Val #(x.Reachable'))
+  set_Reachable : ∀ (x : FlowBlock) (y : Bool), go.IsGoStepPureDetTagged under (StructFieldSet FlowBlock.underlying go!"Reachable") (PairV #x #y) (Val #(({ x with Reachable' := y } : FlowBlock)))
 
 attribute [instance] FlowBlock.TypeAssumptions.type_repr
   FlowBlock.TypeAssumptions.underlying
-  FlowBlock.TypeAssumptions.isUnderlying
+  FlowBlock.TypeAssumptions.layout
+  FlowBlock.TypeAssumptions.get_Operations
+  FlowBlock.TypeAssumptions.set_Operations
+  FlowBlock.TypeAssumptions.get_Successors
+  FlowBlock.TypeAssumptions.set_Successors
+  FlowBlock.TypeAssumptions.get_Condition
+  FlowBlock.TypeAssumptions.set_Condition
+  FlowBlock.TypeAssumptions.get_Reachable
+  FlowBlock.TypeAssumptions.set_Reachable
 
 axiom Profile : Type
 axiom Profile.zero_val : ZeroVal Profile

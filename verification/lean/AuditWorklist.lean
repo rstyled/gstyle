@@ -1,5 +1,4 @@
-import Gstyle.Proof.Worklist.Successor
-import Gstyle.Proof.Worklist.Queue
+import Gstyle.Proof.Worklist.Traversal
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_enqueue
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.queueIndex_lt
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.queueIndex_injective
@@ -7,7 +6,6 @@ import Gstyle.Proof.Worklist.Queue
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.QueueInvariant.advance
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.QueueInvariant.exhausted
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_enqueue_invariant
-
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.exactComparisonResult_known
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.exactComparisonResult_truth
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_compareExactOrder
@@ -18,14 +16,39 @@ import Gstyle.Proof.Worklist.Queue
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.knownComparisonResult_no_false_rejection
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_knownComparison
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_knownComparison_sound
-#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_attrs_snapshot_full
-#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_attrs_snapshot
-
-
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.comparisonOperator_dispatch
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_knownBoolean_comparison
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_knownBoolean_comparison_sound
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.successorResult_feasible
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_successorState_zero
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_successorState_if_execution
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_successorState_if_feasible
-
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_successorState_if_sound
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.comparisonOperator_not_truth_test
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_successorState_direct_execution
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_successorState_direct_feasible
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_successorState_direct_sound
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.inputStatesOwn_length
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.inputStatesOwn_acc
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.joinedInput_valid
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.joinedInput_sound
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.inputEqual_of_same
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.inputEqual_changed_nil
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_join_input
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_equal_input
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.ComparisonEvidence.valid
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.DecisionEvidence.valid
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_decision
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.edgePrefix_step
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.WorkState.enqueue_shape
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.WorkState.enqueue_invariant
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.WorkState.edge_shape
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.WorkState.edge_queue_invariant
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.WorkState.edge_valid
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.edgePrefix_shape
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.edgePrefix_valid
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.edgePrefix_queue_invariant
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_successors
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_successors_invariant
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_attrs_snapshot_full
+#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_attrs_snapshot

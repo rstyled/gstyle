@@ -27,7 +27,7 @@ THEOREMS = {PREFIX + name for name in (
 )}
 ALLOWED_AXIOMS = {"propext", "Classical.choice", "Quot.sound"}
 PROOF_FAILURE_PREFIXES = (
-    "iapply: cannot apply ", "wp_apply: cannot apply ", "wp_apply: the goal ",
+    "iapply: cannot apply ", "iframe: cannot frame ", "wp_apply: cannot apply ", "wp_apply: the goal ",
     "iexists: cannot turn ",
     "Tactic `rewrite` failed: Did not find an occurrence of the pattern",
     "Tactic `rfl` failed: The left-hand side",
@@ -1151,14 +1151,26 @@ def worklist_profile():
     base = runtime_value_profile()
     proof = "Gstyle/Proof/Worklist/Queue.lean"
     enqueue = "Gstyle/Proof/Worklist/Enqueue.lean"
-    names = ("wp_enqueue", "queueIndex_lt", "queueIndex_injective", "QueueInvariant.enqueue",
-             "QueueInvariant.advance", "QueueInvariant.exhausted", "wp_enqueue_invariant",
-             "exactComparisonResult_known", "exactComparisonResult_truth", "wp_compareExactOrder",
-             "wp_compareExactIntegers", "exactValue_denotes", "knownComparisonResult_correct",
-             "knownComparisonResult_keeps_feasible", "knownComparisonResult_no_false_rejection",
-             "wp_knownComparison", "wp_knownComparison_sound", "wp_attrs_snapshot_full", "wp_attrs_snapshot",
-             "comparisonOperator_dispatch", "wp_knownBoolean_comparison", "wp_knownBoolean_comparison_sound",
-             "wp_successorState_zero", "wp_successorState_if_feasible", "wp_successorState_if_sound")
+    names = (
+        'wp_enqueue', 'queueIndex_lt', 'queueIndex_injective',
+        'QueueInvariant.enqueue', 'QueueInvariant.advance', 'QueueInvariant.exhausted',
+        'wp_enqueue_invariant', 'exactComparisonResult_known', 'exactComparisonResult_truth',
+        'wp_compareExactOrder', 'wp_compareExactIntegers', 'exactValue_denotes',
+        'knownComparisonResult_correct', 'knownComparisonResult_keeps_feasible', 'knownComparisonResult_no_false_rejection',
+        'wp_knownComparison', 'wp_knownComparison_sound', 'comparisonOperator_dispatch',
+        'wp_knownBoolean_comparison', 'wp_knownBoolean_comparison_sound', 'successorResult_feasible',
+        'wp_successorState_zero', 'wp_successorState_if_execution', 'wp_successorState_if_feasible',
+        'wp_successorState_if_sound', 'comparisonOperator_not_truth_test', 'wp_successorState_direct_execution',
+        'wp_successorState_direct_feasible', 'wp_successorState_direct_sound', 'inputStatesOwn_length',
+        'inputStatesOwn_acc', 'joinedInput_valid', 'joinedInput_sound',
+        'inputEqual_of_same', 'inputEqual_changed_nil', 'wp_join_input',
+        'wp_equal_input', 'ComparisonEvidence.valid', 'DecisionEvidence.valid',
+        'wp_decision', 'edgePrefix_step', 'WorkState.enqueue_shape',
+        'WorkState.enqueue_invariant', 'WorkState.edge_shape', 'WorkState.edge_queue_invariant',
+        'WorkState.edge_valid', 'edgePrefix_shape', 'edgePrefix_valid',
+        'edgePrefix_queue_invariant', 'wp_successors', 'wp_successors_invariant',
+        'wp_attrs_snapshot_full', 'wp_attrs_snapshot',
+    )
     changes = {
         "enqueue-ignores-mark": ("if a.queued[ref-1] {", "if false {"),
         "enqueue-inverts-mark": ("if a.queued[ref-1] {", "if !a.queued[ref-1] {"),
@@ -1188,22 +1200,38 @@ def worklist_profile():
         "successor-drops-unconditional-state": ("if condition == 0 {\n\t\treturn state", "if condition == 0 {\n\t\treturn nil", comparison_source),
         "snapshot-wrong-construct": ('Construct: a.Construct, WriteForm: a.WriteForm, Description: a.Description,\n\t\tPosition: a.Position, CallForm: a.CallForm, ExitKind: a.ExitKind,\n\t\tExtensions: listAt', 'Construct: a.WriteForm, WriteForm: a.WriteForm, Description: a.Description,\n\t\tPosition: a.Position, CallForm: a.CallForm, ExitKind: a.ExitKind,\n\t\tExtensions: listAt', "domain/pdg/attributes.go"),
     })
+    changes.update({
+        "successor-confuses-truth-test": ('== "truth-test"', '== "<"', comparison_source),
+        "successor-pruning-keeps-state": ('known && value != truth {\n\t\treturn nil', 'known && value != truth {\n\t\treturn state', comparison_source),
+        "inputs-corrupts-neighbor": ("inputStatesOwn (pointers.set index next) (models.set index value))", "inputStatesOwn (pointers.set (index + 1) next) (models.set index value))", "verification/lean/Gstyle/Proof/Worklist/Inputs.lean"),
+        "traversal-aliases-branch": ("branch := copyState(state)", "branch := state"),
+        "traversal-inverts-outcome": ("successorState(block.Condition, outcome == 0, branch)", "successorState(block.Condition, outcome != 0, branch)"),
+        "traversal-keeps-nil": ("if branch == nil {", "if false {"),
+        "traversal-joins-wrong-state": ("a.view.join(a.inputs[next-1], branch)", "a.view.join(a.inputs[next-1], state)"),
+        "traversal-confuses-nil-empty": ("equalState(a.inputs[next-1], joined) && a.inputs[next-1] != nil", "equalState(a.inputs[next-1], joined)"),
+        "traversal-requeues-equal-input": ("if equalState(a.inputs[next-1], joined) && a.inputs[next-1] != nil {", "if false {"),
+        "traversal-wrong-input-slot": ("a.inputs[next-1] = joined", "a.inputs[ref-1] = joined"),
+        "traversal-loses-joined-input": ("a.inputs[next-1] = joined", "_ = joined"),
+        "traversal-drops-enqueue": ("a.enqueue(next)", "_ = next"),
+    })
     modules = {name: proof if name.startswith("queue-") else enqueue for name in changes}
     modules.update({name: "Gstyle/Proof/Worklist/ExactComparison.lean" for name in changes if name.startswith("exact-")})
     modules.update({name: "Gstyle/Proof/Worklist/KnownComparison.lean" for name in changes if name.startswith("known-")})
     modules.update({name: "Gstyle/Proof/Worklist/KnownBoolean.lean" for name in changes if name.startswith("boolean-")})
     modules.update({name: "Gstyle/Proof/Worklist/Successor.lean" for name in changes if name.startswith("successor-")})
     modules["snapshot-wrong-construct"] = "Gstyle/Proof/Pdg/Attributes.lean"
+    modules.update({name: "Gstyle/Proof/Worklist/Traversal.lean" for name in changes if name.startswith("traversal-")})
+    modules["inputs-corrupts-neighbor"] = "Gstyle/Proof/Worklist/Inputs.lean"
     sources = tuple(PROJECT / "Gstyle/Proof/Worklist" / (name + ".lean")
-                    for name in ("Layout", "Enqueue", "Queue", "ExactComparison", "KnownComparison", "KnownBoolean", "Successor"))
+                    for name in ('Layout', 'Enqueue', 'Queue', 'ExactComparison', 'KnownComparison', 'KnownBoolean', 'Successor', 'FlowLayout', 'Inputs', 'InputJoin', 'Decision', 'StepModel', 'Traversal'))
     return replace(base, report=ROOT / "dist/verification/worklist", source=ROOT / "domain/runtimeguard/flow.go",
                    sources=base.sources + sources + (PROJECT / "Gstyle/Proof/Transfer/FactSnapshot.lean",
                                                      PROJECT / "Gstyle/Proof/Pdg/GraphLayout.lean"),
                    theorems={"Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name for name in names},
                    mutations=changes, audit="AuditWorklist.lean", proof_file=proof,
                    mutation_modules=modules,
-                   verified="actual enqueue preserves pending-suffix flags; comparison dispatch and feasible if-successors compose with interval refinement",
-                   unverified=("complete transfer and successor traversal", "whole solve/report composition and termination",
+                   verified="actual ordered successor traversal composes copy, comparison/refinement, nil-aware join, equality and enqueue; input ownership and queue invariants are preserved",
+                   unverified=("complete transfer/block execution", "whole solve/report composition and termination",
                                "source-to-CFG correspondence and metadata construction", "package initialization and resource exhaustion"))
 
 

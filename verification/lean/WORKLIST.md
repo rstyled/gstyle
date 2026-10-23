@@ -1,69 +1,92 @@
 # Production worklist proof components
 
-`make verify-worklist` checks selected production bodies against regenerated
-Goose code, audits the named Lean theorems, and runs deliberate source faults.
-This is component verification. The complete source-to-range theorem remains
-unfinished; see [BRANCHES.md](BRANCHES.md).
+`make verify-worklist` regenerates the selected production translation, checks
+source identity and pinned dependencies, audits 53 named theorems, and runs 32
+fault controls. CI splits those controls into two shards. This is component
+verification. The unconditional source-to-range theorem remains unfinished;
+see [BRANCHES.md](BRANCHES.md).
 
-## Current contracts
+## Execution covered
 
-- `Layout.lean` uses the concrete production `analysis` record. Its queue, input
-  state slice and graph-view pointer are not replaced by an opaque layout axiom.
-- `Enqueue.lean` executes `analysis.enqueue`. A marked reference leaves all owned
-  resources unchanged. An unmarked reference sets exactly its flag and appends
-  exactly one reference. The input-state slice and graph-view pointer remain
-  unchanged. Valid, positive one-based references and sufficient slice ownership
-  are explicit premises.
-- `Queue.lean` relates true flags to membership in the unprocessed queue suffix.
-  It proves valid references and uniqueness in that suffix, enqueue preservation,
-  cursor advancement with the current flag cleared, and exhaustion. A processed
-  reference can be queued again. `wp_enqueue_invariant` composes the actual
-  enqueue execution with this invariant.
-- `ExactComparison.lean` executes both signed comparison helpers over all 64-bit
-  words. It proves their returned value and known flag match the mathematical
-  integer relation. Unknown operators do not become known.
-- `KnownComparison.lean` executes operand lookup, both production value queries,
-  singleton checks and exact comparison. It proves that represented concrete
-  operand values cannot cause a feasible edge to be rejected. Operand evaluation
-  derivations are discharged with the existing source-bound value proof; there
-  is no assumed child execution callback.
-- `KnownBoolean.lean` executes the actual comparison dispatcher. It excludes
-  boolean-literal and recursive logical cases using explicit snapshot facts, then
-  calls the proved comparison implementation. Its sound wrapper preserves the
-  no-false-rejection result.
-- `Successor.lean` proves that a zero condition preserves the state. For an `if`
-  decision with a feasible comparison, it executes condition selection, the known
-  boolean guard, and the actual finite `assume` derivation. Its sound wrapper
-  composes this execution with `finiteAssume_sound`. It does not assume a child
-  execution callback or report result. It still requires the metadata and meaning
-  premises listed below; it does not prove the successor-list loop.
-- `FactSnapshot.lean` now also returns equality for the full expanded attributes
-  record. The existing operator/callee contract follows from this stronger
-  result. The contract exposes scalar fields and row handles; it does not assert
-  that producer metadata has the correct source meaning.
+- `Layout.lean` and `FlowLayout.lean` use concrete `analysis`, `NormalFlow` and
+  `FlowBlock` records. Their layouts are not replaced with opaque record axioms.
+- `Enqueue.lean` executes `analysis.enqueue`. A marked reference is a no-op; an
+  unmarked reference sets exactly its flag and appends exactly one reference.
+  Inputs and the view pointer stay unchanged. `Queue.lean` composes this with
+  valid references, uniqueness and flags for the unprocessed suffix. Processing
+  clears a flag; a reference can later be queued again.
+- `ExactComparison.lean`, `KnownComparison.lean` and `KnownBoolean.lean` execute
+  signed comparisons, both operand/value queries, singleton guards and actual
+  comparison dispatch. All signed 64-bit words are covered. Unknown operators
+  remain unknown. Represented operands cannot cause a feasible edge to be pruned.
+- `Successor.lean` executes zero conditions, direct comparisons and `if` wrappers.
+  Its general contracts include both rejected and retained edges. Feasible-edge
+  and interval-soundness contracts follow from them and the existing finite
+  `assume` proof. `Decision.lean` composes these cases from snapshot and finite
+  execution data; it does not assume a child Hoare triple or a sound report.
+- `Inputs.lean` preserves ownership of every other slot when one input changes.
+  `InputJoin.lean` executes join and equality with Go's nil/empty-map behavior.
+  A nil input is unreachable; a reachable empty map is a different state. The
+  joined contents preserve incoming ranges and valid metadata.
+- `StepModel.lean` records exact input contents, flags and queue after each edge.
+  `Traversal.lean` proves the actual complete `analysis.successors` array loop
+  follows those prefixes: copy the source map, refine using outcome zero as
+  true, skip rejected branches, join, skip equal reachable inputs, replace a
+  changed input and call actual enqueue. The original source map is preserved.
+  `wp_successors_invariant` composes that execution with valid input metadata
+  and the pending-suffix queue invariant. It does not prove the outer solve loop.
+- `FactSnapshot.lean` returns equality of the full expanded attributes record.
+  This exposes scalar fields and row handles without asserting their source
+  meaning. The existing operator/callee contract follows from that equality.
 
-The comparison contracts require valid immutable graph snapshots, supported
-value-evaluation derivations, represented concrete values and the existing
-`ParseInt` boundary. These premises still need to follow from the source and
-worklist invariant in the final composition. Queue flags alone do not establish
-range soundness, convergence or report correctness.
+The loop proof ranges over every finite successor list with valid references.
+It is not finite program enumeration. Package initialization, the pinned
+64-bit Go semantics, allocation/resource limits and operational adequacy remain
+explicit boundaries. Hoare execution proofs are not a new total-correctness
+adequacy theorem for official Go.
+
+## Premises still to establish
+
+The contracts require valid immutable snapshots, valid input metadata, supported
+value/assume derivations, operator tables and the existing ParseInt boundary.
+Semantic refinement also requires represented concrete values and correct
+snapshot meaning. These premises must follow from admitted source lowering and
+the outer worklist invariant in the final theorem. They are not established by
+queue flags alone.
+
+Complete transfer/block execution, solve invariants and termination, report
+projection, source lowering and producer metadata construction remain open.
+Other decision forms and arbitrary Go features are outside this checkpoint.
+A successful structural report check remains separate from these obligations.
 
 ## Fault controls
 
-Queue faults ignore or invert the flag guard, lose the flag write, append the
-wrong reference, duplicate a reference, overwrite the input-state slice, or
-retain the processed flag when advancing the cursor.
+Controls alter queue guards, flags, references and input fields; signed versus
+unsigned comparison; known flags and operand selection; boolean facts and
+comparison dispatch; condition extraction, truth-test dispatch, pruning and
+refinement; attribute construction; and input-slot ownership.
 
-Comparison faults reverse signed ordering, use unsigned ordering, mark an
-unknown operator as known, use the left operand twice, or allow one non-singleton
-operand. Dispatcher faults query the wrong fact, select the wrong comparison
-reference, or forge a known false result. Successor faults select the wrong
-condition operand, invert pruning, skip refinement, or discard the unconditional
-state. An attribute fault substitutes the write-form handle for the construct
-handle. Each fault must fail in its affected proof. Compiler, setup and type
-failures do not count as proof rejection.
+Traversal faults alias the source map instead of copying it, invert the edge
+outcome, retain a rejected edge, join the wrong state, confuse nil with empty,
+requeue an equal reachable input, store to the wrong slot, omit the input write,
+or omit enqueue. Each must fail in its affected proof. Compiler, setup, syntax,
+type and unrelated proof failures do not count as successful rejection.
 
-No production Go behavior, trusted axiom or dependency is added by these proofs.
-Package initialization, memory/resource exhaustion and Go operational adequacy
-remain stated boundaries. Other successor forms, transfer, complete successor
-and worklist traversal, report projection and source lowering remain open.
+## Refactoring boundary
+
+No production architecture change or state-machine dependency is required for
+this coverage. Keep three layers separate:
+
+1. Source/report contracts and independent corpus checks describe externally
+   visible behavior. Preserve these tests through internal refactors.
+2. Interval, comparison, join, branch and queue laws describe reusable meaning.
+   A change of internal structure does not by itself invalidate these laws.
+3. Source-bound execution bridges connect current Go bodies to those contracts.
+   Regenerate and repair the bridges whose implementation changes. CI must reject
+   stale translation; bypassing source identity is not a refactoring strategy.
+
+An implementation change can require bridge proof updates. It should not require
+restarting the independent corpus, range algebra or public behavior contract.
+Each checkpoint keeps the working proofs, commands, fault controls and open
+boundary in the repository so work can stop and resume without an architecture
+rewrite.

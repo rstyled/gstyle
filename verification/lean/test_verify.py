@@ -70,6 +70,15 @@ class VerificationGuardTests(unittest.TestCase):
             with self.subTest(output=output):
                 self.assertFalse(verify.proof_rejected(output, proof))
 
+    def test_spatial_frame_failure_is_named_and_excludes_setup_errors(self):
+        proof = "Gstyle/Proof/Worklist/Inputs.lean"
+        failure = f"error: {proof}:58:8: iframe: cannot frame ownsBranch value next\n"
+        self.assertTrue(verify.proof_rejected(failure + "error: build failed\n", proof))
+        self.assertFalse(verify.proof_rejected(failure, "Gstyle/Proof/Worklist/Traversal.lean"))
+        for unrelated in ("Type mismatch", "failed to synthesize instance of type class", "unknown module prefix"):
+            with self.subTest(unrelated=unrelated):
+                self.assertFalse(verify.proof_rejected(failure + f"error: {proof}:59:0: {unrelated}\n", proof))
+
     def test_missing_module_in_proof_file_aborts_run(self):
         proof = "Gstyle/Proof/Queries.lean"
         result = SimpleNamespace(returncode=1, stdout=f"error: {proof}:2:0: unknown module prefix 'Gstyle.GeneratedProof'\n", stderr="")
@@ -232,7 +241,7 @@ class VerificationGuardTests(unittest.TestCase):
                                (verify.one_sided_profile, 1),
                                (verify.shared_flow_profile, 1),
                                (verify.assume_profile, 1),
-                               (verify.worklist_profile, 1)):
+                               (verify.worklist_profile, 2)):
             mutations = factory().mutations
             selected = [name for index in range(count)
                         for name in verify.shard_mutations(mutations, (index, count))]

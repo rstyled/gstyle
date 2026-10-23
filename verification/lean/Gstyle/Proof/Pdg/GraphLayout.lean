@@ -536,6 +536,14 @@ instance Graph_access_load_Nodes (l : Loc) (v : github_com.rstyled.gstyle.domain
  by
   solve_pointsto_access_struct
 
+instance Graph_access_load_ValueFlow (l : Loc) (v : github_com.rstyled.gstyle.domain.pdg.Graph) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Graph go!"ValueFlow" l) v.ValueFlow' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Graph go!"ValueFlow" l) v.ValueFlow' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
 end def_
 end Graph
 end github_com.rstyled.gstyle.domain.pdg

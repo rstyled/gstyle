@@ -18,9 +18,9 @@ reports. Run `make verify-branches`; this remains checked-result validation, not
 an unconditional implementation theorem for the production worklist.
 
 [Worklist components](WORKLIST.md) cover actual enqueue execution, pending-queue
-flags, signed comparison dispatch and feasible `if`-successor refinement. Run
-`make verify-worklist` for their source binding, axiom audit and fault controls.
-Complete traversal and source lowering remain open.
+flags, direct/wrapped comparison dispatch and the complete production successor
+array traversal. Run `make verify-worklist` for source binding, axiom audits and
+fault controls. Outer solve/report composition and source lowering remain open.
 
 ## Function-length profile
 
