@@ -17,17 +17,10 @@ for every finite branch tree and connects it to supplied-source production
 reports. Run `make verify-branches`; this remains checked-result validation, not
 an unconditional implementation theorem for the production worklist.
 
-[Worklist components](WORKLIST.md) cover actual enqueue execution, pending-queue
-flags, direct/wrapped comparison dispatch and the complete production successor
-array traversal. Run `make verify-worklist` for source binding, axiom audits and
-fault controls. Scalar transfer and the actual solver-mode block loop are also
-proved; their source metadata and standard-library premises remain explicit.
-Outer solve/report composition and source lowering remain open.
-
-[Scalar flow meaning](SCALAR_FLOW.md) composes scalar identity, metadata and
-concrete range meaning with the actual block and successor loops. Run
-`make verify-scalar-flow`; source meaning and the outer solve/report connection
-remain open.
+[Production worklist proofs](WORKLIST.md) cover actual queue, comparison, scalar
+transfer, block, successor and post-constructor solver execution, plus range
+meaning and acyclic progress. The three commands, controls and exact open
+source/constructor/report boundary are documented together there.
 
 ## Function-length profile
 
@@ -47,11 +40,6 @@ threshold comparison.
 The specification assumes spans arrive in source order, with the next start at
 or after the preceding span's last line. The counter checks this at runtime.
 Invalid spans fail source extraction instead of producing a clean report.
-
-[The actual solver cursor loop](SOLVER_LOOP.md) adds post-constructor execution,
-input preservation and acyclic weighted progress. `make verify-solver` checks
-35 theorem audits and five Go faults. Constructor/source data formation and
-final report projection remain open.
 
 ## Scope and trust
 

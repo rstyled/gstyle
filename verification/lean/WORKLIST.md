@@ -1,133 +1,151 @@
-# Production worklist proof components
+# Production worklist proofs
 
-`make verify-worklist` regenerates the selected production translation, checks
-source identity and pinned dependencies, audits 67 named theorems, and runs 44
-fault controls. CI splits those controls into two shards. This is component
-verification. The unconditional source-to-range theorem remains unfinished;
-see [BRANCHES.md](BRANCHES.md).
+These are source-bound component proofs. The unconditional source-to-report
+implementation theorem remains **open**. [BRANCHES.md](BRANCHES.md) describes the
+separate structural report checker; its success premise is not an implementation
+correctness proof.
 
-## Execution covered
+## Run and audit
 
-- `Layout.lean` and `FlowLayout.lean` use concrete `analysis`, `NormalFlow` and
-  `FlowBlock` records. Their layouts are not replaced with opaque record axioms.
-- `Enqueue.lean` executes `analysis.enqueue`. A marked reference is a no-op; an
-  unmarked reference sets exactly its flag and appends exactly one reference.
-  Inputs and the view pointer stay unchanged. `Queue.lean` composes this with
-  valid references, uniqueness and flags for the unprocessed suffix. Processing
-  clears a flag; a reference can later be queued again.
-- `ExactComparison.lean`, `KnownComparison.lean` and `KnownBoolean.lean` execute
-  signed comparisons, both operand/value queries, singleton guards and actual
-  comparison dispatch. All signed 64-bit words are covered. Unknown operators
-  remain unknown. Represented operands cannot cause a feasible edge to be pruned.
-- `Successor.lean` executes zero conditions, direct comparisons and `if` wrappers.
-  Its general contracts include both rejected and retained edges. Feasible-edge
-  and interval-soundness contracts follow from them and the existing finite
-  `assume` proof. `Decision.lean` composes these cases from snapshot and finite
-  execution data; it does not assume a child Hoare triple or a sound report.
-- `Inputs.lean` preserves ownership of every other slot when one input changes.
-  `InputJoin.lean` executes join and equality with Go's nil/empty-map behavior.
-  A nil input is unreachable; a reachable empty map is a different state. The
-  joined contents preserve incoming ranges and valid metadata.
-- `StepModel.lean` records exact input contents, flags and queue after each edge.
-  `Traversal.lean` proves the actual complete `analysis.successors` array loop
-  follows those prefixes: copy the source map, refine using outcome zero as
-  true, skip rejected branches, join, skip equal reachable inputs, replace a
-  changed input and call actual enqueue. The original source map is preserved.
-  `wp_successors_invariant` composes that execution with valid input metadata
-  and the pending-suffix queue invariant. It does not prove the outer solve loop.
-- `ScalarGuards.lean` executes the scalar paths of `incrementValue`,
-  `interfaceAssignment` and `rangeWrite`. `ScalarTransfer.lean` executes actual
-  `analysis.transfer` for a no-write operation or one tracked signed write.
-  It calls real field invalidation, evaluates the selected RHS, clears `Guarded`,
-  executes the helper guards and stores the exact target. Other map entries
-  remain unchanged. Assignment contracts accept read-only metadata ownership;
-  their state-map ownership stays exclusive.
-- `ScalarBlock.lean` proves the entire actual `analysis.block` loop in solver
-  mode (`report == nil`). It composes those steps for any finite operation list,
-  preserving the scalar-state invariant and exact resulting map. `ScalarStep`
-  and `ScalarExecution` contain metadata and finite value-evaluation derivations,
-  not assumed child Hoare triples or a successful checker/report premise.
-  `scalar_store_sound` preserves the numeric meaning under a concrete assignment;
-  `scalar_store_valid` preserves the metadata required by successor traversal.
-- `FactSnapshot.lean` returns equality of the full expanded attributes record.
-  This exposes scalar fields and row handles without asserting their source
-  meaning. The existing operator/callee contract follows from that equality.
+| Command | Named axiom audits | Fault controls | Scope |
+| --- | ---: | ---: | --- |
+| `make verify-worklist` | 67 | 44 | Queue, decisions, scalar transfer, block and successor execution |
+| `make verify-scalar-flow` | 38 | 6 | Scalar identity, metadata and concrete range meaning |
+| `make verify-solver` | 35 | 5 | Actual post-constructor cursor loop and acyclic progress |
 
-The loop proof ranges over every finite successor list with valid references.
-It is not finite program enumeration. Package initialization, the pinned
-64-bit Go semantics, allocation/resource limits and operational adequacy remain
-explicit boundaries. Hoare execution proofs are not a new total-correctness
-adequacy theorem for official Go.
+Each profile checks pinned dependencies, regenerates and compares the selected
+production translation, binds its sources and audits the named theorems. CI
+splits the worklist controls into two shards. A fresh combined run can execute
+all 55 controls and audit all 140 names; collecting old success reports is not a
+combined execution. `make verify-branches` separately checks supplied-source
+report integration and its eight controls.
 
-## Premises still to establish
+## Execution and meaning covered
 
-The contracts require valid immutable snapshots, valid input metadata, supported
-value/assume derivations, operator tables and the existing ParseInt boundary.
-Semantic refinement also requires represented concrete values and correct
-snapshot meaning. These premises must follow from admitted source lowering and
-the outer worklist invariant in the final theorem. They are not established by
-queue flags alone.
+- `Layout` and `FlowLayout` provide concrete `analysis`, `NormalFlow` and
+  `FlowBlock` layouts, not opaque record axioms. `FactSnapshot` proves equality
+  of the full expanded attributes record, without asserting its source meaning.
+- `Enqueue` executes actual `analysis.enqueue`: an existing pending flag is a
+  no-op; otherwise exactly one flag is set and one reference appended. Inputs
+  and the view pointer stay unchanged. `Queue` proves valid references,
+  uniqueness and flags for the pending suffix. A processed reference can be
+  queued again after its flag is cleared.
+- `KnownComparison` includes signed exact comparison and actual `knownBoolean`
+  dispatch. Unknown operators stay unknown. Represented operands cannot prune a
+  feasible edge. `Successor` and `Decision` compose zero conditions, direct
+  comparisons and `if` wrappers with finite numeric `assume` execution. Their
+  contracts cover both retained and rejected edges.
+- `Inputs` preserves other input slots. `InputJoin` executes join and equality,
+  distinguishing nil (unreachable) from a reachable empty map. `StepModel` and
+  `Traversal` prove the entire actual `analysis.successors` array loop: copy the
+  source, refine with outcome zero as true, skip rejected edges, join, skip equal
+  reachable inputs, store changed inputs and enqueue. Source contents remain
+  unchanged. Prefix laws cover every finite successor list, including repeats.
+- `ScalarTransfer` executes scalar `incrementValue`, `interfaceAssignment` and
+  `rangeWrite`. It also executes actual `analysis.transfer` for no
+  writes or one tracked signed write. It invalidates fields, evaluates the
+  selected RHS, clears `Guarded`, runs the guards and stores the exact target.
+  Other entries stay unchanged. `ScalarBlock` executes the complete solver-mode
+  block loop (`report == nil`) for every finite operation list.
+- `ValueDerivation` derives finite resolver fuel and result identity from
+  `ValueEvaluation`; there is no fixed expression-depth cap. `ScalarRefinement`
+  proves that numeric constraints, finite `assume` and joins preserve scalar
+  identity. Non-pointer kind premises exclude missing pointer defaults.
+- `ScalarBlockMeaning` composes primitive value facts and concrete environment
+  updates with actual block execution in `wp_block_scalar_sound`. It proves
+  scalar identity, metadata and range meaning together. `ScalarDecision` proves
+  feasible-edge coverage; `InputCoverage` preserves earlier environments even
+  with repeated targets. `wp_successors_scalar_sound` composes these laws with
+  the actual successor loop, covering every feasible outgoing edge.
 
-The scalar transfer proof also takes `parseEmptyUint32Contract`: actual
-`strconv.ParseUint("", 10, 32)` returns a non-nil error. This is an explicit,
-unproved standard-library execution premise, not an asserted axiom. The pinned
-Perennial translation names this function but has no body/specification for it.
-The inspected Go 1.27 implementation forwards parsing to `internal/strconv` and
-wraps its errors. This checkpoint does not prove those implementations. The
-premise applies only to absent range metadata; it grants no behavior on other
-strings. It is visible in `wp_rangeWrite_scalar`, scalar transfer and block
-signatures. The existing ParseInt execution boundary remains separate.
+These contracts use primitive metadata and finite operation/value/branch
+execution derivations. They do not store child Hoare triples, assumed child or
+report soundness, or a successful report-checking premise.
 
-The [solver-loop profile](SOLVER_LOOP.md) now composes the actual post-constructor
-cursor initializer and loop with scalar/metadata invariants, prior input coverage
-and weighted acyclic progress. Initial construction, source data/rank establishment,
-full source-path meaning, non-scalar/multiple writes, non-nil-report block execution,
-report projection and source lowering remain open. In particular, lowering must establish that admitted
-operations have zero writes or the supported single signed write, absent step
-and range metadata, correct operand edges and scalar value derivations. These
-facts are not established merely by naming a `ScalarWriteSite`. The [scalar-flow profile](SCALAR_FLOW.md) now establishes scalar identities and
-concrete meaning through finite numeric refinement, joins and the actual block
-and successor bodies. The post-constructor solver now composes these execution invariants. The final
-theorem still must establish their source premises and complete constructor/report
-execution.
-Other decision forms and arbitrary Go features are outside this checkpoint.
-A successful structural report check remains separate from these obligations.
+## Actual post-constructor solver
 
-## Fault controls
+`SolveSyntax` selects the real cursor initializer and lexical tail of `solve`
+from the production translation. Kernel-checked shape and initializer contracts
+reject a missing selection or a changed start; opaque library values are leaves
+of syntax selection. No copied replacement loop is supplied.
 
-Controls alter queue guards, flags, references and input fields; signed versus
-unsigned comparison; known flags and operand selection; boolean facts and
-comparison dispatch; condition extraction, truth-test dispatch, pruning and
-refinement; attribute construction; and input-slot ownership.
+`wp_solve_cursor` starts **after** `newGraphView`, allocation, initial input
+construction and entry enqueue. It requires ownership of the snapshot, block
+rows, maps, flags, queue and local locations. The actual loop reads a queue
+reference, clears its flag, copies its input, calls the proved scalar block and
+complete successor traversal, then advances the cursor. Block/transfer contracts
+preserve the original receiver permission, including exclusive ownership. State
+maps stay exclusive.
 
-Traversal faults alias the source map instead of copying it, invert the edge
-outcome, retain a rejected edge, join the wrong state, confuse nil with empty,
-requeue an equal reachable input, store to the wrong slot, omit the input write,
-or omit enqueue. Each must fail in its affected proof. Compiler, setup, syntax,
-type and unrelated proof failures do not count as successful rejection.
+The result owns the exact final worklist, preserves scalar identities and
+kind/stability metadata, and retains every environment represented in prior
+inputs. Queue exhaustion implies no pending flag remains. This does not show
+that all source-level reachable environments entered those inputs.
 
-Scalar faults change the selected RHS, skip RHS evaluation, retain `Guarded`,
-invert tracking, change the target, omit assignment, discard scalar fallback or
-interface values, or invert the range-parser error guard. Block faults omit a
-transfer, use the wrong operation reference or pass the wrong state. Each runs
-against the source-bound execution theorem for that body; deliberate faults are
-not claims that those defects existed in production.
+`SolveModel` contains FIFO execution evidence and its progress laws.
+`reachableQueue` requires a non-nil input for every queued reference; flags alone
+do not imply this. Enqueue, edge, prefix and trace laws preserve it.
+`solverDataComplete_terminal` shows the data-completeness premise is satisfiable
+for every admissible terminal empty-block state; it is not source correctness.
 
-## Refactoring boundary
+An acyclic block weight exceeds the sum of all successor weights. Processing
+removes that larger weight and can append at most the successor total, so each
+step strictly decreases pending weight despite repeats or skipped enqueue.
+`solverExecution_exists` derives finite execution by well-founded recursion from
+this budget and `SolverDataComplete`. The latter requires primitive execution
+data for each pending valid scalar state with reachable inputs. Neither that
+data nor the rank has yet been established from source.
 
-No production architecture change or state-machine dependency is required for
-this coverage. Keep three layers separate:
+`wp_solve_cursor_ranked` composes this existence result with actual execution; it
+does not assume a supplied finite trace. Its explicit resource premise bounds
+final queue lengths to the pinned signed cursor representation. The ranking
+rules out infinite supported solver transitions. Iris WP alone is not an
+allocation or official-Go total-correctness theorem.
 
-1. Source/report contracts and independent corpus checks describe externally
-   visible behavior. Preserve these tests through internal refactors.
-2. Interval, comparison, join, branch and queue laws describe reusable meaning.
-   A change of internal structure does not by itself invalidate these laws.
-3. Source-bound execution bridges connect current Go bodies to those contracts.
-   Regenerate and repair the bridges whose implementation changes. CI must reject
-   stale translation; bypassing source identity is not a refactoring strategy.
+## Open source-to-report boundary
 
-An implementation change can require bridge proof updates. It should not require
-restarting the independent corpus, range algebra or public behavior contract.
-Each checkpoint keeps the working proofs, commands, fault controls and open
-boundary in the repository so work can stop and resume without an architecture
-rewrite.
+1. Execute `newGraphView`, producer/snapshot metadata and initial maps, queue and
+   entry enqueue.
+2. Establish scalar write sites, finite value/branch derivations, operator
+   tables, metadata agreement and complete execution data from actual admitted
+   source lowering. Prove its acyclic rank and signed-word domain facts.
+3. Carry full source-path concrete meaning through the constructed solver, then
+   execute non-nil report mode and final `analysis.report`/`analysis.call`
+   projection.
+
+`ScalarMeaning`, `ScalarMeaningExecution`, `ScalarWriteSite` and
+`metadataAgreement` name explicit primitive evidence. Constructing these records
+does not prove the extractor produces it. Supported writes require zero writes
+or one tracked signed write, absent step/range metadata, correct operand edges
+and scalar value derivations. Non-scalar/multiple writes and arbitrary Go
+features remain outside this checkpoint.
+
+`parseInt64Contract` and `parseEmptyUint32Contract` are unproved standard-library
+execution parameters. The latter says only that `strconv.ParseUint("", 10, 32)`
+returns an error; the pinned translation has no proved body/specification for
+it. This premise is visible in scalar range/transfer/block contracts. Parser and
+compiler adequacy, pinned 64-bit Go semantics, package initialization and resource
+limits remain trust boundaries. Axiom audits do not discharge theorem premises.
+No `sorry`, new trusted axiom, native proof shortcut, precision weakening or
+production rewrite fills these gaps.
+
+## Independent controls and refactors
+
+The 44 worklist faults exercise queue flags/references, signed comparisons,
+operand/condition/boolean dispatch, refinement, attribute and slot ownership,
+copy/join/nil/equality/store/enqueue, scalar RHS/tracking/target/guards and block
+operation traversal. The six scalar-flow faults forge identities, join against
+the wrong map, invert edge truth or select the wrong wrapper condition. The five
+solver faults change cursor start, retain a dequeued flag, lose input, skip the
+block or stop cursor progress.
+
+Each must fail its named proof. Go overlays are independently compiled before
+new-control preflight. Compiler, setup, syntax, type, ambiguous-name and unrelated
+module errors do not count as logical rejection. These faults are deliberate
+controls, not discovered production defects; the strict failure filter remains.
+
+Keep external source/report tests, reusable algebra/queue/range laws, and
+source-bound execution bridges separate through refactors. Regenerate and repair
+the affected bridges when Go changes; CI rejects stale translations. Internal
+changes need not restart the independent corpus or range algebra. Coverage
+requires no architecture rewrite or state-machine dependency.

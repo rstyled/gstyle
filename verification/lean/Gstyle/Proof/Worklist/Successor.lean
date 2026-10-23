@@ -1,5 +1,5 @@
 module
-public import Gstyle.Proof.Worklist.KnownBoolean
+public import Gstyle.Proof.Worklist.KnownComparison
 public import Gstyle.Proof.Transfer.Assume
 @[expose] public section
 noncomputable section
@@ -84,7 +84,8 @@ theorem wp_successorState_zero (receiver : Loc) (s : QuerySnapshot) (truth : Boo
   wp_end
   all_goals iframe Hsnapshot Hstate
 
-theorem wp_successorState_if_execution (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
+section wrappedComparison
+variable (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
     (sf : Nat) (ref left right : w32) (row : GoArray w32 2) (op : GoString) (lv rv : Value)
     (decision : w32) (decisionRow : GoArray w32 2)
     (hdecision : validSymbolRef s decision)
@@ -104,6 +105,11 @@ theorem wp_successorState_if_execution (receiver : Loc) (s : QuerySnapshot) (sta
     (wf : ValueSnapshotValid s)
     (hparse : parseInt64Contract (GF := GF))
     (leftEvaluation : ValueEvaluation s m sf left lv) (rightEvaluation : ValueEvaluation s m sf right rv)
+include receiver s state m sf ref left right row op lv rv decision decisionRow hdecision hdref hdrow hdchild
+include hconstruct href hrow hleft hright hvalid halloc htrue hfalse hop hcomparison wf hparse
+include leftEvaluation rightEvaluation
+
+theorem wp_successorState_if_execution
     (truth : Bool)
     (hrefzero : ref ≠ W32 0)
     (o : AssumeOperators) (kind : w32 → GoString) (changing : w32 → Bool)
@@ -173,26 +179,7 @@ theorem wp_successorState_if_execution (receiver : Loc) (s : QuerySnapshot) (sta
       all_goals simp only [ownsBranch, validBranchOption]
       all_goals ipureintro; simp
 
-theorem wp_successorState_if_feasible (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
-    (sf : Nat) (ref left right : w32) (row : GoArray w32 2) (op : GoString) (lv rv : Value)
-    (decision : w32) (decisionRow : GoArray w32 2)
-    (hdecision : validSymbolRef s decision)
-    (hdref : 0 < uint.Z decision ∧ uint.Z decision ≤ s.operands.length)
-    (hdrow : s.operands[(uint.Z decision - 1).toNat]? = some decisionRow)
-    (hdchild : decisionRow.arr[0]? = some ref)
-    (hconstruct : pdg.tableText s.strings (snapshotRecord s decision).Construct' = go!"if")
-    (href : 0 < uint.Z ref ∧ uint.Z ref ≤ s.operands.length)
-    (hrow : s.operands[(uint.Z ref - 1).toNat]? = some row)
-    (hleft : row.arr[0]? = some left) (hright : row.arr[1]? = some right)
-    (hvalid : validSymbolRef s ref)
-    (halloc : ∀ a ∈ s.attributes, (pdg.rowContents s.referenceRows a.Outcomes').length ≤ 2^46)
-    (htrue : snapshotFact s ref (go!"boolean") ≠ go!"true")
-    (hfalse : snapshotFact s ref (go!"boolean") ≠ go!"false")
-    (hop : decodedFact s (snapshotRecord s ref).Operator' = op)
-    (hcomparison : comparisonOperator op)
-    (wf : ValueSnapshotValid s)
-    (hparse : parseInt64Contract (GF := GF))
-    (leftEvaluation : ValueEvaluation s m sf left lv) (rightEvaluation : ValueEvaluation s m sf right rv)
+theorem wp_successorState_if_feasible
     (x y : Int) (hl : interval.contains (bounds lv) x) (hr : interval.contains (bounds rv) y)
     (truth : Bool) (branch : comparisonBranch truth op x y)
     (hrefzero : ref ≠ W32 0)
@@ -218,26 +205,7 @@ theorem wp_successorState_if_feasible (receiver : Loc) (s : QuerySnapshot) (stat
   · iexact Hinputs
   wp_end
 
-theorem wp_successorState_if_sound (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
-    (sf : Nat) (ref left right : w32) (row : GoArray w32 2) (op : GoString) (lv rv : Value)
-    (decision : w32) (decisionRow : GoArray w32 2)
-    (hdecision : validSymbolRef s decision)
-    (hdref : 0 < uint.Z decision ∧ uint.Z decision ≤ s.operands.length)
-    (hdrow : s.operands[(uint.Z decision - 1).toNat]? = some decisionRow)
-    (hdchild : decisionRow.arr[0]? = some ref)
-    (hconstruct : pdg.tableText s.strings (snapshotRecord s decision).Construct' = go!"if")
-    (href : 0 < uint.Z ref ∧ uint.Z ref ≤ s.operands.length)
-    (hrow : s.operands[(uint.Z ref - 1).toNat]? = some row)
-    (hleft : row.arr[0]? = some left) (hright : row.arr[1]? = some right)
-    (hvalid : validSymbolRef s ref)
-    (halloc : ∀ a ∈ s.attributes, (pdg.rowContents s.referenceRows a.Outcomes').length ≤ 2^46)
-    (htrue : snapshotFact s ref (go!"boolean") ≠ go!"true")
-    (hfalse : snapshotFact s ref (go!"boolean") ≠ go!"false")
-    (hop : decodedFact s (snapshotRecord s ref).Operator' = op)
-    (hcomparison : comparisonOperator op)
-    (wf : ValueSnapshotValid s)
-    (hparse : parseInt64Contract (GF := GF))
-    (leftEvaluation : ValueEvaluation s m sf left lv) (rightEvaluation : ValueEvaluation s m sf right rv)
+theorem wp_successorState_if_sound
     (x y : Int) (hl : interval.contains (bounds lv) x) (hr : interval.contains (bounds rv) y)
     (truth : Bool) (branch : comparisonBranch truth op x y)
     (hrefzero : ref ≠ W32 0)
@@ -274,12 +242,16 @@ theorem wp_successorState_if_sound (receiver : Loc) (s : QuerySnapshot) (state :
   ipureintro
   exact ⟨hvalidout, sound⟩
 
+end wrappedComparison
+
 /-- A numeric comparison is not the synthetic tagless-switch predicate. -/
+
 theorem comparisonOperator_not_truth_test (op : GoString) (h : comparisonOperator op) :
     op ≠ go!"truth-test" := by
   rcases h with rfl | rfl | rfl | rfl | rfl | rfl <;> decide
 
-theorem wp_successorState_direct_execution (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
+section directComparison
+variable (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
     (sf : Nat) (ref left right : w32) (row : GoArray w32 2) (op : GoString) (lv rv : Value)
     (hif : pdg.tableText s.strings (snapshotRecord s ref).Construct' ≠ go!"if")
     (hfor : pdg.tableText s.strings (snapshotRecord s ref).Construct' ≠ go!"for")
@@ -296,6 +268,10 @@ theorem wp_successorState_direct_execution (receiver : Loc) (s : QuerySnapshot) 
     (wf : ValueSnapshotValid s)
     (hparse : parseInt64Contract (GF := GF))
     (leftEvaluation : ValueEvaluation s m sf left lv) (rightEvaluation : ValueEvaluation s m sf right rv)
+include receiver s state m sf ref left right row op lv rv hif hfor hshort href hrow hleft hright hvalid
+include halloc htrue hfalse hop hcomparison wf hparse leftEvaluation rightEvaluation
+
+theorem wp_successorState_direct_execution
     (truth : Bool)
     (hrefzero : ref ≠ W32 0)
     (o : AssumeOperators) (kind : w32 → GoString) (changing : w32 → Bool)
@@ -374,23 +350,7 @@ theorem wp_successorState_direct_execution (receiver : Loc) (s : QuerySnapshot) 
       all_goals simp only [ownsBranch, validBranchOption]
       all_goals ipureintro; simp
 
-theorem wp_successorState_direct_feasible (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
-    (sf : Nat) (ref left right : w32) (row : GoArray w32 2) (op : GoString) (lv rv : Value)
-    (hif : pdg.tableText s.strings (snapshotRecord s ref).Construct' ≠ go!"if")
-    (hfor : pdg.tableText s.strings (snapshotRecord s ref).Construct' ≠ go!"for")
-    (hshort : pdg.tableText s.strings (snapshotRecord s ref).Construct' ≠ go!"short-circuit")
-    (href : 0 < uint.Z ref ∧ uint.Z ref ≤ s.operands.length)
-    (hrow : s.operands[(uint.Z ref - 1).toNat]? = some row)
-    (hleft : row.arr[0]? = some left) (hright : row.arr[1]? = some right)
-    (hvalid : validSymbolRef s ref)
-    (halloc : ∀ a ∈ s.attributes, (pdg.rowContents s.referenceRows a.Outcomes').length ≤ 2^46)
-    (htrue : snapshotFact s ref (go!"boolean") ≠ go!"true")
-    (hfalse : snapshotFact s ref (go!"boolean") ≠ go!"false")
-    (hop : decodedFact s (snapshotRecord s ref).Operator' = op)
-    (hcomparison : comparisonOperator op)
-    (wf : ValueSnapshotValid s)
-    (hparse : parseInt64Contract (GF := GF))
-    (leftEvaluation : ValueEvaluation s m sf left lv) (rightEvaluation : ValueEvaluation s m sf right rv)
+theorem wp_successorState_direct_feasible
     (x y : Int) (hl : interval.contains (bounds lv) x) (hr : interval.contains (bounds rv) y)
     (truth : Bool) (branch : comparisonBranch truth op x y)
     (hrefzero : ref ≠ W32 0)
@@ -416,23 +376,7 @@ theorem wp_successorState_direct_feasible (receiver : Loc) (s : QuerySnapshot) (
   · iexact Hinputs
   wp_end
 
-theorem wp_successorState_direct_sound (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
-    (sf : Nat) (ref left right : w32) (row : GoArray w32 2) (op : GoString) (lv rv : Value)
-    (hif : pdg.tableText s.strings (snapshotRecord s ref).Construct' ≠ go!"if")
-    (hfor : pdg.tableText s.strings (snapshotRecord s ref).Construct' ≠ go!"for")
-    (hshort : pdg.tableText s.strings (snapshotRecord s ref).Construct' ≠ go!"short-circuit")
-    (href : 0 < uint.Z ref ∧ uint.Z ref ≤ s.operands.length)
-    (hrow : s.operands[(uint.Z ref - 1).toNat]? = some row)
-    (hleft : row.arr[0]? = some left) (hright : row.arr[1]? = some right)
-    (hvalid : validSymbolRef s ref)
-    (halloc : ∀ a ∈ s.attributes, (pdg.rowContents s.referenceRows a.Outcomes').length ≤ 2^46)
-    (htrue : snapshotFact s ref (go!"boolean") ≠ go!"true")
-    (hfalse : snapshotFact s ref (go!"boolean") ≠ go!"false")
-    (hop : decodedFact s (snapshotRecord s ref).Operator' = op)
-    (hcomparison : comparisonOperator op)
-    (wf : ValueSnapshotValid s)
-    (hparse : parseInt64Contract (GF := GF))
-    (leftEvaluation : ValueEvaluation s m sf left lv) (rightEvaluation : ValueEvaluation s m sf right rv)
+theorem wp_successorState_direct_sound
     (x y : Int) (hl : interval.contains (bounds lv) x) (hr : interval.contains (bounds rv) y)
     (truth : Bool) (branch : comparisonBranch truth op x y)
     (hrefzero : ref ≠ W32 0)
@@ -468,6 +412,8 @@ theorem wp_successorState_direct_sound (receiver : Loc) (s : QuerySnapshot) (sta
   iframe Hsnapshot Hoperators Hout
   ipureintro
   exact ⟨hvalidout, sound⟩
+
+end directComparison
 
 end proof
 end github_com.rstyled.gstyle.domain.runtimeguard

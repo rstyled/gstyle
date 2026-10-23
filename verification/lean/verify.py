@@ -1234,17 +1234,15 @@ def worklist_profile():
     })
     modules = {name: proof if name.startswith("queue-") else enqueue for name in changes}
     modules.update({name: "Gstyle/Proof/Worklist/ExactComparison.lean" for name in changes if name.startswith("exact-")})
-    modules.update({name: "Gstyle/Proof/Worklist/KnownComparison.lean" for name in changes if name.startswith("known-")})
-    modules.update({name: "Gstyle/Proof/Worklist/KnownBoolean.lean" for name in changes if name.startswith("boolean-")})
+    modules.update({name: "Gstyle/Proof/Worklist/KnownComparison.lean" for name in changes if name.startswith(("known-", "boolean-"))})
     modules.update({name: "Gstyle/Proof/Worklist/Successor.lean" for name in changes if name.startswith("successor-")})
     modules["snapshot-wrong-construct"] = "Gstyle/Proof/Pdg/Attributes.lean"
     modules.update({name: "Gstyle/Proof/Worklist/Traversal.lean" for name in changes if name.startswith("traversal-")})
     modules["inputs-corrupts-neighbor"] = "Gstyle/Proof/Worklist/Inputs.lean"
     modules.update({name: "Gstyle/Proof/Worklist/ScalarTransfer.lean" for name in changes if name.startswith("scalar-")})
-    modules.update({name: "Gstyle/Proof/Worklist/ScalarGuards.lean" for name in changes if name.startswith(("scalar-increment-", "scalar-interface-", "scalar-range-"))})
     modules.update({name: "Gstyle/Proof/Worklist/ScalarBlock.lean" for name in changes if name.startswith("block-")})
     sources = tuple(PROJECT / "Gstyle/Proof/Worklist" / (name + ".lean")
-                    for name in ('Layout', 'Enqueue', 'Queue', 'ExactComparison', 'KnownComparison', 'KnownBoolean', 'Successor', 'FlowLayout', 'Inputs', 'InputJoin', 'Decision', 'StepModel', 'Traversal', 'ScalarGuards', 'ScalarTransfer', 'ScalarBlock'))
+                    for name in ('Layout', 'Enqueue', 'Queue', 'ExactComparison', 'KnownComparison', 'Successor', 'FlowLayout', 'Inputs', 'InputJoin', 'Decision', 'StepModel', 'Traversal', 'ScalarTransfer', 'ScalarBlock'))
     return replace(base, report=ROOT / "dist/verification/worklist", source=ROOT / "domain/runtimeguard/flow.go",
                    sources=base.sources + sources + (PROJECT / "Gstyle/Proof/Transfer/FactSnapshot.lean",
                                                      PROJECT / "Gstyle/Proof/Pdg/GraphLayout.lean",
@@ -1307,7 +1305,7 @@ def scalar_flow_profile():
 
 def solver_profile():
     base = scalar_flow_profile()
-    modules = ('SolveSyntax', 'SolveModel', 'SolveTermination', 'SolveLoop')
+    modules = ('SolveSyntax', 'SolveModel', 'SolveLoop')
     names = ('solve_cursor_found', 'solve_cursor_initializer', 'solve_loop_shape', 'WorkState.dequeue_invariant', 'SolverStep.reference', 'SolverStep.input_valid', 'ScalarExecution.scalar', 'SolverStep.input_scalar', 'SolverStep.next_shape', 'SolverStep.next_invariant', 'WorkState.enqueue_queue_length', 'WorkState.edge_queue_length', 'edgePrefix_queue_length', 'SolverExecution.queue_length', 'SolverStep.next_extends', 'SolverExecution.inputs_extend', 'WorkState.enqueue_reachable', 'WorkState.edge_reachable', 'edgePrefix_reachable', 'SolverStep.next_reachable', 'SolverExecution.reachable', 'queueWeight_append', 'enqueue_weight', 'edge_weight', 'edgePrefix_weight', 'enqueue_take', 'edge_take', 'edgePrefix_take', 'queueWeight_split', 'SolverStep.pending_decreases', 'solverTransition_wellFounded', 'solverExecution_exists', 'solverDataComplete_terminal', 'wp_solve_cursor', 'wp_solve_cursor_ranked')
     changes = {
         "solver-cursor-start": ("for cursor := 0; cursor < len(a.queue); cursor++ {", "for cursor := 1; cursor < len(a.queue); cursor++ {"),

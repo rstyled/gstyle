@@ -1,7 +1,6 @@
 module
 public import Gstyle.Proof.Worklist.SolveModel
 public import Gstyle.Proof.Worklist.SolveSyntax
-public import Gstyle.Proof.Worklist.SolveTermination
 @[expose] public section
 noncomputable section
 set_option maxHeartbeats 0
