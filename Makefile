@@ -176,3 +176,9 @@ verify-sast:
 
 sast-baseline:
 	go test ./verification/sast -run TestSourceBaseline -count=1 -args -update
+
+.PHONY: verify-programs
+# Exhaustive source programs; certify captured ranges for every int64 input.
+verify-programs:
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify_programs.py
