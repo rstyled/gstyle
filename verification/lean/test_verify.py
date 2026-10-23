@@ -241,7 +241,7 @@ class VerificationGuardTests(unittest.TestCase):
                                (verify.one_sided_profile, 1),
                                (verify.shared_flow_profile, 1),
                                (verify.assume_profile, 1),
-                               (verify.worklist_profile, 2), (verify.scalar_flow_profile, 1)):
+                               (verify.worklist_profile, 2), (verify.scalar_flow_profile, 1), (verify.solver_profile, 1)):
             mutations = factory().mutations
             selected = [name for index in range(count)
                         for name in verify.shard_mutations(mutations, (index, count))]

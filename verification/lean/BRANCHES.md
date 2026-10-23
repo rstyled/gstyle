@@ -125,8 +125,9 @@ particular, a successful `checkReport` is not a substitute for these obligations
    meaning, then prove `solve` preserves that invariant for the production FIFO
    queue. The successor-array prefix/metadata/queue proof is complete; it does
    not establish that its snapshot and decision data follow from the source.
-   The outer proof must include re-enqueue, nil reachability, joins and queue
-   exhaustion. For finite acyclic branch CFGs, establish termination without a
+   The post-constructor cursor proof now includes re-enqueue, reachable queued
+   inputs, joins, queue exhaustion and a weighted acyclic termination argument.
+   Source/constructor data and graph ranks still need establishment, with no
    fixed syntax-depth limit. Then connect `analysis.report`/`analysis.call` to
    the final typed observation and its `FirstArgument` range.
 
@@ -136,12 +137,14 @@ execution and pending-queue flags, direct/wrapped comparison dispatch over
 represented operands, and complete successor-array traversal with nil-aware
 join/equality and valid queue/input metadata. Scalar transfer and the actual
 nil-report block loop are also covered. These are prerequisites; they do not
-cover non-nil report mode, the outer solve/report worklist or establish source
-metadata. The remaining bodies need translation, source comparison and axiom audits when
+cover non-nil report mode, constructor execution or establish source metadata.
+The actual post-constructor solve loop is now covered by the solver profile.
+The remaining bodies need translation, source comparison and axiom audits when
 proving them. An opaque function name is not an execution proof.
 [Scalar-flow contracts](SCALAR_FLOW.md) now add concrete meaning and scalar
-identity preservation to actual block and successor execution; the outer solve
-and source-lowering composition remains open.
+identity preservation to actual block and successor execution. Post-constructor
+queue/scalar/metadata composition is covered by the solver profile; constructor,
+source lowering, full source-path meaning and report composition remain open.
 Only that composition, with the source-meaning boundary stated,
 can remove the checked-report premise for every admitted source. Arbitrary Go
 features remain a later scope.
@@ -165,3 +168,9 @@ CI runs `make verify-branches` beside `make verify-programs` and retains both
 artifact directories. These checks provide reusable validation for arbitrary
 admitted branch trees. Removing the checker premise from the theorem remains
 the next implementation-composition proof obligation.
+
+The [solver cursor profile](SOLVER_LOOP.md) selects the actual generated cursor
+initializer and loop and composes production block/successor execution. Acyclic
+weighted progress plus explicit data formation gives finite runs. Constructor and
+source data/rank establishment, full source-path meaning and final report execution
+remain required for the unconditional theorem; this component does not close it.

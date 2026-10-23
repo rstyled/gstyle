@@ -38,6 +38,7 @@ variable [Value.TypeAssumptions] [State.TypeAssumptions]
 
 
 variable [analysis.TypeAssumptions]
+variable {dq : DFrac}
 variable [FuncUnfold fieldIdentity [] fieldIdentity.impl]
 variable [FuncUnfold singleValueWrite [] singleValueWrite.impl]
 
@@ -74,13 +75,13 @@ theorem wp_transfer_no_writes (receiver : Loc) (a : analysis) (s : QuerySnapshot
     (halloc : ∀ b ∈ s.attributes, (pdg.rowContents s.referenceRows b.Outcomes').length ≤ 2^46)
     (hwrites : pdg.rowContents s.accessRows (snapshotRecord s ref).Writes' = []) :
     {{ isPkgInit (PROP := IProp GF) pkg ∗
-       (receiver ↦□ a ∗ querySnapshotOwn a.view' s ∗
+       (receiver ↦{dq} a ∗ querySnapshotOwn a.view' s ∗
         localRootsOwn (GF := GF) s.view.fieldRoots' ∅ ∗ state ↦$ m) }}
       (App (App (Val #(methods (go.PointerType analysis.ty) go!"transfer" #receiver))
         (Val #ref)) (Val #state))
-    {{ RET #(); receiver ↦□ a ∗ querySnapshotOwn a.view' s ∗
+    {{ RET #(); receiver ↦{dq} a ∗ querySnapshotOwn a.view' s ∗
         localRootsOwn (GF := GF) s.view.fieldRoots' ∅ ∗ state ↦$ m }} := by
-  wp_start as ⟨#Ha, #Hsnapshot, Hroots, Hstate⟩
+  wp_start as ⟨Ha, #Hsnapshot, Hroots, Hstate⟩
   try wp_auto
   wp_apply wp_attrs_snapshot_full a.view' s ref hvalid halloc
       $$ [Hsnapshot] with %attrs ⟨Hsnapshot, %hattrs⟩
@@ -128,14 +129,14 @@ theorem wp_transfer_scalar_write (receiver : Loc) (a : analysis) (s : QuerySnaps
     (hrange : snapshotFact s ref (go!"range-index") = go!"")
     (evaluation : ValueEvaluation s m sf child raw) :
     {{ isPkgInit (PROP := IProp GF) pkg ∗ isPkgInit (PROP := IProp GF) pkg_id.strconv ∗
-       (receiver ↦□ a ∗ querySnapshotOwn a.view' s ∗
+       (receiver ↦{dq} a ∗ querySnapshotOwn a.view' s ∗
         localRootsOwn (GF := GF) s.view.fieldRoots' ∅ ∗ state ↦$ m) }}
       (App (App (Val #(methods (go.PointerType analysis.ty) go!"transfer" #receiver))
         (Val #ref)) (Val #state))
-    {{ RET #(); receiver ↦□ a ∗ querySnapshotOwn a.view' s ∗
+    {{ RET #(); receiver ↦{dq} a ∗ querySnapshotOwn a.view' s ∗
         localRootsOwn (GF := GF) s.view.fieldRoots' ∅ ∗
         state ↦$ (<[write.Symbol' := { raw with Guarded' := false }]>m) }} := by
-  wp_start as ⟨#Ha, #Hsnapshot, Hroots, Hstate⟩
+  wp_start as ⟨Ha, #Hsnapshot, Hroots, Hstate⟩
   try wp_auto
   wp_apply wp_attrs_snapshot_full a.view' s ref (Or.inr href) wf.symbols.allocation
       $$ [Hsnapshot] with %attrs ⟨Hsnapshot, %hattrs⟩
@@ -200,13 +201,14 @@ theorem wp_transfer_scalar_write (receiver : Loc) (a : analysis) (s : QuerySnaps
       "i" ∷ i_ptr ↦ iv ∗ "write" ∷ write_ptr ↦ wv ∗
       "a" ∷ a_ptr ↦ receiver ∗ "state" ∷ state_ptr ↦ state ∗ "ref" ∷ ref_ptr ↦ ref ∗
       "value" ∷ value_ptr ↦ cleared ∗
+      "Ha" ∷ receiver ↦{dq} a ∗
       "Hroots" ∷ localRootsOwn (GF := GF) s.view.fieldRoots' ∅ ∗
       "Hstate" ∷ state ↦$ (if iv = W64 0 then m else final) ∗
       "%Hbounds" ∷ ⌜0 ≤ sint.Z iv ∧ sint.Z iv ≤ 1⌝ : IProp GF)
-      $$ [i write a state ref value Hroots Hstate]
+      $$ [i write a state ref value Ha Hroots Hstate]
   · iexists (W64 0), (zero_val pdg.Access)
     simp only [ite_true]
-    iframe i write a state ref value Hroots Hstate
+    iframe i write a state ref value Ha Hroots Hstate
     ipureintro
     constructor <;> word
   wp_for HI

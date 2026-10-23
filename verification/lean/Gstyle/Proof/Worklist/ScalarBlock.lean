@@ -39,6 +39,7 @@ variable [Value.TypeAssumptions] [State.TypeAssumptions]
 
 
 variable [analysis.TypeAssumptions]
+variable {dq : DFrac}
 variable [FuncUnfold fieldIdentity [] fieldIdentity.impl]
 variable [FuncUnfold singleValueWrite [] singleValueWrite.impl]
 
@@ -135,11 +136,11 @@ theorem wp_transfer_scalar_step (receiver : Loc) (a : analysis) (s : QuerySnapsh
     (hm : scalarState m) (wf : ValueSnapshotValid s)
     (hparse : parseInt64Contract (GF := GF)) (huparse : parseEmptyUint32Contract (GF := GF)) :
     {{ isPkgInit (PROP := IProp GF) pkg ∗ isPkgInit (PROP := IProp GF) pkg_id.strconv ∗
-       (receiver ↦□ a ∗ querySnapshotOwn a.view' s ∗
+       (receiver ↦{dq} a ∗ querySnapshotOwn a.view' s ∗
         localRootsOwn (GF := GF) s.view.fieldRoots' ∅ ∗ state ↦$ m) }}
       (App (App (Val #(methods (go.PointerType analysis.ty) go!"transfer" #receiver))
         (Val #ref)) (Val #state))
-    {{ RET #(); receiver ↦□ a ∗ querySnapshotOwn a.view' s ∗
+    {{ RET #(); receiver ↦{dq} a ∗ querySnapshotOwn a.view' s ∗
         localRootsOwn (GF := GF) s.view.fieldRoots' ∅ ∗ state ↦$ n ∗ ⌜scalarState n⌝ }} := by
   have hn := step.preserves_scalar s ref m n hm
   cases step with
@@ -172,28 +173,29 @@ theorem wp_block_scalar (receiver : Loc) (a : analysis) (s : QuerySnapshot)
     (wf : ValueSnapshotValid s) (hparse : parseInt64Contract (GF := GF))
     (huparse : parseEmptyUint32Contract (GF := GF)) :
     {{ isPkgInit (PROP := IProp GF) pkg ∗ isPkgInit (PROP := IProp GF) pkg_id.strconv ∗
-       (receiver ↦□ a ∗ querySnapshotOwn a.view' s ∗ block.Operations' ↦*□ operations ∗
+       (receiver ↦{dq} a ∗ querySnapshotOwn a.view' s ∗ block.Operations' ↦*□ operations ∗
         localRootsOwn (GF := GF) s.view.fieldRoots' ∅ ∗ state ↦$ m) }}
       (App (App (App (Val #(methods (go.PointerType analysis.ty) go!"block" #receiver))
         (Val #block)) (Val #state)) (Val #null))
-    {{ RET #(); receiver ↦□ a ∗ querySnapshotOwn a.view' s ∗
+    {{ RET #(); receiver ↦{dq} a ∗ querySnapshotOwn a.view' s ∗
         localRootsOwn (GF := GF) s.view.fieldRoots' ∅ ∗ state ↦$ n ∗ ⌜scalarState n⌝ }} := by
-  wp_start as ⟨#Ha, #Hsnapshot, #Hoperations, Hroots, Hstate⟩
+  wp_start as ⟨Ha, #Hsnapshot, #Hoperations, Hroots, Hstate⟩
   ihave %Hlen := ownSlice_len $$ Hoperations
   try wp_auto
   ihave HI : (∃ (iv : w64) (rv : w32) (current : StateData),
       "i" ∷ i_ptr ↦ iv ∗ "ref" ∷ ref_ptr ↦ rv ∗
       "a" ∷ a_ptr ↦ receiver ∗ "state" ∷ state_ptr ↦ state ∗
       "report" ∷ report_ptr ↦ null ∗ "block" ∷ block_ptr ↦ block ∗
+      "Ha" ∷ receiver ↦{dq} a ∗
       "Hroots" ∷ localRootsOwn (GF := GF) s.view.fieldRoots' ∅ ∗
       "Hstate" ∷ state ↦$ current ∗
       "%Hbounds" ∷ ⌜0 ≤ sint.Z iv ∧ sint.Z iv ≤ sint.Z block.Operations'.len⌝ ∗
       "%Hremaining" ∷ ⌜ScalarExecution s (operations.drop (sint.nat iv)) current n⌝ ∗
       "%Hscalar" ∷ ⌜scalarState current⌝ : IProp GF)
-      $$ [i ref a state report block Hroots Hstate]
+      $$ [i ref a state report block Ha Hroots Hstate]
   · iexists (W64 0), (zero_val w32), m
     simp only [show sint.nat (W64 0) = 0 from rfl, List.drop_zero]
-    iframe i ref a state report block Hroots Hstate
+    iframe i ref a state report block Ha Hroots Hstate
     ipureintro
     exact ⟨by constructor <;> word, execution, hm⟩
   wp_for HI

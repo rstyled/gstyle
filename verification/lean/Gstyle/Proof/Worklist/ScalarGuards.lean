@@ -89,6 +89,7 @@ theorem wp_interfaceAssignment_scalar (receiver : Loc) (s : QuerySnapshot)
   all_goals iframe Hsnapshot
 
 variable [analysis.TypeAssumptions]
+variable {dq : DFrac}
 
 theorem wp_rangeWrite_scalar (receiver : Loc) (a : analysis) (s : QuerySnapshot)
     (ref symbol : w32) (state : Loc) (m : StateData)
@@ -97,11 +98,11 @@ theorem wp_rangeWrite_scalar (receiver : Loc) (a : analysis) (s : QuerySnapshot)
     (habsent : snapshotFact s ref (go!"range-index") = go!"")
     (hparse : parseEmptyUint32Contract (GF := GF)) :
     {{ isPkgInit (PROP := IProp GF) pkg ∗ isPkgInit (PROP := IProp GF) pkg_id.strconv ∗
-       (receiver ↦□ a ∗ querySnapshotOwn a.view' s ∗ state ↦$ m) }}
+       (receiver ↦{dq} a ∗ querySnapshotOwn a.view' s ∗ state ↦$ m) }}
       (App (App (App (Val #(methods (go.PointerType analysis.ty) go!"rangeWrite" #receiver))
         (Val #ref)) (Val #symbol)) (Val #state))
-    {{ RET #(); receiver ↦□ a ∗ querySnapshotOwn a.view' s ∗ state ↦$ m }} := by
-  wp_start as ⟨#Ha, #Hsnapshot, Hstate⟩
+    {{ RET #(); receiver ↦{dq} a ∗ querySnapshotOwn a.view' s ∗ state ↦$ m }} := by
+  wp_start as ⟨Ha, #Hsnapshot, Hstate⟩
   try wp_auto
   wp_apply wp_fact_snapshot a.view' s ref (go!"range-index") hvalid halloc
       $$ [Hsnapshot] with Hsnapshot

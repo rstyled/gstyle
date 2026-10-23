@@ -78,15 +78,18 @@ premise applies only to absent range metadata; it grants no behavior on other
 strings. It is visible in `wp_rangeWrite_scalar`, scalar transfer and block
 signatures. The existing ParseInt execution boundary remains separate.
 
-Non-scalar/multiple writes, non-nil-report block execution, solve invariants and
-termination, report projection, source lowering and producer metadata
-construction remain open. In particular, lowering must establish that admitted
+The [solver-loop profile](SOLVER_LOOP.md) now composes the actual post-constructor
+cursor initializer and loop with scalar/metadata invariants, prior input coverage
+and weighted acyclic progress. Initial construction, source data/rank establishment,
+full source-path meaning, non-scalar/multiple writes, non-nil-report block execution,
+report projection and source lowering remain open. In particular, lowering must establish that admitted
 operations have zero writes or the supported single signed write, absent step
 and range metadata, correct operand edges and scalar value derivations. These
 facts are not established merely by naming a `ScalarWriteSite`. The [scalar-flow profile](SCALAR_FLOW.md) now establishes scalar identities and
 concrete meaning through finite numeric refinement, joins and the actual block
-and successor bodies. The outer solver still must compose these contracts and
-establish their source premises.
+and successor bodies. The post-constructor solver now composes these execution invariants. The final
+theorem still must establish their source premises and complete constructor/report
+execution.
 Other decision forms and arbitrary Go features are outside this checkpoint.
 A successful structural report check remains separate from these obligations.
 

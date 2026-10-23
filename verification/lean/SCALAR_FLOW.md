@@ -52,7 +52,7 @@ program. `metadataAgreement` states exact kind/stability array lookup agreement;
 it is not a producer correctness theorem.
 
 The unconditional source-to-range goal remains unfinished. The actual outer
-`solve` execution and acyclic termination, `newGraphView`/producer metadata
+`solve` construction and source-to-report composition, `newGraphView`/producer metadata
 construction, source lowering, non-nil report mode and final report/call
 projection remain open. This checkpoint makes the scalar, metadata and concrete
 meaning contracts needed by that composition available; it does not supply the
@@ -87,3 +87,8 @@ The profile rejects stale translations; a refactor cannot retain coverage by
 copying an old success artifact. Full source/report integration remains checked
 by `make verify-branches`, with its checker premise kept separate from the open
 unconditional implementation theorem.
+
+The [solver-loop profile](SOLVER_LOOP.md) now carries scalar/metadata and prior-input
+coverage through the actual post-constructor cursor loop. A weighted acyclic budget
+and explicit primitive data formation yield finite runs. It does not establish
+source lowering, constructor metadata, full source-path meaning or final reports.

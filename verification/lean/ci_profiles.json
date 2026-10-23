@@ -299,5 +299,12 @@
     "shard": "0/1",
     "argument": "--scalar-flow",
     "cache-index": 42
+  },
+  {
+    "profile": "solver",
+    "target": "verify-solver",
+    "shard": "0/1",
+    "argument": "--solver",
+    "cache-index": 43
   }
 ]

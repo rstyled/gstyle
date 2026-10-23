@@ -48,6 +48,7 @@ variable [FuncUnfold operatorText [] operatorText.impl]
 variable [FuncUnfold extension [] extension.impl]
 variable [Value.TypeAssumptions] [State.TypeAssumptions]
 variable [analysis.TypeAssumptions]
+variable {dq : DFrac}
 variable [FuncUnfold fieldIdentity [] fieldIdentity.impl]
 variable [FuncUnfold singleValueWrite [] singleValueWrite.impl]
 variable [pdg.FlowBlock.TypeAssumptions]
@@ -112,11 +113,11 @@ theorem wp_block_scalar_sound (receiver : Loc) (a : analysis) (s : QuerySnapshot
     (wf : ValueSnapshotValid s) (hparse : parseInt64Contract (GF := GF))
     (huparse : parseEmptyUint32Contract (GF := GF)) :
     {{ isPkgInit (PROP := IProp GF) pkg ∗ isPkgInit (PROP := IProp GF) pkg_id.strconv ∗
-       (receiver ↦□ a ∗ querySnapshotOwn a.view' s ∗ block.Operations' ↦*□ operations ∗
+       (receiver ↦{dq} a ∗ querySnapshotOwn a.view' s ∗ block.Operations' ↦*□ operations ∗
         localRootsOwn (GF := GF) s.view.fieldRoots' ∅ ∗ state ↦$ m) }}
       (App (App (App (Val #(methods (go.PointerType analysis.ty) go!"block" #receiver))
         (Val #block)) (Val #state)) (Val #null))
-    {{ RET #(); receiver ↦□ a ∗ querySnapshotOwn a.view' s ∗
+    {{ RET #(); receiver ↦{dq} a ∗ querySnapshotOwn a.view' s ∗
         localRootsOwn (GF := GF) s.view.fieldRoots' ∅ ∗ state ↦$ n ∗
         ⌜scalarState n ∧ stateDenotes kind changing n out ∧
           validBranchState s.kinds s.unstable kind changing n⌝ }} := by

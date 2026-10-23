@@ -1305,6 +1305,30 @@ def scalar_flow_profile():
                                "nonscalar/multiple-write/nonnil-report block execution",
                                "ParseInt and empty-input ParseUint execution contracts", "package initialization, Go adequacy and resource limits"))
 
+def solver_profile():
+    base = scalar_flow_profile()
+    modules = ('SolveSyntax', 'SolveModel', 'SolveTermination', 'SolveLoop')
+    names = ('solve_cursor_found', 'solve_cursor_initializer', 'solve_loop_shape', 'WorkState.dequeue_invariant', 'SolverStep.reference', 'SolverStep.input_valid', 'ScalarExecution.scalar', 'SolverStep.input_scalar', 'SolverStep.next_shape', 'SolverStep.next_invariant', 'WorkState.enqueue_queue_length', 'WorkState.edge_queue_length', 'edgePrefix_queue_length', 'SolverExecution.queue_length', 'SolverStep.next_extends', 'SolverExecution.inputs_extend', 'WorkState.enqueue_reachable', 'WorkState.edge_reachable', 'edgePrefix_reachable', 'SolverStep.next_reachable', 'SolverExecution.reachable', 'queueWeight_append', 'enqueue_weight', 'edge_weight', 'edgePrefix_weight', 'enqueue_take', 'edge_take', 'edgePrefix_take', 'queueWeight_split', 'SolverStep.pending_decreases', 'solverTransition_wellFounded', 'solverExecution_exists', 'solverDataComplete_terminal', 'wp_solve_cursor', 'wp_solve_cursor_ranked')
+    changes = {
+        "solver-cursor-start": ("for cursor := 0; cursor < len(a.queue); cursor++ {", "for cursor := 1; cursor < len(a.queue); cursor++ {"),
+        "solver-retains-flag": ("a.queued[ref-1] = false", "a.queued[ref-1] = true"),
+        "solver-loses-input": ("state := copyState(a.inputs[ref-1])", "state := State{}"),
+        "solver-skips-block": ("a.block(g.ValueFlow.Blocks[ref-1], state, nil)", "if false { a.block(g.ValueFlow.Blocks[ref-1], state, nil) }"),
+        "solver-stuck-cursor": ("for cursor := 0; cursor < len(a.queue); cursor++ {", "for cursor := 0; cursor < len(a.queue); cursor += 0 {"),
+    }
+    targets = {name: "Gstyle/Proof/Worklist/SolveLoop.lean" for name in changes}
+    targets['solver-cursor-start'] = 'Gstyle/Proof/Worklist/SolveSyntax.lean'
+    return replace(base, report=ROOT / "dist/verification/solver",
+                   sources=base.sources + tuple(PROJECT / "Gstyle/Proof/Worklist" / (name + ".lean") for name in modules),
+                   theorems={"Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name for name in names},
+                   mutations=changes, audit="AuditSolver.lean", proof_file="Gstyle/Proof/Worklist/SolveLoop.lean",
+                   mutation_modules=targets,
+                   verified="actual post-constructor solve cursor initializer and loop preserve queue/scalar/metadata invariants and prior inputs; acyclic budgets plus primitive execution data establish finite loop derivations",
+                   unverified=("newGraphView, initial maps and entry enqueue establishment", "source lowering, metadata, primitive meaning and acyclic budget/data construction",
+                               "final report/call projection and whole source-to-report semantics",
+                               "signed word domains and machine resource bounds", "ParseInt and empty-input ParseUint execution contracts; Go adequacy"))
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix, *, environment=None):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -1519,7 +1543,7 @@ def main(profile=None):
 
 
 
-PROFILE_FACTORIES = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile, ("--shared-flow",): shared_flow_profile, ("--assume",): assume_profile, ("--worklist",): worklist_profile, ("--scalar-flow",): scalar_flow_profile}
+PROFILE_FACTORIES = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile, ("--shared-flow",): shared_flow_profile, ("--assume",): assume_profile, ("--worklist",): worklist_profile, ("--scalar-flow",): scalar_flow_profile, ("--solver",): solver_profile}
 
 
 if __name__ == "__main__":
@@ -1528,7 +1552,7 @@ if __name__ == "__main__":
 
         arguments = tuple(sys.argv[1:])
         if arguments not in PROFILE_FACTORIES:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison | --one-sided | --shared-flow | --assume | --worklist | --scalar-flow]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison | --one-sided | --shared-flow | --assume | --worklist | --scalar-flow | --solver]")
         main(PROFILE_FACTORIES[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

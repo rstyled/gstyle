@@ -48,6 +48,11 @@ The specification assumes spans arrive in source order, with the next start at
 or after the preceding span's last line. The counter checks this at runtime.
 Invalid spans fail source extraction instead of producing a clean report.
 
+[The actual solver cursor loop](SOLVER_LOOP.md) adds post-constructor execution,
+input preservation and acyclic weighted progress. `make verify-solver` checks
+35 theorem audits and five Go faults. Constructor/source data formation and
+final report projection remain open.
+
 ## Scope and trust
 
 This is a proof of the accumulator and comparison, not the complete analyzer.
@@ -112,7 +117,7 @@ evidence executes the controls. Each fresh shard still checks its own baseline,
 source binding, and axioms. The aggregate `verify-length` check requires successful
 preflight plus every needed shard; a skipped shard matrix passes only when
 preflight reports no misses. A complete checked bundle is saved after aggregation.
-The matrix in `ci_profiles.json` covers all 432 controls exactly once. Runtime
+The matrix in `ci_profiles.json` covers all 492 controls exactly once. Runtime
 validation rejects omitted profiles, gaps, and duplicate controls.
 Local commands default to one shard and execute every mutation.
 
@@ -126,7 +131,7 @@ Inputs are hashed again before publishing results. `result.json` distinguishes
 `executed` and `reused` evidence and records its key; proof logs stay in artifacts.
 Clear the local cache directory to force fresh controls.
 
-Warm CI avoids separate runner setup for all 40 shards. Changed proof inputs still
+Warm CI avoids separate runner setup for all configured shards. Changed proof inputs still
 require fresh controls. The Go race-test job has a separate build cache so a
 non-race build cannot supply an incomplete warm cache for it.
 
