@@ -2,6 +2,7 @@ package gopatterns
 
 import (
 	"bytes"
+	"github.com/rstyled/gstyle/domain/patterns"
 	"go/ast"
 	"go/printer"
 	"go/token"
@@ -33,20 +34,7 @@ import (
 // Case types retain pointers. Each type must have the method in its method set;
 // implicit address-taking in a single case cannot justify an interface call.
 // The fixer also checks matching method declarations in the same file.
-type TypeSwitchHit struct {
-	// Line is the line of the switch statement.
-	Line int
-	// Bound is the variable bound by `switch v := x.(type)`.
-	Bound string
-	// Expr is the source text of the switched expression (x).
-	Expr string
-	// Method is the method name called in every arm.
-	Method string
-	// Types are the case types, including pointers (*Dog, Cat, ...).
-	Types []string
-	// Args is the source text of the call arguments, identical in every arm.
-	Args string
-}
+type TypeSwitchHit patterns.TypeSwitchHit
 
 // typeArm is one case arm: its type name, the method it calls, and the
 // argument source text.

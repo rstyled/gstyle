@@ -1,28 +1,5 @@
 package callflow
 
-import (
-	"github.com/rstyled/gstyle/domain/bindingflow"
-	"github.com/rstyled/gstyle/domain/pdg"
-)
-
-func (calls *CallSites) returnedValues(summaries exitSummaryReader, ref pdg.Ref, context bindingflow.Evaluation) string {
-	targets := calls.invocationTargets(ref, context)
-	if !targets.known {
-		return ""
-	}
-	var returned string
-	unknown := false
-	for _, target := range targets.callables() {
-		values, missing := calls.targetReturned(target.Name, summaries, calls.targetInvocation(summaries, exitInvocationContext{ref: ref, values: context}, target))
-		returned = joinReturned(returned, values)
-		unknown = unknown || missing
-	}
-	if unknown {
-		return unknownReturned(len(decodeTuple(returned)))
-	}
-	return returned
-}
-
 func (calls *CallSites) targetReturned(name string, summaries exitSummaryReader, invocation exitInvocationContext) (string, bool) {
 	summary, found := readExitSummary(summaries, name)
 	outcomes := calls.targetWithValues(name, summaries, invocation)

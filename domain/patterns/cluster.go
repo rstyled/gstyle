@@ -322,19 +322,6 @@ func totalSimilarity(wls []*Wl, group []int, v int) uint64 {
 	return total
 }
 
-// medoid returns the group member with the highest total similarity to the
-// others (lowest index on ties).
-func medoid(wls []*Wl, group []int) int {
-	best := group[0]
-	bestTotal := totalSimilarity(wls, group, best)
-	for _, v := range group[1:] {
-		if total := totalSimilarity(wls, group, v); total > bestTotal || total == bestTotal && v < best {
-			best, bestTotal = v, total
-		}
-	}
-	return best
-}
-
 func joinMember(pdgs []*MiningGraph, wls []*Wl, template, member int) joinedMember {
 	return joinedMember{
 		index:     member,

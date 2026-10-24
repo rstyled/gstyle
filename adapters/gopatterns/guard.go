@@ -1,6 +1,7 @@
 package gopatterns
 
 import (
+	"github.com/rstyled/gstyle/domain/patterns"
 	"go/ast"
 	"go/token"
 )
@@ -9,12 +10,7 @@ import (
 // branch is just an early return while the happy path is nested in the if
 // body. Inverting the condition into a guard clause lets the happy path
 // flow at top level.
-type GuardClauseHit struct {
-	// Line is the line of the if statement.
-	Line int
-	// BodyStmts counts statements in the if body (the trapped happy path).
-	BodyStmts int
-}
+type GuardClauseHit patterns.GuardClauseHit
 
 // findGuardClauses scans fn for inverted conditionals that want to be
 // guard clauses.
