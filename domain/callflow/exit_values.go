@@ -1,13 +1,11 @@
 package callflow
 
 import (
-	"cmp"
 	"github.com/rstyled/gstyle/domain/bindingflow"
 	"github.com/rstyled/gstyle/domain/pdg"
 	"go/constant"
 	"go/version"
 	"maps"
-	"slices"
 	"strings"
 )
 
@@ -28,11 +26,6 @@ type exitValues struct {
 	cells           map[pdg.Ref]exitValue
 	tuples          map[pdg.Ref]string
 	unorderedReads  map[pdg.Ref]bool
-}
-
-type valueEntry struct {
-	Ref   pdg.Ref
-	Value exitValue
 }
 
 func (evaluation *exitEvaluation) valueContext(point exitPoint) bindingflow.Evaluation {
@@ -139,15 +132,6 @@ func abstractValue(value bindingflow.Value) exitValue {
 		return falseValue
 	}
 	return unknownValue
-}
-
-func valueEntries(values map[pdg.Ref]exitValue) []valueEntry {
-	entries := make([]valueEntry, 0, len(values))
-	for ref, value := range values {
-		entries = append(entries, valueEntry{ref, value})
-	}
-	slices.SortFunc(entries, func(a, b valueEntry) int { return cmp.Compare(a.Ref, b.Ref) })
-	return entries
 }
 
 func nextValueBindings(bindings map[pdg.Ref]exitValue, writes []bindingflow.ValueWrite) map[pdg.Ref]exitValue {

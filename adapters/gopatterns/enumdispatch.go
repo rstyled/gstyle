@@ -1,6 +1,7 @@
 package gopatterns
 
 import (
+	"github.com/rstyled/gstyle/domain/patterns"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -10,13 +11,7 @@ import (
 // table: `switch color { case Red: doRed(); case Blue: doBlue() }` becomes
 // a `map[Color]func()` lookup. The detector mirrors the fixer's criteria
 // in fixgaps.go exactly, so every hit is fixable.
-type EnumDispatchHit struct {
-	// Line is the line of the switch statement.
-	Line int
-	// NumCases counts the case clauses (excluding default, which is not
-	// supported by the fixer).
-	NumCases int
-}
+type EnumDispatchHit patterns.EnumDispatchHit
 
 // findEnumDispatches scans fn for enum-value switches that the
 // enum_dispatch fixer can convert to dispatch tables.

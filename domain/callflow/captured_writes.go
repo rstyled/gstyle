@@ -6,26 +6,6 @@ import (
 	"maps"
 )
 
-func (calls *CallSites) capturedWrites(summaries exitSummaryReader, ref pdg.Ref, context bindingflow.Evaluation) (map[pdg.Ref]exitValue, bool) {
-	return calls.captureModeWrites(summaries, exitInvocationContext{ref: ref, values: context}, Returns)
-}
-
-func (calls *CallSites) captureModeWrites(summaries exitSummaryReader, invocation exitInvocationContext, mode Outcomes) (map[pdg.Ref]exitValue, bool) {
-	if !calls.invocationMemory(summaries, invocation).confined {
-		return nil, false
-	}
-	var alternatives []map[pdg.Ref]exitValue
-	for _, target := range calls.invocationTargets(invocation.ref, invocation.values).callables() {
-		invocation = calls.targetInvocation(summaries, invocation, target)
-		name := target.Name
-		outcomes := calls.targetWithValues(name, summaries, invocation)
-		if outcomes&(mode|UnknownExit) != 0 {
-			alternatives = append(alternatives, calls.targetCaptureModeWrites(name, summaries, captureProjection{invocation: invocation, outcomes: outcomes, mode: mode}))
-		}
-	}
-	return joinCaptureWrites(alternatives, invocation.values.Bindings), true
-}
-
 type captureProjection struct {
 	invocation     exitInvocationContext
 	outcomes, mode Outcomes

@@ -485,22 +485,6 @@ func ensureImport(src []byte, pkg string) []byte {
 	return src
 }
 
-// findEnclosingFunc finds the function declaration containing a node.
-func findEnclosingFunc(f *ast.File, target ast.Node) *ast.FuncDecl {
-	var result *ast.FuncDecl
-	ast.Inspect(f, func(n ast.Node) bool {
-		if fn, ok := n.(*ast.FuncDecl); ok {
-			// Check if target is within fn.
-			if fn.Pos() <= target.Pos() && target.End() <= fn.End() {
-				result = fn
-				return false
-			}
-		}
-		return true
-	})
-	return result
-}
-
 // findSwitchAtLine locates the switch statement at the given line.
 func findSwitchAtLine(fset *token.FileSet, f *ast.File, line int) *ast.SwitchStmt {
 	var target *ast.SwitchStmt
