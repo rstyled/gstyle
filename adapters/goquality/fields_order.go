@@ -5,6 +5,34 @@ import (
 	"go/types"
 )
 
+// A copied value record can replace a borrowed field before using it. Require
+// one complete header replacement after construction, in the same unlabeled
+// block as the use's enclosing statement. The caller still checks ownership
+// of every replacement and excludes root escapes, aliases and deferred work.
+func (x *extractor) replacedValueField(key fieldKey, initializers []ast.Expr, current ast.Node) bool {
+	if _, value := underlying(key.root.Type()).(*types.Struct); !value {
+		return false
+	}
+	binding := x.fields.writes[key]
+	if len(initializers) != 1 || len(binding.values) != 1 || binding.selfReturned {
+		return false
+	}
+	return x.fieldReplacementPrecedes(initializers[0], binding.values[0], current)
+}
+
+func (x *extractor) fieldReplacementPrecedes(initial, value ast.Expr, current ast.Node) bool {
+	initializer, block := x.unlabeledFieldBlock(initial)
+	if block == nil {
+		return false
+	}
+	replacement, replacementBlock := x.fieldStatement(value, nil)
+	if replacementBlock != block || initializer.End() >= replacement.Pos() {
+		return false
+	}
+	statement, _ := x.fieldStatement(current, block)
+	return statement != nil && replacement.End() < statement.Pos()
+}
+
 // A fresh root stays private until a later statement publishes it. Statements
 // within the same loop/branch are not ordered against one another by this proof.
 func (x *extractor) rootClosedAt(root types.Object, initializers []ast.Expr, current ast.Node) bool {

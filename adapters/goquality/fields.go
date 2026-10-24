@@ -80,7 +80,12 @@ func (x *extractor) ownedField(value *ast.SelectorExpr, seen map[types.Object]bo
 		return quality.Unknown
 	}
 	root, ok := x.bindings[key.root]
-	if !ok || root.unknown || len(root.values) == 0 {
+	if !ok || len(root.values) == 0 {
+		return quality.Unknown
+	}
+	// A value field replaced before this use does not depend on the original
+	// header. The lifetime checks below still reject earlier address exposure.
+	if root.unknown && !x.replacedValueField(key, root.values, value) {
 		return quality.Unknown
 	}
 	return x.fieldBindingOrigin(key, root.values, value, seen)
@@ -94,6 +99,9 @@ func (x *extractor) fieldBindingOrigin(key fieldKey, initializers []ast.Expr, cu
 	defer delete(seen, key.root)
 	if x.bindingOrigin(x.fields.writes[key], seen) != quality.Local {
 		return quality.Unknown
+	}
+	if x.replacedValueField(key, initializers, current) {
+		return quality.Local
 	}
 	return x.initializedFieldOrigin(key, initializers, seen)
 }
