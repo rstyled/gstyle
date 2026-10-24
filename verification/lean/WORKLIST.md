@@ -9,16 +9,23 @@ correctness proof.
 
 | Command | Named axiom audits | Fault controls | Scope |
 | --- | ---: | ---: | --- |
-| `make verify-worklist` | 67 | 44 | Queue, decisions, scalar transfer, block and successor execution |
-| `make verify-scalar-flow` | 38 | 6 | Scalar identity, metadata and concrete range meaning |
+| `make verify-worklist` | 61 | 44 | Queue, decisions, scalar transfer, block and successor execution |
+| `make verify-scalar-flow` | 37 | 6 | Scalar identity, metadata and concrete range meaning |
 | `make verify-solver` | 35 | 5 | Actual post-constructor cursor loop and acyclic progress |
 
 Each profile checks pinned dependencies, regenerates and compares the selected
 production translation, binds its sources and audits the named theorems. CI
 splits the worklist controls into two shards. A fresh combined run can execute
-all 55 controls and audit all 140 names; collecting old success reports is not a
+all 55 controls and audit all 133 names; collecting old success reports is not a
 combined execution. `make verify-branches` separately checks supplied-source
 report integration and its eight controls.
+
+Seven unused convenience wrappers are removed. Their original statements
+reconstruct without new premises: exact comparison execution plus
+`knownComparisonResult_no_false_rejection`; successor execution plus
+`successorResult_feasible`/`finiteAssume_sound`; and `wp_decision` plus
+`DecisionEvidence.scalar`/`sound`. Syntax-selection and positive formation checks
+remain. Audit-name counts are an inventory, not a coverage measure.
 
 ## Execution and meaning covered
 

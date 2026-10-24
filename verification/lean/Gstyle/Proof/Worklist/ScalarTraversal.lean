@@ -59,41 +59,6 @@ def sourceEdgesCovered (s : QuerySnapshot) (kind : w32 → GoString) (changing :
     decisionEnabled s eval condition (decide (i = 0)) →
     branchDenotes kind changing (out.input (queueIndex next)) env
 
-/-- The actual dispatcher preserves the scalar invariant and every concrete
-    environment whose truth selects this edge. All execution calls are discharged. -/
-theorem wp_decision_scalar_sound (receiver : Loc) (s : QuerySnapshot) (o : AssumeOperators)
-    (kind : w32 → GoString) (changing : w32 → Bool) (ref : w32)
-    (result : Bool → StateData → Option StateData)
-    (decision : DecisionEvidence s o kind changing ref result)
-    (wf : ValueSnapshotValid s) (hparse : parseInt64Contract (GF := GF))
-    (truth : Bool) (state : Loc) (m : StateData)
-    (hm : validBranchState s.kinds s.unstable kind changing m) (hs : scalarState m)
-    (hk : ∀ key, kind key ≠ go!"\"pointer\"")
-    (env : w32 → Int) (meaning : ScalarMeaning s kind changing env)
-    (hin : stateDenotes kind changing m env) (htruth : decisionEnabled s meaning.eval ref truth)
-    (hinverse : ∀ op, (o.inverseTable !! op).getD (zero_val GoString) = inverseOperator op)
-    (hreverse : ∀ op, (o.reverseTable !! op).getD (zero_val GoString) = reverseOperator op) :
-    {{ isPkgInit (PROP := IProp GF) pkg ∗
-       isPkgInit (PROP := IProp GF) pkg_id.github_com.rstyled.gstyle.domain.runtimeguard.interval ∗
-       (querySnapshotOwn receiver s ∗ assumeOperatorsOwn o ∗ state ↦$ m) }}
-      (App (App (App (Val #(methods (go.PointerType graphView.ty) go!"successorState" #receiver))
-        (Val #ref)) (Val #truth)) (Val #state))
-    {{ (out : Loc), RET #out; querySnapshotOwn receiver s ∗ assumeOperatorsOwn o ∗
-        ownsBranch (result truth m) out ∗
-        ⌜validBranchOption s.kinds s.unstable kind changing (result truth m) ∧
-          scalarOption (result truth m) ∧ branchDenotes kind changing (result truth m) env⌝ }} := by
-  have hscalar := DecisionEvidence.scalar s o kind changing ref result decision truth m hm hs hk
-  have hsound := DecisionEvidence.sound s o kind changing ref result decision truth m hm env meaning
-    hin htruth hinverse hreverse
-  wp_start_folded as Hinputs
-  wp_apply wp_decision receiver s o kind changing ref result decision wf hparse truth state m hm
-      $$ [Hinputs] with %out ⟨Hsnapshot, Hoperators, Hout, %hvalid⟩
-  · iexact Hinputs
-  iapply HΦ
-  iframe Hsnapshot Hoperators Hout
-  ipureintro
-  exact ⟨hvalid, hscalar, hsound⟩
-
 /-- Semantic composition for the entire real successor loop. It preserves old
     represented environments and adds each feasible edge, including repeated
     targets, while maintaining scalar, metadata and pending-queue invariants. -/

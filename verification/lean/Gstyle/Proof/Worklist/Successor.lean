@@ -84,8 +84,7 @@ theorem wp_successorState_zero (receiver : Loc) (s : QuerySnapshot) (truth : Boo
   wp_end
   all_goals iframe Hsnapshot Hstate
 
-section wrappedComparison
-variable (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
+theorem wp_successorState_if_execution (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
     (sf : Nat) (ref left right : w32) (row : GoArray w32 2) (op : GoString) (lv rv : Value)
     (decision : w32) (decisionRow : GoArray w32 2)
     (hdecision : validSymbolRef s decision)
@@ -105,11 +104,6 @@ variable (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
     (wf : ValueSnapshotValid s)
     (hparse : parseInt64Contract (GF := GF))
     (leftEvaluation : ValueEvaluation s m sf left lv) (rightEvaluation : ValueEvaluation s m sf right rv)
-include receiver s state m sf ref left right row op lv rv decision decisionRow hdecision hdref hdrow hdchild
-include hconstruct href hrow hleft hright hvalid halloc htrue hfalse hop hcomparison wf hparse
-include leftEvaluation rightEvaluation
-
-theorem wp_successorState_if_execution
     (truth : Bool)
     (hrefzero : ref ≠ W32 0)
     (o : AssumeOperators) (kind : w32 → GoString) (changing : w32 → Bool)
@@ -179,70 +173,6 @@ theorem wp_successorState_if_execution
       all_goals simp only [ownsBranch, validBranchOption]
       all_goals ipureintro; simp
 
-theorem wp_successorState_if_feasible
-    (x y : Int) (hl : interval.contains (bounds lv) x) (hr : interval.contains (bounds rv) y)
-    (truth : Bool) (branch : comparisonBranch truth op x y)
-    (hrefzero : ref ≠ W32 0)
-    (o : AssumeOperators) (kind : w32 → GoString) (changing : w32 → Bool)
-    (fuel : Nat) (step : StateData → Option StateData)
-    (execution : FiniteAssume s o kind changing fuel ref truth step)
-    (hm : validBranchState s.kinds s.unstable kind changing m) :
-    {{ isPkgInit (PROP := IProp GF) pkg ∗
-       isPkgInit (PROP := IProp GF) pkg_id.github_com.rstyled.gstyle.domain.runtimeguard.interval ∗
-       (querySnapshotOwn receiver s ∗ assumeOperatorsOwn o ∗ state ↦$ m) }}
-      (App (App (App (Val #(methods (go.PointerType graphView.ty) go!"successorState" #receiver))
-        (Val #decision)) (Val #truth)) (Val #state))
-    {{ (out : Loc), RET #out; querySnapshotOwn receiver s ∗ assumeOperatorsOwn o ∗
-        ownsBranch (step m) out ∗ ⌜validBranchOption s.kinds s.unstable kind changing (step m)⌝ }} := by
-  have hresult := successorResult_feasible op lv rv truth step m x y hl hr branch
-  rw [← hresult]
-  wp_start_folded as Hinputs
-  wp_apply wp_successorState_if_execution receiver s state m sf ref left right row op lv rv
-      decision decisionRow hdecision hdref hdrow hdchild hconstruct
-      href hrow hleft hright hvalid halloc htrue hfalse hop hcomparison wf hparse
-      leftEvaluation rightEvaluation truth hrefzero o kind changing fuel step execution hm
-      $$ [Hinputs] with %out ⟨Hsnapshot, Hoperators, Hout, %hvalidout⟩
-  · iexact Hinputs
-  wp_end
-
-theorem wp_successorState_if_sound
-    (x y : Int) (hl : interval.contains (bounds lv) x) (hr : interval.contains (bounds rv) y)
-    (truth : Bool) (branch : comparisonBranch truth op x y)
-    (hrefzero : ref ≠ W32 0)
-    (o : AssumeOperators) (kind : w32 → GoString) (changing : w32 → Bool)
-    (fuel : Nat) (step : StateData → Option StateData)
-    (execution : FiniteAssume s o kind changing fuel ref truth step)
-    (hm : validBranchState s.kinds s.unstable kind changing m)
-    (env values : w32 → Int) (eval : w32 → Bool)
-    (meaning : AssumeMeaning s values eval)
-    (hvalues : valueIntervalMeaning s kind changing env values)
-    (hsymbols : symbolIntervalMeaning s env values)
-    (hword : ∀ key, -9223372036854775808 ≤ env key ∧ env key ≤ 9223372036854775807)
-    (hinverse : ∀ op, (o.inverseTable !! op).getD (zero_val GoString) = inverseOperator op)
-    (hreverse : ∀ op, (o.reverseTable !! op).getD (zero_val GoString) = reverseOperator op)
-    (hin : stateDenotes kind changing m env) (htruth : eval ref = truth) :
-    {{ isPkgInit (PROP := IProp GF) pkg ∗
-       isPkgInit (PROP := IProp GF) pkg_id.github_com.rstyled.gstyle.domain.runtimeguard.interval ∗
-       (querySnapshotOwn receiver s ∗ assumeOperatorsOwn o ∗ state ↦$ m) }}
-      (App (App (App (Val #(methods (go.PointerType graphView.ty) go!"successorState" #receiver))
-        (Val #decision)) (Val #truth)) (Val #state))
-    {{ (out : Loc), RET #out; querySnapshotOwn receiver s ∗ assumeOperatorsOwn o ∗
-        ownsBranch (step m) out ∗ ⌜validBranchOption s.kinds s.unstable kind changing (step m) ∧ branchDenotes kind changing (step m) env⌝ }} := by
-  have sound := finiteAssume_sound s o kind changing fuel ref truth step execution env values eval meaning
-    hvalues hsymbols hword hinverse hreverse m hm hin htruth
-  wp_start_folded as Hinputs
-  wp_apply wp_successorState_if_feasible receiver s state m sf ref left right row op lv rv
-      decision decisionRow hdecision hdref hdrow hdchild hconstruct
-      href hrow hleft hright hvalid halloc htrue hfalse hop hcomparison wf hparse
-      leftEvaluation rightEvaluation x y hl hr truth branch hrefzero o kind changing fuel step execution hm
-      $$ [Hinputs] with %out ⟨Hsnapshot, Hoperators, Hout, %hvalidout⟩
-  · iexact Hinputs
-  iapply HΦ
-  iframe Hsnapshot Hoperators Hout
-  ipureintro
-  exact ⟨hvalidout, sound⟩
-
-end wrappedComparison
 
 /-- A numeric comparison is not the synthetic tagless-switch predicate. -/
 
@@ -250,8 +180,7 @@ theorem comparisonOperator_not_truth_test (op : GoString) (h : comparisonOperato
     op ≠ go!"truth-test" := by
   rcases h with rfl | rfl | rfl | rfl | rfl | rfl <;> decide
 
-section directComparison
-variable (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
+theorem wp_successorState_direct_execution (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
     (sf : Nat) (ref left right : w32) (row : GoArray w32 2) (op : GoString) (lv rv : Value)
     (hif : pdg.tableText s.strings (snapshotRecord s ref).Construct' ≠ go!"if")
     (hfor : pdg.tableText s.strings (snapshotRecord s ref).Construct' ≠ go!"for")
@@ -268,10 +197,6 @@ variable (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
     (wf : ValueSnapshotValid s)
     (hparse : parseInt64Contract (GF := GF))
     (leftEvaluation : ValueEvaluation s m sf left lv) (rightEvaluation : ValueEvaluation s m sf right rv)
-include receiver s state m sf ref left right row op lv rv hif hfor hshort href hrow hleft hright hvalid
-include halloc htrue hfalse hop hcomparison wf hparse leftEvaluation rightEvaluation
-
-theorem wp_successorState_direct_execution
     (truth : Bool)
     (hrefzero : ref ≠ W32 0)
     (o : AssumeOperators) (kind : w32 → GoString) (changing : w32 → Bool)
@@ -350,70 +275,6 @@ theorem wp_successorState_direct_execution
       all_goals simp only [ownsBranch, validBranchOption]
       all_goals ipureintro; simp
 
-theorem wp_successorState_direct_feasible
-    (x y : Int) (hl : interval.contains (bounds lv) x) (hr : interval.contains (bounds rv) y)
-    (truth : Bool) (branch : comparisonBranch truth op x y)
-    (hrefzero : ref ≠ W32 0)
-    (o : AssumeOperators) (kind : w32 → GoString) (changing : w32 → Bool)
-    (fuel : Nat) (step : StateData → Option StateData)
-    (execution : FiniteAssume s o kind changing fuel ref truth step)
-    (hm : validBranchState s.kinds s.unstable kind changing m) :
-    {{ isPkgInit (PROP := IProp GF) pkg ∗
-       isPkgInit (PROP := IProp GF) pkg_id.github_com.rstyled.gstyle.domain.runtimeguard.interval ∗
-       (querySnapshotOwn receiver s ∗ assumeOperatorsOwn o ∗ state ↦$ m) }}
-      (App (App (App (Val #(methods (go.PointerType graphView.ty) go!"successorState" #receiver))
-        (Val #ref)) (Val #truth)) (Val #state))
-    {{ (out : Loc), RET #out; querySnapshotOwn receiver s ∗ assumeOperatorsOwn o ∗
-        ownsBranch (step m) out ∗ ⌜validBranchOption s.kinds s.unstable kind changing (step m)⌝ }} := by
-  have hresult := successorResult_feasible op lv rv truth step m x y hl hr branch
-  rw [← hresult]
-  wp_start_folded as Hinputs
-  wp_apply wp_successorState_direct_execution receiver s state m sf ref left right row op lv rv
-      hif hfor hshort
-      href hrow hleft hright hvalid halloc htrue hfalse hop hcomparison wf hparse
-      leftEvaluation rightEvaluation truth hrefzero o kind changing fuel step execution hm
-      $$ [Hinputs] with %out ⟨Hsnapshot, Hoperators, Hout, %hvalidout⟩
-  · iexact Hinputs
-  wp_end
-
-theorem wp_successorState_direct_sound
-    (x y : Int) (hl : interval.contains (bounds lv) x) (hr : interval.contains (bounds rv) y)
-    (truth : Bool) (branch : comparisonBranch truth op x y)
-    (hrefzero : ref ≠ W32 0)
-    (o : AssumeOperators) (kind : w32 → GoString) (changing : w32 → Bool)
-    (fuel : Nat) (step : StateData → Option StateData)
-    (execution : FiniteAssume s o kind changing fuel ref truth step)
-    (hm : validBranchState s.kinds s.unstable kind changing m)
-    (env values : w32 → Int) (eval : w32 → Bool)
-    (meaning : AssumeMeaning s values eval)
-    (hvalues : valueIntervalMeaning s kind changing env values)
-    (hsymbols : symbolIntervalMeaning s env values)
-    (hword : ∀ key, -9223372036854775808 ≤ env key ∧ env key ≤ 9223372036854775807)
-    (hinverse : ∀ op, (o.inverseTable !! op).getD (zero_val GoString) = inverseOperator op)
-    (hreverse : ∀ op, (o.reverseTable !! op).getD (zero_val GoString) = reverseOperator op)
-    (hin : stateDenotes kind changing m env) (htruth : eval ref = truth) :
-    {{ isPkgInit (PROP := IProp GF) pkg ∗
-       isPkgInit (PROP := IProp GF) pkg_id.github_com.rstyled.gstyle.domain.runtimeguard.interval ∗
-       (querySnapshotOwn receiver s ∗ assumeOperatorsOwn o ∗ state ↦$ m) }}
-      (App (App (App (Val #(methods (go.PointerType graphView.ty) go!"successorState" #receiver))
-        (Val #ref)) (Val #truth)) (Val #state))
-    {{ (out : Loc), RET #out; querySnapshotOwn receiver s ∗ assumeOperatorsOwn o ∗
-        ownsBranch (step m) out ∗ ⌜validBranchOption s.kinds s.unstable kind changing (step m) ∧ branchDenotes kind changing (step m) env⌝ }} := by
-  have sound := finiteAssume_sound s o kind changing fuel ref truth step execution env values eval meaning
-    hvalues hsymbols hword hinverse hreverse m hm hin htruth
-  wp_start_folded as Hinputs
-  wp_apply wp_successorState_direct_feasible receiver s state m sf ref left right row op lv rv
-      hif hfor hshort
-      href hrow hleft hright hvalid halloc htrue hfalse hop hcomparison wf hparse
-      leftEvaluation rightEvaluation x y hl hr truth branch hrefzero o kind changing fuel step execution hm
-      $$ [Hinputs] with %out ⟨Hsnapshot, Hoperators, Hout, %hvalidout⟩
-  · iexact Hinputs
-  iapply HΦ
-  iframe Hsnapshot Hoperators Hout
-  ipureintro
-  exact ⟨hvalidout, sound⟩
-
-end directComparison
 
 end proof
 end github_com.rstyled.gstyle.domain.runtimeguard

@@ -93,20 +93,15 @@ variable [interval.Assumptions]
 variable [FuncUnfold compareExactOrder [] compareExactOrder.impl]
 variable [FuncUnfold compareExactIntegers [] compareExactIntegers.impl]
 
-section comparisonExecution
-variable (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
+/-- Both value calls are discharged by production execution witnesses, not assumed callbacks. -/
+theorem wp_knownComparison (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
     (sf : Nat) (ref left right : w32) (row : GoArray w32 2) (op : GoString) (lv rv : Value)
     (href : 0 < uint.Z ref ∧ uint.Z ref ≤ s.operands.length)
     (hrow : s.operands[(uint.Z ref - 1).toNat]? = some row)
     (hleft : row.arr[0]? = some left) (hright : row.arr[1]? = some right)
     (wf : SymbolSnapshotValid s) (hulen : s.unstable.length = s.kinds.length)
     (hparse : parseInt64Contract (GF := GF))
-    (leftEvaluation : ValueEvaluation s m sf left lv) (rightEvaluation : ValueEvaluation s m sf right rv)
-include receiver s state m sf ref left right row op lv rv href hrow hleft hright wf hulen hparse
-include leftEvaluation rightEvaluation
-
-/-- Both value calls are discharged by production execution witnesses, not assumed callbacks. -/
-theorem wp_knownComparison :
+    (leftEvaluation : ValueEvaluation s m sf left lv) (rightEvaluation : ValueEvaluation s m sf right rv) :
     {{ isPkgInit (PROP := IProp GF) pkg ∗ (querySnapshotOwn receiver s ∗ state ↦$ m) }}
       (App (App (App (Val #(methods (go.PointerType graphView.ty) go!"knownComparison" #receiver))
         (Val #ref)) (Val #op)) (Val #state))
@@ -146,30 +141,8 @@ theorem wp_knownComparison :
       wp_apply wp_compareExactIntegers op lv.Lower' rv.Lower'
       wp_end
 
-theorem wp_knownComparison_sound
-    (x y : Int) (hl : interval.contains (bounds lv) x) (hr : interval.contains (bounds rv) y)
-    (truth : Bool) (branch : comparisonBranch truth op x y) :
-    {{ isPkgInit (PROP := IProp GF) pkg ∗ (querySnapshotOwn receiver s ∗ state ↦$ m) }}
-      (App (App (App (Val #(methods (go.PointerType graphView.ty) go!"knownComparison" #receiver))
-        (Val #ref)) (Val #op)) (Val #state))
-    {{ RET (PairV #((knownComparisonResult op lv rv).1) #((knownComparisonResult op lv rv).2));
-        querySnapshotOwn receiver s ∗ state ↦$ m ∗
-        ⌜((knownComparisonResult op lv rv).2 &&
-          decide ((knownComparisonResult op lv rv).1 ≠ truth)) = false⌝ }} := by
-  wp_start_folded as ⟨Hsnapshot, Hstate⟩
-  wp_apply wp_knownComparison receiver s state m sf ref left right row op lv rv
-      href hrow hleft hright wf hulen hparse leftEvaluation rightEvaluation
-      $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-  · iframe
-  iapply HΦ
-  iframe Hsnapshot Hstate
-  ipureintro
-  exact knownComparisonResult_no_false_rejection op lv rv x y hl hr truth branch
 
-end comparisonExecution
-
-section booleanExecution
-variable (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
+theorem wp_knownBoolean_comparison (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
     (sf : Nat) (ref left right : w32) (row : GoArray w32 2) (op : GoString) (lv rv : Value)
     (href : 0 < uint.Z ref ∧ uint.Z ref ≤ s.operands.length)
     (hrow : s.operands[(uint.Z ref - 1).toNat]? = some row)
@@ -182,11 +155,7 @@ variable (receiver : Loc) (s : QuerySnapshot) (state : Loc) (m : StateData)
     (hcomparison : comparisonOperator op)
     (wf : SymbolSnapshotValid s) (hulen : s.unstable.length = s.kinds.length)
     (hparse : parseInt64Contract (GF := GF))
-    (leftEvaluation : ValueEvaluation s m sf left lv) (rightEvaluation : ValueEvaluation s m sf right rv)
-include receiver s state m sf ref left right row op lv rv href hrow hleft hright hvalid halloc htrue hfalse
-include hop hcomparison wf hulen hparse leftEvaluation rightEvaluation
-
-theorem wp_knownBoolean_comparison :
+    (leftEvaluation : ValueEvaluation s m sf left lv) (rightEvaluation : ValueEvaluation s m sf right rv) :
     {{ isPkgInit (PROP := IProp GF) pkg ∗ (querySnapshotOwn receiver s ∗ state ↦$ m) }}
       (App (App (Val #(methods (go.PointerType graphView.ty) go!"knownBoolean" #receiver))
         (Val #ref)) (Val #state))
@@ -228,27 +197,6 @@ theorem wp_knownBoolean_comparison :
   · iframe Hsnapshot Hstate
   wp_end
 
-theorem wp_knownBoolean_comparison_sound
-    (x y : Int) (hl : interval.contains (bounds lv) x) (hr : interval.contains (bounds rv) y)
-    (truth : Bool) (branch : comparisonBranch truth op x y) :
-    {{ isPkgInit (PROP := IProp GF) pkg ∗ (querySnapshotOwn receiver s ∗ state ↦$ m) }}
-      (App (App (Val #(methods (go.PointerType graphView.ty) go!"knownBoolean" #receiver))
-        (Val #ref)) (Val #state))
-    {{ RET (PairV #((knownComparisonResult op lv rv).1) #((knownComparisonResult op lv rv).2));
-        querySnapshotOwn receiver s ∗ state ↦$ m ∗
-        ⌜((knownComparisonResult op lv rv).2 &&
-          decide ((knownComparisonResult op lv rv).1 ≠ truth)) = false⌝ }} := by
-  wp_start_folded as ⟨Hsnapshot, Hstate⟩
-  wp_apply wp_knownBoolean_comparison receiver s state m sf ref left right row op lv rv
-      href hrow hleft hright hvalid halloc htrue hfalse hop hcomparison wf hulen hparse leftEvaluation rightEvaluation
-      $$ [Hsnapshot Hstate] with ⟨Hsnapshot, Hstate⟩
-  · iframe
-  iapply HΦ
-  iframe Hsnapshot Hstate
-  ipureintro
-  exact knownComparisonResult_no_false_rejection op lv rv x y hl hr truth branch
-
-end booleanExecution
 
 end proof
 end github_com.rstyled.gstyle.domain.runtimeguard

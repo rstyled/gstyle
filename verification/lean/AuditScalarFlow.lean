@@ -32,7 +32,6 @@ import Gstyle.Proof.Worklist.ScalarBlockMeaning
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.edgePrefix_extends_step
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.edgePrefix_extends
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.edgePrefix_covers
-#print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_decision_scalar_sound
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.wp_successors_scalar_sound
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.ScalarMeaningExecution.sound
 #print axioms Perennial.github_com.rstyled.gstyle.domain.runtimeguard.ScalarMeaningExecution.erase

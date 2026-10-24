@@ -96,7 +96,10 @@ precise exclusion of a point. A rejected certificate means this check did not
 establish the claim; it does not by itself prove that gstyle is wrong.
 
 The reviewed meaning of the canonical renderer, the Go parser/compiler,
-collector, serialization and driver remain trusted boundaries. This work does
+collector, serialization and driver remain trusted boundaries. Artifact
+validation checks range declaration text and theorem names; it still trusts that
+the generated certificates use those reports. Independent subject binding remains
+an open hardening obligation. This work does
 not prove official Go operational semantics, arbitrary Go syntax, aliases,
 concurrency, CLI finding projection or automatic rewrite correctness. The
 existing signed-word interval assumptions remain unchanged. Supported source
