@@ -412,23 +412,6 @@ func applyPrimitiveObsessionFix(spec *patterns.FixSpec, src []byte) ([]byte, err
 	return out, nil
 }
 
-// findStructDecl locates the type declaration for the named struct.
-func findStructDecl(f *ast.File, typeName string) *ast.TypeSpec {
-	var target *ast.TypeSpec
-	ast.Inspect(f, func(n ast.Node) bool {
-		ts, ok := n.(*ast.TypeSpec)
-		if !ok {
-			return true
-		}
-		if ts.Name.Name == typeName {
-			target = ts
-			return false
-		}
-		return true
-	})
-	return target
-}
-
 // applyFactoryFix applies a factory FixSpec: extracts a NewT factory
 // function for a struct type built with 5+ fields in multiple places,
 // and rewrites full composite literals to factory calls.

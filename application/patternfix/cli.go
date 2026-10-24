@@ -260,8 +260,8 @@ func mineCandidates(ctx context.Context, opts options) ([]patterns.Candidate, er
 	if err != nil {
 		return nil, fmt.Errorf("extract: %w", err)
 	}
-	facts, anemicHits, missingHits, serviceHits := toFacts(ext)
-	report := patterns.PatternsReport{Candidates: patterns.RunFixCandidates(facts, patterns.Options{DeclarationOrders: ext.DeclarationOrders, OffsetFallbacks: ext.OffsetFallbacks, AnemicModels: anemicHits, MissingIdentities: missingHits, DomainServices: serviceHits}, patterns.CandidateKind(opts.kind))}
+	facts := ext.FixFacts()
+	report := patterns.PatternsReport{Candidates: patterns.RunFixCandidates(facts, patterns.Options{DeclarationOrders: ext.DeclarationOrders, OffsetFallbacks: ext.OffsetFallbacks, AnemicModels: ext.AnemicModels, MissingIdentities: ext.MissingIdentities, DomainServices: ext.DomainServices}, patterns.CandidateKind(opts.kind))}
 	gopatterns.VerifyValueGroups(&report, ext)
 	if err := gopatterns.VerifyParameterizations(&report, ext); err != nil {
 		return nil, fmt.Errorf("verify parameterization: %w", err)
@@ -418,74 +418,6 @@ func parseOptions(args []string) (options, error) {
 	}
 	result.paths = flags.Args()
 	return result, result.validate()
-}
-
-// toFacts converts extraction to FuncFacts (copied from patterncheck).
-func toFacts(ext *gopatterns.Extraction) ([]*patterns.FuncFacts, []patterns.AnemicModelHit, []patterns.MissingIdentityHit, []patterns.DomainServiceHit) {
-	var facts []*patterns.FuncFacts
-	for _, fp := range ext.Funcs {
-		fp := fp
-		facts = append(facts, &patterns.FuncFacts{
-			ID:                  fp.Name,
-			Name:                fp.Name,
-			Path:                fp.Path,
-			Line:                fp.Line,
-			EndLine:             fp.EndLine,
-			Pdg:                 &fp.Pdg,
-			SigKey:              gopatterns.SigKeyOf(fp),
-			SelfTy:              fp.SelfTy,
-			GuardClauses:        guardHits(fp.GuardClauses),
-			EnumDispatches:      dispatchHits(fp.EnumDispatches),
-			TypeSwitches:        typeSwitchHits(fp.TypeSwitches),
-			EntityIdentities:    fp.EntityIdentities,
-			MutableIdentities:   fp.MutableIdentities,
-			AggregateMods:       fp.AggregateMods,
-			DbCalls:             fp.DbCalls,
-			FactoryLits:         fp.FactoryLits,
-			SpecRules:           fp.SpecRules,
-			NilErrHits:          fp.NilErrHits,
-			ForceTypeAssertHits: fp.ForceTypeAssertHits,
-			TypedNilHits:        fp.TypedNilHits,
-			SuppressedKinds:     fp.SuppressedKinds,
-			Params:              paramInfos(fp.Params),
-		})
-	}
-	return facts, ext.AnemicModels, ext.MissingIdentities, ext.DomainServices
-}
-
-func guardHits(hits []gopatterns.GuardClauseHit) []patterns.GuardClauseHit {
-	var out []patterns.GuardClauseHit
-	for _, h := range hits {
-		out = append(out, patterns.GuardClauseHit{Line: h.Line, BodyStmts: h.BodyStmts})
-	}
-	return out
-}
-
-func dispatchHits(hits []gopatterns.EnumDispatchHit) []patterns.EnumDispatchHit {
-	var out []patterns.EnumDispatchHit
-	for _, h := range hits {
-		out = append(out, patterns.EnumDispatchHit{Line: h.Line, NumCases: h.NumCases})
-	}
-	return out
-}
-
-func typeSwitchHits(hits []gopatterns.TypeSwitchHit) []patterns.TypeSwitchHit {
-	var out []patterns.TypeSwitchHit
-	for _, h := range hits {
-		out = append(out, patterns.TypeSwitchHit{
-			Line: h.Line, Bound: h.Bound, Expr: h.Expr,
-			Method: h.Method, Types: h.Types, Args: h.Args,
-		})
-	}
-	return out
-}
-
-func paramInfos(params []patterns.ParamInfo) []patterns.ParamInfo {
-	var out []patterns.ParamInfo
-	for _, p := range params {
-		out = append(out, patterns.ParamInfo{Name: p.Name, Type: p.Type})
-	}
-	return out
 }
 
 func phaseKindSet(kinds []patterns.CandidateKind) map[patterns.CandidateKind]bool {

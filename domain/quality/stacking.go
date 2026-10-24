@@ -149,29 +149,6 @@ func calleeKey(functions []Function, callee, param int) (bundleKey, bool) {
 	return bundleKey{name: list[param].Name, typ: list[param].Type}, true
 }
 
-func compareBundleKey(a, b bundleKey) int {
-	return cmp.Or(
-		strings.Compare(a.name, b.name),
-		strings.Compare(a.typ, b.typ),
-	)
-}
-
-func setKey(s map[bundleKey]bool) string {
-	keys := make([]bundleKey, 0, len(s))
-	for k := range s {
-		keys = append(keys, k)
-	}
-	slices.SortFunc(keys, compareBundleKey)
-	var sb strings.Builder
-	for _, k := range keys {
-		sb.WriteString(k.name)
-		sb.WriteByte(0)
-		sb.WriteString(k.typ)
-		sb.WriteByte(0)
-	}
-	return sb.String()
-}
-
 func intersectSets(a, b map[bundleKey]bool) map[bundleKey]bool {
 	out := map[bundleKey]bool{}
 	for k := range a {

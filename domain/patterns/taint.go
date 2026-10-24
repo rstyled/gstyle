@@ -146,16 +146,6 @@ func intInSlice(v int, s []int) bool {
 	return false
 }
 
-// findTaintSource traces back from a tainted node to a source call,
-// returning its line and callee. Best-effort: first source found.
-func findTaintSource(pdg *MiningGraph, tainted map[int]bool, from int) (line int, callee string) {
-	node := findTaintSourceNode(pdg, tainted, from)
-	if node < 0 {
-		return 0, ""
-	}
-	return pdg.Nodes[node].Line, pdg.Nodes[node].CalleeID
-}
-
 func findTaintSourceNode(pdg *MiningGraph, tainted map[int]bool, from int) int {
 	visited := map[int]bool{from: true}
 	queue := taintedPredecessors(pdg, tainted, from, visited)

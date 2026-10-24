@@ -1,25 +1,9 @@
 package callflow
 
 import (
-	"cmp"
 	"github.com/rstyled/gstyle/domain/pdg"
 	"maps"
-	"slices"
 )
-
-type tupleEntry struct {
-	Ref    pdg.Ref
-	Values string
-}
-
-func tupleEntries(values map[pdg.Ref]string) []tupleEntry {
-	entries := make([]tupleEntry, 0, len(values))
-	for ref, value := range values {
-		entries = append(entries, tupleEntry{Ref: ref, Values: value})
-	}
-	slices.SortFunc(entries, func(a, b tupleEntry) int { return cmp.Compare(a.Ref, b.Ref) })
-	return entries
-}
 
 func (evaluation *exitEvaluation) storeCallResult(point exitPoint, ref pdg.Ref, returned string) exitPoint {
 	values := evaluation.values[point.values]

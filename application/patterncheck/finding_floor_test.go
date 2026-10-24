@@ -30,7 +30,7 @@ func right(int)(string,error){return "bb",fixtureErr}
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw := patterns.Run(toFacts(extraction.Funcs), patterns.Options{})
+	raw := patterns.Run(extraction.PatternFacts(), patterns.Options{})
 	matches := 0
 	for _, c := range raw.Candidates {
 		if c.Kind == patterns.Parameterize {
