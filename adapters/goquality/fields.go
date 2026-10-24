@@ -194,19 +194,23 @@ func (x *extractor) closedFieldUse(selector *ast.SelectorExpr) bool {
 		return false
 	}
 	var node ast.Node = selector
-	for parent := x.fields.parents[node]; parent != nil; parent = x.fields.parents[node] {
+	proof := receiverProof{parents: x.fields.parents}
+	for {
+		_, parent := proof.parent(node)
 		switch parent := parent.(type) {
-		case *ast.ParenExpr:
-			node = parent
-			continue
 		case *ast.UnaryExpr:
 			return parent.Op != token.AND
 		case *ast.SelectorExpr:
-			return false // Methods can implicitly take the field's address.
+			// Typed value selectors have a selection. Fields do not expose the
+			// outer record; methods can implicitly take its address.
+			if x.pkg.TypesInfo.Selections[parent].Kind() != types.FieldVal {
+				return false
+			}
+			node = parent
+		default:
+			return true
 		}
-		return true
 	}
-	return true
 }
 
 // A closure result can publish the root while construction is still running.
