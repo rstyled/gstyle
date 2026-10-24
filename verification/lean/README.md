@@ -8,6 +8,10 @@ Profiles cover function length, [PDG queries](PDG.md),
 [unchecked output](OUTPUT.md), and [runtime state and interval proofs](NEGATIVE_INDEX.md).
 Each has its own verification profile, axiom audit and mutation controls.
 
+[Program-level range certificates](PROGRAMS.md) add exhaustive scalar source
+programs and kernel-checked range claims over every signed 64-bit input. Run
+`make verify-programs` for the bounded source-to-range contract and its controls.
+
 ## Function-length profile
 
 The production metric counts physical lines containing Go tokens. Blank lines,
