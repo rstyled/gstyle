@@ -9,16 +9,17 @@ import (
 )
 
 func (x *extractor) indexedOrigin(value *ast.IndexExpr, seen map[types.Object]bool) quality.Provenance {
-	if object := x.mapEntryRoot(value); x.privateAppendEntries(object) {
+	if object := x.mapEntryRoot(value); x.privateSliceEntries(object) {
 		return quality.Local
 	}
 	return referencedOrigin(x.origin(value.X, seen))
 }
 
-// A fresh private map or slice starts with nil slice entries. Updating entries
-// only by append from that same container preserves owned row storage.
-// Element references retain their usual borrowed provenance.
-func (x *extractor) privateAppendEntries(object types.Object) bool {
+// A fresh private map or slice starts with nil slice entries. Fresh row
+// allocations and appends from this container preserve owned row storage.
+// Direct element writes keep that storage private; referenced children do not
+// inherit its ownership.
+func (x *extractor) privateSliceEntries(object types.Object) bool {
 	if !x.emptyLocalEntries(object) || x.fields.deferred {
 		return false
 	}
@@ -84,14 +85,24 @@ func (x *extractor) privateMapEntryUse(entry *ast.IndexExpr, object types.Object
 	_, parent := (receiverProof{parents: x.fields.parents}).parent(entry)
 	switch parent := parent.(type) {
 	case *ast.CallExpr:
-		return x.mapEntryAppend(parent, object) && ast.Unparen(parent.Args[0]) == entry && x.mapAppendWrite(parent, object)
+		return x.mapAppendWrite(parent, object) && ast.Unparen(parent.Args[0]) == entry
 	case *ast.AssignStmt:
 		return x.mapEntryAssignment(parent, object)
 	case *ast.BinaryExpr:
 		return x.nilComparison(parent)
+	case *ast.IndexExpr:
+		return x.privateRowWrite(entry, parent)
 	default:
 		return false
 	}
+}
+
+func (x *extractor) privateRowWrite(row, element *ast.IndexExpr) bool {
+	if element.X != row {
+		return false
+	}
+	node, parent := (receiverProof{parents: x.fields.parents}).parent(element)
+	return tableWritePlace(node, parent)
 }
 
 // Comparing with the predeclared nil observes a header without exposing storage.
@@ -108,7 +119,20 @@ func (x *extractor) mapAppendWrite(call *ast.CallExpr, object types.Object) bool
 
 func (x *extractor) mapEntryAssignment(statement *ast.AssignStmt, object types.Object) bool {
 	return len(statement.Lhs) == 1 && len(statement.Rhs) == 1 &&
-		x.mapEntryRoot(statement.Lhs[0]) == object && x.mapEntryAppend(statement.Rhs[0], object)
+		x.mapEntryRoot(statement.Lhs[0]) == object &&
+		(x.mapEntryAppend(statement.Rhs[0], object) || x.allocatedSliceEntry(statement.Rhs[0]))
+}
+
+func (x *extractor) allocatedSliceEntry(value ast.Expr) bool {
+	switch value := ast.Unparen(value).(type) {
+	case *ast.CompositeLit:
+		return true
+	case *ast.CallExpr:
+		builtin, ok := x.calledObject(unwrappedCallee(value.Fun)).(*types.Builtin)
+		return ok && builtin.Name() == "make"
+	default:
+		return false
+	}
 }
 
 func (x *extractor) mapEntryAppend(value ast.Expr, object types.Object) bool {
