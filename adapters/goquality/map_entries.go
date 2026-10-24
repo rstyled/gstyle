@@ -74,11 +74,30 @@ func (x *extractor) privateMapUse(id *ast.Ident, object types.Object) bool {
 	switch parent := parent.(type) {
 	case *ast.ReturnStmt:
 		return true // Publishing ends construction; deferred work is excluded.
+	case *ast.KeyValueExpr:
+		return parent.Value == node && x.returnedEntryField(parent)
 	case *ast.IndexExpr:
 		return parent.X == node && x.privateMapEntryUse(parent, object)
 	default:
 		return false
 	}
+}
+
+// A field in a directly returned literal publishes storage only at return.
+// Saving the literal or passing it to a call still rejects private ownership.
+func (x *extractor) returnedEntryField(field *ast.KeyValueExpr) bool {
+	proof := receiverProof{parents: x.fields.parents}
+	_, parent := proof.parent(field)
+	literal, ok := parent.(*ast.CompositeLit)
+	if !ok {
+		return false
+	}
+	_, parent = proof.parent(literal)
+	if address, ok := parent.(*ast.UnaryExpr); ok && address.Op == token.AND {
+		_, parent = proof.parent(address)
+	}
+	_, ok = parent.(*ast.ReturnStmt)
+	return ok
 }
 
 func (x *extractor) privateMapEntryUse(entry *ast.IndexExpr, object types.Object) bool {
