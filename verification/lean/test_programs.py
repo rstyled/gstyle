@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 
@@ -6,6 +7,49 @@ import verify_programs
 
 
 class ProgramCertificateGuardTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("lake"), "requires the pinned Lean toolchain")
+    def test_binding_rejects_a_record_without_certificate_proofs(self):
+        # A standalone type fixture keeps this guard independent of project builds.
+        fixture = """namespace Perennial.GstylePrograms
+inductive Expression where | input
+inductive Program where | result : Expression → Program
+structure Reported where
+  lower : Int
+  upper : Int
+  hasLower : Bool
+  hasUpper : Bool
+structure UncheckedReport where
+  name : String
+  program : Program
+  report : Reported
+  source : String
+structure Certificate extends UncheckedReport where
+  sound : True
+end Perennial.GstylePrograms
+open Perennial.GstylePrograms
+namespace GeneratedPrograms
+def unchecked : UncheckedReport := ⟨"Case0", .result .input, ⟨0, 0, false, false⟩, "source"⟩
+def cCase0 : Certificate := ⟨unchecked, True.intro⟩
+end GeneratedPrograms
+"""
+        data = {"cases": [{"name": "Case0", "source": "source",
+            "program": {"value": {"input": True}},
+            "range": {"Lower": 0, "Upper": 0, "HasLower": False, "HasUpper": False}}]}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            certificate = path / "Certificate.lean"
+            certificate.write_text(fixture)
+            verify_programs.check_bindings(path, data)
+            certificate.write_text(fixture.replace(
+                "def cCase0 : Certificate := ⟨unchecked, True.intro⟩",
+                "def cCase0 : UncheckedReport := unchecked"))
+            with self.assertRaisesRegex(RuntimeError, "command failed"):
+                verify_programs.check_bindings(path, data)
+            rejection = (path / "binding.log").read_text()
+            self.assertIn("Type mismatch", rejection)
+            self.assertIn("UncheckedReport", rejection)
+            self.assertIn("but is expected to have type\n  Certificate", rejection)
+
     def test_binding_values_are_literals_not_lean_expressions(self):
         for value in (True, 2**63, -(2**63)-1, "0 + 1", 1.0):
             with self.assertRaises(ValueError):
@@ -25,14 +69,17 @@ class ProgramCertificateGuardTests(unittest.TestCase):
                 "program": {"value": {"input": True, "value": 0}},
                 "range": {"Lower": 1, "Upper": 1, "HasLower": True, "HasUpper": True}}]}
             audit = ("'CapturedSubjects.bound0' does not depend on any axioms\n"
+                     "'CapturedSubjects.subject0' does not depend on any axioms\n"
                      "'GeneratedPrograms.cCase0' does not depend on any axioms\n")
             with mock.patch.object(verify_programs, "run", return_value=audit):
                 verify_programs.check_bindings(path, data)
             bridge = (path / "BoundCertificate.lean").read_text()
-            for expected in ("GeneratedPrograms.«cCase0».program = (.result .input)",
-                             "GeneratedPrograms.«cCase0».report = (⟨(1), (1), true, true⟩",
+            for expected in ("def subject0 : Perennial.GstylePrograms.Certificate := GeneratedPrograms.«cCase0»",
+                             "CapturedSubjects.subject0.program = (.result .input)",
+                             "CapturedSubjects.subject0.report = (⟨(1), (1), true, true⟩",
+                             '#print axioms CapturedSubjects.subject0',
                              '#print axioms GeneratedPrograms.«cCase0»',
-                             'GeneratedPrograms.«cCase0».source = "captured source\\n"'):
+                             'CapturedSubjects.subject0.source = "captured source\\n"'):
                 self.assertIn(expected, bridge)
             bad = audit.replace("'GeneratedPrograms.cCase0' does not depend on any axioms",
                                 "'GeneratedPrograms.cCase0' depends on axioms: [unapproved]")

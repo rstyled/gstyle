@@ -105,18 +105,21 @@ def check_bindings(directory, data, *, theorems=()):
     lines.extend("#print axioms " + name for name in sorted(theorems))
     for index, case in enumerate(data["cases"]):
         certificate = "GeneratedPrograms.«c" + case["name"] + "»"
+        subject = f"CapturedSubjects.subject{index}"
         value = case["range"]
         report = (f"(⟨({integer_literal(value['Lower'])}), ({integer_literal(value['Upper'])}), "
                   f"{boolean_literal(value['HasLower'])}, {boolean_literal(value['HasUpper'])}⟩ : Reported)")
         quote = lambda text: json.dumps(text, ensure_ascii=False)
-        lines.extend([f"theorem bound{index} :",
-            f"    {certificate}.name = {quote(case['name'])} ∧",
-            f"    {certificate}.program = {program_term(case['program'])} ∧",
-            f"    {certificate}.report = {report} ∧",
-            f"    {certificate}.source = {quote(case['source'])} := by",
+        lines.extend([f"def subject{index} : Perennial.GstylePrograms.Certificate := {certificate}",
+            f"theorem bound{index} :",
+            f"    {subject}.name = {quote(case['name'])} ∧",
+            f"    {subject}.program = {program_term(case['program'])} ∧",
+            f"    {subject}.report = {report} ∧",
+            f"    {subject}.source = {quote(case['source'])} := by",
             "  refine ⟨?_, ?_, ?_, ?_⟩ <;> rfl",
-            f"#print axioms CapturedSubjects.bound{index}", f"#print axioms {certificate}"])
-        names.update({f"CapturedSubjects.bound{index}", "GeneratedPrograms.c" + case["name"]})
+            f"#print axioms CapturedSubjects.bound{index}", f"#print axioms {subject}",
+            f"#print axioms {certificate}"])
+        names.update({f"CapturedSubjects.bound{index}", subject, "GeneratedPrograms.c" + case["name"]})
     lines.append("end CapturedSubjects")
     path = directory / "BoundCertificate.lean"
     path.write_text("\n".join(lines) + "\n")
@@ -245,7 +248,7 @@ def subject_controls(baseline, report):
             output = (directory / "binding.log").read_text()
             if name == "certificate-axiom":
                 expected = {f"unexpected axioms for {entry}: {{'GeneratedPrograms.unapproved'}}"
-                            for entry in ("CapturedSubjects.bound0", "GeneratedPrograms.cCase0")}
+                            for entry in ("CapturedSubjects.bound0", "CapturedSubjects.subject0", "GeneratedPrograms.cCase0")}
                 if str(error) not in expected:
                     raise
             elif not proof_rejected(output, directory / "BoundCertificate.lean", {"bound0"}):

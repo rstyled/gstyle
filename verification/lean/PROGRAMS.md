@@ -109,12 +109,12 @@ not a verified result.
    checks their exact concatenation, raw reports, source hashes and before/after
    input fingerprints. `reported_interval` connects certificate membership to
    production intervals under signed-word bounds, preserving unknown payloads.
-5. From the captured manifest, the driver emits a separate theorem binding the
-   actual certificate's name, program, raw range and source to literal data.
+5. The driver requires a typed `Certificate` subject, then emits a theorem binding
+   its name, program, raw range and source to captured manifest literals.
    Numeric and Boolean fields must be literals. Kernel-checked reflexivity
    proves these equalities without recomputing decidable tree/string equality.
-   Both this theorem and the actual certificate receive axiom audits, including
-   soundness and precision fields. Unused declarations or unrelated named
+   The theorem, typed subject and original certificate receive axiom audits,
+   including soundness and precision fields. Unused declarations or unrelated named
    theorems cannot stand in for the certificate. `result.json` requires every
    applicable check and control.
 
