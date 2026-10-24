@@ -57,7 +57,7 @@ func (x *extractor) identifierOrigin(id *ast.Ident, seen map[types.Object]bool) 
 	if x.pkg.TypesInfo.Types[id].IsNil() {
 		return quality.Local
 	}
-	if x.freshSliceStorage(id) {
+	if x.nilCloneStorage(id) || x.freshSliceStorage(id) {
 		return quality.Local
 	}
 	return x.objectOrigin(x.pkg.TypesInfo.ObjectOf(id), seen)
