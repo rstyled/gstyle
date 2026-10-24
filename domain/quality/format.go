@@ -6,7 +6,7 @@ func MemoryWriterCall(callee string) bool {
 		return true
 	case "fmt.Sscan", "fmt.Sscanf", "fmt.Sscanln":
 		return true
-	case "encoding/xml.Decoder.Decode", "encoding/json.Decoder.Decode":
+	case "encoding/xml.Decoder.Decode", "encoding/json.Decoder.Decode", "encoding/json.Unmarshal":
 		return true
 	}
 	return false
@@ -17,11 +17,11 @@ func (call Call) validMemoryWriter() bool {
 }
 
 func (prefix Prefix) refinesMemoryWriter(call Call) bool {
-	return prefix.memoryWriter && call.MemoryWriter && (prefix.Kind == IO || (prefix.Kind == UnknownEffect && NormalizeCallee(call.Callee) == "encoding/json.Decoder.Decode"))
+	return prefix.memoryWriter && call.MemoryWriter && (prefix.Kind == IO || (prefix.Kind == UnknownEffect && (prefix.plainJSON || NormalizeCallee(call.Callee) == "encoding/json.Decoder.Decode")))
 }
 
-// The typed memory-writer proof excludes Scanner callbacks. Only string scans
-// can also use each destination's storage proof; buffers can wrap shared bytes.
+// String scans can use destination ownership. Other memory writers retain
+// mutation evidence; JSON's closed local decode has a separate proof.
 func (call Call) memoryWriteKind() Kind {
 	switch NormalizeCallee(call.Callee) {
 	case "fmt.Sscan", "fmt.Sscanln":

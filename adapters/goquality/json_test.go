@@ -124,7 +124,11 @@ func ReboundCaller(){Rebound(&Record{})}
 			t.Fatalf("%s plain value: %+v", name, got)
 		}
 	}
-	for _, name := range []string{"DecodeLoop", "DecodeLabel", "DecodeFieldAddress", "DecodeFieldWrite", "DecodeFieldView", "DecodeCaptureRecord", "DecodeAsyncRead", "IndentCallback", "IndentZeroCallback", "IndentDynamic", "IgnoredEmbedded", "DashName", "ZeroCallback", "Callback", "PointerCallback", "Nested", "MapKey", "Embedded", "RawShared", "RawPreloaded", "ScalarAlias", "ScalarCapture", "ScalarMethod", "Dynamic", "RecursiveOpen", "Generic", "Decode", "Mixed", "ReverseMixed", "ReboundCaller", "DecodeCallback", "DecodeMapKey", "PreloadedDecode", "AliasedDecode", "PublishedDecode", "CapturedDecode", "DeferredDecode", "ConcurrentDecode", "ReusedDecode"} {
+	aliased := resultNamed(t, report, "ScalarAlias")
+	if !aliased.Complete || len(aliased.Effects) != 1 || aliased.Effects[0].Kind != quality.MutationEffect {
+		t.Fatalf("scalar alias loses its JSON write: %+v", aliased)
+	}
+	for _, name := range []string{"DecodeLoop", "DecodeLabel", "DecodeFieldAddress", "DecodeFieldWrite", "DecodeFieldView", "DecodeCaptureRecord", "DecodeAsyncRead", "IndentCallback", "IndentZeroCallback", "IndentDynamic", "IgnoredEmbedded", "DashName", "ZeroCallback", "Callback", "PointerCallback", "Nested", "MapKey", "Embedded", "RawShared", "RawPreloaded", "ScalarCapture", "ScalarMethod", "Dynamic", "RecursiveOpen", "Generic", "Decode", "Mixed", "ReverseMixed", "ReboundCaller", "DecodeCallback", "DecodeMapKey", "PreloadedDecode", "AliasedDecode", "PublishedDecode", "CapturedDecode", "DeferredDecode", "ConcurrentDecode", "ReusedDecode"} {
 		got := resultNamed(t, report, name)
 		if got.Complete || !slices.ContainsFunc(got.Effects, func(e quality.Effect) bool { return e.Kind == quality.UnknownEffect }) {
 			t.Fatalf("%s lost uncertainty: %+v", name, got)
