@@ -10,6 +10,15 @@ import (
 
 const lipglossPackage = "charm.land/lipgloss/v2"
 
+// Color returns an immutable value in the audited module. The interface type
+// alone proves nothing; require the exact constructor and a constant input.
+func stableStyleValue(pkg *packages.Package, typ types.Type, value ast.Expr) bool {
+	if styleValueType(typ) {
+		return stableStyle(pkg, value)
+	}
+	return metadataType(typ, "image/color", "Color") && auditedStyleModule(pkg) && constantStyleColor(value, pkg.TypesInfo)
+}
+
 func styleValueType(typ types.Type) bool {
 	named, ok := types.Unalias(typ).(*types.Named)
 	if !ok {
