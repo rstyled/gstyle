@@ -182,3 +182,24 @@ sast-baseline:
 verify-programs:
 	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
 	python3 -B verification/lean/verify_programs.py
+
+.PHONY: verify-branches
+# General structural theorem plus raw-source production capture and fault controls.
+verify-branches:
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify_branches.py
+
+.PHONY: verify-worklist
+verify-worklist:
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --worklist
+
+.PHONY: verify-scalar-flow
+verify-scalar-flow:
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --scalar-flow
+
+.PHONY: verify-solver
+verify-solver:
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --solver

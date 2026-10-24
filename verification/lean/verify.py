@@ -27,7 +27,7 @@ THEOREMS = {PREFIX + name for name in (
 )}
 ALLOWED_AXIOMS = {"propext", "Classical.choice", "Quot.sound"}
 PROOF_FAILURE_PREFIXES = (
-    "iapply: cannot apply ", "wp_apply: cannot apply ", "wp_apply: the goal ",
+    "iapply: cannot apply ", "iframe: cannot frame ", "wp_apply: cannot apply ", "wp_apply: the goal ",
     "iexists: cannot turn ",
     "Tactic `rewrite` failed: Did not find an occurrence of the pattern",
     "Tactic `rfl` failed: The left-hand side",
@@ -1147,6 +1147,186 @@ def assume_profile():
                                "Go operational total-correctness adequacy"))
 
 
+def worklist_profile():
+    base = runtime_value_profile()
+    proof = "Gstyle/Proof/Worklist/Queue.lean"
+    enqueue = "Gstyle/Proof/Worklist/Enqueue.lean"
+    names = (
+        'wp_enqueue', 'queueIndex_lt', 'queueIndex_injective',
+        'QueueInvariant.enqueue', 'QueueInvariant.advance', 'QueueInvariant.exhausted',
+        'wp_enqueue_invariant', 'exactComparisonResult_known', 'exactComparisonResult_truth',
+        'wp_compareExactOrder', 'wp_compareExactIntegers', 'exactValue_denotes',
+        'knownComparisonResult_correct', 'knownComparisonResult_keeps_feasible', 'knownComparisonResult_no_false_rejection',
+        'wp_knownComparison', 'comparisonOperator_dispatch',
+        'wp_knownBoolean_comparison', 'successorResult_feasible',
+        'wp_successorState_zero', 'wp_successorState_if_execution',
+        'comparisonOperator_not_truth_test', 'wp_successorState_direct_execution',
+        'inputStatesOwn_length',
+        'inputStatesOwn_acc', 'joinedInput_valid', 'joinedInput_sound',
+        'inputEqual_of_same', 'inputEqual_changed_nil', 'wp_join_input',
+        'wp_equal_input', 'ComparisonEvidence.valid', 'DecisionEvidence.valid',
+        'wp_decision', 'edgePrefix_step', 'WorkState.enqueue_shape',
+        'WorkState.enqueue_invariant', 'WorkState.edge_shape', 'WorkState.edge_queue_invariant',
+        'WorkState.edge_valid', 'edgePrefix_shape', 'edgePrefix_valid',
+        'edgePrefix_queue_invariant', 'wp_successors', 'wp_successors_invariant',
+        'wp_attrs_snapshot_full', 'wp_attrs_snapshot',
+        'wp_incrementValue_scalar', 'wp_interfaceAssignment_scalar', 'wp_rangeWrite_scalar',
+        'wp_invalidateFields_scalar', 'wp_transfer_no_writes', 'wp_transfer_scalar_write',
+        'wp_assignmentValue', 'wp_assign_nonpointer', 'scalarState_insert', 'scalar_store_sound',
+        'scalar_store_valid', 'ScalarStep.preserves_scalar', 'wp_transfer_scalar_step', 'wp_block_scalar',
+    )
+    changes = {
+        "enqueue-ignores-mark": ("if a.queued[ref-1] {", "if false {"),
+        "enqueue-inverts-mark": ("if a.queued[ref-1] {", "if !a.queued[ref-1] {"),
+        "enqueue-loses-mark": ("a.queued[ref-1] = true", "a.queued[ref-1] = false"),
+        "enqueue-wrong-reference": ("a.queue = append(a.queue, ref)", "a.queue = append(a.queue, ref+1)"),
+        "enqueue-duplicates-reference": ("a.queue = append(a.queue, ref)", "a.queue = append(a.queue, ref, ref)"),
+        "enqueue-clobbers-inputs": ("a.queue = append(a.queue, ref)", "a.queue = append(a.queue, ref); a.inputs = nil"),
+        "queue-retains-processed-mark": ("QueueInvariant (flags.set (queueIndex ref) false) (cursor + 1) queue",
+                                         "QueueInvariant (flags.set (queueIndex ref) true) (cursor + 1) queue",
+                                         "verification/lean/" + proof),
+    }
+    comparison_source = "domain/runtimeguard/known_boolean.go"
+    changes.update({
+        "exact-reversed-order": ("return left < right, true", "return right < left, true", comparison_source),
+        "exact-unsigned-order": ("return left < right, true", "return uint64(left) < uint64(right), true", comparison_source),
+        "exact-forges-known-operator": ("default:\n\t\treturn false, false", "default:\n\t\treturn false, true", comparison_source),
+        "known-wrong-right-operand": ("v.value(v.operand(ref, 1), state)", "v.value(v.operand(ref, 0), state)", comparison_source),
+        "known-accepts-partial-bounds": ("if !exactInteger(left) || !exactInteger(right) {", "if !exactInteger(left) && !exactInteger(right) {", comparison_source),
+    })
+    changes.update({
+        "boolean-wrong-fact": ('if value := v.fact(ref, "boolean"); value ==', 'if value := v.fact(ref, "integer"); value ==', comparison_source),
+        "boolean-wrong-comparison-ref": ("return v.knownComparison(ref, operator, state)", "return v.knownComparison(ref+1, operator, state)", comparison_source),
+        "boolean-forges-false": ("return v.knownComparison(ref, operator, state)", "return false, true", comparison_source),
+        "successor-wrong-condition": ('case "if", "for", "short-circuit":\n\t\tcondition = v.operand(condition, 0)', 'case "if", "for", "short-circuit":\n\t\tcondition = v.operand(condition, 1)', comparison_source),
+        "successor-inverts-pruning": ("known && value != truth", "known && value == truth", comparison_source),
+        "successor-skips-assume": ("return v.assume(condition, truth, state)", "return state", comparison_source),
+        "successor-drops-unconditional-state": ("if condition == 0 {\n\t\treturn state", "if condition == 0 {\n\t\treturn nil", comparison_source),
+        "snapshot-wrong-construct": ('Construct: a.Construct, WriteForm: a.WriteForm, Description: a.Description,\n\t\tPosition: a.Position, CallForm: a.CallForm, ExitKind: a.ExitKind,\n\t\tExtensions: listAt', 'Construct: a.WriteForm, WriteForm: a.WriteForm, Description: a.Description,\n\t\tPosition: a.Position, CallForm: a.CallForm, ExitKind: a.ExitKind,\n\t\tExtensions: listAt', "domain/pdg/attributes.go"),
+    })
+    changes.update({
+        "successor-confuses-truth-test": ('== "truth-test"', '== "<"', comparison_source),
+        "successor-pruning-keeps-state": ('known && value != truth {\n\t\treturn nil', 'known && value != truth {\n\t\treturn state', comparison_source),
+        "inputs-corrupts-neighbor": ("inputStatesOwn (pointers.set index next) (models.set index value))", "inputStatesOwn (pointers.set (index + 1) next) (models.set index value))", "verification/lean/Gstyle/Proof/Worklist/Inputs.lean"),
+        "traversal-aliases-branch": ("branch := copyState(state)", "branch := state"),
+        "traversal-inverts-outcome": ("successorState(block.Condition, outcome == 0, branch)", "successorState(block.Condition, outcome != 0, branch)"),
+        "traversal-keeps-nil": ("if branch == nil {", "if false {"),
+        "traversal-joins-wrong-state": ("a.view.join(a.inputs[next-1], branch)", "a.view.join(a.inputs[next-1], state)"),
+        "traversal-confuses-nil-empty": ("equalState(a.inputs[next-1], joined) && a.inputs[next-1] != nil", "equalState(a.inputs[next-1], joined)"),
+        "traversal-requeues-equal-input": ("if equalState(a.inputs[next-1], joined) && a.inputs[next-1] != nil {", "if false {"),
+        "traversal-wrong-input-slot": ("a.inputs[next-1] = joined", "a.inputs[ref-1] = joined"),
+        "traversal-loses-joined-input": ("a.inputs[next-1] = joined", "_ = joined"),
+        "traversal-drops-enqueue": ("a.enqueue(next)", "_ = next"),
+    })
+    changes.update({
+        "scalar-wrong-rhs": ("value = a.view.value(a.view.operand(ref, 0), state)", "value = a.view.value(a.view.operand(ref, 1), state)"),
+        "scalar-skips-rhs": ("if singleValueWrite(a.view.graph.Nodes[ref-1].Category, form, len(attrs.Writes)) {", "if false && singleValueWrite(a.view.graph.Nodes[ref-1].Category, form, len(attrs.Writes)) {"),
+        "scalar-retains-guard": ("value.Guarded = false", "value.Guarded = true"),
+        "scalar-skips-tracked-write": ("if !a.view.trackedBinding(write.Symbol) {", "if a.view.trackedBinding(write.Symbol) {"),
+        "scalar-wrong-symbol": ("a.view.assign(ref, write.Symbol, assigned, state)", "a.view.assign(ref, write.Symbol+1, assigned, state)"),
+        "scalar-loses-assignment": ("a.view.assign(ref, write.Symbol, assigned, state)", "_ = assigned"),
+        "scalar-increment-loses-fallback": ("return fallback", "return Value{}", "domain/runtimeguard/increment.go"),
+        "scalar-interface-loses-value": ('if v.kinds[symbol-1] != `"interface"` {\n\t\treturn value', 'if v.kinds[symbol-1] != `"interface"` {\n\t\treturn Value{}', "domain/runtimeguard/interface_value.go"),
+        "scalar-range-writes-on-error": ("if err == nil && pdg.Ref(index) == symbol {", "if err != nil || pdg.Ref(index) == symbol {"),
+        "block-drops-transfer": ("a.transfer(ref, state)", "_ = ref"),
+        "block-wrong-reference": ("a.transfer(ref, state)", "a.transfer(ref+1, state)"),
+        "block-wrong-state": ("a.transfer(ref, state)", "a.transfer(ref, nil)"),
+    })
+    modules = {name: proof if name.startswith("queue-") else enqueue for name in changes}
+    modules.update({name: "Gstyle/Proof/Worklist/ExactComparison.lean" for name in changes if name.startswith("exact-")})
+    modules.update({name: "Gstyle/Proof/Worklist/KnownComparison.lean" for name in changes if name.startswith(("known-", "boolean-"))})
+    modules.update({name: "Gstyle/Proof/Worklist/Successor.lean" for name in changes if name.startswith("successor-")})
+    modules["snapshot-wrong-construct"] = "Gstyle/Proof/Pdg/Attributes.lean"
+    modules.update({name: "Gstyle/Proof/Worklist/Traversal.lean" for name in changes if name.startswith("traversal-")})
+    modules["inputs-corrupts-neighbor"] = "Gstyle/Proof/Worklist/Inputs.lean"
+    modules.update({name: "Gstyle/Proof/Worklist/ScalarTransfer.lean" for name in changes if name.startswith("scalar-")})
+    modules.update({name: "Gstyle/Proof/Worklist/ScalarBlock.lean" for name in changes if name.startswith("block-")})
+    sources = tuple(PROJECT / "Gstyle/Proof/Worklist" / (name + ".lean")
+                    for name in ('Layout', 'Enqueue', 'Queue', 'ExactComparison', 'KnownComparison', 'Successor', 'FlowLayout', 'Inputs', 'InputJoin', 'Decision', 'StepModel', 'Traversal', 'ScalarTransfer', 'ScalarBlock'))
+    return replace(base, report=ROOT / "dist/verification/worklist", source=ROOT / "domain/runtimeguard/flow.go",
+                   sources=base.sources + sources + (PROJECT / "Gstyle/Proof/Transfer/FactSnapshot.lean",
+                                                     PROJECT / "Gstyle/Proof/Pdg/GraphLayout.lean",
+                                                     PROJECT / "Gstyle/Proof/Transfer/Assignment.lean",
+                                                     PROJECT / "Gstyle/Proof/Transfer/LocalInvalidation.lean"),
+                   theorems={"Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name for name in names},
+                   mutations=changes, audit="AuditWorklist.lean", proof_file=proof,
+                   mutation_modules=modules,
+                   verified="actual scalar transfer and nil-report block traversal compose selected RHS evaluation, scalar guards and assignment; successor traversal preserves exact inputs and queue invariants",
+                   unverified=("non-scalar transfer and nonnil-report block execution", "whole solve/report composition and termination",
+                               "ParseInt and empty-input ParseUint standard-library execution contracts",
+                               "source-to-CFG correspondence and metadata construction", "package initialization and resource exhaustion"))
+
+
+
+def scalar_flow_profile():
+    base = worklist_profile()
+    modules = ('ScalarRefinement', 'ValueDerivation', 'ScalarDecision',
+               'InputCoverage', 'ScalarTraversal', 'ScalarBlockMeaning')
+    names = (
+        'scalarState_empty', 'scalarState_update', 'baseKind_identity',
+        'bindingValue_scalar', 'numericConstrained_identity', 'constraintState_scalar',
+        'merged_scalar', 'joinedState_scalar', 'joinedInput_scalar',
+        'comparisonResultMap_scalar', 'numericExecution_scalar', 'finiteAssume_scalar',
+        'ValueEvaluation.resolve', 'ValueEvaluation.denotes', 'snapshotConstant_identity',
+        'conversionResult_identity', 'lengthCandidate_identity', 'lengthResult_identity',
+        'ValueEvaluation.scalar', 'ComparisonEvidence.scalar', 'DecisionEvidence.scalar',
+        'ComparisonEvidence.sound', 'DecisionEvidence.sound', 'inputsExtend_refl',
+        'inputsExtend_trans', 'WorkState.edge_extends', 'WorkState.edge_covers',
+        'WorkState.edge_scalar', 'edgePrefix_scalar', 'edgePrefix_extends_step',
+        'edgePrefix_extends', 'edgePrefix_covers',
+        'wp_successors_scalar_sound', 'ScalarMeaningExecution.sound', 'ScalarMeaningExecution.erase',
+        'ScalarExecution.valid', 'wp_block_scalar_sound',
+    )
+    changes = {
+        "scalar-flow-integer-identity": ("value.Lower, value.Upper = r.Lower, r.Upper", "value.Lower, value.Upper = r.Lower, r.Upper; value.Identity = 1", "domain/runtimeguard/condition.go"),
+        "scalar-flow-merge-identity": ("out.Identity = v.Identity", "out.Identity = 1", "domain/runtimeguard/value.go"),
+        "scalar-flow-join-left": ("value.merge(v.binding(symbol, next))", "value.merge(v.binding(symbol, previous))"),
+        "scalar-flow-join-right": ("value.merge(v.binding(symbol, previous))", "value.merge(v.binding(symbol, next))"),
+        "scalar-flow-outcome": ("successorState(block.Condition, outcome == 0, branch)", "successorState(block.Condition, outcome != 0, branch)"),
+        "scalar-flow-condition-model": ("then valueChild s ref else ref", "then ref else valueChild s ref", "verification/lean/Gstyle/Proof/Worklist/ScalarDecision.lean"),
+    }
+    targets = {
+        "scalar-flow-integer-identity": "RuntimeValue/Constraint",
+        "scalar-flow-merge-identity": "RuntimeValue/MergePointers",
+        "scalar-flow-join-left": "StateMap/Join",
+        "scalar-flow-join-right": "StateMap/Join",
+        "scalar-flow-outcome": "Worklist/Traversal",
+        "scalar-flow-condition-model": "Worklist/ScalarDecision",
+    }
+    return replace(base, report=ROOT / "dist/verification/scalar-flow",
+                   sources=base.sources + tuple(PROJECT / "Gstyle/Proof/Worklist" / (name + ".lean") for name in modules),
+                   theorems={"Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name for name in names},
+                   mutations=changes, audit="AuditScalarFlow.lean", proof_file="Gstyle/Proof/Worklist/ScalarTraversal.lean",
+                   mutation_modules={name: "Gstyle/Proof/" + target + ".lean" for name, target in targets.items()},
+                   verified="actual scalar block and successor execution preserve scalar identity, metadata and concrete environments, retaining prior input coverage and each feasible outgoing edge",
+                   unverified=("whole solve/report execution and termination", "source lowering and metadata/primitive-meaning establishment",
+                               "nonscalar/multiple-write/nonnil-report block execution",
+                               "ParseInt and empty-input ParseUint execution contracts", "package initialization, Go adequacy and resource limits"))
+
+def solver_profile():
+    base = scalar_flow_profile()
+    modules = ('SolveSyntax', 'SolveModel', 'SolveLoop')
+    names = ('solve_cursor_found', 'solve_cursor_initializer', 'solve_loop_shape', 'WorkState.dequeue_invariant', 'SolverStep.reference', 'SolverStep.input_valid', 'ScalarExecution.scalar', 'SolverStep.input_scalar', 'SolverStep.next_shape', 'SolverStep.next_invariant', 'WorkState.enqueue_queue_length', 'WorkState.edge_queue_length', 'edgePrefix_queue_length', 'SolverExecution.queue_length', 'SolverStep.next_extends', 'SolverExecution.inputs_extend', 'WorkState.enqueue_reachable', 'WorkState.edge_reachable', 'edgePrefix_reachable', 'SolverStep.next_reachable', 'SolverExecution.reachable', 'queueWeight_append', 'enqueue_weight', 'edge_weight', 'edgePrefix_weight', 'enqueue_take', 'edge_take', 'edgePrefix_take', 'queueWeight_split', 'SolverStep.pending_decreases', 'solverTransition_wellFounded', 'solverExecution_exists', 'solverDataComplete_terminal', 'wp_solve_cursor', 'wp_solve_cursor_ranked')
+    changes = {
+        "solver-cursor-start": ("for cursor := 0; cursor < len(a.queue); cursor++ {", "for cursor := 1; cursor < len(a.queue); cursor++ {"),
+        "solver-retains-flag": ("a.queued[ref-1] = false", "a.queued[ref-1] = true"),
+        "solver-loses-input": ("state := copyState(a.inputs[ref-1])", "state := State{}"),
+        "solver-skips-block": ("a.block(g.ValueFlow.Blocks[ref-1], state, nil)", "if false { a.block(g.ValueFlow.Blocks[ref-1], state, nil) }"),
+        "solver-stuck-cursor": ("for cursor := 0; cursor < len(a.queue); cursor++ {", "for cursor := 0; cursor < len(a.queue); cursor += 0 {"),
+    }
+    targets = {name: "Gstyle/Proof/Worklist/SolveLoop.lean" for name in changes}
+    targets['solver-cursor-start'] = 'Gstyle/Proof/Worklist/SolveSyntax.lean'
+    return replace(base, report=ROOT / "dist/verification/solver",
+                   sources=base.sources + tuple(PROJECT / "Gstyle/Proof/Worklist" / (name + ".lean") for name in modules),
+                   theorems={"Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name for name in names},
+                   mutations=changes, audit="AuditSolver.lean", proof_file="Gstyle/Proof/Worklist/SolveLoop.lean",
+                   mutation_modules=targets,
+                   verified="actual post-constructor solve cursor initializer and loop preserve queue/scalar/metadata invariants and prior inputs; acyclic budgets plus primitive execution data establish finite loop derivations",
+                   unverified=("newGraphView, initial maps and entry enqueue establishment", "source lowering, metadata, primitive meaning and acyclic budget/data construction",
+                               "final report/call projection and whole source-to-report semantics",
+                               "signed word domains and machine resource bounds", "ParseInt and empty-input ParseUint execution contracts; Go adequacy"))
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix, *, environment=None):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
@@ -1361,7 +1541,7 @@ def main(profile=None):
 
 
 
-PROFILE_FACTORIES = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile, ("--shared-flow",): shared_flow_profile, ("--assume",): assume_profile}
+PROFILE_FACTORIES = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile, ("--shared-flow",): shared_flow_profile, ("--assume",): assume_profile, ("--worklist",): worklist_profile, ("--scalar-flow",): scalar_flow_profile, ("--solver",): solver_profile}
 
 
 if __name__ == "__main__":
@@ -1370,7 +1550,7 @@ if __name__ == "__main__":
 
         arguments = tuple(sys.argv[1:])
         if arguments not in PROFILE_FACTORIES:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison | --one-sided | --shared-flow | --assume]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison | --one-sided | --shared-flow | --assume | --worklist | --scalar-flow | --solver]")
         main(PROFILE_FACTORIES[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

@@ -1,0 +1,40 @@
+package generated
+func observe(value int64) {}
+func Deep(x int64) int64 {
+var result int64
+_ = *new(int)
+if x < -42 {
+result = -9001
+} else {
+if x > 117 {
+result = x
+} else {
+if x == 0 {
+result = 0
+} else {
+if x >= 23 {
+result = 23
+} else {
+if x != 17 {
+result = x
+} else {
+if x <= 17 {
+result = 17
+} else {
+result = -9223372036854775808
+}
+}
+}
+}
+}
+}
+observe(result)
+return result
+}
+func Constant(x int64) int64 {
+var result int64
+_ = *new(int)
+result = -9001
+observe(result)
+return result
+}

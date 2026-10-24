@@ -398,10 +398,31 @@ instance Attributes_access_load_Operator (l : Loc) (v : github_com.rstyled.gstyl
       (typedPointsto l v dq) (typedPointsto l v dq) := by
   solve_pointsto_access_struct
 
+instance Attributes_access_load_Construct (l : Loc) (v : github_com.rstyled.gstyle.domain.pdg.Attributes) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"Construct" l) v.Construct' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"Construct" l) v.Construct' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) := by
+  solve_pointsto_access_struct
+
 instance Attributes_access_load_Callee (l : Loc) (v : github_com.rstyled.gstyle.domain.pdg.Attributes) (dq : DFrac) :
     AccessStrict (PROP := IProp GF)
       (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"Callee" l) v.Callee' dq)
       (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"Callee" l) v.Callee' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) := by
+  solve_pointsto_access_struct
+
+instance Attributes_access_load_Writes (l : Loc) (v : github_com.rstyled.gstyle.domain.pdg.Attributes) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"Writes" l) v.Writes' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"Writes" l) v.Writes' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) := by
+  solve_pointsto_access_struct
+
+instance Attributes_access_load_WriteForm (l : Loc) (v : github_com.rstyled.gstyle.domain.pdg.Attributes) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"WriteForm" l) v.WriteForm' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Attributes go!"WriteForm" l) v.WriteForm' dq)
       (typedPointsto l v dq) (typedPointsto l v dq) := by
   solve_pointsto_access_struct
 
@@ -525,6 +546,14 @@ instance Graph_access_load_Nodes (l : Loc) (v : github_com.rstyled.gstyle.domain
     AccessStrict (PROP := IProp GF)
       (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Graph go!"Nodes" l) v.Nodes' dq)
       (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Graph go!"Nodes" l) v.Nodes' dq)
+      (typedPointsto l v dq) (typedPointsto l v dq) :=
+ by
+  solve_pointsto_access_struct
+
+instance Graph_access_load_ValueFlow (l : Loc) (v : github_com.rstyled.gstyle.domain.pdg.Graph) (dq : DFrac) :
+    AccessStrict (PROP := IProp GF)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Graph go!"ValueFlow" l) v.ValueFlow' dq)
+      (typedPointsto (structFieldRef github_com.rstyled.gstyle.domain.pdg.Graph go!"ValueFlow" l) v.ValueFlow' dq)
       (typedPointsto l v dq) (typedPointsto l v dq) :=
  by
   solve_pointsto_access_struct

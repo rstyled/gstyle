@@ -8,9 +8,15 @@ Profiles cover function length, [PDG queries](PDG.md),
 [unchecked output](OUTPUT.md), and [runtime state and interval proofs](NEGATIVE_INDEX.md).
 Each has its own verification profile, axiom audit and mutation controls.
 
-[Program-level range certificates](PROGRAMS.md) add exhaustive scalar source
-programs and kernel-checked range claims over every signed 64-bit input. Run
-`make verify-programs` for the bounded source-to-range contract and its controls.
+[Program range verification](PROGRAMS.md) covers both `make verify-programs`
+(exhaustive bounded source grammars) and `make verify-branches` (supplied source
+with arbitrary finite branch trees). Both certify captured ranges over every
+signed 64-bit input; neither proves the analyzer implementation unconditionally.
+
+[Production worklist proofs](WORKLIST.md) cover actual queue, comparison, scalar
+transfer, block, successor and post-constructor solver execution, plus range
+meaning and acyclic progress. The three commands, controls and exact open
+source/constructor/report boundary are documented together there.
 
 ## Function-length profile
 
@@ -95,7 +101,7 @@ evidence executes the controls. Each fresh shard still checks its own baseline,
 source binding, and axioms. The aggregate `verify-length` check requires successful
 preflight plus every needed shard; a skipped shard matrix passes only when
 preflight reports no misses. A complete checked bundle is saved after aggregation.
-The matrix in `ci_profiles.json` covers all 432 controls exactly once. Runtime
+The matrix in `ci_profiles.json` covers all 492 controls exactly once. Runtime
 validation rejects omitted profiles, gaps, and duplicate controls.
 Local commands default to one shard and execute every mutation.
 
@@ -109,7 +115,7 @@ Inputs are hashed again before publishing results. `result.json` distinguishes
 `executed` and `reused` evidence and records its key; proof logs stay in artifacts.
 Clear the local cache directory to force fresh controls.
 
-Warm CI avoids separate runner setup for all 40 shards. Changed proof inputs still
+Warm CI avoids separate runner setup for all configured shards. Changed proof inputs still
 require fresh controls. The Go race-test job has a separate build cache so a
 non-race build cannot supply an incomplete warm cache for it.
 
