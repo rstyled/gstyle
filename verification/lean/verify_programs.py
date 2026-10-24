@@ -113,7 +113,8 @@ def check_bindings(directory, data, *, theorems=()):
             f"    {certificate}.name = {quote(case['name'])} ∧",
             f"    {certificate}.program = {program_term(case['program'])} ∧",
             f"    {certificate}.report = {report} ∧",
-            f"    {certificate}.source = {quote(case['source'])} := by decide",
+            f"    {certificate}.source = {quote(case['source'])} := by",
+            "  refine ⟨?_, ?_, ?_, ?_⟩ <;> rfl",
             f"#print axioms CapturedSubjects.bound{index}", f"#print axioms {certificate}"])
         names.update({f"CapturedSubjects.bound{index}", "GeneratedPrograms.c" + case["name"]})
     lines.append("end CapturedSubjects")

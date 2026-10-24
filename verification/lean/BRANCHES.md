@@ -77,6 +77,8 @@ The connection is checked as follows:
    raw range and source. Numeric and Boolean fields must be literals. The driver
    audits each actual certificate, including its soundness and precision proofs,
    and the binding theorem; a valid but unrelated named theorem is insufficient.
+   Binding equalities use kernel-checked reflexivity on the captured values;
+   they do not recompute decidable equality over every program tree and string.
    Source hashes, exact whole-file concatenation and before/after input
    fingerprints are also checked. `result.json` requires all checks and controls.
 
