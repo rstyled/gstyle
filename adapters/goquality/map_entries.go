@@ -9,17 +9,17 @@ import (
 )
 
 func (x *extractor) indexedOrigin(value *ast.IndexExpr, seen map[types.Object]bool) quality.Provenance {
-	if object := x.mapEntryRoot(value); x.privateSliceEntries(object) {
+	if object := x.mapEntryRoot(value); x.privateEntries(object) {
 		return quality.Local
 	}
 	return referencedOrigin(x.origin(value.X, seen))
 }
 
-// A fresh private map or slice starts with nil slice entries. Fresh row
+// A fresh private map or slice starts with nil map or slice entries. Fresh row
 // allocations and appends from this container preserve owned row storage.
 // Direct element writes keep that storage private; referenced children do not
 // inherit its ownership.
-func (x *extractor) privateSliceEntries(object types.Object) bool {
+func (x *extractor) privateEntries(object types.Object) bool {
 	if !x.emptyLocalEntries(object) || x.fields.deferred {
 		return false
 	}
@@ -36,14 +36,14 @@ func (x *extractor) emptyLocalEntries(object types.Object) bool {
 	if !x.localContainerRoot(object) {
 		return false
 	}
-	if !sliceEntryContainer(object.Type()) {
+	if !referenceEntryContainer(object.Type()) {
 		return false
 	}
 	binding := x.bindings[object]
 	return !binding.unknown && len(binding.values) == 1 && x.emptyEntries(binding.values[0])
 }
 
-func sliceEntryContainer(typ types.Type) bool {
+func referenceEntryContainer(typ types.Type) bool {
 	switch shape := underlying(typ).(type) {
 	case *types.Map:
 		typ = shape.Elem()
@@ -52,8 +52,12 @@ func sliceEntryContainer(typ types.Type) bool {
 	default:
 		return false
 	}
-	_, slice := underlying(typ).(*types.Slice)
-	return slice
+	switch underlying(typ).(type) {
+	case *types.Slice, *types.Map:
+		return true
+	default:
+		return false
+	}
 }
 
 func (x *extractor) emptyEntries(value ast.Expr) bool {
@@ -139,10 +143,10 @@ func (x *extractor) mapAppendWrite(call *ast.CallExpr, object types.Object) bool
 func (x *extractor) mapEntryAssignment(statement *ast.AssignStmt, object types.Object) bool {
 	return len(statement.Lhs) == 1 && len(statement.Rhs) == 1 &&
 		x.mapEntryRoot(statement.Lhs[0]) == object &&
-		(x.mapEntryAppend(statement.Rhs[0], object) || x.allocatedSliceEntry(statement.Rhs[0]))
+		(x.mapEntryAppend(statement.Rhs[0], object) || x.allocatedEntry(statement.Rhs[0]))
 }
 
-func (x *extractor) allocatedSliceEntry(value ast.Expr) bool {
+func (x *extractor) allocatedEntry(value ast.Expr) bool {
 	switch value := ast.Unparen(value).(type) {
 	case *ast.CompositeLit:
 		return true
