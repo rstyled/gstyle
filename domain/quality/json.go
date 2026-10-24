@@ -19,7 +19,7 @@ func (call Call) policyKind(prefixes []Prefix) (Kind, bool) {
 		return None, true
 	}
 	if prefix.refinesMemoryWriter(call) {
-		return MutationEffect, true
+		return call.memoryWriteKind(), true
 	}
 	if call.HasPlainJSON() && prefix.plainJSON && prefix.Kind == UnknownEffect {
 		return None, true
