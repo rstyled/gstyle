@@ -262,12 +262,14 @@ func (x *extractor) indexProvenance(place *ast.IndexExpr) quality.Provenance {
 }
 
 func (x *extractor) origin(value ast.Expr, seen map[types.Object]bool) quality.Provenance {
-	switch value := value.(type) {
+	switch value := ast.Unparen(value).(type) {
 	case nil:
 		return quality.Local // Zero-initialized reference contains no shared state.
 	case *ast.Ident:
 		return x.identifierOrigin(value, seen)
-	case *ast.ParenExpr:
+	case *ast.TypeAssertExpr:
+		// A successful assertion keeps the dynamic value's outer storage.
+		// Referenced children still need their own ownership proof.
 		return x.origin(value.X, seen)
 	case *ast.SliceExpr:
 		return x.sliceOrigin(value, seen)

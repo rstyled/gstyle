@@ -137,7 +137,7 @@ func PromotedReference() { f:=Embedded{Fields:&Fields{Items:[]int{1}}}; f.Items[
 	if !foundGlobal {
 		t.Fatalf("factory argument lost global effect: %+v", argument.Effects)
 	}
-	for _, name := range []string{"ExternalPointerAlias", "ExternalIndexedAlias", "IndexedPointer", "IndexedSlice", "IndexedMap", "RangedPointer", "RangedMap", "RangedArray", "RangedSlice"} {
+	for _, name := range []string{"AssertedPointer", "ExternalPointerAlias", "ExternalIndexedAlias", "IndexedPointer", "IndexedSlice", "IndexedMap", "RangedPointer", "RangedMap", "RangedArray", "RangedSlice"} {
 		function := findFunction(t, facts, name)
 		if got := function.Mutations[0].Provenance; got != quality.External {
 			t.Fatalf("%s provenance=%s, want external", name, got)
@@ -147,7 +147,7 @@ func PromotedReference() { f:=Embedded{Fields:&Fields{Items:[]int{1}}}; f.Items[
 			t.Fatalf("shared mutation lost: %+v", result)
 		}
 	}
-	for _, name := range []string{"MixedPointerAlias", "UnknownPointerAlias", "LocalPointerBorrowed", "CopiedValue", "LocalShallowIndex", "MixedIndex", "AssertedPointer", "LocalShallowRange", "MixedRange", "ChannelRange", "IteratorRange", "CopiedRange", "KeyRange", "ReassignedRange", "SelfRangedContainer"} {
+	for _, name := range []string{"MixedPointerAlias", "UnknownPointerAlias", "LocalPointerBorrowed", "CopiedValue", "LocalShallowIndex", "MixedIndex", "LocalShallowRange", "MixedRange", "ChannelRange", "IteratorRange", "CopiedRange", "KeyRange", "ReassignedRange", "SelfRangedContainer"} {
 		function := findFunction(t, facts, name)
 		if got := function.Mutations[len(function.Mutations)-1].Provenance; got != quality.Unknown {
 			t.Fatalf("%s provenance=%s, want unknown", name, got)
