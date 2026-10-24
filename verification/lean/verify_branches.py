@@ -69,12 +69,11 @@ def collect(directory, source=None, overlay=None):
 
 def check_capture(directory, source=None, overlay=None):
     data = collect(directory, source, overlay)
-    output = check_file(directory / "Certificate.lean", directory / "proof.log")
     names = {"GeneratedPrograms.source_file"}
     names.update("GeneratedPrograms." + kind + c["name"]
                  for c in data["cases"] for kind in ("checked", "source"))
     names.update("GeneratedPrograms.complete" + str(i) for i in range(len(data["suites"] or [])))
-    verify.check_axioms(output, names)
+    programs.lean_check(directory, theorems=names)
     return data
 
 
@@ -164,6 +163,7 @@ def main():
     production_controls()
     checker_controls()
     binding_controls(data)
+    programs.subject_controls(REPORT / "control-baseline", REPORT / "controls")
     if programs.fingerprint() != before or hashlib.sha256(source.read_bytes()).hexdigest() != source_hash:
         raise RuntimeError("verification inputs changed during the run")
     (REPORT / "result.json").write_text(json.dumps({
@@ -172,7 +172,7 @@ def main():
         "input_domain": "all signed 64-bit integers", "grammar_depth_bound": None,
         "sources_sha256": before,
         "controls": ["forged-lower", "erased-bounds", "wrong-inverse", "wrong-endpoint", "lost-inputs",
-                     "changed-source", "changed-report", "missing-program"],
+                     "changed-source", "changed-report", "missing-program"] + programs.SUBJECT_CONTROLS,
         "unverified": ["unconditional correctness or termination of the production CFG worklist",
                        "formal Go semantics of the canonical source renderer", "arbitrary Go syntax", "CLI projection"],
     }, indent=2) + "\n")

@@ -6,6 +6,40 @@ import verify_programs
 
 
 class ProgramCertificateGuardTests(unittest.TestCase):
+    def test_binding_values_are_literals_not_lean_expressions(self):
+        for value in (True, 2**63, -(2**63)-1, "0 + 1", 1.0):
+            with self.assertRaises(ValueError):
+                verify_programs.integer_literal(value)
+        for value in (0, 1, "true"):
+            with self.assertRaises(ValueError):
+                verify_programs.boolean_literal(value)
+        self.assertEqual(verify_programs.integer_literal(-(2**63)), "-9223372036854775808")
+        self.assertEqual(verify_programs.boolean_literal(False), "false")
+
+    def test_actual_certificate_is_bound_and_audited(self):
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            (path / "Certificate.lean").write_text("-- unchanged certificate definitions\n")
+            data = {"cases": [{"name": "Case0", "source": "captured source\n",
+                "program": {"value": {"input": True, "value": 0}},
+                "range": {"Lower": 1, "Upper": 1, "HasLower": True, "HasUpper": True}}]}
+            audit = ("'CapturedSubjects.bound0' does not depend on any axioms\n"
+                     "'GeneratedPrograms.cCase0' does not depend on any axioms\n")
+            with mock.patch.object(verify_programs, "run", return_value=audit):
+                verify_programs.check_bindings(path, data)
+            bridge = (path / "BoundCertificate.lean").read_text()
+            for expected in ("GeneratedPrograms.«cCase0».program = (.result .input)",
+                             "GeneratedPrograms.«cCase0».report = (⟨(1), (1), true, true⟩",
+                             '#print axioms GeneratedPrograms.«cCase0»',
+                             'GeneratedPrograms.«cCase0».source = "captured source\\n"'):
+                self.assertIn(expected, bridge)
+            bad = audit.replace("'GeneratedPrograms.cCase0' does not depend on any axioms",
+                                "'GeneratedPrograms.cCase0' depends on axioms: [unapproved]")
+            with mock.patch.object(verify_programs, "run", return_value=bad):
+                with self.assertRaisesRegex(RuntimeError, "unexpected axioms"):
+                    verify_programs.check_bindings(path, data)
+
     def test_only_expected_logical_failure_rejects_control(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "Certificate.lean"

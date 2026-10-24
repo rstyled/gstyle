@@ -2,7 +2,7 @@
 
 Run `make verify-programs` with Go and the pinned Lean toolchain available on
 `PATH`. The command collects real analyzer results, proves their numeric meaning,
-and checks four negative controls. Evidence stays in
+and checks eight negative controls. Evidence stays in
 `dist/verification/programs/`; a failed run removes any earlier `result.json`.
 
 ## Claim
@@ -50,6 +50,10 @@ CFG, or compute expected bounds using the analyzer's transfers.
   driver checks that their exact concatenation is the analyzed file, and that
   certificate bounds equal the captured raw reports. Coverage equality checks
   the full program inventory, not merely its size.
+- A separate driver-emitted theorem binds each actual certificate's name,
+  program tree, raw range and source to manifest literals. The actual certificate
+  and this theorem receive axiom audits, including soundness and precision fields;
+  unused report declarations and unrelated named proofs cannot replace them.
 - `certified_admitted` composes these certificates into the program-level claim.
 - `reported_interval` proves that certificate membership is exactly the interval
   membership used by the existing production interval proofs, under signed-word
@@ -93,6 +97,11 @@ One forges lower bound 1; the other erases all bounds. The first must fail numer
 soundness, and the second must fail the literal precision contract. The originals
 are never edited. Two certificate controls omit a program or change the captured
 source. They must fail coverage and source equality respectively.
+Four more controls preserve compilation of the original generated claims but
+substitute the report, program, or source, or put an unapproved soundness axiom in
+the actual certificate. Independent subject binding and dependency audits reject
+these. This checks artifact consistency; it does not prove collection correct or
+sandbox arbitrary Lean code.
 
 A negative result counts only for an expected logical diagnostic in the named
 contract. Compiler failures, missing dependencies, syntax/type errors, and mixed

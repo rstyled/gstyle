@@ -2,7 +2,7 @@
 
 `make verify-branches` checks a structural theorem, collects actual production
 reports from supplied Go source, checks those reports with the theorem, and runs
-eight fault controls. It does not enumerate branch trees. The existing finite
+twelve fault controls. It does not enumerate branch trees. The existing finite
 program certification in [PROGRAMS.md](PROGRAMS.md) remains available.
 
 ## Exact guarantee
@@ -72,10 +72,13 @@ The connection is checked as follows:
 4. The generated Lean certificate computes `checkReport` for the captured raw
    range and proves its source rendering equals the captured function text.
    Every checked-range and per-function source theorem has an axiom audit.
-5. The driver compares the proof's numeric fields with the raw report, verifies
-   source hashes and exact whole-file concatenation, and compares verifier-input
-   fingerprints before and after the run. It writes `result.json` only after all
-   checks and fault controls succeed.
+5. The driver emits a separate binding theorem from the captured manifest. Lean
+   checks that each actual `Certificate` has the captured name, program tree,
+   raw range and source. Numeric and Boolean fields must be literals. The driver
+   audits each actual certificate, including its soundness and precision proofs,
+   and the binding theorem; a valid but unrelated named theorem is insufficient.
+   Source hashes, exact whole-file concatenation and before/after input
+   fingerprints are also checked. `result.json` requires all checks and controls.
 
 `go run ./verification/programs --source PATH --output DIR` only collects and
 writes a certificate. It does not run Lean and must not be described as successful
@@ -96,10 +99,12 @@ precise exclusion of a point. A rejected certificate means this check did not
 establish the claim; it does not by itself prove that gstyle is wrong.
 
 The reviewed meaning of the canonical renderer, the Go parser/compiler,
-collector, serialization and driver remain trusted boundaries. Artifact
-validation checks range declaration text and theorem names; it still trusts that
-the generated certificates use those reports. Independent subject binding remains
-an open hardening obligation. This work does
+collector, serialization and driver remain trusted boundaries. Independent
+subject binding now rejects a certificate for an unbounded report paired with a
+manifest and unused declaration claiming `[1,1]`. It also audits the actual
+certificate's proof dependencies. This is a consistency check on collected
+artifacts, not a sandbox for arbitrary Lean code or a proof of the collector.
+This work does
 not prove official Go operational semantics, arbitrary Go syntax, aliases,
 concurrency, CLI finding projection or automatic rewrite correctness. The
 existing signed-word interval assumptions remain unchanged. Supported source
@@ -148,6 +153,11 @@ wrong comparison inverse, using the wrong coverage endpoint, and omitting
 negative inputs from the initial domain. Compiler/setup/type failures do not
 count as those logical rejections. Artifact controls independently change source,
 raw report fields or program inventory and must fail their named binding check.
+Four shared controls keep the original generated claims compiling while changing
+the manifest/report declaration together, substituting the program or source, or
+replacing actual certificate soundness with an unapproved axiom. The independent
+subject theorem or actual dependency audit must reject them. Setup errors do not
+count as rejection.
 
 Go tests cover independently written source with extreme and nonenumerated
 constants, 32 nested comparisons, actual production collection, and rejection of

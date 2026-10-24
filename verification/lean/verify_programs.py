@@ -14,6 +14,7 @@ PROJECT = verify.PROJECT
 REPORT = ROOT / "dist/verification/programs"
 THEOREMS = {"Perennial.GstylePrograms." + name for name in
             ("enumerate_complete", "certified_programs", "certified_admitted", "reported_interval", "Certificate.interval_sound")}
+SUBJECT_CONTROLS = ["substituted-report", "substituted-program", "substituted-source", "certificate-axiom"]
 
 
 def fingerprint():
@@ -63,9 +64,63 @@ def proof_rejected(output, filename, theorems):
 
 
 def lean_check(directory, *, rejected=False, theorems=()):
+    if not rejected:
+        return check_bindings(directory, validate_artifacts(directory), theorems=theorems)
     certificate = directory / "Certificate.lean"
     return run(["lake", "env", "lean", "-j2", str(certificate)], PROJECT,
-               directory / "proof.log", rejected=rejected, theorems=theorems)
+               directory / "proof.log", rejected=True, theorems=theorems)
+
+
+def integer_literal(value):
+    if type(value) is not int or not -(2**63) <= value < 2**63:
+        raise ValueError("expected a signed 64-bit integer literal")
+    return str(value)
+
+
+def boolean_literal(value):
+    if type(value) is not bool:
+        raise ValueError("expected a Boolean literal")
+    return str(value).lower()
+
+
+def program_term(program):
+    test = program.get("test")
+    if test is None:
+        value = program["value"]
+        boolean_literal(value["input"])
+        return "(.result .input)" if value["input"] else f"(.result (.literal ({integer_literal(value['value'])})))"
+    operator = {"<": "lt", "<=": "le", ">": "gt", ">=": "ge", "==": "eq", "!=": "ne"}[test["operator"]]
+    return (f"(.branch ⟨.{operator}, ({integer_literal(test['bound'])})⟩ "
+            f"{program_term(program['Yes'])} {program_term(program['No'])})")
+
+
+def check_bindings(directory, data, *, theorems=()):
+    # Keep the definitions unchanged. Replace only audit commands so this pass
+    # audits the actual certificates, not the generator's selected theorem names.
+    lines = [line for line in (directory / "Certificate.lean").read_text().splitlines()
+             if not line.startswith("#print axioms ")]
+    lines.extend(["set_option maxRecDepth 100000", "namespace CapturedSubjects",
+                  "open Perennial.GstylePrograms"])
+    names = set(theorems)
+    lines.extend("#print axioms " + name for name in sorted(theorems))
+    for index, case in enumerate(data["cases"]):
+        certificate = "GeneratedPrograms.«c" + case["name"] + "»"
+        value = case["range"]
+        report = (f"(⟨({integer_literal(value['Lower'])}), ({integer_literal(value['Upper'])}), "
+                  f"{boolean_literal(value['HasLower'])}, {boolean_literal(value['HasUpper'])}⟩ : Reported)")
+        quote = lambda text: json.dumps(text, ensure_ascii=False)
+        lines.extend([f"theorem bound{index} :",
+            f"    {certificate}.name = {quote(case['name'])} ∧",
+            f"    {certificate}.program = {program_term(case['program'])} ∧",
+            f"    {certificate}.report = {report} ∧",
+            f"    {certificate}.source = {quote(case['source'])} := by decide",
+            f"#print axioms CapturedSubjects.bound{index}", f"#print axioms {certificate}"])
+        names.update({f"CapturedSubjects.bound{index}", "GeneratedPrograms.c" + case["name"]})
+    lines.append("end CapturedSubjects")
+    path = directory / "BoundCertificate.lean"
+    path.write_text("\n".join(lines) + "\n")
+    output = run(["lake", "env", "lean", "-j2", str(path)], PROJECT, directory / "binding.log")
+    verify.check_axioms(output, names)
 
 
 def collect(directory, *, overlay=None, controls=False):
@@ -94,6 +149,8 @@ def validate_artifacts(directory):
         if certificate.count(expected) != 1:
             raise RuntimeError("certificate range does not match the captured production report")
     names = [c["name"] for c in data["cases"]]
+    if any(not isinstance(name, str) or not name.isidentifier() for name in names):
+        raise ValueError("invalid program identifier")
     if len(names) != len(set(names)):
         raise RuntimeError("duplicate program names")
     return data
@@ -126,7 +183,7 @@ def production_controls():
 def certificate_controls():
     baseline = REPORT / "controls/baseline"
     collect(baseline, controls=True)
-    verify.check_axioms(lean_check(baseline), {"GeneratedPrograms.complete0", "GeneratedPrograms.source_file"})
+    lean_check(baseline, theorems={"GeneratedPrograms.complete0", "GeneratedPrograms.source_file"})
     text = (baseline / "Certificate.lean").read_text()
     changes = {
         "omitted-program": ("def certificates0 : List Certificate := [cCase0, cCase1, cCase2, cCase3]",
@@ -142,6 +199,59 @@ def certificate_controls():
         (directory / "Certificate.lean").write_text(text.replace(before, after))
         lean_check(directory, rejected=True, theorems=theorems)
         print(f"REJECTED certificate {name}", flush=True)
+    subject_controls(baseline, REPORT / "controls")
+
+
+def subject_controls(baseline, report):
+    import copy
+    import shutil
+    original = json.loads((baseline / "observations.json").read_text())
+    text = (baseline / "Certificate.lean").read_text()
+    for name in SUBJECT_CONTROLS:
+        directory = report / name
+        directory.mkdir(parents=True, exist_ok=True)
+        for file in ("input.go.txt", "observations.json", "Certificate.lean"):
+            shutil.copy2(baseline / file, directory / file)
+        data = copy.deepcopy(original)
+        case = data["cases"][0]
+        if name == "substituted-report":
+            case["range"].update(Lower=1, Upper=1, HasLower=True, HasUpper=True)
+            changed = text.replace("rCase0", "verifiedCase0")
+            changed += "\nnamespace GeneratedPrograms\ndef rCase0 : Reported := ⟨(1), (1), true, true⟩\nend GeneratedPrograms\n"
+            (directory / "Certificate.lean").write_text(changed)
+        elif name == "substituted-program":
+            case["program"] = {"value": {"input": False, "value": 17}}
+        elif name == "substituted-source":
+            case["source"] = case["source"].replace("result = x", "result = 17")
+            source = "package generated\nfunc observe(value int64) {}\n" + "".join(c["source"] for c in data["cases"])
+            (directory / "input.go.txt").write_text(source)
+            data["source_sha256"] = hashlib.sha256(source.encode()).hexdigest()
+        else:
+            line, = [row for row in text.splitlines() if row.startswith("def cCase0 : Certificate := ")]
+            changed = line.replace("def cCase0", "def originalCase0")
+            changed += ("\naxiom unapproved : Sound originalCase0.program originalCase0.report\n"
+                        "def cCase0 : Certificate := { originalCase0 with sound := unapproved }")
+            (directory / "Certificate.lean").write_text(text.replace(line, changed))
+        (directory / "observations.json").write_text(json.dumps(data))
+        validate_artifacts(directory)
+        # The original generated claims must still compile: the new independent
+        # binding/audit, not an unrelated proof or setup failure, rejects these.
+        run(["lake", "env", "lean", "-j2", str(directory / "Certificate.lean")],
+            PROJECT, directory / "proof.log")
+        try:
+            check_bindings(directory, data)
+        except RuntimeError as error:
+            output = (directory / "binding.log").read_text()
+            if name == "certificate-axiom":
+                expected = {f"unexpected axioms for {entry}: {{'GeneratedPrograms.unapproved'}}"
+                            for entry in ("CapturedSubjects.bound0", "GeneratedPrograms.cCase0")}
+                if str(error) not in expected:
+                    raise
+            elif not proof_rejected(output, directory / "BoundCertificate.lean", {"bound0"}):
+                raise
+        else:
+            raise RuntimeError("certificate subject mutation accepted: " + name)
+        print("REJECTED certificate " + name, flush=True)
 
 
 def main():
@@ -159,9 +269,8 @@ def main():
     verify.check_axioms(audit, THEOREMS)
     collect(REPORT)
     data = validate_artifacts(REPORT)
-    verify.check_axioms(lean_check(REPORT),
-                        {"GeneratedPrograms.complete" + str(i) for i in range(len(data["suites"]))} |
-                        {"GeneratedPrograms.source_file"})
+    lean_check(REPORT, theorems={"GeneratedPrograms.complete" + str(i) for i in range(len(data["suites"]))} |
+               {"GeneratedPrograms.source_file"})
     print(f"PROVED {len(data['cases'])} production reports for every signed 64-bit input", flush=True)
     production_controls()
     certificate_controls()
@@ -171,7 +280,7 @@ def main():
         "verified": "captured production ranges contain every result of each enumerated scalar program",
         "programs": len(data["cases"]), "input_domain": "all signed 64-bit integers",
         "source_sha256": data["source_sha256"], "sources_sha256": before, "toolchain": toolchain,
-        "controls": ["forged-lower", "erased-bounds", "omitted-program", "wrong-source"],
+        "controls": ["forged-lower", "erased-bounds", "omitted-program", "wrong-source"] + SUBJECT_CONTROLS,
         "unverified": ["arbitrary program sizes and Go syntax", "formal Go operational semantics of the source renderer",
                        "universal correctness or termination of the analyzer implementation", "CLI finding and presentation projection"],
     }, indent=2) + "\n")

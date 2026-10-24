@@ -18,7 +18,7 @@ production translation, binds its sources and audits the named theorems. CI
 splits the worklist controls into two shards. A fresh combined run can execute
 all 55 controls and audit all 133 names; collecting old success reports is not a
 combined execution. `make verify-branches` separately checks supplied-source
-report integration and its eight controls.
+report integration and its twelve controls.
 
 Seven unused convenience wrappers are removed. Their original statements
 reconstruct without new premises: exact comparison execution plus
