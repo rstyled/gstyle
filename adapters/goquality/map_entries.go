@@ -83,7 +83,7 @@ func (x *extractor) privateMapUse(id *ast.Ident, object types.Object) bool {
 	case *ast.IndexExpr:
 		return parent.X == node && x.privateMapEntryUse(parent, object)
 	default:
-		return false
+		return x.lengthOnlyRange(node, parent)
 	}
 }
 
