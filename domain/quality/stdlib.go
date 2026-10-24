@@ -41,6 +41,7 @@ var stdlibRules = []stdlibRule{
 	{pkg: "strings", kind: None},
 	{pkg: "bytes", kind: None},
 	{pkg: "strconv", kind: None},
+	{pkg: "strconv", kind: MutationEffect, names: []string{"AppendInt"}},
 	{pkg: "unicode", kind: None},
 	{pkg: "unicode/utf8", kind: None},
 	{pkg: "unicode/utf16", kind: None},
