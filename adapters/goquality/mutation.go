@@ -365,7 +365,7 @@ func (x *extractor) allocationOrigin(call *ast.CallExpr, seen map[types.Object]b
 		if result, ok := x.factories[object]; ok {
 			return x.factoryOrigin(call, result, seen)
 		}
-		if freshCallResult(resolvedName(object)) {
+		if x.freshCallResult(call, resolvedName(object)) {
 			return quality.Local
 		}
 	}
@@ -374,7 +374,12 @@ func (x *extractor) allocationOrigin(call *ast.CallExpr, seen map[types.Object]b
 
 // Command and CommandContext allocate a new Cmd. This owns its outer slots
 // only; reference fields need their own proof, and calls retain their effects.
-func freshCallResult(callee string) bool {
+func (x *extractor) freshCallResult(call *ast.CallExpr, callee string) bool {
+	// AppendUvarint always appends at least one byte. Only a nil destination
+	// proves fresh storage here; a non-nil slice can retain borrowed capacity.
+	if callee == "encoding/binary.AppendUvarint" {
+		return x.pkg.TypesInfo.Types[call.Args[0]].IsNil()
+	}
 	return callee == "os/exec.Command" || callee == "os/exec.CommandContext" || quality.ContainerClone(callee)
 }
 
