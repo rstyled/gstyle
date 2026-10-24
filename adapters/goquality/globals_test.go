@@ -26,6 +26,7 @@ func TestStableLiteralTableReads(t *testing.T) {
 import "charm.land/lipgloss/v2"
 import "errors"
 import "slices"
+import "image/color"
 type valueRecord struct{Value int;Name string;Numbers [1]int}
 func(r *valueRecord) Touch(){r.Value++}
 var fixedRecord=valueRecord{Value:1,Name:"fixed",Numbers:[1]int{2}}
@@ -63,6 +64,19 @@ var ExportedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(tone))
 var styleDynamic = lipgloss.NewStyle().Foreground(lipgloss.Color(string([]byte(tone))))
 var styleCallback = lipgloss.NewStyle().Foreground(lipgloss.Color(tone)).Transform(func(s string) string { println(s); return s })
 var colorReference = lipgloss.Color(tone)
+var backgroundColor = lipgloss.Color("#2b2140")
+func ColorValue() color.Color { return backgroundColor }
+func ColorRender() string { return lipgloss.NewStyle().Background(backgroundColor).Render("text") }
+func ColorEffects(p *int, callback func()) color.Color { *p=1; println("io"); callback(); return backgroundColor }
+func ColorWritten() color.Color { return colorWritten }
+func ColorAddressed() color.Color { return colorAddressed }
+func ReadExportedColor() color.Color { return ColorExported }
+func ColorDynamic() color.Color { return colorDynamic }
+func ColorIndirect() color.Color { return colorIndirect }
+type mutableColor struct{ C color.RGBA }
+func(c *mutableColor) RGBA()(uint32,uint32,uint32,uint32){return c.C.RGBA()}
+var userColor color.Color = &mutableColor{}
+func UserColor() color.Color { return userColor }
 var styleColorReference = lipgloss.NewStyle().Foreground(colorReference)
 var colorWritten = lipgloss.Color(tone)
 var colorAddressed = lipgloss.Color(tone)
@@ -196,7 +210,7 @@ func closure() func() { return func() { closureWritten[0]++ } }
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"LocalIndex", "NestedIndex", "BorrowedIndex", "FixedContains", "ParenthesizedContains", "ParenthesizedIndex", "GenericContains", "RecordValue", "ErrorValue", "Fixed", "Records", "Dispatch", "DispatchRecord", "DispatchCallback", "StyleValue", "StyleRender", "StyleMethodValue", "StyleColorReference", "StyleColorRender"} {
+	for _, name := range []string{"ColorValue", "ColorRender", "ColorEffects", "LocalIndex", "NestedIndex", "BorrowedIndex", "FixedContains", "ParenthesizedContains", "ParenthesizedIndex", "GenericContains", "RecordValue", "ErrorValue", "Fixed", "Records", "Dispatch", "DispatchRecord", "DispatchCallback", "StyleValue", "StyleRender", "StyleMethodValue", "StyleColorReference", "StyleColorRender"} {
 		fact := findFunction(t, facts, name)
 		for _, effect := range fact.Effects {
 			if effect.Kind == quality.Global {
@@ -204,7 +218,7 @@ func closure() func() { return func() { closureWritten[0]++ } }
 			}
 		}
 	}
-	for _, name := range []string{"CallbackContains", "ReferenceContains", "ChangingIndex", "ChangedContains", "SelfIndex", "AddressedIndex", "EscapedIndex", "ShadowedContains", "RecordWritten", "RecordAddress", "RecordMethod", "RecordExported", "RecordReference", "ErrorWritten", "ErrorAddressed", "ErrorExported", "ErrorDynamic", "ErrorIndirect", "Mutable", "Escape", "Address", "Reference", "Dynamic", "Public", "Initialized", "Closed", "Method", "RangeWrite", "Nested", "DispatchWritten", "DispatchEscaped", "DispatchAddressed", "DispatchVariable", "DispatchBound", "StyleWritten", "StyleAddressed", "StyleExported", "StyleDynamic", "StyleCallback", "StyleColorWritten", "StyleColorAddressed", "StyleColorExported", "StyleColorDynamic", "StyleColorIndirect", "StyleAlias", "StyleOther"} {
+	for _, name := range []string{"UserColor", "ColorWritten", "ColorAddressed", "ReadExportedColor", "ColorDynamic", "ColorIndirect", "CallbackContains", "ReferenceContains", "ChangingIndex", "ChangedContains", "SelfIndex", "AddressedIndex", "EscapedIndex", "ShadowedContains", "RecordWritten", "RecordAddress", "RecordMethod", "RecordExported", "RecordReference", "ErrorWritten", "ErrorAddressed", "ErrorExported", "ErrorDynamic", "ErrorIndirect", "Mutable", "Escape", "Address", "Reference", "Dynamic", "Public", "Initialized", "Closed", "Method", "RangeWrite", "Nested", "DispatchWritten", "DispatchEscaped", "DispatchAddressed", "DispatchVariable", "DispatchBound", "StyleWritten", "StyleAddressed", "StyleExported", "StyleDynamic", "StyleCallback", "StyleColorWritten", "StyleColorAddressed", "StyleColorExported", "StyleColorDynamic", "StyleColorIndirect", "StyleAlias", "StyleOther"} {
 		fact := findFunction(t, facts, name)
 		found := false
 		for _, effect := range fact.Effects {
@@ -240,6 +254,15 @@ func closure() func() { return func() { closureWritten[0]++ } }
 	if err != nil {
 		t.Fatal(err)
 	}
+	effects := resultNamed(t, report, "ColorEffects")
+	wantKinds := map[quality.Kind]int{quality.MutationEffect: 1, quality.IO: 1, quality.UnknownEffect: 1}
+	gotKinds := map[quality.Kind]int{}
+	for _, effect := range effects.Effects {
+		gotKinds[effect.Kind]++
+	}
+	if !reflect.DeepEqual(gotKinds, wantKinds) {
+		t.Errorf("stable color loses real effects: %+v", effects)
+	}
 	replay, err := quality.Evaluate(restored, quality.DefaultConfig())
 	if err != nil || !reflect.DeepEqual(report, replay) {
 		t.Fatal("saved style facts change report", err)
@@ -251,15 +274,17 @@ func closure() func() { return func() { closureWritten[0]++ } }
 		if err != nil {
 			t.Fatal(err)
 		}
-		result := resultNamed(t, overridden, "StyleColorRender")
-		if kind == quality.None {
-			if len(result.Effects) != 0 {
-				t.Errorf("pure style policy lost: %+v", result)
+		for _, name := range []string{"StyleColorRender", "ColorRender"} {
+			result := resultNamed(t, overridden, name)
+			if kind == quality.None {
+				if len(result.Effects) != 0 {
+					t.Errorf("pure style policy lost: %+v", result)
+				}
+				continue
 			}
-			continue
-		}
-		if len(result.Effects) != 1 || result.Effects[0].Kind != kind {
-			t.Errorf("%s style policy lost: %+v", kind, result)
+			if len(result.Effects) != 1 || result.Effects[0].Kind != kind {
+				t.Errorf("%s style policy lost: %+v", kind, result)
+			}
 		}
 	}
 	render := findFunction(t, facts, "StyleRender")

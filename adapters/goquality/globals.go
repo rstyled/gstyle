@@ -97,7 +97,7 @@ func stableVariable(object types.Object, value ast.Expr, pkg *packages.Package) 
 		return false
 	}
 	return stableInitializer(variable.Type(), value, pkg.TypesInfo) ||
-		(styleValueType(variable.Type()) && stableStyle(pkg, value))
+		stableStyleValue(pkg, variable.Type(), value)
 }
 
 func stableInitializer(typ types.Type, value ast.Expr, info *types.Info) bool {

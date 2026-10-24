@@ -43,7 +43,7 @@ func stableGlobalRead(id *ast.Ident, parents map[ast.Node]ast.Node, info *types.
 }
 
 func immutableGlobalValue(object types.Object) bool {
-	return unitGlobal(object) || scalarValue(object.Type()) || styleValueType(object.Type()) || errorValueType(object.Type())
+	return unitGlobal(object) || scalarValue(object.Type()) || styleValueType(object.Type()) || errorValueType(object.Type()) || metadataType(object.Type(), "image/color", "Color")
 }
 
 func unitValueContext(node, parent ast.Node, info *types.Info) bool {
