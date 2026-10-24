@@ -178,7 +178,7 @@ func borrowedRun(values map[string]int){p:=new(borrowed);p.values=values;p.Borro
 		{"InlineVisitor", quality.Local}, {"NestedVisitor", quality.Local},
 		{"InlineSavedVisitor", quality.External}, {"InlineAsyncVisitor", quality.External},
 		{"InlineDeferredVisitor", quality.External}, {"PublishedVisitor", quality.External},
-		{"AsyncVisitor", quality.External}, {"VisitorInput", quality.Unknown},
+		{"AsyncVisitor", quality.External}, {"VisitorInput", quality.External},
 		{"ConstructorLocal", quality.Local}, {"LiteralConstructor", quality.Local},
 		{"EscapedConstructor", quality.External}, {"IndirectConstructor", quality.External},
 		{"InterfaceConstructor", quality.External}, {"InterfaceLiteral", quality.External},
