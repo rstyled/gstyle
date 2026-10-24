@@ -1,9 +1,9 @@
 # Production worklist proofs
 
 These are source-bound component proofs. The unconditional source-to-report
-implementation theorem remains **open**. [BRANCHES.md](BRANCHES.md) describes the
-separate structural report checker; its success premise is not an implementation
-correctness proof.
+implementation theorem remains **open**. The separate
+[structural report checker](PROGRAMS.md#arbitrary-depth-checker) requires checker
+success; that premise is not an implementation correctness proof.
 
 ## Run and audit
 

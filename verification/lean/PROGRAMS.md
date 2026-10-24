@@ -1,126 +1,164 @@
-# Program-level range certificates
+# Program range verification
 
-Run `make verify-programs` with Go and the pinned Lean toolchain available on
-`PATH`. The command collects real analyzer results, proves their numeric meaning,
-and checks eight negative controls. Evidence stays in
-`dist/verification/programs/`; a failed run removes any earlier `result.json`.
+These commands certify captured production reports. They do **not** prove the
+analyzer implementation correct without a successful certificate check. See
+[WORKLIST.md](WORKLIST.md) for implementation coverage, premises and open work.
+Use Go and the pinned Lean toolchain on `PATH`.
 
-## Claim
+| Command | Programs | Fault controls | Evidence |
+| --- | --- | ---: | --- |
+| `make verify-programs` | Exhaustive bounded grammars below | 8 | `dist/verification/programs/` |
+| `make verify-branches` | Supplied canonical source; arbitrary finite branch trees | 12 | `dist/verification/branches/` |
 
-For every admitted program in each of the two finite grammars, the captured
-production result interval contains the program's result for **every signed
-64-bit input**. Input values are universally quantified in Lean; they are not a
-sample, a small-integer bound, or a list of fuzz seeds.
+A failed run removes any earlier `result.json`. Collection alone is not
+verification: `go run ./verification/programs --source PATH --output DIR` writes
+artifacts but does not run Lean. `--source` selects structural checking;
+`--structural` also selects it for the generated corpus.
 
-The source functions take one `int64` parameter `x`, choose a result through a
-finite tree of comparisons against constants, call an empty `observe(result)`
-function, and return that same result. Leaves select `x` or an integer literal.
-The report is the `FirstArgument` range at that exact, typed observation call.
-Missing functions, missing observations, duplicate functions, and multiple
-observations fail collection. The collection path uses production
-`gopatterns.Extract` and `runtimeguard.Analyze`, not manufactured PDG fixtures or a
-replacement implementation of the analyzer.
+## Common guarantee and source grammar
 
-Two alphabets are enumerated completely:
+For each certified program, its captured `FirstArgument` interval contains
+`Program.eval program x` for **every signed 64-bit input** `x`. Input values are
+universally quantified, not sampled or bounded to small integers. Direct literal
+results must have exact bounds; an analyzer returning unknown for every program
+cannot pass. Branch reports need not be the tightest possible intervals.
+
+`Gstyle/Proof/Programs/Contract.lean` defines the independent grammar and meaning.
+It does not call the analyzer's value resolver or follow its CFG. Functions take
+one `int64` parameter `x`, choose a result through comparisons against signed
+constants, call the empty `observe(result)` helper, and return the same result.
+Leaves select `x` or an integer literal; comparisons use `<`, `<=`, `>`, `>=`,
+`==` or `!=`.
+
+Supplied source must be a canonical file in package `generated`, starting with
+`observe(value int64)`. Remaining declarations are unique exported functions with
+that wrapper and grammar, reproduced byte for byte by the renderer. Leaves
+assign `result = x` or a signed decimal literal. Each branch arm contains one
+leaf or another branch. Input mutation, extra statements, expression calls,
+shadowing, changed wrappers and unsupported syntax are rejected. See
+[`branches.go.txt`](../programs/testdata/branches.go.txt) for a complete input.
+
+```sh
+python3 -B verification/lean/verify_branches.py --source /absolute/path/input.go.txt
+```
+
+The wrapper's `_ = *new(int)` selects production runtime-fact extraction; it
+cannot change the numeric result on normal execution. Allocation failure and
+resource exhaustion are outside the scalar meaning.
+
+## Exhaustive bounded programs
+
+`make verify-programs` collects these complete alphabets:
 
 - **Boundaries:** depth at most one; six comparison operators; thresholds
-  `MinInt64`, -1, 0, 1, and `MaxInt64`; leaves `x`, -1, 0, and 1. There are 484 cases.
-- **Nested:** depth at most two; comparisons `x < 0`, `x == 0`, and `x > 0`;
-  leaves `x` and 0. There are 590 cases. Both children may branch, so this includes
-  trees with three conditionals, contradictory paths, and repeated tests.
+  `MinInt64`, -1, 0, 1 and `MaxInt64`; leaves `x`, -1, 0 and 1: 484 cases.
+- **Nested:** depth at most two; `x < 0`, `x == 0` and `x > 0`; leaves `x` and 0:
+  590 cases. Both children may branch, including contradictory and repeated tests.
 
-The two grammars overlap; 1,074 is the total number of collected functions.
-Depth bounds constrain program syntax, never the input-value quantifier.
+The grammars overlap; 1,074 is the total number of collected functions. Syntax
+bounds do not restrict the universal input quantifier.
 
-## Proof connection
+`enumerate_complete` proves enumeration equals structural admission for any
+alphabets and depth, independent of analysis success. Each generated
+`soundCase...` proves the captured interval contains the program result for every
+signed input. `PreciseLiteral` enforces literal precision. `complete0`,
+`complete1` and `certified_admitted` compose those certificates over the admitted
+grammars. This certifies collected answers, not arbitrary program sizes.
 
-`Gstyle/Proof/Programs/Contract.lean` defines the expression and program meaning
-independently of the analyzer. It does not call `valueResolve`, follow gstyle's
-CFG, or compute expected bounds using the analyzer's transfers.
+## Arbitrary-depth checker
 
-- `enumerate_complete` proves enumeration equals structural admission for any
-  alphabets and depth. Admission does not depend on a successful analysis.
-- Each generated `soundCase...` theorem proves the captured range contains
-  `Program.eval program x` for every signed 64-bit `x`. Standard Lean arithmetic
-  tactics construct proofs checked by the kernel.
-- `PreciseLiteral` requires exact bounds on direct literal results. An analyzer
-  returning unknown for every case cannot pass the complete contract.
-- Each certificate proves its rendered Go function equals the captured source.
-  `source_file` checks the ordered source segments, including the helper. The
-  driver checks that their exact concatenation is the analyzed file, and that
-  certificate bounds equal the captured raw reports. Coverage equality checks
-  the full program inventory, not merely its size.
-- A separate driver-emitted theorem binds each actual certificate's name,
-  program tree, raw range and source to manifest literals. The actual certificate
-  and this theorem receive axiom audits, including soundness and precision fields;
-  unused report declarations and unrelated named proofs cannot replace them.
-- `certified_admitted` composes these certificates into the program-level claim.
-- `reported_interval` proves that certificate membership is exactly the interval
-  membership used by the existing production interval proofs, under signed-word
-  bounds. Raw unknown-bound payloads keep their existing meaning.
+`make verify-branches` does not enumerate trees. `Structural.lean` proves:
 
-This is **result certification**: the analyzer is not assumed correct. Its actual
-answers become proof obligations. Existing internal proofs remain useful without
-being premises that assume the whole analysis is sound.
+```text
+For every finite Program tree, recorded interval and signed 64-bit input:
+  checkReport(program, recordedInterval) = true
+    implies recordedInterval contains Program.eval(program, input)
+```
 
-## Trust and limits
+`checkTree_sound` uses structural induction, without a syntax-depth bound,
+constant alphabet or assumed child-report soundness. `checkReport_sound` adds
+signed input coverage and literal precision. `checked_interval_sound` connects
+this to production interval membership; `certificateOfCheck` builds a
+`Certificate` from a successful check. This does not establish that every
+production answer passes.
 
-The proof quantifies the independent scalar grammar's meaning. The equality
-checks bind that grammar's renderer to the analyzed bytes. They do not prove a
-refinement theorem from the official Go operational semantics to `Program.eval`.
-The small renderer and its Go meaning remain reviewed and tested boundaries.
-The harness compiles and executes every generated function at signed endpoints
-and around every threshold, checking those real Go results against its scalar
-interpreter. These executions check the boundary; the universal input guarantee
-comes from Lean, not those executions.
+The checker starts with the full signed 64-bit domain and refines true and false
+arms separately. Mathematical endpoints prevent `MinInt64 - 1` or `MaxInt64 + 1`
+from wrapping into feasible domains. Both arms are checked; an empty domain
+requires contradictory bounds. The `!=` true arm keeps the incoming interval,
+so a correct report relying on point exclusion can be rejected. Rejection means
+this check did not establish the claim, not necessarily that gstyle is wrong.
+There is no configured tree-depth or constant-list limit, but parsing, memory
+and Lean elaboration still impose operational limits. Setup/resource failure is
+not a verified result.
 
-A harmless `_ = *new(int)` in each wrapper selects the production runtime-fact
-extraction path. It cannot change the numeric result on normal execution. Memory
-allocation failure and resource exhaustion are outside the scalar meaning.
-`observe` is defined in the captured file with an empty body.
+## Shared source and certificate binding
 
-The collector, raw-report serialization, command runner, Go compiler/toolchain,
-pinned Lean dependencies, and Lean kernel remain trusted. Source hashes are
-checked before and after the run. No unproved axioms, `sorry`, native decision
-procedures, or accepted setup failures are added.
+1. The Go parser reifies functions into independent program trees. The renderer
+   must reproduce every source byte, wrapper and declaration; input is not
+   silently rewritten. Coverage compares the full inventory, not just its size.
+2. Compiled Go executions at signed endpoints and threshold neighbors must equal
+   the independent interpreter. These samples test the source-meaning boundary;
+   Lean supplies the all-input guarantee.
+3. The same bytes pass through production `gopatterns.Extract` and
+   `runtimeguard.Analyze`. The collector reads the range at the exact typed
+   observation call. Missing/duplicate functions, missing observations or
+   multiple observations fail collection; manufactured PDG fixtures are not used.
+4. Each certificate proves its rendering equals captured function text.
+   `source_file` checks ordered segments, including the helper. The driver
+   checks their exact concatenation, raw reports, source hashes and before/after
+   input fingerprints. `reported_interval` connects certificate membership to
+   production intervals under signed-word bounds, preserving unknown payloads.
+5. From the captured manifest, the driver emits a separate theorem binding the
+   actual certificate's name, program, raw range and source to literal data.
+   Numeric and Boolean fields must be literals. Kernel-checked reflexivity
+   proves these equalities without recomputing decidable tree/string equality.
+   Both this theorem and the actual certificate receive axiom audits, including
+   soundness and precision fields. Unused declarations or unrelated named
+   theorems cannot stand in for the certificate. `result.json` requires every
+   applicable check and control.
 
-This does not prove the analyzer implementation correct for arbitrary program
-sizes or other Go syntax. It does not prove convergence, operational termination,
-CLI finding projection, pointer/alias semantics, arbitrary assignments, loops,
-concurrency, or automatic rewrites. It closes a bounded source-to-range evidence
-gap without claiming those larger results.
+## Controls and CI
 
-## Negative controls
+Both commands use isolated production overlays that forge lower bound 1 or erase
+bounds. The first must fail soundness; the second must fail literal precision.
+Artifact controls omit a program or change captured source. Four shared controls
+keep the original generated claims compiling while substituting report, program
+or source, or adding an unapproved axiom to actual certificate soundness. Subject
+binding or dependency audits must reject them. A small unchanged corpus passes
+before certificate mutations run; logs and overlay sources remain for review.
 
-The verifier builds two isolated Go overlays of the production observation code.
-One forges lower bound 1; the other erases all bounds. The first must fail numeric
-soundness, and the second must fail the literal precision contract. The originals
-are never edited. Two certificate controls omit a program or change the captured
-source. They must fail coverage and source equality respectively.
-Four more controls preserve compilation of the original generated claims but
-substitute the report, program, or source, or put an unapproved soundness axiom in
-the actual certificate. Independent subject binding and dependency audits reject
-these. This checks artifact consistency; it does not prove collection correct or
-sandbox arbitrary Lean code.
+The branch command also mutates the comparison inverse, coverage endpoint and
+initial signed domain. These must fail the general theorem. Artifact mutations
+must fail their named binding check. Compiler, setup, syntax/type, unrelated or
+mixed diagnostics do not count as logical rejection. Dependency revisions,
+foundation and generated claims, source identity and actual certificate proofs
+receive their applicable checks/audits. Only existing standard axioms are allowed;
+no `sorry`, new trusted axiom or native proof shortcut is added.
 
-A negative result counts only for an expected logical diagnostic in the named
-contract. Compiler failures, missing dependencies, syntax/type errors, and mixed
-setup/proof failures abort verification. A small unchanged control corpus passes
-before the certificate mutations run. All logs and overlay sources survive for
-review. Pinned dependency revisions and five foundation theorem axiom lists are
-also checked; complete generated claims and source identity have their own audits.
+Go tests cover independently written source, extreme/nonenumerated constants,
+32 nested comparisons, real collection and rejection of unsupported effects or
+wrappers. Python tests reject mixed failures and failures in the wrong theorem.
+CI runs both commands and retains both evidence directories.
 
-## Proof map
+## Trust and open implementation boundary
 
-The user promise is that reported ranges include every possible result.
-`verification/programs/collect.go` binds that promise to production extraction
-and the typed `observe` call in `domain/runtimeguard/flow.go`. Generated
-`complete0` and `complete1` discharge the claim over the two admitted grammars.
+Source equality binds the grammar's renderer to analyzed bytes; it does not
+prove official Go semantics refine `Program.eval`. Renderer meaning, Go parser
+and compiler, collector, serialization, driver, pinned dependencies and Lean
+kernel remain trusted. Runtime samples test those boundaries but do not prove
+them. Binding rejects an unrelated unbounded certificate paired with a manifest
+and unused declaration claiming `[1,1]`; it is artifact consistency, not a proof
+of collection or a sandbox for arbitrary Lean code.
 
-Existing `Interval`, `ValueEvaluation`, `Comparison`, and `Assume` proofs cover
-internal execution and preservation contracts. This certificate layer checks the
-composed producer, transfer, traversal, and observation result on whole source
-programs. A future implementation-level composition proof can use those internal
-contracts and use this corpus as an independent check. The two remaining global
-bridges are official Go source meaning and an implementation theorem for all
-admitted program sizes; neither is hidden as a discharged assumption here.
+This work does not prove arbitrary Go syntax, pointers/aliases, arbitrary
+assignments, loops, concurrency, operational convergence/termination, CLI finding
+projection or automatic rewrites. The signed-word interval assumptions remain;
+package initialization and resource exhaustion are outside scalar meaning.
+
+[WORKLIST.md](WORKLIST.md#coverage-and-premise-producers) is the implementation
+obligation map. Its O1–O3 rows track actual setup, typed source-to-PDG/CFG lowering
+and metadata/primitive/rank establishment, full source-path composition, and
+non-nil report/call projection. Existing component proofs and the independent
+corpus support that future work. They do not remove checker acceptance, establish
+source-produced premises or close the unconditional source-to-report theorem.

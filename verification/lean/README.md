@@ -8,14 +8,10 @@ Profiles cover function length, [PDG queries](PDG.md),
 [unchecked output](OUTPUT.md), and [runtime state and interval proofs](NEGATIVE_INDEX.md).
 Each has its own verification profile, axiom audit and mutation controls.
 
-[Program-level range certificates](PROGRAMS.md) add exhaustive scalar source
-programs and kernel-checked range claims over every signed 64-bit input. Run
-`make verify-programs` for the bounded source-to-range contract and its controls.
-
-[Arbitrary-depth branch checking](BRANCHES.md) proves a structural result checker
-for every finite branch tree and connects it to supplied-source production
-reports. Run `make verify-branches`; this remains checked-result validation, not
-an unconditional implementation theorem for the production worklist.
+[Program range verification](PROGRAMS.md) covers both `make verify-programs`
+(exhaustive bounded source grammars) and `make verify-branches` (supplied source
+with arbitrary finite branch trees). Both certify captured ranges over every
+signed 64-bit input; neither proves the analyzer implementation unconditionally.
 
 [Production worklist proofs](WORKLIST.md) cover actual queue, comparison, scalar
 transfer, block, successor and post-constructor solver execution, plus range
