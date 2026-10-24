@@ -5,14 +5,14 @@ import (
 	"go/types"
 )
 
-// Typed string scans read only their input string. Retain mutation evidence
-// because scalar destinations can point to shared storage.
+// Typed scalar scans read only their string or JSON input. Retain mutation
+// evidence because scalar destinations can point to shared storage.
 func (x *extractor) memoryScan(call *ast.CallExpr, callee string) bool {
 	if call.Ellipsis.IsValid() {
 		return false
 	}
 	switch callee {
-	case "fmt.Sscan", "fmt.Sscanln":
+	case "fmt.Sscan", "fmt.Sscanln", "encoding/json.Unmarshal":
 		return x.scanScalars(call.Args[1:])
 	case "fmt.Sscanf":
 		return x.scanScalars(call.Args[2:])
@@ -21,8 +21,8 @@ func (x *extractor) memoryScan(call *ast.CallExpr, callee string) bool {
 	}
 }
 
-// fmt invokes Scanner before its scalar conversion. Reject open types and
-// methods on either the destination or its element, including named scalars.
+// fmt and JSON can invoke decoding methods before scalar conversion. Reject
+// open types and methods on either the destination or its element.
 func (x *extractor) scanScalars(arguments []ast.Expr) bool {
 	for _, argument := range arguments {
 		pointer, ok := types.Unalias(x.pkg.TypesInfo.TypeOf(argument)).(*types.Pointer)

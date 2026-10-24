@@ -18,11 +18,11 @@ func (call Call) policyKind(prefixes []Prefix) (Kind, bool) {
 	if prefix.refinesMemoryRead(call) {
 		return None, true
 	}
-	if prefix.refinesMemoryWriter(call) {
-		return call.memoryWriteKind(), true
-	}
 	if call.HasPlainJSON() && prefix.plainJSON && prefix.Kind == UnknownEffect {
 		return None, true
+	}
+	if prefix.refinesMemoryWriter(call) {
+		return call.memoryWriteKind(), true
 	}
 	return prefix.Kind, configured
 }
