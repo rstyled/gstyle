@@ -14,7 +14,7 @@ Stay in your bound checkout. Normal merges/pushes only; no rebase or force-push.
 
 **Maintenance:** use the existing PR's bound branch. Make only the requested edit and verify its acceptance checks; do not select an analyzer candidate.
 
-Pass `make check`, `make quality-gate`, and current affected gates before push. Regenerate the improvement baseline.
+Pass `make check`, `make quality-gate`, and affected gates before push. Regenerate the improvement baseline. On the final commit, capture trusted-base `risk --base BASE_SHA --head HEAD_SHA --check` and report/exits for chief; non-low may be published for review, never relabeled or bypassed. Hosted risk-gate remains chief-owned.
 
 ## Evidence
 
@@ -22,4 +22,4 @@ For implementation/refresh, keep commands/exits, exact base/head, immutable firs
 
 ## Handoff
 
-Normal-push one focused PR for new implementation; update the existing PR for refresh/maintenance. Link and verify registration. Queue results, all five risk categories, evidence, and pending checks to the supplied chief with a stable report ID. Report no-fix/blockers promptly with the rejection reason and reusable evidence. Suggest another lead only when supported; no speculative next-angle obligation. Stop for chief review.
+Normal-push one focused PR for new implementation; update the existing PR for refresh/maintenance. Link and verify registration. Queue results, the trusted risk report, semantic evidence, and pending checks to the supplied chief with a stable report ID. Report no-fix/blockers promptly with the rejection reason and reusable evidence. Suggest another lead only when supported; no speculative next-angle obligation. Stop for chief review.
