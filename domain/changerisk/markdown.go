@@ -17,6 +17,9 @@ func Markdown(report Report) string {
 		unmeasuredSummary(report.Unmeasured),
 		fmt.Sprintf("Compared `%s` → `%s`.", text(shortRevision(report.Base)), text(shortRevision(report.Head))),
 	}
+	if report.GoAPI.Status != "" {
+		lines = slices.Insert(lines, 9, "**Go API:** "+apiVerdict(report.GoAPI)+"  ", apiSummary(report.GoAPI), "")
+	}
 	return strings.Join(lines, "\n") + "\n" + graphSection(prioritizedChanges(report))
 }
 

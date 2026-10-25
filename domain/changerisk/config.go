@@ -7,7 +7,7 @@ import (
 )
 
 func (c Config) Validate() error {
-	for _, level := range []Level{c.PDGChange, c.DependencyChange} {
+	for _, level := range []Level{c.PDGChange, c.DependencyChange, c.APIBreaking} {
 		if !validLevel(level) {
 			return fmt.Errorf("risk levels must be low, medium, high, or omitted")
 		}
@@ -56,5 +56,5 @@ func levelScore(level Level) int {
 }
 
 func (c Config) enabled() bool {
-	return c.PDGChange != "" || c.DependencyChange != "" || len(c.Calls) != 0
+	return c.PDGChange != "" || c.DependencyChange != "" || c.APIBreaking != "" || len(c.Calls) != 0
 }

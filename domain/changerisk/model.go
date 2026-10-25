@@ -18,6 +18,7 @@ type CallRule struct {
 type Config struct {
 	PDGChange        Level      `toml:"pdg_change"`
 	DependencyChange Level      `toml:"dependency_change"`
+	APIBreaking      Level      `toml:"api_breaking"`
 	Calls            []CallRule `toml:"calls"`
 }
 
@@ -87,18 +88,20 @@ type ChangedEdge struct {
 }
 
 type Report struct {
-	SchemaVersion       int      `json:"schema_version"`
-	Base                string   `json:"base"`
-	Head                string   `json:"head"`
-	Policy              string   `json:"policy"`
-	Risk                Level    `json:"risk"`
-	PDGRisk             Level    `json:"pdg_risk"`
-	DependencyRisk      Level    `json:"dependency_risk"`
-	DependenciesChanged bool     `json:"dependencies_changed"`
-	DependenciesAdded   []string `json:"dependencies_added"`
-	DependenciesRemoved []string `json:"dependencies_removed"`
-	Reasons             []Reason `json:"reasons"`
-	Changes             []Delta  `json:"changes"`
-	ChangedFunctions    int      `json:"changed_functions"`
-	Unmeasured          []string `json:"unmeasured"`
+	SchemaVersion       int       `json:"schema_version"`
+	Base                string    `json:"base"`
+	Head                string    `json:"head"`
+	Policy              string    `json:"policy"`
+	Risk                Level     `json:"risk"`
+	PDGRisk             Level     `json:"pdg_risk"`
+	DependencyRisk      Level     `json:"dependency_risk"`
+	APIRisk             Level     `json:"api_risk"`
+	GoAPI               APIReport `json:"go_api"`
+	DependenciesChanged bool      `json:"dependencies_changed"`
+	DependenciesAdded   []string  `json:"dependencies_added"`
+	DependenciesRemoved []string  `json:"dependencies_removed"`
+	Reasons             []Reason  `json:"reasons"`
+	Changes             []Delta   `json:"changes"`
+	ChangedFunctions    int       `json:"changed_functions"`
+	Unmeasured          []string  `json:"unmeasured"`
 }

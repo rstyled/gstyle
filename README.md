@@ -167,6 +167,7 @@ Risk rules are disabled by default. A repository opts in through `gstyle.toml`:
 [risk]
 pdg_change = "medium"
 dependency_change = "high"
+api_breaking = "high"
 
 [[risk.calls]]
 callee = "os.WriteFile"
@@ -180,13 +181,24 @@ Uncommitted edits are excluded. The default head is `HEAD`; the default base is
 its merge-base with `origin/main` or `origin/master`, then local `main` or
 `master`, falling back to the head itself.
 
-This first report measures changes in native PDG operation/dependency projections,
-exact configured direct call counts, and project module requirements, replacements and
-package imports. Position and opaque-ID changes are excluded; source changes
+The report measures native PDG operation/dependency changes, exact configured
+direct call counts, exported Go API changes, and project module requirements,
+replacements and package imports. Position and opaque-ID changes are excluded; source changes
 that the projection cannot distinguish remain unknown. Indirect call targets
 remain unknown. Changed tests and nested
 module source are explicitly outside the PDG comparison. Dependency collection
 includes nested project modules and excludes `testdata` and `vendor` fixtures.
+
+The Go API comparison reuses the typed package loader and applies
+`golang.org/x/exp/apidiff` to every importable package in the root module,
+including internal packages. It compares exported functions, types, methods,
+fields, constants and variables, and detects package removal or renaming.
+Body-only edits leave this API unchanged. `api_breaking` assigns severity to
+detected source-incompatible changes; it has no enabled default. Changes to
+generic constraints require review and remain partial unless another detected
+break already establishes incompatibility. The check uses the current build
+environment, excludes command packages and nested modules, and follows
+apidiff's source compatibility rules; it does not prove behavior preservation.
 
 Change status is separate from severity: measured PDG and dependency changes
 remain visible when no severity policy is configured. `unrated` means policy
@@ -194,7 +206,7 @@ does not assign a severity; `unknown` means static analysis has a real gap.
 Ambiguous operation matching omits a diagram without erasing a known change.
 The JSON retains added and removed dependency records as well as PDG deltas.
 
-The rating covers compared static evidence. API/CLI compatibility, check results
+The rating covers compared static evidence. CLI contracts, check results
 and runtime test coverage are not collected; one scope note lists them. Missing
 collectors do not produce placeholder verdicts or force the static rating to
 unknown. This report does not authorize a merge or prove behavior preservation.

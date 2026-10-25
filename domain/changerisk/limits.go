@@ -7,6 +7,9 @@ import (
 
 func analysisSummary(report Report) string {
 	var parts []string
+	if len(report.GoAPI.Limits) != 0 {
+		parts = append(parts, fmt.Sprintf("Go API constraint limits: %d", len(report.GoAPI.Limits)))
+	}
 	for _, kind := range []struct{ rule, label string }{
 		{"unresolved_calls", "functions with unresolved call targets"},
 		{"pdg_change", "source changes outside the projection"},
@@ -34,7 +37,7 @@ func unknownReasons(reasons []Reason, rule string) int {
 }
 
 func unmeasuredSummary(fields []string) string {
-	labels := map[string]string{"compatibility": "API/CLI compatibility", "checks": "check results", "test_coverage": "runtime coverage"}
+	labels := map[string]string{"go_api": "Go API compatibility", "cli": "CLI contract", "checks": "check results", "test_coverage": "runtime coverage"}
 	var names []string
 	for _, field := range fields {
 		label, ok := labels[field]

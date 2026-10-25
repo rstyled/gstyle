@@ -69,7 +69,7 @@ func TestMultipleInitDeclarationsKeepDistinctIdentities(t *testing.T) {
 	if functions[0].ID == functions[1].ID {
 		t.Fatal("init declarations overwrite each other")
 	}
-	report := changerisk.Evaluate(changerisk.Snapshot{}, changerisk.Snapshot{Functions: functions}, changerisk.Config{Calls: []changerisk.CallRule{{Callee: "os.WriteFile", Level: changerisk.High}}})
+	report := changerisk.Evaluate(changerisk.Snapshot{}, changerisk.Snapshot{Functions: functions}, changerisk.Config{Calls: []changerisk.CallRule{{Callee: "os.WriteFile", Level: changerisk.High}}}, changerisk.APIReport{})
 	if report.ChangedFunctions != 2 || report.Risk != changerisk.High {
 		t.Fatalf("an init call disappeared: %+v", report)
 	}
@@ -134,7 +134,7 @@ func TestIndirectCallTargetsRemainUnknown(t *testing.T) {
 	if err != nil || len(functions) != 1 {
 		t.Fatalf("indirect extraction: %v", err)
 	}
-	report := changerisk.Evaluate(changerisk.Snapshot{}, changerisk.Snapshot{Functions: functions}, changerisk.Config{PDGChange: changerisk.Medium, Calls: []changerisk.CallRule{{Callee: "os.WriteFile", Level: changerisk.High}}})
+	report := changerisk.Evaluate(changerisk.Snapshot{}, changerisk.Snapshot{Functions: functions}, changerisk.Config{PDGChange: changerisk.Medium, Calls: []changerisk.CallRule{{Callee: "os.WriteFile", Level: changerisk.High}}}, changerisk.APIReport{})
 	if report.PDGRisk != changerisk.Unknown {
 		t.Fatalf("unresolved call received a conclusive verdict: %+v", report)
 	}

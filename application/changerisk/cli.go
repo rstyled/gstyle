@@ -127,7 +127,8 @@ func compareRevisions(ctx context.Context, root string, opts options) (changeris
 	if err != nil {
 		return changerisk.Report{}, err
 	}
-	report := changerisk.Evaluate(base, head, config)
+	api := gorisk.CompareAPI(base.API, head.API)
+	report := changerisk.Evaluate(base.Source, head.Source, config, api)
 	report.Policy = opts.config
 	return report, nil
 }
@@ -152,8 +153,13 @@ type comparison struct {
 	paths []string
 }
 
-func (c comparison) snapshot(ctx context.Context, commit string, configure func(string) error) (changerisk.Snapshot, error) {
-	result := changerisk.Snapshot{Commit: commit}
+type repositorySnapshot struct {
+	Source changerisk.Snapshot
+	API    gorisk.API
+}
+
+func (c comparison) snapshot(ctx context.Context, commit string, configure func(string) error) (repositorySnapshot, error) {
+	result := repositorySnapshot{}
 	err := withSnapshot(ctx, c.root, commit, func(dir string) error {
 		if configure != nil {
 			if err := configure(dir); err != nil {
@@ -164,23 +170,24 @@ func (c comparison) snapshot(ctx context.Context, commit string, configure func(
 		result = loaded
 		return err
 	})
-	result.Commit = commit
+	result.Source.Commit = commit
 	return result, err
 }
 
-func populateSnapshot(ctx context.Context, root string, changed []string) (changerisk.Snapshot, error) {
+func populateSnapshot(ctx context.Context, root string, changed []string) (repositorySnapshot, error) {
 	paths, message, err := gorisk.ExistingPaths(root, changed)
 	if err != nil {
-		return changerisk.Snapshot{}, err
+		return repositorySnapshot{}, err
 	}
 	functions, err := gorisk.Extract(ctx, root, paths)
 	if err != nil {
-		return changerisk.Snapshot{}, err
+		return repositorySnapshot{}, err
 	}
+	api := gorisk.ExtractAPI(ctx, root)
 	items, dependencyErr := dependencies(ctx, root)
 	dependencyMessage := ""
 	if dependencyErr != nil {
 		dependencyMessage = "Go dependency enumeration failed; no dependency verdict is available"
 	}
-	return changerisk.Snapshot{Functions: functions, AnalysisError: message, Dependencies: items, DependencyError: dependencyMessage}, ctx.Err()
+	return repositorySnapshot{Source: changerisk.Snapshot{Functions: functions, AnalysisError: message, Dependencies: items, DependencyError: dependencyMessage}, API: api}, ctx.Err()
 }

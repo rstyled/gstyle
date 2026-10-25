@@ -6,23 +6,26 @@ import (
 	"slices"
 )
 
-func Evaluate(base, head Snapshot, config Config) Report {
+func Evaluate(base, head Snapshot, config Config, api APIReport) Report {
 	changes, reasons := functionChanges(base, head, config)
 	reasons = append(reasons, analysisReasons(base, head)...)
 	pdgRisk := reasonsLevel(reasons)
 	dependency := compareDependencies(base, head, config)
+	apiFindings := apiReasons(api, config)
+	apiRisk := reasonsLevel(apiFindings)
 	return Report{SchemaVersion: 1, Base: base.Commit, Head: head.Commit, PDGRisk: pdgRisk,
+		APIRisk: apiRisk, GoAPI: api,
 		DependencyRisk: dependency.risk, DependenciesChanged: dependency.changed,
 		DependenciesAdded: dependency.added, DependenciesRemoved: dependency.removed,
-		Risk: measuredRisk(config, pdgRisk, dependency.risk), Reasons: append(reasons, dependency.reasons...), Changes: changes,
-		ChangedFunctions: len(changes), Unmeasured: []string{"compatibility", "checks", "test_coverage"}}
+		Risk: measuredRisk(config, pdgRisk, dependency.risk, apiRisk), Reasons: slices.Concat(reasons, dependency.reasons, apiFindings), Changes: changes,
+		ChangedFunctions: len(changes), Unmeasured: unmeasuredFields(api)}
 }
 
-func measuredRisk(config Config, pdg, dependencies Level) Level {
+func measuredRisk(config Config, pdg, dependencies, api Level) Level {
 	if !config.enabled() {
 		return Unrated
 	}
-	return strongest(pdg, dependencies)
+	return strongest(strongest(pdg, dependencies), api)
 }
 
 func functionChanges(base, head Snapshot, config Config) ([]Delta, []Reason) {

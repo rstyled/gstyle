@@ -10,11 +10,11 @@ func TestConfiguredCallsAndUnknownsRemainDistinct(t *testing.T) {
 	before := Snapshot{Commit: "base", Functions: []Function{{Name: "p.Save", Path: "store.go", Line: 2, Body: "old", Graph: Graph{Shape: "old"}}}}
 	after := Snapshot{Commit: "head", Functions: []Function{{Name: "p.Save", Path: "store.go", Line: 2, Body: "new", Graph: Graph{Shape: "new", Nodes: []Node{{Key: "write", Callee: "os.WriteFile", Label: "os.WriteFile", Line: 8}}}}}}
 	config := Config{PDGChange: Medium, Calls: []CallRule{{Callee: "os.WriteFile", Level: High}}}
-	report := Evaluate(before, after, config)
+	report := Evaluate(before, after, config, APIReport{})
 	if report.Risk != High || report.PDGRisk != High || len(report.Reasons) != 2 {
 		t.Fatalf("configured risk lost: %+v", report)
 	}
-	if got := Evaluate(before, after, Config{}); got.Risk != Unrated || got.PDGRisk != Unrated {
+	if got := Evaluate(before, after, Config{}, APIReport{}); got.Risk != Unrated || got.PDGRisk != Unrated {
 		t.Fatalf("unconfigured changes were rated: %+v", got)
 	}
 	markdown := Markdown(report)
@@ -26,7 +26,7 @@ func TestConfiguredCallsAndUnknownsRemainDistinct(t *testing.T) {
 func TestUnrepresentedSourceAndAmbiguousGraphsStayUnknown(t *testing.T) {
 	before := Snapshot{Functions: []Function{{Name: "p.F", Body: "before", Graph: Graph{Shape: "same"}}}}
 	after := Snapshot{Functions: []Function{{Name: "p.F", Body: "after", Graph: Graph{Shape: "same", Ambiguous: true}}}}
-	report := Evaluate(before, after, Config{PDGChange: Low})
+	report := Evaluate(before, after, Config{PDGChange: Low}, APIReport{})
 	if report.PDGRisk != Unknown || report.Risk != Unknown || strings.Contains(Markdown(report), "```mermaid") || !strings.Contains(Markdown(report), "**PDG changes:** partial") {
 		t.Fatalf("incomplete comparison was treated as proof: %+v", report)
 	}
@@ -35,7 +35,7 @@ func TestUnrepresentedSourceAndAmbiguousGraphsStayUnknown(t *testing.T) {
 func TestRepeatedCalleeCountDoesNotInventAnExactSite(t *testing.T) {
 	before := Snapshot{Functions: []Function{{Name: "p.F", Line: 1, Body: "before", Graph: Graph{Shape: "before", Nodes: []Node{{Callee: "os.WriteFile", Line: 5}}}}}}
 	after := Snapshot{Functions: []Function{{Name: "p.F", Line: 1, Body: "after", Graph: Graph{Shape: "after", Nodes: []Node{{Callee: "os.WriteFile", Line: 5}, {Callee: "os.WriteFile", Line: 9}}}}}}
-	report := Evaluate(before, after, Config{Calls: []CallRule{{Callee: "os.WriteFile", Level: High}}})
+	report := Evaluate(before, after, Config{Calls: []CallRule{{Callee: "os.WriteFile", Level: High}}}, APIReport{})
 	if got := report.Reasons[len(report.Reasons)-1]; got.Rule != "added_call" || got.Line != 1 {
 		t.Fatalf("ambiguous occurrence claimed an exact line: %+v", got)
 	}
@@ -76,7 +76,7 @@ func TestRiskConfigRejectsInvalidRules(t *testing.T) {
 func TestStaticRatingDoesNotInventUncollectedChecks(t *testing.T) {
 	before := Snapshot{Functions: []Function{{Name: "p.F", Body: "old", Graph: Graph{Shape: "old"}}}}
 	after := Snapshot{Functions: []Function{{Name: "p.F", Body: "new", Graph: Graph{Shape: "new", Ambiguous: true}}}}
-	report := Evaluate(before, after, Config{PDGChange: Medium})
+	report := Evaluate(before, after, Config{PDGChange: Medium}, APIReport{})
 	if report.Risk != Medium || report.PDGRisk != Medium {
 		t.Fatalf("uncollected checks or diagram limits replaced the measured static rating: %+v", report)
 	}
@@ -86,7 +86,7 @@ func TestStaticRatingDoesNotInventUncollectedChecks(t *testing.T) {
 			t.Fatalf("unimplemented category shown as a verdict: %s", markdown)
 		}
 	}
-	for _, evidence := range []string{"**PDG changes:** changed", "Affected functions: 1", "diagrams omitted", "Not assessed: API/CLI compatibility, check results, runtime coverage."} {
+	for _, evidence := range []string{"**PDG changes:** changed", "Affected functions: 1", "diagrams omitted", "Not assessed: Go API compatibility, CLI contract, check results, runtime coverage."} {
 		if !strings.Contains(markdown, evidence) {
 			t.Errorf("missing %q in %s", evidence, markdown)
 		}
@@ -96,7 +96,7 @@ func TestStaticRatingDoesNotInventUncollectedChecks(t *testing.T) {
 func TestDependencyFactsDoNotDependOnSeverityPolicy(t *testing.T) {
 	base := Snapshot{Dependencies: []string{".:import:pkg -> old", ".:module:old"}}
 	head := Snapshot{Dependencies: []string{".:import:pkg -> new", ".:module:new"}}
-	report := Evaluate(base, head, Config{})
+	report := Evaluate(base, head, Config{}, APIReport{})
 	if report.Risk != Unrated || report.DependencyRisk != Unrated || !report.DependenciesChanged {
 		t.Fatalf("missing policy hid measured changes: %+v", report)
 	}
@@ -108,7 +108,7 @@ func TestDependencyFactsDoNotDependOnSeverityPolicy(t *testing.T) {
 		t.Fatalf("dependency facts missing: %s", markdown)
 	}
 	head.DependencyError = "enumeration unavailable"
-	report = Evaluate(base, head, Config{DependencyChange: High})
+	report = Evaluate(base, head, Config{DependencyChange: High}, APIReport{})
 	if len(report.DependenciesAdded)+len(report.DependenciesRemoved) != 0 || report.Risk != Unknown || !strings.Contains(Markdown(report), "**Dependencies:** unavailable") {
 		t.Fatalf("failed enumeration invented a delta or verdict: %+v", report)
 	}
@@ -116,7 +116,7 @@ func TestDependencyFactsDoNotDependOnSeverityPolicy(t *testing.T) {
 
 func TestUnresolvedTargetsRemainVisibleWithUnratedPolicy(t *testing.T) {
 	head := Snapshot{Functions: []Function{{Name: "p.F", Body: "new", Graph: Graph{Shape: "new", Nodes: []Node{{Key: "call", UnresolvedCall: true}}}}}}
-	report := Evaluate(Snapshot{}, head, Config{})
+	report := Evaluate(Snapshot{}, head, Config{}, APIReport{})
 	if report.Risk != Unrated || report.PDGRisk != Unknown {
 		t.Fatalf("missing policy and analysis gap were conflated: %+v", report)
 	}
@@ -127,7 +127,7 @@ func TestUnresolvedTargetsRemainVisibleWithUnratedPolicy(t *testing.T) {
 }
 
 func TestUnavailableEvidenceAndPriorityRemainVisible(t *testing.T) {
-	report := Evaluate(Snapshot{DependencyError: "not available"}, Snapshot{}, Config{DependencyChange: Low})
+	report := Evaluate(Snapshot{DependencyError: "not available"}, Snapshot{}, Config{DependencyChange: Low}, APIReport{})
 	if report.DependencyRisk != Unknown || report.Risk != Unknown || !strings.Contains(Markdown(report), "not available") {
 		t.Fatalf("missing dependency evidence became a pass: %+v", report)
 	}

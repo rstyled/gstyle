@@ -13,6 +13,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/uudashr/gocognit v1.2.1
+	golang.org/x/exp v0.0.0-20260824195058-e88cd73687aa
 	golang.org/x/tools v0.50.0
 	modernc.org/sqlite v1.57.0
 )
