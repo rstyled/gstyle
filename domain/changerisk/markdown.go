@@ -24,7 +24,7 @@ func analysisDetails(report Report) string {
 		modules = append(modules, "- "+moduleChangeLine(change))
 	}
 	lines := []string{"<details>", "<summary>Analysis details</summary>", "",
-		"**Analysis limits:** " + analysisSummary(report), "", unmeasuredSummary(report.Unmeasured),
+		unmeasuredSummary(report.Unmeasured),
 		fmt.Sprintf("Compared `%s` → `%s`.", text(shortRevision(report.Base)), text(shortRevision(report.Head))), "",
 		strings.Join(modules, "\n"), "", apiSection(report, len(report.GoAPI.Changes)), "", "</details>", ""}
 	return strings.Join(lines, "\n")

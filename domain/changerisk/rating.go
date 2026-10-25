@@ -10,7 +10,7 @@ func ratingSummary(report Report) string {
 		return unratedSummary(report)
 	}
 	if report.Risk == Unknown {
-		return "Static analysis has gaps; review the limits below."
+		return "Static analysis is incomplete; manual review is needed."
 	}
 	return "Severity reflects configured static change rules; this is not merge approval."
 }

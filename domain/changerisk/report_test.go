@@ -81,12 +81,12 @@ func TestStaticRatingDoesNotInventUncollectedChecks(t *testing.T) {
 		t.Fatalf("uncollected checks or diagram limits replaced the measured static rating: %+v", report)
 	}
 	markdown := Markdown(report)
-	for _, placeholder := range []string{"**Compatibility:**", "**Checks:**", "**Coverage:**"} {
+	for _, placeholder := range []string{"**Compatibility:**", "**Checks:**", "**Coverage:**", "**Analysis limits:**", "diagrams omitted"} {
 		if strings.Contains(markdown, placeholder) {
 			t.Fatalf("unimplemented category shown as a verdict: %s", markdown)
 		}
 	}
-	for _, evidence := range []string{"**Code impact:** changed", "Affected functions: 1", "diagrams omitted", "Not assessed: Go API compatibility, CLI contract, check results, runtime coverage."} {
+	for _, evidence := range []string{"**Code impact:** changed", "Affected functions: 1", "Not assessed: Go API compatibility, CLI contract, check results, runtime coverage."} {
 		if !strings.Contains(markdown, evidence) {
 			t.Errorf("missing %q in %s", evidence, markdown)
 		}
@@ -121,8 +121,11 @@ func TestUnresolvedTargetsRemainVisibleWithUnratedPolicy(t *testing.T) {
 		t.Fatalf("missing policy and analysis gap were conflated: %+v", report)
 	}
 	markdown := Markdown(report)
-	if !strings.Contains(markdown, "**Code impact:** changed") || !strings.Contains(markdown, "functions with unresolved call targets: 1") {
-		t.Fatalf("real analysis gap hidden: %s", markdown)
+	if !strings.Contains(markdown, "**Code impact:** changed") || unknownReasons(report.Reasons, "unresolved_calls") != 1 {
+		t.Fatalf("real analysis gap lost from structured evidence: %+v", report)
+	}
+	if strings.Contains(markdown, "unresolved call targets") {
+		t.Fatalf("removed analysis counters still appear in Markdown: %s", markdown)
 	}
 }
 

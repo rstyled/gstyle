@@ -29,8 +29,6 @@ No module or package-import changes.
 API diff: unchanged ✅
 No exported API changes in the root module (current build).
 
-Analysis limits: None detected in the compared scope.
-
 Not assessed: CLI contract, check results, runtime coverage.
 Compared base → head.
 ```
@@ -39,7 +37,7 @@ The rendered report uses Markdown emphasis for verdicts. This example establishe
 
 ## Comparison requirements
 
-Source positions, graph-local references and other metadata must not be mistaken for semantic changes. Rule severities come from the base revision's policy. Missing severities remain unrated. Unavailable static evidence stays unknown; a measured high-risk reason takes precedence over unknown evidence. With no risk rules at all, the overall rating is unrated and analysis limits remain visible separately.
+Source positions, graph-local references and other metadata must not be mistaken for semantic changes. Rule severities come from the base revision's policy. Missing severities remain unrated. Unavailable static evidence stays unknown; a measured high-risk reason takes precedence over unknown evidence. With no risk rules at all, the overall rating is unrated and analysis limits remain available in JSON.
 
 An unrated summary names the policy file and distinguishes a base commit with no risk rules from specific missing rules for code impact, dependency changes or breaking API changes. JSON `policy_configured` preserves that distinction.
 
@@ -59,11 +57,11 @@ The Go API comparison reuses the existing package loading path with compiler typ
 
 Changed generic parameter constraints or constraint interface terms are flagged for review separately: the comparator does not establish their source compatibility. The supplemental check expands embedded constraint interfaces, including private constraints exposed by exported declarations. Such evidence is partial, not a compatibility pass. Renaming generic parameters alone is ignored when constraint fingerprints remain equal. Unsupported correspondences can conservatively require review; the check is not a complete generic compatibility proof. Known breaking changes still remain breaking when other limits exist. API type loading failures are unavailable and never become an unchanged verdict. JSON retains all API changes, limits, package counts and the `root_module_current_build` scope. CLI string flags and runtime behavior require separate contract checks.
 
-The Markdown summary stays within twenty lines before collapsed details. Code impact and dependency rows show changed, unchanged, partial or unavailable status independently of severity. The Code impact row uses the PDG comparison as evidence. Dependency entries pair old and new selected module versions instead of counting requirement edges as libraries. Import counts stay separate. The summary shows two module changes and five API changes, with breaking API changes first; Analysis details retains the full lists, scope and limits. JSON retains every added and removed dependency record.
+The Markdown summary stays within twenty lines before collapsed details. Code impact and dependency rows show changed, unchanged, partial or unavailable status independently of severity. The Code impact row uses the PDG comparison as evidence. Dependency entries pair old and new selected module versions instead of counting requirement edges as libraries. Import counts stay separate. The summary shows two module changes and five API changes, with breaking API changes first; Analysis details retains the full lists and scope. JSON retains every added and removed dependency record and all analysis limits. Markdown omits aggregate unresolved-call, scope-warning and omitted-diagram counters.
 
 API entries include typed declarations and physical source locations. A recognized HTTPS or SSH GitHub origin supplies the repository URL; local repositories and other hosts retain plain labels. File links use full commit SHAs and physical line numbers, ignoring logical line directives. Removed declarations link to the base. Package additions link to the head directory and count exported top-level declarations. Existing declarations can link to both revisions. API messages that cannot be mapped to a compiler declaration retain their message without an invented source link.
 
-Analysis limits identify unresolved targets, excluded scope, unrepresented source changes and omitted diagrams. Ambiguous operation correspondence affects the illustration, not a known static change classification. Diagrams show at most three functions, eighteen nodes and twenty-four changed edges per function. They use generated node IDs and escaped labels. The JSON retains the complete measured deltas. Diagram limits are presentation limits, not evidence that omitted operations are safe. Markdown abbreviates displayed commit IDs to twelve characters; JSON and source links retain full SHAs.
+JSON reasons identify unresolved targets, excluded scope, unrepresented source changes and omitted diagrams. Ambiguous operation correspondence affects the illustration, not a known static change classification. Diagrams show at most three functions, eighteen nodes and twenty-four changed edges per function. They use generated node IDs and escaped labels. The JSON retains the complete measured deltas. Diagram limits are presentation limits, not evidence that omitted operations are safe. Markdown abbreviates displayed commit IDs to twelve characters; JSON and source links retain full SHAs.
 
 CLI contracts, check results and runtime test coverage are not collected. One scope note and JSON `unmeasured` fields list them; no placeholder verdict rows are emitted. These unimplemented collectors do not force a static change rating to unknown. A low or medium static rating covers only the measured projection and is not an overall merge-risk assessment. Exit 0 means successful report generation, including high, unknown and unrated results; operational/configuration/analysis failures exit 2. There is no merge permission, GitHub comment writer or automatic merge task.
 
