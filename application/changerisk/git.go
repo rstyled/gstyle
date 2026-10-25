@@ -46,7 +46,7 @@ type changeSet struct {
 }
 
 func changedPaths(ctx context.Context, root, base, head string) (changeSet, error) {
-	data, err := command(ctx, root, "git", "diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--raw", "-z", base, head, "--")
+	data, err := command(ctx, root, "git", "diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--ignore-submodules=none", "--raw", "-z", base, head, "--")
 	if err != nil {
 		return changeSet{}, err
 	}

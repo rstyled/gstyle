@@ -3,9 +3,12 @@ package changerisk
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/rstyled/gstyle/domain/changerisk"
 )
 
 func TestGitFileMetadataCannotDisappearFromTheGate(t *testing.T) {
@@ -41,5 +44,49 @@ func TestRiskCheckRejectsAnUninitializedGitlink(t *testing.T) {
 	err := Run(context.Background(), []string{"--base", base, "--head", head, "--check", "--format", "json"}, &output)
 	if !errors.Is(err, ErrReviewRequired) || !strings.Contains(output.String(), "submodule paths need review") {
 		t.Fatalf("uninitialized submodule passed the gate: %v\n%s", err, output.String())
+	}
+}
+
+func TestRiskCheckRejectsIgnoredGitlinkUpdates(t *testing.T) {
+	for _, ignore := range []string{"gitmodules", "submodule config", "diff config"} {
+		t.Run(ignore, func(t *testing.T) {
+			root := repository(t)
+			write(t, root, "gstyle.toml", "[risk]\npdg_change='low'\n")
+			write(t, root, "source.go", "package sample\nfunc Count() int { return 1 }\n")
+			seed := commit(t, root)
+			modules := "[submodule \"docs/module.md\"]\n\tpath = docs/module.md\n\turl = ./unused\n"
+			switch ignore {
+			case "gitmodules":
+				modules += "\tignore = all\n"
+			case "submodule config":
+				git(t, root, "config", "submodule.docs/module.md.ignore", "all")
+			case "diff config":
+				git(t, root, "config", "diff.ignoreSubmodules", "all")
+			}
+			write(t, root, ".gitmodules", modules)
+			git(t, root, "add", ".gitmodules")
+			git(t, root, "update-index", "--add", "--cacheinfo", "160000,"+seed+",docs/module.md")
+			git(t, root, "commit", "-m", "add ignored gitlink")
+			base := git(t, root, "rev-parse", "HEAD")
+			git(t, root, "update-index", "--cacheinfo", "160000,"+base+",docs/module.md")
+			git(t, root, "commit", "-m", "update ignored gitlink")
+			head := git(t, root, "rev-parse", "HEAD")
+			if diff := git(t, root, "diff", "--raw", base, head); diff != "" {
+				t.Fatalf("fixture did not hide the gitlink update: %s", diff)
+			}
+			t.Chdir(root)
+			var output bytes.Buffer
+			err := Run(context.Background(), []string{"--base", base, "--head", head, "--check", "--format", "json"}, &output)
+			if !errors.Is(err, ErrReviewRequired) || !strings.Contains(output.String(), "submodule paths need review") {
+				t.Fatalf("ignored gitlink update passed the gate: %v\n%s", err, output.String())
+			}
+			var report changerisk.Report
+			if err := json.Unmarshal(output.Bytes(), &report); err != nil {
+				t.Fatal(err)
+			}
+			if report.Risk != changerisk.Unknown || report.Base != base || report.Head != head {
+				t.Fatalf("ignored gitlink update lost its evidence: %s", output.String())
+			}
+		})
 	}
 }
