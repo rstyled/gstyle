@@ -188,6 +188,7 @@ func defaultPrefixes() []Prefix {
 func thirdPartyPrefixes() []Prefix {
 	return []Prefix{
 		{Path: "golang.org/x/tools/go/packages.Error.Error", Kind: None, exact: true},
+		{Path: "golang.org/x/tools/go/ast/astutil.Cursor.Node", Kind: None, exact: true},
 		{Path: "golang.org/x/tools/go/cfg.Block.Return", Kind: None, exact: true},
 		{Path: "charm.land/lipgloss", Kind: None},
 		{Path: "github.com/charmbracelet/lipgloss", Kind: None},
