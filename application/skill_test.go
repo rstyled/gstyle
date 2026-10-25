@@ -34,6 +34,7 @@ func TestSkillExplainsTheAgentControlAPI(t *testing.T) {
 
 	want := []string{
 		"rpc.discover", "getState", "waitForChange", "selectFile", "selectFunction",
+		"gstyle search", "--findings-only", "nextOffset", "minCognitiveComplexity",
 		"revealLines", "annotateLines", "removeAnnotation", "refresh",
 	}
 	for _, method := range want {

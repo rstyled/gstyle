@@ -7,7 +7,7 @@ import (
 
 const agentSkill = `---
 name: gstyle
-description: Inspect Go complexity, check mutation and effect guardrails, and minimize bug reproducers.
+description: Search Go functions and quality findings, inspect complexity, check mutation and effect guardrails, and minimize bug reproducers.
 ---
 
 # Gstyle
@@ -77,6 +77,14 @@ Source review state is shared too. ` + "`revealLines`" + ` focuses and highlight
 Use ` + "`waitForChange`" + ` instead of polling. Pass the last ` + "`revision`" + ` as ` + "`afterRevision`" + ` and an optional ` + "`timeoutMs`" + ` from 0 to 60000. It returns when the TUI advances or the timeout expires; compare the returned revision to tell which happened.
 
 For inspection-only work, report the evidence without changing the TUI. Restore temporary focus or selection changes when they no longer help the user.
+
+## Search before reading full reports
+
+Run ` + "`" + `gstyle search --query "save" --path application --limit 20 .` + "`" + ` for compact JSON results without a TUI. Flags precede paths. Empty query browses functions. Use ` + "`" + `--findings-only` + "`" + `, ` + "`" + `--rule side_effect_density` + "`" + `, ` + "`" + `--min-complexity 4` + "`" + `, or ` + "`" + `--min-cognitive-complexity 8` + "`" + ` to narrow the result. Filters combine with AND. Query and path use case-insensitive literal substrings; rule uses an exact quality rule ID. Query searches path, package, function name, source, rule IDs, and finding messages. Pattern candidates stay in ` + "`" + `gstyle patterns` + "`" + `; suppressed quality findings are excluded.
+
+Results contain matching functions once each, source locations, scores, compact findings, total, offset, limit, and nextOffset when more results exist. Use ` + "`" + `--offset` + "`" + ` with nextOffset to continue; limit defaults to 20 and accepts 1-200. No matches returns an empty matches array and exit 0. Analysis/config/IO failures exit 2. Inspect quality status and coverage: failed typed analysis still emits syntax results with quality.status=error, then exits 2. Unknown rule IDs match nothing. Full source is not repeated. Use ` + "`" + `--format text` + "`" + ` for readable output, ` + "`" + `--config PATH` + "`" + ` for policy, ` + "`" + `--tests=false` + "`" + ` to exclude tests from typed quality analysis, and ` + "`" + `--tags TAGS` + "`" + ` for typed build tags. The syntax scan includes test files and does not apply build tags, as in the TUI.
+
+On a running TUI, call ` + "`" + `search` + "`" + ` with ` + "`" + `{"query":"save","findingsOnly":true,"limit":20}` + "`" + `. It uses the same filters in camelCase: minComplexity and minCognitiveComplexity. It returns revision, refreshing, error when present, and quality status with the results. Wait for refresh to finish before treating results as current. It preserves focus, selection, annotations, and revision. fileIndex and functionIndex address the ranked getReport arrays: call selectFile, then selectFunction to inspect a hit. Use indexes only while the revision is unchanged; restart pagination after a revision change. Read full quality evidence from getReport or the selected function.
 
 ## Pull requests
 

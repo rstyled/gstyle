@@ -46,7 +46,7 @@ func commandExitCode(args []string, err error) int {
 			return 1
 		}
 		return 2
-	case "patterns", "match-graphs":
+	case "patterns", "match-graphs", "search":
 		return 2
 	case "fix":
 		return 2

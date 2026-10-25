@@ -123,6 +123,8 @@ func (m Model) updateControl(command controlCommand) (Model, tea.Cmd) {
 		return m.waitForChange(command)
 	case getReportAction:
 		command.answer(m.controlReport(), nil)
+	case searchAction:
+		m.search(command)
 	case setFocusAction:
 		m = m.setFocus(command.pane)
 		command.answer(m.controlState(), nil)
