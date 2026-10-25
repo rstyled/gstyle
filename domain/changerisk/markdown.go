@@ -11,7 +11,7 @@ import (
 func Markdown(report Report) string {
 	dependencies := append([]string{"**Dependencies:** " + dependencyVerdict(report) + "  ", dependencySummary(report)}, dependencyLines(report)...)
 	sections := []string{
-		"**Merge risk: " + string(report.Risk) + "**\n" + ratingSummary(report),
+		"**Merge risk: " + string(report.Risk) + "** " + ratingIcon(report.Risk) + "\n" + ratingSummary(report),
 		"**Code impact:** " + pdgVerdict(report) + " · " + pdgSummary(report),
 		strings.Join(dependencies, "\n"), apiSection(report, maxAPIChanges),
 	}

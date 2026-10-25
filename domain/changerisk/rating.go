@@ -5,6 +5,16 @@ import (
 	"strings"
 )
 
+func ratingIcon(level Level) string {
+	if level == Low {
+		return "✅"
+	}
+	if level == Medium || level == High {
+		return "⚠️"
+	}
+	return "👀"
+}
+
 func ratingSummary(report Report) string {
 	if report.Risk == Unrated {
 		return unratedSummary(report)

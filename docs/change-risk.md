@@ -18,7 +18,7 @@
 An illustrative output shape is:
 
 ```text
-Merge risk: high
+Merge risk: high ⚠️
 
 Code impact: changed 👀
 New filesystem write: os.WriteFile in store.go:42.

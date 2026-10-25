@@ -14,7 +14,7 @@ func TestUnratedSummaryExplainsMissingBaseRules(t *testing.T) {
 		t.Fatalf("missing-policy explanation: %s", got)
 	}
 	report.Policy = "policy/custom.toml"
-	if got := Markdown(report); !strings.Contains(got, "No risk rules in `policy/custom.toml` at the base commit.") {
+	if got := Markdown(report); !strings.Contains(got, "No risk rules in `policy/custom.toml` at the base commit.") || !strings.HasPrefix(got, "**Merge risk: unrated** 👀\n") {
 		t.Fatalf("custom policy explanation: %s", got)
 	}
 }
