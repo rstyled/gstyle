@@ -157,7 +157,7 @@ func (x *extractor) localContainerRoot(object types.Object) bool {
 func (x *extractor) containerUses(object types.Object) bool {
 	proof := receiverProof{parents: x.fields.parents}
 	for _, id := range x.fields.uses[object] {
-		if proof.function(id) != nil || !x.containerUse(id) {
+		if (proof.function(id) != nil && !x.inspectMapUse(id)) || !x.containerUse(id) {
 			return false
 		}
 	}
