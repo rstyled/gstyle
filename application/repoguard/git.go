@@ -10,6 +10,9 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/rstyled/gstyle/adapters/gitchanged"
+	"github.com/rstyled/gstyle/domain/guard"
 )
 
 func git(ctx context.Context, root string, args ...string) ([]byte, error) {
@@ -46,6 +49,28 @@ func nulFields(output []byte) []string {
 		return nil
 	}
 	return strings.Split(strings.TrimSuffix(string(output), "\x00"), "\x00")
+}
+
+func (r repository) basePaths(ctx context.Context, config guard.Config) (map[string]struct{}, error) {
+	if !config.HasAddedFileRules() {
+		return nil, nil
+	}
+	base, err := gitchanged.ResolveBase(r.root, r.base)
+	if err != nil {
+		return nil, err
+	}
+	if base == "" {
+		return nil, nil
+	}
+	output, err := git(ctx, r.root, "ls-tree", "-r", "--name-only", "-z", base)
+	if err != nil {
+		return nil, err
+	}
+	paths := map[string]struct{}{}
+	for _, name := range nulFields(output) {
+		paths[name] = struct{}{}
+	}
+	return paths, nil
 }
 
 func changedFiles(ctx context.Context, root, base string, paths []string) (map[string]string, error) {

@@ -7,8 +7,11 @@ func TestDefaultGuardIsDisabled(t *testing.T) {
 	if err := config.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	if got := config.CheckPath("tool.py"); len(got) != 0 {
+	if got := config.CheckPath("tool.py", true); len(got) != 0 {
 		t.Fatalf("default file restrictions: %+v", got)
+	}
+	if got := config.CheckPath("nested/README.md", true); len(got) != 0 {
+		t.Fatalf("default README restrictions: %+v", got)
 	}
 	if got := config.Comments.Check("file.go", []Comment{{Text: "// allowed"}}, nil); len(got) != 0 {
 		t.Fatalf("default comment restrictions: %+v", got)
@@ -21,12 +24,12 @@ func TestFileRulesUseDirectoryBoundaries(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"build.py", "nested/build.PY", "verification/lean-copy/build.py", "verification/lean.py", "stub.pyi"} {
-		if got := config.CheckPath(name); len(got) != 1 || got[0].RuleID != "python" {
+		if got := config.CheckPath(name, false); len(got) != 1 || got[0].RuleID != "python" {
 			t.Errorf("%s: %+v", name, got)
 		}
 	}
 	for _, name := range []string{"verification/lean/build.py", "verification/lean/tools/build.py", "build.go"} {
-		if got := config.CheckPath(name); len(got) != 0 {
+		if got := config.CheckPath(name, true); len(got) != 0 {
 			t.Errorf("%s: %+v", name, got)
 		}
 	}
@@ -40,6 +43,11 @@ func TestInvalidGuardPolicies(t *testing.T) {
 		{Files: []FileRule{{ID: "python"}}},
 		{Files: []FileRule{{ID: "python", Extensions: []string{"*.py"}}}},
 		{Files: []FileRule{{ID: "python", Extensions: []string{".tar.gz"}}}},
+		{Files: []FileRule{{ID: "readme", Names: []string{"README.md"}, Mode: "typo"}}},
+		{Files: []FileRule{{ID: "readme", Names: []string{""}}}},
+		{Files: []FileRule{{ID: "readme", Names: []string{"docs/README.md"}}}},
+		{Files: []FileRule{{ID: "readme", Names: []string{"*.md"}}}},
+		{Files: []FileRule{{ID: "readme", Names: []string{"README.md"}, AllowPaths: []string{"../README.md"}}}},
 		{Files: []FileRule{{ID: "python", Extensions: []string{".py"}, AllowDirectories: []string{".."}}}},
 		{Files: []FileRule{{ID: "python", Extensions: []string{".py"}, AllowDirectories: []string{"../outside"}}}},
 		{Files: []FileRule{{ID: "python", Extensions: []string{".py"}, AllowDirectories: []string{"/absolute"}}}},
@@ -47,6 +55,30 @@ func TestInvalidGuardPolicies(t *testing.T) {
 	} {
 		if err := config.Validate(); err == nil {
 			t.Errorf("invalid policy accepted: %+v", config)
+		}
+	}
+}
+
+func TestAddedFilenameRulesPreserveExistingPaths(t *testing.T) {
+	config := Config{Files: []FileRule{{ID: "nested_readme", Mode: "added", Names: []string{"README.md"}, AllowPaths: []string{"README.md"}}}}
+	if err := config.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if !config.HasAddedFileRules() {
+		t.Fatal("added file rule does not request a base")
+	}
+	for _, name := range []string{"docs/README.md", "docs/deep/README.md"} {
+		got := config.CheckPath(name, true)
+		if len(got) != 1 || got[0].RuleID != "nested_readme" {
+			t.Errorf("new path %s: %+v", name, got)
+		}
+		if got := config.CheckPath(name, false); len(got) != 0 {
+			t.Errorf("existing path %s: %+v", name, got)
+		}
+	}
+	for _, name := range []string{"README.md", "docs/guide.md", "docs/README.md.txt"} {
+		if got := config.CheckPath(name, true); len(got) != 0 {
+			t.Errorf("allowed path %s: %+v", name, got)
 		}
 	}
 }

@@ -1,8 +1,8 @@
 package guard
 
 import (
-	"fmt"
 	"path"
+	"slices"
 	"strings"
 )
 
@@ -19,22 +19,39 @@ type Finding struct {
 	Message string `json:"message"`
 }
 
-func (c Config) CheckPath(name string) []Finding {
+func (c Config) CheckPath(name string, added bool) []Finding {
 	var findings []Finding
 	for _, rule := range c.Files {
+		if rule.Mode == "added" && !added {
+			continue
+		}
 		if rule.rejects(name) {
 			findings = append(findings, Finding{RuleID: rule.ID, Path: name, Line: 1, Column: 1,
-				Message: fmt.Sprintf("%s files are restricted to allowed directories", path.Ext(name))})
+				Message: "file is not allowed by repository policy"})
 		}
 	}
 	return findings
 }
 
 func (r FileRule) rejects(name string) bool {
+	return !r.allows(name) && r.matches(name)
+}
+
+func (r FileRule) allows(name string) bool {
+	if slices.Contains(r.AllowPaths, name) {
+		return true
+	}
 	for _, directory := range r.AllowDirectories {
 		if strings.HasPrefix(name, directory+"/") {
-			return false
+			return true
 		}
+	}
+	return false
+}
+
+func (r FileRule) matches(name string) bool {
+	if slices.Contains(r.Names, path.Base(name)) {
+		return true
 	}
 	for _, extension := range r.Extensions {
 		if strings.EqualFold(path.Ext(name), extension) {

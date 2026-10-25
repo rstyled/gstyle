@@ -95,6 +95,12 @@ mode = "added"
 id = "python_outside_lean"
 extensions = [".py", ".pyi", ".pyw", ".pyc", ".pyo", ".ipynb"]
 allow_directories = ["verification/lean"]
+
+[[guard.files]]
+id = "nested_readme"
+mode = "added"
+names = ["README.md"]
+allow_paths = ["README.md"]
 ```
 
 ```sh
@@ -110,10 +116,20 @@ are findings. Comment-like text in strings is ignored. `all` reports every Go
 comment. Tests, generated Go files and files in nested modules are included.
 
 File rules check tracked and nonignored untracked paths. Extensions match
-case-insensitively; allowed directories use repository-relative paths and exact
-directory boundaries. These are filename rules, not language detection or a
-scan for interpreter commands. Deleted files are excluded. Neither rule depends
-on the author's identity.
+case-insensitively; `names` matches exact, case-sensitive basenames. Allowed
+directories use repository-relative paths and exact directory boundaries;
+`allow_paths` permits exact repository-relative paths. Either allowance exempts
+the path. These are filename rules, not language detection or a scan for
+interpreter commands. Deleted files are excluded. Neither rule depends on the
+author's identity.
+
+File rules normally apply to every current path. With `mode = "added"`, a rule
+applies only to paths absent from the base commit, including staged, untracked
+and branch-committed files. Renaming an existing file to a new path counts as
+an addition. In a repository with no commits, all current paths are new. The
+`nested_readme` rule above blocks new nested `README.md` files while allowing
+the root `README.md` and edits to existing nested READMEs. Removing the rule
+disables this restriction; it is not enabled by default.
 
 The same TOML file can hold quality and repository rules. Quality rules run with
 `gstyle check`; repository rules run with `gstyle guard`. Guard supports text,

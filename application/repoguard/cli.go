@@ -35,7 +35,7 @@ func flagsFor(opts *options) *flag.FlagSet {
 	flags := flag.NewFlagSet("guard", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	flags.StringVar(&opts.config, "config", "", "TOML policy (default: repository gstyle.toml)")
-	flags.StringVar(&opts.base, "base", "", "base commit for added comments (default: merge-base with main/master)")
+	flags.StringVar(&opts.base, "base", "", "base commit for added comments and files (default: merge-base with main/master)")
 	flags.StringVar(&opts.format, "format", "text", "text, json, or sarif")
 	return flags
 }

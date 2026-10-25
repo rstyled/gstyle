@@ -26,9 +26,14 @@ func (r repository) inspect(ctx context.Context, config guard.Config) ([]guard.F
 	if err != nil {
 		return nil, err
 	}
+	previous, err := r.basePaths(ctx, config)
+	if err != nil {
+		return nil, err
+	}
 	findings := []guard.Finding{}
 	for _, name := range files {
-		findings = append(findings, config.CheckPath(filepath.ToSlash(name))...)
+		_, existed := previous[name]
+		findings = append(findings, config.CheckPath(filepath.ToSlash(name), !existed)...)
 	}
 	comments, err := r.inspectComments(ctx, files, config.Comments)
 	if err != nil {
