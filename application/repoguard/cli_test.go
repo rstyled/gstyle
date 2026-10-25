@@ -70,6 +70,53 @@ func TestEmptyPolicyDoesNotRestrictAnotherRepository(t *testing.T) {
 	}
 }
 
+func TestGuardChecksStagedCommentsBeforeFirstCommit(t *testing.T) {
+	root := testRepository(t)
+	writeFile(t, root, "file.go", "package p\n// prohibited\n")
+	gitTest(t, root, "add", ".")
+	t.Chdir(root)
+	var output bytes.Buffer
+	err := Run(context.Background(), []string{"--format", "json"}, &output)
+	var got report
+	if !errors.Is(err, ErrFindings) || json.Unmarshal(output.Bytes(), &got) != nil || len(got.Findings) != 1 {
+		t.Fatalf("staged comments: %v %s", err, output.String())
+	}
+	if got.Findings[0].RuleID != "source_comment" || got.Findings[0].Path != "file.go" || got.Findings[0].Line != 2 {
+		t.Fatalf("comment finding: %+v", got.Findings)
+	}
+	if err := os.Remove(filepath.Join(root, "file.go")); err != nil {
+		t.Fatal(err)
+	}
+	output.Reset()
+	if err := Run(context.Background(), nil, &output); err != nil {
+		t.Fatalf("removed staged file: %v %s", err, output.String())
+	}
+}
+
+func TestGuardAllCommentsExcludesDeletedFiles(t *testing.T) {
+	root := testRepository(t)
+	writeFile(t, root, "gstyle.toml", "[guard.comments]\nmode = 'all'\n")
+	writeFile(t, root, "deleted.go", "package p\n// removed\n")
+	writeFile(t, root, "kept.go", "package p\n// prohibited\n")
+	gitTest(t, root, "add", ".")
+	gitTest(t, root, "commit", "-m", "base")
+	if err := os.Remove(filepath.Join(root, "deleted.go")); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(root)
+	var output bytes.Buffer
+	err := Run(context.Background(), []string{"--format", "json"}, &output)
+	var got report
+	if !errors.Is(err, ErrFindings) || json.Unmarshal(output.Bytes(), &got) != nil || len(got.Findings) != 1 || got.Findings[0].Path != "kept.go" {
+		t.Fatalf("deleted file hides remaining comment: %v %s", err, output.String())
+	}
+	writeFile(t, root, "kept.go", "package p\n")
+	output.Reset()
+	if err := Run(context.Background(), nil, &output); err != nil {
+		t.Fatalf("deleted file: %v %s", err, output.String())
+	}
+}
+
 func TestGuardChecksTestsGeneratedFilesAndNestedModules(t *testing.T) {
 	root := testRepository(t)
 	writeFile(t, root, "testdata/nested/go.mod", "module example.com/nested\ngo 1.26.0\n")

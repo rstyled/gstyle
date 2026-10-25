@@ -3,11 +3,9 @@ package repoguard
 import (
 	"cmp"
 	"context"
-	"errors"
 	"fmt"
 	"go/scanner"
 	"go/token"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -30,11 +28,6 @@ func (r repository) inspect(ctx context.Context, config guard.Config) ([]guard.F
 	}
 	findings := []guard.Finding{}
 	for _, name := range files {
-		if _, err := os.Lstat(filepath.Join(r.root, name)); errors.Is(err, fs.ErrNotExist) {
-			continue
-		} else if err != nil {
-			return nil, err
-		}
 		findings = append(findings, config.CheckPath(filepath.ToSlash(name))...)
 	}
 	comments, err := r.inspectComments(ctx, files, config.Comments)

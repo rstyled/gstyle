@@ -2,8 +2,12 @@ package repoguard
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 )
@@ -24,7 +28,15 @@ func fileList(ctx context.Context, root string, paths []string) ([]string, error
 	if err != nil {
 		return nil, err
 	}
-	files := nulFields(output)
+	var files []string
+	for _, name := range nulFields(output) {
+		if _, err := os.Lstat(filepath.Join(root, name)); errors.Is(err, fs.ErrNotExist) {
+			continue
+		} else if err != nil {
+			return nil, err
+		}
+		files = append(files, name)
+	}
 	slices.Sort(files)
 	return slices.Compact(files), nil
 }
@@ -37,18 +49,18 @@ func nulFields(output []byte) []string {
 }
 
 func changedFiles(ctx context.Context, root, base string, paths []string) (map[string]string, error) {
-	result := map[string]string{}
-	if base != "" {
-		args := append([]string{"diff", "--no-ext-diff", "--no-textconv", "--name-status", "--find-renames", "-z", base, "--"}, paths...)
-		output, err := git(ctx, root, args...)
-		if err != nil {
-			return nil, err
-		}
-		parsed, parseErr := parseChanges(nulFields(output))
-		if parseErr != nil {
-			return nil, parseErr
-		}
-		result = parsed
+	if base == "" {
+		files, err := fileList(ctx, root, paths)
+		return allFiles(files), err
+	}
+	diffArgs := append([]string{"diff", "--no-ext-diff", "--no-textconv", "--name-status", "--find-renames", "-z", base, "--"}, paths...)
+	diffOutput, diffErr := git(ctx, root, diffArgs...)
+	if diffErr != nil {
+		return nil, diffErr
+	}
+	result, parseErr := parseChanges(nulFields(diffOutput))
+	if parseErr != nil {
+		return nil, parseErr
 	}
 	args := append([]string{"ls-files", "--others", "--exclude-standard", "-z", "--"}, paths...)
 	output, err := git(ctx, root, args...)
