@@ -38,7 +38,10 @@ func ArgumentEffect(){var out bytes.Buffer;io.WriteString(&out,next())}
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"Local", "Builder", "Aliased", "Shared", "Borrowed", "Forward"} {
+	if result := resultNamed(t, report, "Builder"); !result.Complete || len(result.Effects) != 0 {
+		t.Fatalf("private builder retains WriteString effect: %+v", result)
+	}
+	for _, name := range []string{"Local", "Aliased", "Shared", "Borrowed", "Forward"} {
 		result := resultNamed(t, report, name)
 		if len(result.Effects) != 1 || result.Effects[0].Kind != quality.MutationEffect || !result.Complete {
 			t.Errorf("%s writes only memory, want one mutation: %+v", name, result)
