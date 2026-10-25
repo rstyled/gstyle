@@ -2,6 +2,7 @@
 package searchcli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -98,20 +99,36 @@ func (opts options) execute(ctx context.Context, analyzer goquality.ReportAnalyz
 }
 
 func writeResult(output io.Writer, result application.SearchResult, format string) error {
-	if format == "json" {
-		return json.NewEncoder(output).Encode(result)
+	data, err := encodeResult(result, format)
+	if err != nil {
+		return err
 	}
-	var text strings.Builder
+	page := bytes.NewReader(data)
+	_, err = io.Copy(output, page)
+	return err
+}
+
+func encodeResult(result application.SearchResult, format string) ([]byte, error) {
+	if format == "json" {
+		data, err := json.Marshal(result)
+		return append(data, '\n'), err
+	}
+	return []byte(resultText(result)), nil
+}
+
+// resultText renders without writing to the output stream. Both formats are
+// encoded in full before writeResult sends the page to the caller's writer.
+func resultText(result application.SearchResult) string {
+	var lines []string
 	for _, match := range result.Matches {
-		fmt.Fprintf(&text, "%s:%d:%d %s CC=%d COG=%d\n", match.Path, match.Line, match.Column, match.Name, match.Complexity, match.CognitiveComplexity)
+		lines = append(lines, fmt.Sprintf("%s:%d:%d %s CC=%d COG=%d", match.Path, match.Line, match.Column, match.Name, match.Complexity, match.CognitiveComplexity))
 		for _, finding := range match.Findings {
-			fmt.Fprintf(&text, "  %s: %s\n", finding.RuleID, finding.Message)
+			lines = append(lines, fmt.Sprintf("  %s: %s", finding.RuleID, finding.Message))
 		}
 	}
-	fmt.Fprintf(&text, "%d matching functions; offset %d; returned %d\n", result.Total, result.Offset, len(result.Matches))
+	footer := fmt.Sprintf("%d matching functions; offset %d; returned %d\n", result.Total, result.Offset, len(result.Matches))
 	if result.NextOffset != nil {
-		fmt.Fprintf(&text, "next offset: %d\n", *result.NextOffset)
+		footer += fmt.Sprintf("next offset: %d\n", *result.NextOffset)
 	}
-	_, err := io.WriteString(output, text.String())
-	return err
+	return strings.Join(append(lines, footer), "\n")
 }

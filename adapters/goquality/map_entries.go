@@ -9,6 +9,9 @@ import (
 )
 
 func (x *extractor) indexedOrigin(value *ast.IndexExpr, seen map[types.Object]bool) quality.Provenance {
+	if x.localReceiverRow(value) {
+		return quality.Local
+	}
 	if object := x.mapEntryRoot(value); x.privateEntries(object) {
 		return quality.Local
 	}

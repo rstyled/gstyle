@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -80,5 +82,46 @@ func TestSearchPropagatesOutputFailure(t *testing.T) {
 		if err := writeResult(failedWriter{}, application.SearchResult{}, format); err == nil {
 			t.Fatal("lost writer error")
 		}
+	}
+}
+
+type shortWriter struct{}
+
+func (shortWriter) Write(data []byte) (int, error) { return len(data) - 1, nil }
+
+func TestSearchRejectsShortWrites(t *testing.T) {
+	for _, format := range []string{"json", "text"} {
+		err := writeResult(shortWriter{}, application.SearchResult{Matches: []application.SearchMatch{}}, format)
+		if !errors.Is(err, io.ErrShortWrite) {
+			t.Fatalf("%s error = %v, want short write", format, err)
+		}
+	}
+}
+
+func TestSearchEncodesCompletePages(t *testing.T) {
+	next := 2
+	result := application.SearchResult{Total: 3, Offset: 1, Limit: 1, NextOffset: &next,
+		Matches: []application.SearchMatch{{Path: "sample.go", Name: "Save", Line: 4, Column: 1, Complexity: 2,
+			Findings: []application.SearchFinding{{RuleID: "fn_length", Message: "long body"}},
+		}},
+	}
+	var text bytes.Buffer
+	if err := writeResult(&text, result, "text"); err != nil {
+		t.Fatal(err)
+	}
+	want := "sample.go:4:1 Save CC=2 COG=0\n  fn_length: long body\n3 matching functions; offset 1; returned 1\nnext offset: 2\n"
+	if text.String() != want {
+		t.Fatalf("text = %q, want %q", text.String(), want)
+	}
+	var output bytes.Buffer
+	if err := writeResult(&output, result, "json"); err != nil {
+		t.Fatal(err)
+	}
+	var decoded application.SearchResult
+	if err := json.Unmarshal(output.Bytes(), &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(decoded, result) || !bytes.HasSuffix(output.Bytes(), []byte("\n")) {
+		t.Fatalf("JSON page = %s", &output)
 	}
 }
