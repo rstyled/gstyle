@@ -147,7 +147,7 @@ func PromotedReference() { f:=Embedded{Fields:&Fields{Items:[]int{1}}}; f.Items[
 			t.Fatalf("shared mutation lost: %+v", result)
 		}
 	}
-	for _, name := range []string{"MixedPointerAlias", "UnknownPointerAlias", "LocalPointerBorrowed", "CopiedValue", "LocalShallowIndex", "MixedIndex", "LocalShallowRange", "MixedRange", "ChannelRange", "IteratorRange", "CopiedRange", "KeyRange", "ReassignedRange", "SelfRangedContainer"} {
+	for _, name := range []string{"MixedPointerAlias", "UnknownPointerAlias", "LocalPointerBorrowed", "LocalShallowIndex", "MixedIndex", "LocalShallowRange", "MixedRange", "ChannelRange", "IteratorRange", "CopiedRange", "KeyRange", "ReassignedRange", "SelfRangedContainer"} {
 		function := findFunction(t, facts, name)
 		if got := function.Mutations[len(function.Mutations)-1].Provenance; got != quality.Unknown {
 			t.Fatalf("%s provenance=%s, want unknown", name, got)
@@ -175,7 +175,7 @@ func PromotedReference() { f:=Embedded{Fields:&Fields{Items:[]int{1}}}; f.Items[
 		{"Borrowed", false, false}, {"BorrowedPointer", false, false}, {"BorrowedRecordPointer", false, false},
 		{"DirectGlobalAddress", false, false}, {"DirectGlobalFieldAddress", false, false},
 		{"Parameter", false, false}, {"BorrowedSelfAppend", false, false},
-		{"HeaderLater", false, true}, {"HeaderEarlier", false, false}, {"RootLater", false, true},
+		{"HeaderLater", false, true}, {"HeaderEarlier", true, false}, {"CopiedValue", true, false}, {"RootLater", false, true},
 		{"BranchHeader", false, false}, {"RootCopy", false, false}, {"RootPointerAlias", false, false},
 		{"RootAddress", false, false}, {"RootCall", false, false}, {"RootPointerCall", false, false},
 		{"FieldAddress", false, false}, {"FieldAddressCall", false, false}, {"RootMethod", false, false},
