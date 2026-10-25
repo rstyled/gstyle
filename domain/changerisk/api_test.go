@@ -12,10 +12,13 @@ func TestAPISeverityAndUnmeasuredScopesStaySeparate(t *testing.T) {
 		t.Fatalf("API break did not receive its own configured severity: %+v", report)
 	}
 	markdown := Markdown(report)
-	for _, want := range []string{"**API diff:** breaking changes", "`lib.Save`: signature changed", "Not assessed: CLI contract, check results, runtime coverage."} {
+	for _, want := range []string{"**API diff:** breaking changes", "`lib.Save`: signature changed"} {
 		if !strings.Contains(markdown, want) {
 			t.Errorf("missing %q in %s", want, markdown)
 		}
+	}
+	if strings.Join(report.Unmeasured, ",") != "cli,checks,test_coverage" {
+		t.Fatalf("uncollected scopes lost from structured evidence: %+v", report.Unmeasured)
 	}
 	if strings.Count(strings.Split(markdown, "<details>")[0], "\n") > 20 {
 		t.Fatalf("API evidence exceeded the compact summary: %s", markdown)

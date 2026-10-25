@@ -51,8 +51,13 @@ func TestRiskReportsCommittedGraphsUsingBasePolicy(t *testing.T) {
 	if err := Run(context.Background(), []string{"--base", base, "--head", head}, &output); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(output.String(), "```mermaid") || !strings.Contains(output.String(), "os.WriteFile") || !strings.Contains(output.String(), "Not assessed:") || strings.Contains(output.String(), "**Checks:**") {
+	if !strings.Contains(output.String(), "```mermaid") || !strings.Contains(output.String(), "os.WriteFile") || !strings.Contains(output.String(), "<summary>Graph changes</summary>") || strings.Contains(output.String(), "**Checks:**") {
 		t.Fatalf("missing Markdown evidence: %s", output.String())
+	}
+	for _, removed := range []string{"Analysis details", "Not assessed:", "Compared "} {
+		if strings.Contains(output.String(), removed) {
+			t.Errorf("removed analysis text %q remains in CLI output: %s", removed, output.String())
+		}
 	}
 	first := output.String()
 	output.Reset()

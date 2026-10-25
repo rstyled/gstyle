@@ -8,8 +8,6 @@ import (
 	"strings"
 )
 
-const maxAPIChanges = 5
-
 func orderedAPIChanges(changes []APIChange) []APIChange {
 	result := slices.Clone(changes)
 	slices.SortStableFunc(result, func(a, b APIChange) int {

@@ -205,8 +205,8 @@ API entries show the changed declaration and its type or signature. A GitHub
 declarations linked to the base. Added packages link to their directory and show
 the number of exported declarations. Dependency entries pair old and new module
 versions and show updated, added and removed module counts. Every module change
-appears directly in the report. Extra API entries appear under **Analysis
-details**. JSON retains import links, analysis limits and source locations.
+appears directly in the report. Every API change appears once. JSON retains import
+links, analysis limits, source locations and unmeasured scopes.
 
 Change status is separate from severity: measured PDG and dependency changes
 remain visible when no severity policy is configured. `unrated` means policy
@@ -215,8 +215,8 @@ Ambiguous operation matching omits a diagram without erasing a known change.
 The JSON retains added and removed dependency records as well as PDG deltas.
 
 The rating covers compared static evidence. CLI contracts, check results
-and runtime test coverage are not collected; one scope note lists them. Missing
-collectors do not produce placeholder verdicts or force the static rating to
+and runtime test coverage are not collected; JSON lists these unmeasured fields.
+Missing collectors do not produce placeholder verdicts or force the static rating to
 unknown. This report does not authorize a merge or prove behavior preservation.
 Exit 0 means the report was generated, including high, unknown and unrated
 results; exit 2 means an operational, configuration or analysis error.

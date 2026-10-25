@@ -81,15 +81,18 @@ func TestStaticRatingDoesNotInventUncollectedChecks(t *testing.T) {
 		t.Fatalf("uncollected checks or diagram limits replaced the measured static rating: %+v", report)
 	}
 	markdown := Markdown(report)
-	for _, placeholder := range []string{"**Compatibility:**", "**Checks:**", "**Coverage:**", "**Analysis limits:**", "diagrams omitted"} {
+	for _, placeholder := range []string{"**Compatibility:**", "**Checks:**", "**Coverage:**", "**Analysis limits:**", "diagrams omitted", "Analysis details", "Not assessed:", "Compared "} {
 		if strings.Contains(markdown, placeholder) {
 			t.Fatalf("unimplemented category shown as a verdict: %s", markdown)
 		}
 	}
-	for _, evidence := range []string{"**Code impact:** changed", "Affected functions: 1", "Not assessed: Go API compatibility, CLI contract, check results, runtime coverage."} {
+	for _, evidence := range []string{"**Code impact:** changed", "Affected functions: 1"} {
 		if !strings.Contains(markdown, evidence) {
 			t.Errorf("missing %q in %s", evidence, markdown)
 		}
+	}
+	if strings.Join(report.Unmeasured, ",") != "go_api,cli,checks,test_coverage" {
+		t.Fatalf("uncollected scopes lost from structured evidence: %+v", report.Unmeasured)
 	}
 }
 

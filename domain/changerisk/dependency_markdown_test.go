@@ -49,7 +49,7 @@ func TestImportAndRequirementOnlyChangesRemainVisibleWithoutModuleCounts(t *test
 	}
 }
 
-func TestLongChangeListsRemainAvailableBelowCompactSummary(t *testing.T) {
+func TestAPIChangesRenderOnceWithoutAnalysisDetails(t *testing.T) {
 	report := Report{GoAPI: APIReport{Status: APICompatible}}
 	for i := range 12 {
 		report.GoAPI.Changes = append(report.GoAPI.Changes, APIChange{Package: "example.com/lib", Message: string(rune('A'+i)) + ": added", Compatible: true})
@@ -57,7 +57,13 @@ func TestLongChangeListsRemainAvailableBelowCompactSummary(t *testing.T) {
 	report.GoAPI.Changes = append(report.GoAPI.Changes, APIChange{Package: "example.com/lib", Message: "Removed: removed"})
 	markdown := Markdown(report)
 	summary := strings.Split(markdown, "<details>")[0]
-	if strings.Count(summary, "\n") > 20 || !strings.Contains(summary, "lib.Removed") || strings.Count(markdown, "lib.L") != 1 {
-		t.Fatalf("summary hid a break, exceeded bounds, or lost full detail: %s", markdown)
+	if strings.Count(markdown, "**API diff:**") != 1 || strings.Contains(markdown, "Analysis details") || !strings.Contains(summary, "lib.Removed") {
+		t.Fatalf("API list is duplicated, hidden, or missing its break: %s", markdown)
+	}
+	for _, change := range report.GoAPI.Changes {
+		name, _, _ := strings.Cut(change.Message, ":")
+		if strings.Count(markdown, "`lib."+name+"`") != 1 || !strings.Contains(summary, "`lib."+name+"`") {
+			t.Errorf("API change %s is hidden, duplicated, or missing: %s", name, markdown)
+		}
 	}
 }

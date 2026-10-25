@@ -13,20 +13,12 @@ func Markdown(report Report) string {
 	sections := []string{
 		"**Merge risk: " + string(report.Risk) + "** " + ratingIcon(report.Risk) + "\n" + ratingSummary(report),
 		"**Code impact:** " + pdgVerdict(report) + " · " + pdgSummary(report),
-		strings.Join(dependencies, "\n"), apiSection(report, maxAPIChanges),
+		strings.Join(dependencies, "\n"), apiSection(report),
 	}
-	return strings.Join(sections, "\n\n") + "\n\n" + analysisDetails(report) + graphSection(prioritizedChanges(report))
+	return strings.Join(sections, "\n\n") + "\n\n" + graphSection(prioritizedChanges(report))
 }
 
-func analysisDetails(report Report) string {
-	lines := []string{"<details>", "<summary>Analysis details</summary>", "",
-		unmeasuredSummary(report.Unmeasured),
-		fmt.Sprintf("Compared `%s` → `%s`.", text(shortRevision(report.Base)), text(shortRevision(report.Head))), "",
-		apiSection(report, len(report.GoAPI.Changes)), "", "</details>", ""}
-	return strings.Join(lines, "\n")
-}
-
-func apiSection(report Report, limit int) string {
+func apiSection(report Report) string {
 	if report.GoAPI.Status == "" {
 		return ""
 	}
@@ -35,7 +27,7 @@ func apiSection(report Report, limit int) string {
 	if len(changes) == 0 {
 		return heading + "\n" + apiSummary(report.GoAPI)
 	}
-	return heading + "\n" + strings.Join(apiChangeLines(report, changes[:min(limit, len(changes))]), "\n")
+	return heading + "\n" + strings.Join(apiChangeLines(report, changes), "\n")
 }
 
 func prioritizedChanges(report Report) []Delta {
@@ -102,11 +94,4 @@ func dependencySummary(report Report) string {
 		return "No module-requirement, replacement or package-import changes."
 	}
 	return moduleSummary(moduleChanges(report))
-}
-
-func shortRevision(commit string) string {
-	if len(commit) > 12 {
-		return commit[:12]
-	}
-	return commit
 }
