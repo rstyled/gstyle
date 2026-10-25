@@ -20,15 +20,14 @@ func parseSearch(params json.RawMessage) (controlCommand, *controlError) {
 	return controlCommand{action: searchAction, search: query}, nil
 }
 
-func (m Model) search(command controlCommand) {
-	result, err := SearchReport(m.report, command.search)
-	if err != nil {
-		command.answer(nil, invalidParams(err.Error()))
-		return
+func (m Model) search(query SearchQuery) (ControlSearchResult, *controlError) {
+	if err := query.Validate(); err != nil {
+		return ControlSearchResult{}, invalidParams(err.Error())
 	}
+	result := searchRankedReport(m.report, query)
 	response := ControlSearchResult{SearchResult: result, Revision: m.revision, Refreshing: m.refreshing}
 	if m.err != nil {
 		response.Error = m.err.Error()
 	}
-	command.answer(response, nil)
+	return response, nil
 }

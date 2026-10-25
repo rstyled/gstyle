@@ -71,37 +71,65 @@ func SearchReport(report domain.Report, query SearchQuery) (SearchResult, error)
 	if err := query.Validate(); err != nil {
 		return SearchResult{}, err
 	}
+	return searchRankedReport(rankReport(report), query), nil
+}
+
+// searchRankedReport accepts a validated query and an already ranked report.
+// The live model ranks on refresh, so queries reuse its arrays and indexes.
+func searchRankedReport(report domain.Report, input SearchQuery) SearchResult {
+	query := input.normalized()
+	matches := []SearchMatch{}
+	total := 0
+	for fileIndex, file := range report.Files {
+		page := query.remaining(total, len(matches))
+		fileMatches, count := searchFile(fileIndex, file, page)
+		matches = append(matches, fileMatches...)
+		total += count
+	}
 	result := SearchResult{
 		Root: report.Root, Offset: query.Offset, Limit: query.Limit,
-		Matches: []SearchMatch{}, Quality: qualitySummary(report.Quality),
-	}
-	query.FindingsOnly = query.FindingsOnly || query.Rule != ""
-	query.Query = strings.ToLower(query.Query)
-	query.Path = strings.ToLower(query.Path)
-	for fileIndex, file := range rankReport(report).Files {
-		result.searchFile(fileIndex, file, query)
+		Total: total, Matches: matches, Quality: qualitySummary(report.Quality),
 	}
 	if result.Total-query.Offset > len(result.Matches) {
 		next := query.Offset + len(result.Matches)
 		result.NextOffset = &next
 	}
-	return result, nil
+	return result
 }
 
-func (r *SearchResult) searchFile(fileIndex int, file domain.File, query SearchQuery) {
+func (q SearchQuery) normalized() SearchQuery {
+	q.FindingsOnly = q.FindingsOnly || q.Rule != ""
+	q.Query = strings.ToLower(q.Query)
+	q.Path = strings.ToLower(q.Path)
+	return q
+}
+
+// remaining returns a value for the next file. A filled page has zero limit;
+// later files still contribute their counts to the report total.
+func (q SearchQuery) remaining(total, returned int) SearchQuery {
+	q.Offset = max(0, q.Offset-total)
+	q.Limit -= returned
+	return q
+}
+
+// searchFile returns new page storage and the full count. A zero remaining
+// limit still counts matches in later files without collecting their rows.
+func searchFile(fileIndex int, file domain.File, query SearchQuery) ([]SearchMatch, int) {
 	if !strings.Contains(strings.ToLower(file.Path), query.Path) {
-		return
+		return nil, 0
 	}
+	var matches []SearchMatch
+	total := 0
 	for functionIndex, function := range file.Functions {
 		findings := searchFindings(function, query.Rule)
 		if !query.matches(file.Path, function, findings) {
 			continue
 		}
-		r.Total++
-		if r.Total <= query.Offset || len(r.Matches) >= query.Limit {
+		total++
+		if total <= query.Offset || len(matches) >= query.Limit {
 			continue
 		}
-		r.Matches = append(r.Matches, SearchMatch{
+		matches = append(matches, SearchMatch{
 			FileIndex: fileIndex, FunctionIndex: functionIndex, Path: file.Path,
 			Package: function.Package, Name: function.Name, Line: function.Line,
 			EndLine: function.EndLine, Column: function.Column,
@@ -109,6 +137,7 @@ func (r *SearchResult) searchFile(fileIndex int, file domain.File, query SearchQ
 			Findings: findings,
 		})
 	}
+	return matches, total
 }
 
 func (q SearchQuery) matches(path string, function domain.Function, findings []SearchFinding) bool {
@@ -118,6 +147,10 @@ func (q SearchQuery) matches(path string, function domain.Function, findings []S
 	if q.FindingsOnly && len(findings) == 0 {
 		return false
 	}
+	return q.Query == "" || q.textMatches(path, function, findings)
+}
+
+func (q SearchQuery) textMatches(path string, function domain.Function, findings []SearchFinding) bool {
 	text := strings.Join([]string{path, function.Package, function.Name, function.Source}, "\n")
 	for _, finding := range findings {
 		text += "\n" + finding.RuleID + "\n" + finding.Message

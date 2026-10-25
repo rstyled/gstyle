@@ -92,6 +92,27 @@ func TestSearchPagesAndEmptyResults(t *testing.T) {
 	}
 }
 
+func TestSearchPageCrossesFilesWithoutLosingCounts(t *testing.T) {
+	report := searchFixture()
+	result, err := SearchReport(report, SearchQuery{Offset: 1, Limit: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Total != 3 || len(result.Matches) != 2 || result.NextOffset != nil {
+		t.Fatalf("page = %+v", result)
+	}
+	if result.Matches[0].Name != "Simple" || result.Matches[1].Name != "Calm" {
+		t.Fatalf("cross-file page = %+v", result.Matches)
+	}
+	ranked := rankReport(report)
+	if got := searchRankedReport(ranked, SearchQuery{Offset: 1, Limit: 2}); !reflect.DeepEqual(got, result) {
+		t.Fatalf("ranked search = %+v, want %+v", got, result)
+	}
+	if !reflect.DeepEqual(report, searchFixture()) || !reflect.DeepEqual(ranked, rankReport(searchFixture())) {
+		t.Fatal("search changes report arrays")
+	}
+}
+
 func TestSearchRuleRestrictsReturnedFindingsAndPreservesFailureStatus(t *testing.T) {
 	report := searchFixture()
 	report.Quality = &domain.QualityAnalysis{Status: "error", Error: "type error"}

@@ -116,22 +116,36 @@ func (m Model) WithAnnotationStore(store AnnotationStore) Model {
 }
 
 func (m Model) updateControl(command controlCommand) (Model, tea.Cmd) {
+	reply, handled := m.readControl(command)
+	if !handled {
+		switch command.action {
+		case waitForChangeAction:
+			return m.waitForChange(command)
+		case setFocusAction:
+			m = m.setFocus(command.pane)
+			reply = controlReply{result: m.controlState()}
+		default:
+			return m.updateDetailsControl(command)
+		}
+	}
+	command.answer(reply.result, reply.err)
+	return m, nil
+}
+
+// readControl computes immediate query replies without sending them or
+// changing the shared view. Stateful commands stay in updateControl.
+func (m Model) readControl(command controlCommand) (controlReply, bool) {
 	switch command.action {
 	case getStateAction:
-		command.answer(m.controlState(), nil)
-	case waitForChangeAction:
-		return m.waitForChange(command)
+		return controlReply{result: m.controlState()}, true
 	case getReportAction:
-		command.answer(m.controlReport(), nil)
+		return controlReply{result: m.controlReport()}, true
 	case searchAction:
-		m.search(command)
-	case setFocusAction:
-		m = m.setFocus(command.pane)
-		command.answer(m.controlState(), nil)
+		result, err := m.search(command.search)
+		return controlReply{result: result, err: err}, true
 	default:
-		return m.updateDetailsControl(command)
+		return controlReply{}, false
 	}
-	return m, nil
 }
 
 func (m Model) updateSourceControl(command controlCommand) (Model, tea.Cmd) {
