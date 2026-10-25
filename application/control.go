@@ -67,6 +67,7 @@ const (
 	removeAnnotationAction
 	refreshAction
 	setDetailsViewAction
+	searchAction
 )
 
 type controlCommand struct {
@@ -82,6 +83,7 @@ type controlCommand struct {
 	timeoutMs     int
 	reply         chan controlReply
 	view          string
+	search        SearchQuery
 }
 
 type controlReply struct {
@@ -96,6 +98,7 @@ var methodParsers = map[string]methodParser{
 	"getState":           parseGetState,
 	"waitForChange":      parseWaitForChange,
 	"getReport":          parseGetReport,
+	"search":             parseSearch,
 	"setFocus":           parseSetFocus,
 	"selectFile":         parseSelectFile,
 	"selectFunction":     parseSelectFunction,

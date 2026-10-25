@@ -34,6 +34,7 @@ func TestControlAPIAdvertisesItsRuntimeAddressAndMethods(t *testing.T) {
 		"getState",
 		"waitForChange",
 		"getReport",
+		"search",
 		"setFocus",
 		"selectFile",
 		"selectFunction",
