@@ -55,15 +55,29 @@ func fieldPrefix(prefix, fields string) bool {
 	return prefix == "" || prefix == fields || strings.HasPrefix(fields, prefix+"/")
 }
 func wildcardWrites(store state, key cell, item value) value {
-	for candidate, stored := range store.Memory {
-		if candidate.Object != key.Object || !wildcardField(candidate.Fields) {
-			continue
-		}
-		if fieldPrefix(wildcardPrefix(candidate.Fields), key.Fields) {
-			item = joinValue(item, stored)
+	if len(store.Memory) == 0 {
+		return item
+	}
+	item = joinWildcard(store, key, "*", item)
+	item = joinWildcard(store, key, "/*", item)
+	for index := range key.Fields {
+		if index > 0 && key.Fields[index] == '/' {
+			item = joinWildcard(store, key, key.Fields[:index]+"/*", item)
 		}
 	}
-	return item
+	if key.Fields == "" {
+		return item
+	}
+	return joinWildcard(store, key, key.Fields+"/*", item)
+}
+
+func joinWildcard(store state, key cell, fields string, item value) value {
+	key.Fields = fields
+	stored, found := store.Memory[key]
+	if !found {
+		return item
+	}
+	return joinValue(item, stored)
 }
 
 func wildcardField(fields string) bool { return fields == "*" || strings.HasSuffix(fields, "/*") }
