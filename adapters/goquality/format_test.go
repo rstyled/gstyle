@@ -52,7 +52,10 @@ func ArgumentEffect(){var out bytes.Buffer;fmt.Fprint(&out,next())}
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"Local", "Builder", "AliasWriter", "Shared", "Borrowed", "Replaced"} {
+	if result := resultNamed(t, report, "Builder"); !result.Complete || len(result.Effects) != 0 {
+		t.Fatalf("private builder retains formatting effect: %+v", result)
+	}
+	for _, name := range []string{"Local", "AliasWriter", "Shared", "Borrowed", "Replaced"} {
 		result := resultNamed(t, report, name)
 		if len(result.Effects) != 1 || result.Effects[0].Kind != quality.MutationEffect {
 			t.Fatalf("%s lost buffer mutation: %+v", name, result)
