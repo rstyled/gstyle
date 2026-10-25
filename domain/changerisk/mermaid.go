@@ -75,7 +75,7 @@ func mermaid(delta Delta) string {
 	for i, node := range nodes {
 		id := fmt.Sprintf("n%d", i)
 		ids[node.Key] = id
-		lines = append(lines, fmt.Sprintf("  %s[\"%s\"]", id, text(marks[node.Key]+boundedLabel(node.Label))))
+		lines = append(lines, fmt.Sprintf("  %s[\"%s\"]", id, mermaidText(marks[node.Key]+boundedLabel(node.Label))))
 	}
 	return strings.Join(append(lines, diagramEdges(delta.Edges, ids)...), "\n") + "\n```\n"
 }
@@ -103,7 +103,19 @@ func diagramEdges(edges []ChangedEdge, ids map[string]string) []string {
 			continue
 		}
 		mark := map[string]string{"added": "+ ", "removed": "− "}[edge.Change]
-		lines = append(lines, fmt.Sprintf("  %s -->|\"%s\"| %s", ids[edge.From], text(mark+edge.Label), ids[edge.To]))
+		lines = append(lines, fmt.Sprintf("  %s -->|\"%s\"| %s", ids[edge.From], mermaidText(mark+edge.Label), ids[edge.To]))
 	}
 	return lines
+}
+
+func mermaidText(value string) string {
+	var encoded strings.Builder
+	for _, character := range strings.Join(strings.Fields(value), " ") {
+		if strings.ContainsRune("\"'&<>#`\\|", character) {
+			encoded.WriteString(fmt.Sprintf("#%d;", character))
+			continue
+		}
+		encoded.WriteRune(character)
+	}
+	return encoded.String()
 }
