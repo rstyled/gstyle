@@ -27,7 +27,7 @@ func TestUnrepresentedSourceAndAmbiguousGraphsStayUnknown(t *testing.T) {
 	before := Snapshot{Functions: []Function{{Name: "p.F", Body: "before", Graph: Graph{Shape: "same"}}}}
 	after := Snapshot{Functions: []Function{{Name: "p.F", Body: "after", Graph: Graph{Shape: "same", Ambiguous: true}}}}
 	report := Evaluate(before, after, Config{PDGChange: Low}, APIReport{})
-	if report.PDGRisk != Unknown || report.Risk != Unknown || strings.Contains(Markdown(report), "```mermaid") || !strings.Contains(Markdown(report), "**PDG changes:** partial") {
+	if report.PDGRisk != Unknown || report.Risk != Unknown || strings.Contains(Markdown(report), "```mermaid") || !strings.Contains(Markdown(report), "**Code impact:** partial") {
 		t.Fatalf("incomplete comparison was treated as proof: %+v", report)
 	}
 }
@@ -86,7 +86,7 @@ func TestStaticRatingDoesNotInventUncollectedChecks(t *testing.T) {
 			t.Fatalf("unimplemented category shown as a verdict: %s", markdown)
 		}
 	}
-	for _, evidence := range []string{"**PDG changes:** changed", "Affected functions: 1", "diagrams omitted", "Not assessed: Go API compatibility, CLI contract, check results, runtime coverage."} {
+	for _, evidence := range []string{"**Code impact:** changed", "Affected functions: 1", "diagrams omitted", "Not assessed: Go API compatibility, CLI contract, check results, runtime coverage."} {
 		if !strings.Contains(markdown, evidence) {
 			t.Errorf("missing %q in %s", evidence, markdown)
 		}
@@ -121,7 +121,7 @@ func TestUnresolvedTargetsRemainVisibleWithUnratedPolicy(t *testing.T) {
 		t.Fatalf("missing policy and analysis gap were conflated: %+v", report)
 	}
 	markdown := Markdown(report)
-	if !strings.Contains(markdown, "**PDG changes:** changed") || !strings.Contains(markdown, "functions with unresolved call targets: 1") {
+	if !strings.Contains(markdown, "**Code impact:** changed") || !strings.Contains(markdown, "functions with unresolved call targets: 1") {
 		t.Fatalf("real analysis gap hidden: %s", markdown)
 	}
 }

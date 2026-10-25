@@ -11,7 +11,7 @@ import (
 func Markdown(report Report) string {
 	lines := []string{
 		"**Merge risk: " + string(report.Risk) + "**", ratingSummary(report.Risk), "",
-		"**PDG changes:** " + pdgVerdict(report) + "  ", pdgSummary(report), "",
+		"**Code impact:** " + pdgVerdict(report) + "  ", pdgSummary(report), "",
 		"**Dependencies:** " + dependencyVerdict(report) + "  ", dependencySummary(report), "",
 		"**Analysis limits:** " + analysisSummary(report), "",
 		unmeasuredSummary(report.Unmeasured),

@@ -20,7 +20,7 @@ An illustrative output shape is:
 ```text
 Merge risk: high
 
-PDG changes: changed 👀
+Code impact: changed 👀
 New filesystem write: os.WriteFile in store.go:42.
 
 Dependencies: unchanged ✅
@@ -57,7 +57,7 @@ The Go API comparison reuses the existing package loading path with compiler typ
 
 Changed generic parameter constraints or constraint interface terms are flagged for review separately: the comparator does not establish their source compatibility. The supplemental check expands embedded constraint interfaces, including private constraints exposed by exported declarations. Such evidence is partial, not a compatibility pass. Renaming generic parameters alone is ignored when constraint fingerprints remain equal. Unsupported correspondences can conservatively require review; the check is not a complete generic compatibility proof. Known breaking changes still remain breaking when other limits exist. API type loading failures are unavailable and never become an unchanged verdict. JSON retains all API changes, limits, package counts and the `root_module_current_build` scope. CLI string flags and runtime behavior require separate contract checks.
 
-The Markdown summary stays within twenty lines before the optional diagram section. PDG and dependency rows show changed, unchanged, partial or unavailable status independently of severity. Dependency counts separate import edges from module records, and JSON retains the added and removed records. Analysis limits identify unresolved targets, excluded scope, unrepresented source changes and omitted diagrams. Ambiguous operation correspondence affects the illustration, not a known static change classification. Diagrams show at most three functions, eighteen nodes and twenty-four changed edges per function. They use generated node IDs and escaped labels. The JSON retains the complete measured deltas. Diagram limits are presentation limits, not evidence that omitted operations are safe. Markdown abbreviates commit IDs to twelve characters; JSON retains full SHAs.
+The Markdown summary stays within twenty lines before the optional diagram section. Code impact and dependency rows show changed, unchanged, partial or unavailable status independently of severity. The Code impact row uses the PDG comparison as evidence. Dependency counts separate import edges from module records, and JSON retains the added and removed records. Analysis limits identify unresolved targets, excluded scope, unrepresented source changes and omitted diagrams. Ambiguous operation correspondence affects the illustration, not a known static change classification. Diagrams show at most three functions, eighteen nodes and twenty-four changed edges per function. They use generated node IDs and escaped labels. The JSON retains the complete measured deltas. Diagram limits are presentation limits, not evidence that omitted operations are safe. Markdown abbreviates commit IDs to twelve characters; JSON retains full SHAs.
 
 CLI contracts, check results and runtime test coverage are not collected. One scope note and JSON `unmeasured` fields list them; no placeholder verdict rows are emitted. These unimplemented collectors do not force a static change rating to unknown. A low or medium static rating covers only the measured projection and is not an overall merge-risk assessment. Exit 0 means successful report generation, including high, unknown and unrated results; operational/configuration/analysis failures exit 2. There is no merge permission, GitHub comment writer or automatic merge task.
 
