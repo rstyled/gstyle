@@ -18,9 +18,8 @@ func attachHelpers(facts, available []quality.Function) []quality.Function {
 		index[name] = function
 	}
 	for position, function := range facts {
-		body := index[quality.NormalizeCallee(function.Name)]
-		facts[position].Calls = body.Calls
-		facts[position].Helpers = reachableHelpers(body, index)
+		facts[position].Calls = sourceCalls(function.Calls, bounded)
+		facts[position].Helpers = reachableHelpers(facts[position], index)
 	}
 	return facts
 }
