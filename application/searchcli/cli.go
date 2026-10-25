@@ -23,9 +23,10 @@ type options struct {
 	tests                bool
 }
 
-func Flags() *flag.FlagSet { return flagsFor(&options{}) }
-
-func flagsFor(opts *options) *flag.FlagSet {
+// NewCommand binds help and execution to one flag set. The caller parses it
+// before invoking the runner, as internal/cli.leaf does for every command.
+func NewCommand() (*flag.FlagSet, func(context.Context, []string, io.Writer) error) {
+	opts := options{}
 	flags := flag.NewFlagSet("search", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	flags.StringVar(&opts.query.Query, "query", "", "literal search in path, package, function, source, and finding text (case-insensitive)")
@@ -40,13 +41,16 @@ func flagsFor(opts *options) *flag.FlagSet {
 	flags.StringVar(&opts.format, "format", "json", "output format: json or text")
 	flags.StringVar(&opts.tags, "tags", "", "Go build tags for typed quality analysis")
 	flags.BoolVar(&opts.tests, "tests", true, "include tests in typed quality analysis (syntax scan always includes them)")
-	return flags
+	return flags, func(ctx context.Context, _ []string, output io.Writer) error {
+		if !flags.Parsed() {
+			return errors.New("search flags must be parsed before execution")
+		}
+		return opts.run(ctx, flags.Args(), output)
+	}
 }
 
-func Run(ctx context.Context, args []string, output io.Writer) error {
-	opts := options{}
-	flags := flagsFor(&opts)
-	if err := flags.Parse(args); err != nil {
+func (opts options) run(ctx context.Context, paths []string, output io.Writer) error {
+	if err := ctx.Err(); err != nil {
 		return err
 	}
 	if err := opts.validate(); err != nil {
@@ -56,7 +60,6 @@ func Run(ctx context.Context, args []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	paths := flags.Args()
 	if len(paths) == 0 {
 		paths = []string{"."}
 	}
