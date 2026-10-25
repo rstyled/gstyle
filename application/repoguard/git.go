@@ -1,0 +1,137 @@
+package repoguard
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io/fs"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"slices"
+	"strings"
+
+	"github.com/rstyled/gstyle/adapters/gitchanged"
+	"github.com/rstyled/gstyle/domain/guard"
+)
+
+func git(ctx context.Context, root string, args ...string) ([]byte, error) {
+	command := exec.CommandContext(ctx, "git", args...)
+	command.Dir = root
+	output, err := command.Output()
+	if err != nil {
+		return nil, fmt.Errorf("git %s: %w", args[0], err)
+	}
+	return output, nil
+}
+
+func fileList(ctx context.Context, root string, paths []string) ([]string, error) {
+	args := append([]string{"ls-files", "--cached", "--others", "--exclude-standard", "-z", "--"}, paths...)
+	output, err := git(ctx, root, args...)
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	for _, name := range nulFields(output) {
+		if _, err := os.Lstat(filepath.Join(root, name)); errors.Is(err, fs.ErrNotExist) {
+			continue
+		} else if err != nil {
+			return nil, err
+		}
+		files = append(files, name)
+	}
+	slices.Sort(files)
+	return slices.Compact(files), nil
+}
+
+func nulFields(output []byte) []string {
+	if len(output) == 0 {
+		return nil
+	}
+	return strings.Split(strings.TrimSuffix(string(output), "\x00"), "\x00")
+}
+
+func (r repository) basePaths(ctx context.Context, config guard.Config) (map[string]struct{}, error) {
+	if !config.HasAddedFileRules() {
+		return nil, nil
+	}
+	base, err := gitchanged.ResolveBase(r.root, r.base)
+	if err != nil {
+		return nil, err
+	}
+	if base == "" {
+		return nil, nil
+	}
+	output, err := git(ctx, r.root, "ls-tree", "-r", "--name-only", "-z", base)
+	if err != nil {
+		return nil, err
+	}
+	paths := map[string]struct{}{}
+	for _, name := range nulFields(output) {
+		paths[name] = struct{}{}
+	}
+	return paths, nil
+}
+
+func changedFiles(ctx context.Context, root, base string, paths []string) (map[string]string, error) {
+	if base == "" {
+		files, err := fileList(ctx, root, paths)
+		return allFiles(files), err
+	}
+	diffArgs := append([]string{"diff", "--no-ext-diff", "--no-textconv", "--name-status", "--find-renames", "-z", base, "--"}, paths...)
+	diffOutput, diffErr := git(ctx, root, diffArgs...)
+	if diffErr != nil {
+		return nil, diffErr
+	}
+	result, parseErr := parseChanges(nulFields(diffOutput))
+	if parseErr != nil {
+		return nil, parseErr
+	}
+	args := append([]string{"ls-files", "--others", "--exclude-standard", "-z", "--"}, paths...)
+	output, err := git(ctx, root, args...)
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range nulFields(output) {
+		result[file] = ""
+	}
+	return result, nil
+}
+
+func parseChanges(fields []string) (map[string]string, error) {
+	result := map[string]string{}
+	for len(fields) > 0 {
+		item, remaining, err := takeChange(fields)
+		if err != nil {
+			return nil, err
+		}
+		fields = remaining
+		if !item.deleted {
+			result[item.name] = item.previous
+		}
+	}
+	return result, nil
+}
+
+type change struct {
+	name, previous string
+	deleted        bool
+}
+
+func takeChange(fields []string) (change, []string, error) {
+	if len(fields) < 2 {
+		return change{}, nil, fmt.Errorf("invalid git name-status output")
+	}
+	status, name := fields[0], fields[1]
+	if strings.HasPrefix(status, "R") || strings.HasPrefix(status, "C") {
+		if len(fields) < 3 {
+			return change{}, nil, fmt.Errorf("missing git rename destination")
+		}
+		return change{name: fields[2], previous: name}, fields[3:], nil
+	}
+	previous := name
+	if status == "A" {
+		previous = ""
+	}
+	return change{name: name, previous: previous, deleted: status == "D"}, fields[2:], nil
+}

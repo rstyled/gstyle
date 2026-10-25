@@ -1,0 +1,13 @@
+[guard.comments]
+mode = "added"
+
+[[guard.files]]
+id = "python_outside_lean"
+extensions = [".py", ".pyi", ".pyw", ".pyc", ".pyo", ".ipynb"]
+allow_directories = ["verification/lean"]
+
+[[guard.files]]
+id = "nested_readme"
+mode = "added"
+names = ["README.md"]
+allow_paths = ["README.md"]

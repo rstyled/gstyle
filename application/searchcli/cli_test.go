@@ -126,7 +126,6 @@ func TestSearchEncodesCompletePages(t *testing.T) {
 	}
 }
 
-// Match the CLI boundary: parse the flags used for help, then execute once.
 func runCommand(ctx context.Context, args []string, output io.Writer) error {
 	flags, execute := NewCommand()
 	if err := flags.Parse(args); err != nil {

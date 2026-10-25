@@ -7,8 +7,6 @@ import (
 	"github.com/rstyled/gstyle/domain"
 )
 
-// SearchQuery selects functions, optionally restricted to quality findings.
-// Text and path are case-insensitive literal substrings; rule is an exact ID.
 type SearchQuery struct {
 	Query                  string `json:"query"`
 	Path                   string `json:"path"`
@@ -20,7 +18,6 @@ type SearchQuery struct {
 	Limit                  int    `json:"limit"`
 }
 
-// Validate rejects invalid bounds before analysis or model access.
 func (q SearchQuery) Validate() error {
 	if q.Offset < 0 {
 		return fmt.Errorf("offset must be non-negative")
@@ -65,8 +62,6 @@ type SearchResult struct {
 	Quality    *domain.QualitySummary `json:"quality,omitempty"`
 }
 
-// SearchReport uses the same ranking and indexes as getReport. It does not
-// change the report or shared selection. Empty query browses all functions.
 func SearchReport(report domain.Report, query SearchQuery) (SearchResult, error) {
 	if err := query.Validate(); err != nil {
 		return SearchResult{}, err
@@ -74,8 +69,6 @@ func SearchReport(report domain.Report, query SearchQuery) (SearchResult, error)
 	return searchRankedReport(rankReport(report), query), nil
 }
 
-// searchRankedReport accepts a validated query and an already ranked report.
-// The live model ranks on refresh, so queries reuse its arrays and indexes.
 func searchRankedReport(report domain.Report, input SearchQuery) SearchResult {
 	query := input.normalized()
 	matches := []SearchMatch{}
@@ -104,16 +97,12 @@ func (q SearchQuery) normalized() SearchQuery {
 	return q
 }
 
-// remaining returns a value for the next file. A filled page has zero limit;
-// later files still contribute their counts to the report total.
 func (q SearchQuery) remaining(total, returned int) SearchQuery {
 	q.Offset = max(0, q.Offset-total)
 	q.Limit -= returned
 	return q
 }
 
-// searchFile returns new page storage and the full count. A zero remaining
-// limit still counts matches in later files without collecting their rows.
 func searchFile(fileIndex int, file domain.File, query SearchQuery) ([]SearchMatch, int) {
 	if !strings.Contains(strings.ToLower(file.Path), query.Path) {
 		return nil, 0

@@ -34,3 +34,9 @@ func TestSearchDispatchUsesTheParsedOptions(t *testing.T) {
 		}
 	}
 }
+
+func TestSearchOperationalFailureExitCode(t *testing.T) {
+	if got := commandExitCode([]string{"search"}, os.ErrInvalid); got != 2 {
+		t.Fatalf("search failure exit code = %d, want 2", got)
+	}
+}

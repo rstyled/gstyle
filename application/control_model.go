@@ -132,8 +132,6 @@ func (m Model) updateControl(command controlCommand) (Model, tea.Cmd) {
 	return m, nil
 }
 
-// readControl computes immediate query replies without sending them or
-// changing the shared view. Stateful commands stay in updateControl.
 func (m Model) readControl(command controlCommand) (controlReply, bool) {
 	switch command.action {
 	case getStateAction:

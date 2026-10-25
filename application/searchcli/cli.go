@@ -1,4 +1,3 @@
-// Package searchcli provides the headless search IO boundary.
 package searchcli
 
 import (
@@ -23,8 +22,6 @@ type options struct {
 	tests                bool
 }
 
-// NewCommand binds help and execution to one flag set. The caller parses it
-// before invoking the runner, as internal/cli.leaf does for every command.
 func NewCommand() (*flag.FlagSet, func(context.Context, []string, io.Writer) error) {
 	opts := options{}
 	flags := flag.NewFlagSet("search", flag.ContinueOnError)
@@ -119,8 +116,6 @@ func encodeResult(result application.SearchResult, format string) ([]byte, error
 	return []byte(resultText(result)), nil
 }
 
-// resultText renders without writing to the output stream. Both formats are
-// encoded in full before writeResult sends the page to the caller's writer.
 func resultText(result application.SearchResult) string {
 	var lines []string
 	for _, match := range result.Matches {
