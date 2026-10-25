@@ -44,11 +44,9 @@ func TestClosedReceiverLocalFieldCurrentSource(t *testing.T) {
 			t.Errorf("current source retains false pending effect: %+v", effect)
 		}
 	}
-	// Returning pure from a receiver and owning map rows need separate proofs.
-	for _, kind := range []quality.Kind{quality.MutationEffect, quality.UnknownEffect} {
-		if !slices.ContainsFunc(result.Effects, func(e quality.Effect) bool { return e.Kind == kind }) {
-			t.Errorf("current source loses remaining %s evidence", kind)
-		}
+	// Publishing pure through the receiver still retains mutation evidence.
+	if !slices.ContainsFunc(result.Effects, func(e quality.Effect) bool { return e.Kind == quality.MutationEffect }) {
+		t.Error("current source loses remaining mutation evidence")
 	}
 }
 
