@@ -10,9 +10,17 @@ import (
 // uses separately. The outer container is never passed to an iterator.
 func (x *extractor) privateMapObservation(node, parent ast.Node) bool {
 	if call, ok := parent.(*ast.CallExpr); ok {
-		return tableLength(call, node, x.pkg.TypesInfo)
+		return tableLength(call, node, x.pkg.TypesInfo) || x.privateMapRemoval(node, call)
 	}
 	return x.readOnlyRowRange(node, parent)
+}
+
+func (x *extractor) privateMapRemoval(node ast.Node, call *ast.CallExpr) bool {
+	if len(call.Args) == 0 || call.Args[0] != node || !x.synchronousContainerCall(call) {
+		return false
+	}
+	builtin, ok := x.calledObject(unwrappedCallee(call.Fun)).(*types.Builtin)
+	return ok && (builtin.Name() == "delete" || builtin.Name() == "clear")
 }
 
 // Range keys do not expose rows. A newly declared row used only for metadata
