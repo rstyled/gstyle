@@ -19,14 +19,10 @@ func Markdown(report Report) string {
 }
 
 func analysisDetails(report Report) string {
-	var modules []string
-	for _, change := range moduleChanges(report) {
-		modules = append(modules, "- "+moduleChangeLine(change))
-	}
 	lines := []string{"<details>", "<summary>Analysis details</summary>", "",
 		unmeasuredSummary(report.Unmeasured),
 		fmt.Sprintf("Compared `%s` → `%s`.", text(shortRevision(report.Base)), text(shortRevision(report.Head))), "",
-		strings.Join(modules, "\n"), "", apiSection(report, len(report.GoAPI.Changes)), "", "</details>", ""}
+		apiSection(report, len(report.GoAPI.Changes)), "", "</details>", ""}
 	return strings.Join(lines, "\n")
 }
 
@@ -105,19 +101,7 @@ func dependencySummary(report Report) string {
 	if !report.DependenciesChanged {
 		return "No module-requirement, replacement or package-import changes."
 	}
-	addedImports, _ := dependencyCounts(report.DependenciesAdded)
-	removedImports, _ := dependencyCounts(report.DependenciesRemoved)
-	return fmt.Sprintf("Imports: **+%d / −%d**.", addedImports, removedImports)
-}
-
-func dependencyCounts(records []string) (int, int) {
-	imports := 0
-	for _, record := range records {
-		if strings.Contains(record, ":import:") {
-			imports++
-		}
-	}
-	return imports, len(records) - imports
+	return moduleSummary(moduleChanges(report))
 }
 
 func shortRevision(commit string) string {

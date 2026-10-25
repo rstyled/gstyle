@@ -53,20 +53,29 @@ func moduleChangeRank(change moduleChange) int {
 }
 
 func dependencyLines(report Report) []string {
-	changes := moduleChanges(report)
-	_, added := dependencyCounts(report.DependenciesAdded)
-	_, removed := dependencyCounts(report.DependenciesRemoved)
-	if len(changes) == 0 && added+removed != 0 {
-		return []string{"- Module requirement edges or settings changed."}
-	}
 	var lines []string
-	for _, change := range changes[:min(2, len(changes))] {
+	for _, change := range moduleChanges(report) {
 		lines = append(lines, "- "+moduleChangeLine(change))
 	}
-	if len(changes) > 2 {
-		lines = append(lines, fmt.Sprintf("- Remaining module changes: %d; see analysis details.", len(changes)-2))
-	}
 	return lines
+}
+
+func moduleSummary(changes []moduleChange) string {
+	if len(changes) == 0 {
+		return "Package imports or module requirements changed."
+	}
+	var updated, added, removed int
+	for _, change := range changes {
+		switch {
+		case change.before == "":
+			added++
+		case change.after == "":
+			removed++
+		default:
+			updated++
+		}
+	}
+	return fmt.Sprintf("Changes: %d updated, %d added, %d removed.", updated, added, removed)
 }
 
 func moduleChangeLine(change moduleChange) string {

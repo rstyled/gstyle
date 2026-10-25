@@ -204,8 +204,9 @@ API entries show the changed declaration and its type or signature. A GitHub
 `origin` remote enables source links pinned to the compared commit, with old
 declarations linked to the base. Added packages link to their directory and show
 the number of exported declarations. Dependency entries pair old and new module
-versions; import counts stay separate. Longer lists appear under **Analysis
-details**. JSON retains analysis limits, full evidence and source locations.
+versions and show updated, added and removed module counts. Every module change
+appears directly in the report. Extra API entries appear under **Analysis
+details**. JSON retains import links, analysis limits and source locations.
 
 Change status is separate from severity: measured PDG and dependency changes
 remain visible when no severity policy is configured. `unrated` means policy
