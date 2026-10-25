@@ -1,6 +1,6 @@
 # Proof boundary for the mutation assurance experiment
 
-The bounded experiment in `verification/quality/mutation-assurance/` does not
+The bounded Go tests documented in `verification/quality/mutation-assurance/` do not
 claim a Lean proof of Go ownership or side-effect classification.
 
 The existing profiles in [README.md](README.md) bind specific translated Go
@@ -14,7 +14,7 @@ to `domain/quality` mutation evidence. In particular, a theorem about function
 length, PDG queries, or a pattern-check decision does not establish absence of
 hidden external mutation in those ownership transfer rules.
 
-The experiment therefore uses executable Go witnesses for this one claim and
+The tests therefore use executable Go witnesses for this one claim and
 reports its input/observer bounds. Go compiler/runtime behavior, the restricted
 instrumentation, pointer-identity observer, and source-site matcher remain its
 trusted components. Observed mismatches falsify the bounded contract; absence
