@@ -72,9 +72,6 @@ func compareFunction(before, after Function, config Config) (*Delta, []Reason) {
 	if delta.Ambiguous {
 		reasons = append(reasons, atFunction(current, Reason{Rule: "pdg_matching_ambiguous", Level: Unknown, Message: "operation correspondence is ambiguous; graph illustration omitted"}))
 	}
-	if hasUnresolvedCalls(before.Graph.Nodes) || hasUnresolvedCalls(after.Graph.Nodes) {
-		reasons = append(reasons, atFunction(current, Reason{Rule: "unresolved_calls", Level: Unknown, Message: "changed function contains unresolved call targets; call rules are incomplete"}))
-	}
 	reasons = append(reasons, compareCalls(callComparison{before: before, current: current, nodes: after.Graph.Nodes}, config.Calls)...)
 	return &delta, reasons
 }
@@ -116,6 +113,9 @@ type callComparison struct {
 func compareCalls(pair callComparison, rules []CallRule) []Reason {
 	previous, next := callCounts(pair.before.Graph.Nodes), callCounts(pair.nodes)
 	var reasons []Reason
+	if hasUnresolvedCalls(pair.before.Graph.Nodes) || hasUnresolvedCalls(pair.nodes) {
+		reasons = append(reasons, atFunction(pair.current, Reason{Rule: "unresolved_calls", Level: Unknown, Message: "changed function contains unresolved call targets; call rules are incomplete"}))
+	}
 	for _, rule := range rules {
 		added := next[rule.Callee] - previous[rule.Callee]
 		if added <= 0 {
