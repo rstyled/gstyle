@@ -13,6 +13,7 @@ import (
 	"github.com/rstyled/gstyle/application/patterncheck"
 	"github.com/rstyled/gstyle/application/patternfix"
 	"github.com/rstyled/gstyle/application/qualitycheck"
+	"github.com/rstyled/gstyle/application/repoguard"
 	"github.com/spf13/cobra"
 )
 
@@ -42,6 +43,7 @@ func newRoot(output io.Writer) *cobra.Command {
 	}
 	root.Flags().AddGoFlagSet(runFlags(&runOptions{}))
 	root.AddCommand(leaf(&cobra.Command{Use: "check [DIRECTORIES OR GO FILES...]", Short: "Report code quality findings"}, qualitycheck.Flags(), qualitycheck.Run, output))
+	root.AddCommand(leaf(&cobra.Command{Use: "guard [PATHS...]", Short: "Enforce repository file and Go comment policies"}, repoguard.Flags(), repoguard.Run, output))
 	root.AddCommand(leaf(&cobra.Command{Use: "patterns [DIRECTORIES OR GO FILES...]", Short: "Report pattern candidates"}, patterncheck.Flags(), patterncheck.Run, output))
 	root.AddCommand(leaf(&cobra.Command{Use: "fix [DIRECTORIES OR GO FILES...]", Short: "Apply supported pattern fixes"}, patternfix.Flags(), patternfix.Run, output))
 	root.AddCommand(leaf(&cobra.Command{Use: "bug-reducer INPUT -- CHECKER [ARGS...]", Short: "Minimize an input with a checker command",
