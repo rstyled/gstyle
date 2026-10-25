@@ -168,7 +168,12 @@ verify-assume:
 
 .PHONY: verify-sarif
 verify-sarif:
-	uv run --with jsonschema==4.26.0 python verification/sarif/verify.py
+	cd verification/sarif && go test -count=1 .
+
+.PHONY: guard
+
+guard:
+	go run -buildvcs=false . guard --config gstyle.toml $(if $(GUARD_BASE),--base "$(GUARD_BASE)") .
 
 .PHONY: verify-sast sast-baseline
 verify-sast:

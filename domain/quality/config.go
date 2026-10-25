@@ -3,6 +3,8 @@ package quality
 import (
 	"fmt"
 	"slices"
+
+	"github.com/rstyled/gstyle/domain/guard"
 )
 
 type Rule struct {
@@ -11,18 +13,19 @@ type Rule struct {
 }
 
 type Config struct {
-	FnLength          Rule    `toml:"fn_length"`
-	FnParams          Rule    `toml:"fn_params"`
-	MutationPerTarget Rule    `toml:"mutation_per_target"`
-	MutatedTargets    Rule    `toml:"mutated_targets"`
-	SideEffectDensity Rule    `toml:"side_effect_density"`
-	Aggregate         Rule    `toml:"aggregate"`
-	Repository        Rule    `toml:"repository"`
-	MutableIdentity   Rule    `toml:"mutable_identity"`
-	MinStatements     int     `toml:"min_statements"`
-	CountSelf         bool    `toml:"count_self"`
-	Granularity       string  `toml:"granularity"`
-	Weights           Weights `toml:"weights"`
+	Guard             guard.Config `toml:"guard"`
+	FnLength          Rule         `toml:"fn_length"`
+	FnParams          Rule         `toml:"fn_params"`
+	MutationPerTarget Rule         `toml:"mutation_per_target"`
+	MutatedTargets    Rule         `toml:"mutated_targets"`
+	SideEffectDensity Rule         `toml:"side_effect_density"`
+	Aggregate         Rule         `toml:"aggregate"`
+	Repository        Rule         `toml:"repository"`
+	MutableIdentity   Rule         `toml:"mutable_identity"`
+	MinStatements     int          `toml:"min_statements"`
+	CountSelf         bool         `toml:"count_self"`
+	Granularity       string       `toml:"granularity"`
+	Weights           Weights      `toml:"weights"`
 	// Prefixes are appended to defaults by the config adapter. Later entries
 	// win equal-length ties, so projects can override classifications.
 	Prefixes []Prefix `toml:"prefixes"`
@@ -40,7 +43,7 @@ func (c Config) Validate() error {
 	if !within(int64(c.MinStatements), 1_000_000) {
 		return fmt.Errorf("min_statements must be between 0 and 1000000")
 	}
-	for _, validate := range []func() error{c.validateLimits, c.validateWeights, c.validatePrefixes, c.validateGrouping} {
+	for _, validate := range []func() error{c.validateLimits, c.validateWeights, c.validatePrefixes, c.validateGrouping, c.Guard.Validate} {
 		if err := validate(); err != nil {
 			return err
 		}

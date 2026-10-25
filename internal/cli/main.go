@@ -13,6 +13,7 @@ import (
 	"github.com/rstyled/gstyle/adapters/sqlite"
 	"github.com/rstyled/gstyle/application"
 	"github.com/rstyled/gstyle/application/qualitycheck"
+	"github.com/rstyled/gstyle/application/repoguard"
 )
 
 const defaultControlPort = 8197
@@ -41,18 +42,21 @@ func commandExitCode(args []string, err error) int {
 		return 1
 	}
 	switch args[0] {
-	case "check":
-		if errors.Is(err, qualitycheck.ErrFindings) {
-			return 1
-		}
-		return 2
-	case "patterns", "match-graphs":
-		return 2
-	case "fix":
+	case "check", "guard":
+		return findingsExitCode(args[0], err)
+	case "patterns", "match-graphs", "fix":
 		return 2
 	default:
 		return 1
 	}
+}
+
+func findingsExitCode(command string, err error) int {
+	sentinel := map[string]error{"check": qualitycheck.ErrFindings, "guard": repoguard.ErrFindings}[command]
+	if errors.Is(err, sentinel) {
+		return 1
+	}
+	return 2
 }
 
 func runTUI(options runOptions, output io.Writer) (result error) {
