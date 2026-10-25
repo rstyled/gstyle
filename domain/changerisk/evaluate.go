@@ -65,6 +65,9 @@ func compareFunction(before, after Function, config Config) (*Delta, []Reason) {
 	delta := graphDelta(before, after)
 	level := configured(config.PDGChange)
 	message := "PDG operations or dependencies changed"
+	if config.PDGChange == "" {
+		message += "; no severity is configured"
+	}
 	if before.Graph.Shape == after.Graph.Shape {
 		level, message = Unknown, "source changed outside the compared PDG projection"
 	}
@@ -166,6 +169,10 @@ func dependencyReason(base, head Snapshot, config Config) (*Reason, bool) {
 	if slices.Equal(base.Dependencies, head.Dependencies) {
 		return nil, false
 	}
+	message := "module requirements, replacements or package imports changed"
+	if config.DependencyChange == "" {
+		message += "; no severity is configured"
+	}
 	return &Reason{Rule: "dependency_change", Level: configured(config.DependencyChange),
-		Message: "module requirements, replacements or package imports changed"}, true
+		Message: message}, true
 }
