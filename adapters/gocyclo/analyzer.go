@@ -209,7 +209,7 @@ func analyzeFile(path string) (domain.File, error) {
 			Complexity:            stat.Complexity,
 			CyclomaticDiagnostics: cyclomaticDiagnostics(functionRange.node, fileSet),
 			CognitiveComplexity:   cognitive.Complexity,
-			CognitiveDiagnostics:  cognitiveDiagnostics(cognitive.Diagnostics),
+			CognitiveDiagnostics:  cognitiveDiagnostics(cognitive.Diagnostics, functionRange.node, fileSet),
 			Line:                  stat.Pos.Line,
 			EndLine:               functionRange.endLine,
 			Column:                stat.Pos.Column,
@@ -248,6 +248,7 @@ func summarizeFile(path string, functions []domain.Function) domain.File {
 }
 
 func cognitiveStatsByOffset(file *ast.File, fileSet *token.FileSet) map[int]cognit.Stat {
+	normalizeMethodIdentities(file)
 	result := map[int]cognit.Stat{}
 	for _, stat := range cognit.ComplexityStatsWithDiagnostic(file, fileSet, nil, true) {
 		result[stat.Pos.Offset] = stat
@@ -282,15 +283,21 @@ func cognitiveLiteralStat(literal *ast.FuncLit, fileSet *token.FileSet) cognit.S
 	return cognit.ComplexityStatsWithDiagnostic(file, fileSet, nil, true)[0]
 }
 
-func cognitiveDiagnostics(diagnostics []cognit.Diagnostic) []domain.CognitiveDiagnostic {
+func cognitiveDiagnostics(diagnostics []cognit.Diagnostic, node ast.Node, fileSet *token.FileSet) []domain.CognitiveDiagnostic {
+	positions := cognitiveLogicalPositions(diagnostics, node, fileSet)
 	result := make([]domain.CognitiveDiagnostic, 0, len(diagnostics))
 	for _, diagnostic := range diagnostics {
+		position := diagnostic.Pos
+		if sequence := positions[position.Offset]; len(sequence) > 0 {
+			positions[position.Offset] = sequence[1:]
+			position = sequence[0]
+		}
 		result = append(result, domain.CognitiveDiagnostic{
 			Increment: diagnostic.Inc,
 			Nesting:   diagnostic.Nesting,
 			Kind:      diagnostic.Text,
-			Line:      diagnostic.Pos.Line,
-			Column:    diagnostic.Pos.Column,
+			Line:      position.Line,
+			Column:    position.Column,
 		})
 	}
 	return result

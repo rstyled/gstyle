@@ -125,7 +125,7 @@ func (x *extractor) visitEffect(node ast.Node) {
 
 func (x *extractor) assignment(statement *ast.AssignStmt) {
 	for index, place := range statement.Lhs {
-		if id, ok := place.(*ast.Ident); ok && x.pkg.TypesInfo.Defs[id] != nil {
+		if x.assignmentDeclares(statement, place) {
 			continue
 		}
 		before := len(x.fact.Mutations)
@@ -134,6 +134,18 @@ func (x *extractor) assignment(statement *ast.AssignStmt) {
 			x.fact.Mutations[before].Site = site
 		}
 	}
+}
+
+func (x *extractor) assignmentDeclares(statement *ast.AssignStmt, place ast.Expr) bool {
+	id, ok := place.(*ast.Ident)
+	if !ok {
+		return false
+	}
+	if x.pkg.TypesInfo.Defs[id] != nil {
+		return true
+	}
+	guard, ok := x.fields.parents[statement].(*ast.TypeSwitchStmt)
+	return ok && guard.Assign == statement && statement.Tok == token.DEFINE
 }
 
 func (x *extractor) appendAssignmentSite(statement *ast.AssignStmt, index int) int {

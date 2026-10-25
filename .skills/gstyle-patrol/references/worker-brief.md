@@ -8,7 +8,7 @@ Stay in your bound checkout. Normal merges/pushes only; no rebase or force-push.
 
 ## Done check
 
-**New implementation:** fetch master, confirm one actual self-scan false positive, write the regression first, show semantic red, apply the smallest sound fix, then green.
+**New implementation:** verify the supplied witness/contract on fetched master. Confirm one false positive/unknown, attribution error, or missing true evidence. Regression first: semantic red, smallest sound fix, green. Valid behavior or no contained fix means no-fix; stop without expanding families.
 
 **Refresh:** keep the reviewed candidate and first-red evidence. Start clean at the exact reviewed head; normally merge fresh master in the same branch. Preserve own/upstream changes; report substantive conflicts or obsolete expectations to chief. Regenerate baseline conflicts from combined source.
 
@@ -18,8 +18,8 @@ Pass `make check`, `make quality-gate`, and current affected gates before push. 
 
 ## Evidence
 
-For implementation/refresh, keep commands/exits, exact base/head, immutable first-red/raw before/after records, direct/inherited deltas, retained writes, replay/policies, and true-positive controls in private cache. Verify actual-base overlay red and upstream/combined greens. Maintenance records its requested acceptance checks and applicable gates. Profile meaningful costs; bound scans and state coverage/proof limits honestly.
+For implementation/refresh, keep commands/exits, exact base/head, immutable first-red/raw before/after records, direct/inherited deltas, retained writes, replay/policies, and true-positive controls in private cache. Verify actual-base overlay red and upstream/combined greens. Maintenance records its requested acceptance checks and applicable gates. Read-only models require pinned transitive-call inspection, including lazy/global caches, callbacks, panic/input preconditions. Broad existing models are not source certificates. Preserve unproved uncertainty. Separate direct/inherited changes from restored true evidence; unchanged audits reduce nothing. Profile meaningful costs; bound scans and state coverage/proof limits honestly.
 
 ## Handoff
 
-Normal-push one focused PR for new implementation; update the existing PR for refresh/maintenance. Link and verify registration. Queue results, all five risk categories, evidence, and pending checks to the supplied chief with a stable report ID. Report no-fix/blockers promptly, including rejected candidates and a useful next angle. Stop for chief review.
+Normal-push one focused PR for new implementation; update the existing PR for refresh/maintenance. Link and verify registration. Queue results, all five risk categories, evidence, and pending checks to the supplied chief with a stable report ID. Report no-fix/blockers promptly with the rejection reason and reusable evidence. Suggest another lead only when supported; no speculative next-angle obligation. Stop for chief review.
