@@ -27,6 +27,16 @@ File rules apply to every current path unless mode is added. Added rules check p
 
 Guard supports text, json and sarif. Exit 0 means no findings, 1 means findings and 2 means an operational/configuration failure. Guard findings are strict and do not use the quality baseline tolerance. These rules apply to all changes, independent of author identity.
 
+## Report change risk
+
+Run ` + "`gstyle risk --base REF --head HEAD`" + ` for a compact Markdown report, or add --format json for structured evidence. This report applies to features, fixes and refactors. It reads the repository-relative --config path (default gstyle.toml) from the base commit, compares committed snapshots in temporary worktrees and excludes dirty files. It never merges or posts a comment.
+
+Risk rules are off by default. Under [risk], pdg_change and dependency_change accept low, medium or high; [[risk.calls]] assigns a level to an exact direct callee identity. A configured added-call rule measures counts in native PDGs. Indirect call targets remain unknown. The source projection ignores positions and opaque IDs. Changed source outside that projection remains unknown. Repeated operations and lexical closures do not receive an invented node correspondence; their diagrams are omitted.
+
+Markdown contains an optional collapsed Graph changes section with native Mermaid, at most three functions, eighteen nodes and twenty-four edges per function. Plus and minus labels identify additions and removals. The command compares changed production Go files in the root module; changed tests and nested-module source are explicitly unmeasured. Dependency evidence covers project modules, excluding testdata/vendor fixtures, and includes replacements and package imports.
+
+Compatibility, CI and test coverage are currently unmeasured and stay unknown. The overall result stays unknown unless measured high-risk evidence takes precedence. Exit 0 means report generated, even for high/unknown risk; exit 2 means an operational/configuration/analysis failure. Never treat success or an unchanged projection as merge approval.
+
 ## Inspect
 
 Run ` + "`gstyle .`" + ` for the current repository or ` + "`gstyle [paths...]`" + ` for selected Go files and directories.

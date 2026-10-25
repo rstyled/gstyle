@@ -139,7 +139,7 @@ the quality baseline's tolerance. CI runs `make guard` against the event's base
 commit; local added-comment checks use the existing Git base selection unless
 `--base` is supplied. `make guard` returns a nonzero status on any finding.
 
-Suppress a rule with a reason when the tradeoff is intentional:
+Suppress a quality rule with a reason when the tradeoff is intentional:
 
 ```go
 // gstyle-allow(fn_params): stable public interface
@@ -148,6 +148,53 @@ func Export(a, b, c, d, e int) {}
 
 `check` exits **0** with no findings, **1** with findings, and **2** on an analysis,
 configuration, or IO error. Start with advisory reports before using it as a gate.
+
+## Report change risk
+
+```sh
+gstyle risk --base origin/master --head HEAD
+gstyle risk --base origin/master --head HEAD --format json
+```
+
+`risk` compares committed revisions in temporary detached checkouts. It emits a
+compact Markdown report with emoji verdicts and, when the correspondence is
+unambiguous, a collapsed Mermaid section for changed PDG operations and edges.
+GitHub renders these diagrams directly in PR descriptions and comments.
+
+Risk rules are disabled by default. A repository opts in through `gstyle.toml`:
+
+```toml
+[risk]
+pdg_change = "medium"
+dependency_change = "high"
+
+[[risk.calls]]
+callee = "os.WriteFile"
+level = "high"
+```
+
+The policy comes from the base revision, so editing the candidate's policy
+cannot downgrade its own report. `--config` selects a tracked repository-relative
+policy path in that base; symlinks are rejected. Both revisions must exist.
+Uncommitted edits are excluded. The default head is `HEAD`; the default base is
+its merge-base with `origin/main` or `origin/master`, then local `main` or
+`master`, falling back to the head itself.
+
+This first report measures changes in native PDG operation/dependency projections,
+exact configured direct call counts, and project module requirements, replacements and
+package imports. Position and opaque-ID changes are excluded; source changes
+that the projection cannot distinguish remain unknown. Indirect call targets
+remain unknown. Changed tests and nested
+module source are explicitly outside the PDG comparison. Dependency collection
+includes nested project modules and excludes `testdata` and `vendor` fixtures.
+
+Compatibility, CI results and runtime test coverage are currently **unknown**;
+the command does not collect them. Without a measured high-risk reason, the
+overall result therefore remains unknown. A high-risk reason can coexist with
+unavailable evidence. This is a report, not a merge authorization or a proof of
+behavior preservation. Exit 0 means the report was generated, including high
+and unknown results; exit 2 means an operational, configuration or analysis error.
+See [the comparison scope](docs/change-risk.md) for diagram limits and evidence.
 
 ## Find patterns and apply fixes
 

@@ -11,3 +11,15 @@ id = "nested_readme"
 mode = "added"
 names = ["README.md"]
 allow_paths = ["README.md"]
+
+[risk]
+pdg_change = "medium"
+dependency_change = "high"
+
+[[risk.calls]]
+callee = "os.WriteFile"
+level = "high"
+
+[[risk.calls]]
+callee = "os.RemoveAll"
+level = "high"
