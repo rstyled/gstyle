@@ -1,5 +1,6 @@
 # gstyle
 
+
 Find complex code, heavy mutation, and repeated patterns in Go. Inspect the results
 in a terminal UI, get JSON reports, or hand the tool to a agent.
 
