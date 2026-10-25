@@ -33,8 +33,8 @@ jobs:
       - name: Build the trusted base analyzer
         run: |
           go build -buildvcs=false -o "$RUNNER_TEMP/gstyle-risk" .
-          if ! "$RUNNER_TEMP/gstyle-risk" risk --help | grep -qE '(^|[[:space:]])--check([[:space:]]|$)'; then
-            echo '::error::The trusted base lacks risk --check. This bootstrap needs operator review.'
+          if ! timeout 10s "$RUNNER_TEMP/gstyle-risk" help risk | grep -qE '(^|[[:space:]])--check([[:space:]]|$)'; then
+            echo '::error::The trusted base has no usable risk --check command. Operator review is required.'
             exit 1
           fi
 
