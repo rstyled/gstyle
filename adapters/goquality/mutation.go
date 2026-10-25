@@ -329,7 +329,7 @@ func (x *extractor) fieldOrigin(value *ast.SelectorExpr, seen map[types.Object]b
 	if object == nil {
 		return quality.Unknown
 	}
-	if x.localReceiverStorage(value) {
+	if x.closedFieldStorage(value) {
 		return quality.Local
 	}
 	if x.externalFieldRoot(object, seen) {
