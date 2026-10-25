@@ -139,7 +139,7 @@ the quality baseline's tolerance. CI runs `make guard` against the event's base
 commit; local added-comment checks use the existing Git base selection unless
 `--base` is supplied. `make guard` returns a nonzero status on any finding.
 
-Suppress a rule with a reason when the tradeoff is intentional:
+Suppress a quality rule with a reason when the tradeoff is intentional:
 
 ```go
 // gstyle-allow(fn_params): stable public interface
@@ -148,6 +148,87 @@ func Export(a, b, c, d, e int) {}
 
 `check` exits **0** with no findings, **1** with findings, and **2** on an analysis,
 configuration, or IO error. Start with advisory reports before using it as a gate.
+
+## Report merge risk
+
+```sh
+gstyle risk --base origin/master --head HEAD
+gstyle risk --base origin/master --head HEAD --format json
+gstyle risk --base origin/master --head HEAD --check
+```
+
+`risk` compares committed revisions in temporary detached checkouts. It emits a
+compact Markdown report with emoji verdicts and, when the correspondence is
+unambiguous, a collapsed Mermaid section for changed PDG operations and edges.
+GitHub renders these diagrams directly in PR descriptions and comments.
+
+Risk rules are disabled by default. A repository opts in through `gstyle.toml`:
+
+```toml
+[risk]
+pdg_change = "medium"
+dependency_change = "high"
+api_breaking = "high"
+
+[[risk.calls]]
+callee = "os.WriteFile"
+level = "high"
+```
+
+The policy comes from the base revision, so editing the candidate's policy
+cannot downgrade its own report. `--config` selects a tracked repository-relative
+policy path in that base; symlinks are rejected. Both revisions must exist.
+Uncommitted edits are excluded. The default head is `HEAD`; the default base is
+its merge-base with `origin/main` or `origin/master`, then local `main` or
+`master`, falling back to the head itself.
+
+The report measures native PDG operation/dependency changes, exact configured
+direct call counts, exported Go API changes, and project module requirements,
+replacements and package imports. Position and opaque-ID changes are excluded; source changes
+that the projection cannot distinguish remain unknown. Indirect call targets
+remain unknown. Changed tests and nested
+module source are explicitly outside the PDG comparison. Dependency collection
+includes nested project modules and excludes `testdata` and `vendor` fixtures.
+
+Uncovered changes require review: package-level declarations or comments, Go
+files excluded from the current build, test or nested-module source, controls,
+scripts, assets and unsafe file modes. Regular root README and documentation
+Markdown are eligible only when they are not embedded program resources.
+
+The API diff section reuses the typed package loader and applies
+`golang.org/x/exp/apidiff` to every importable package in the root module,
+including internal packages. It compares exported functions, types, methods,
+fields, constants and variables, and detects package removal or renaming.
+Body-only edits leave this API unchanged. `api_breaking` assigns severity to
+detected source-incompatible changes; it has no enabled default. Changes to
+generic constraints require review and remain partial unless another detected
+break already establishes incompatibility. The check uses the current build
+environment, excludes command packages and nested modules, and follows
+apidiff's source compatibility rules; it does not prove behavior preservation.
+
+API entries show the changed declaration and its type or signature. A GitHub
+`origin` remote enables source links pinned to the compared commit, with old
+declarations linked to the base. Added packages link to their directory and show
+the number of exported declarations. Dependency entries pair old and new module
+versions and show updated, added and removed module counts. Every module change
+appears directly in the report. Every API change appears once. JSON retains import
+links, analysis limits, source locations and unmeasured scopes.
+
+Change status is separate from severity: measured PDG and dependency changes
+remain visible when no severity policy is configured. `unrated` means policy
+does not assign a severity; `unknown` means static analysis has a real gap.
+Ambiguous operation matching omits a diagram without erasing a known change.
+The JSON retains added and removed dependency records as well as PDG deltas.
+
+The rating covers compared static evidence. CLI contracts, check results
+and runtime test coverage are not collected; JSON lists these unmeasured fields.
+Missing collectors do not produce placeholder verdicts or force the static rating to
+unknown. This report does not authorize a merge or prove behavior preservation.
+Without `--check`, exit 0 means the report was generated at any risk level.
+With `--check`, only low risk exits 0; medium, high, unknown and unrated exit 1
+and require human review. The report is still written. This mode requires an
+explicit `--base`. Operational, configuration and analysis errors exit 2.
+See [the comparison scope](docs/change-risk.md) for diagram limits and evidence.
 
 ## Find patterns and apply fixes
 

@@ -12,6 +12,7 @@ import (
 	"github.com/rstyled/gstyle/adapters/goquality"
 	"github.com/rstyled/gstyle/adapters/sqlite"
 	"github.com/rstyled/gstyle/application"
+	"github.com/rstyled/gstyle/application/changerisk"
 	"github.com/rstyled/gstyle/application/qualitycheck"
 	"github.com/rstyled/gstyle/application/repoguard"
 )
@@ -42,7 +43,7 @@ func commandExitCode(args []string, err error) int {
 		return 1
 	}
 	switch args[0] {
-	case "check", "guard":
+	case "check", "guard", "risk":
 		return findingsExitCode(args[0], err)
 	case "patterns", "match-graphs", "fix", "search":
 		return 2
@@ -52,7 +53,7 @@ func commandExitCode(args []string, err error) int {
 }
 
 func findingsExitCode(command string, err error) int {
-	sentinel := map[string]error{"check": qualitycheck.ErrFindings, "guard": repoguard.ErrFindings}[command]
+	sentinel := map[string]error{"check": qualitycheck.ErrFindings, "guard": repoguard.ErrFindings, "risk": changerisk.ErrReviewRequired}[command]
 	if errors.Is(err, sentinel) {
 		return 1
 	}

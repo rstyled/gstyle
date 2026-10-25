@@ -27,6 +27,18 @@ File rules apply to every current path unless mode is added. Added rules check p
 
 Guard supports text, json and sarif. Exit 0 means no findings, 1 means findings and 2 means an operational/configuration failure. Guard findings are strict and do not use the quality baseline tolerance. These rules apply to all changes, independent of author identity.
 
+## Report merge risk
+
+Run ` + "`gstyle risk --base REF --head HEAD`" + ` for a compact Markdown report, or add --format json for structured evidence. This report applies to features, fixes and refactors. It reads the repository-relative --config path (default gstyle.toml) from the base commit, compares committed snapshots in temporary worktrees and excludes dirty files. It never merges or posts a comment.
+
+Risk rules are off by default. Under [risk], pdg_change, dependency_change and api_breaking accept low, medium or high; [[risk.calls]] assigns a level to an exact direct callee identity. A configured added-call rule measures counts in native PDGs. Indirect call targets remain unknown. The source projection ignores positions and opaque IDs. Changed source outside that projection remains unknown. Repeated operations and lexical closures do not receive an invented node correspondence; their diagrams are omitted.
+
+Markdown contains an optional collapsed Graph changes section with native Mermaid, at most three functions, eighteen nodes and twenty-four edges per function. Plus and minus labels identify additions and removals. The command compares changed production Go files in the root module; changed tests and nested-module source are explicitly unmeasured. Dependency evidence covers project modules, excluding testdata/vendor fixtures, and includes replacements and package imports.
+
+The API diff row compares exported Go declarations in all importable root-module packages through the existing typed loader and golang.org/x/exp/apidiff. This includes internal packages, exported types/constants and APIs with no function PDG. Command packages, tests and nested modules are outside that scope. Package removals and declaration-name changes are detected. Changes to generic constraints require review; type loading failures are unavailable. The comparison follows apidiff source compatibility rules in the current build environment, not a platform matrix or a proof of runtime behavior. Entries show declarations and types or signatures; a recognized GitHub origin enables source links pinned to the compared commits. Dependency entries count updated, added and removed modules and list every module change. Import links stay in JSON. Every API change appears once in Markdown; JSON retains analysis limits and compared revisions. JSON preserves API changes, source locations, limits and scope.
+
+Change status and severity are separate: measured changes remain visible without a severity policy. Missing policy is unrated; real static analysis gaps are unknown. Ambiguous matching omits a diagram without overriding a known static change rating. JSON retains added and removed dependency records. CLI contracts, check results and runtime coverage stay in JSON unmeasured fields, without Markdown scope prose or placeholder verdicts. The rating covers static evidence only. Without --check, exit 0 means report generated at any risk. With --check and an explicit --base, only low exits 0; medium/high/unknown/unrated exit 1 and require human review. The report is still written. Operational/configuration/analysis failures exit 2. Never treat success or an unchanged projection as merge approval.
+
 ## Inspect
 
 Run ` + "`gstyle .`" + ` for the current repository or ` + "`gstyle [paths...]`" + ` for selected Go files and directories.
