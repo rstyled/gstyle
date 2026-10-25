@@ -189,7 +189,7 @@ remain unknown. Changed tests and nested
 module source are explicitly outside the PDG comparison. Dependency collection
 includes nested project modules and excludes `testdata` and `vendor` fixtures.
 
-The Go API comparison reuses the typed package loader and applies
+The API diff section reuses the typed package loader and applies
 `golang.org/x/exp/apidiff` to every importable package in the root module,
 including internal packages. It compares exported functions, types, methods,
 fields, constants and variables, and detects package removal or renaming.

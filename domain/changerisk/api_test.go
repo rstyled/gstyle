@@ -12,7 +12,7 @@ func TestAPISeverityAndUnmeasuredScopesStaySeparate(t *testing.T) {
 		t.Fatalf("API break did not receive its own configured severity: %+v", report)
 	}
 	markdown := Markdown(report)
-	for _, want := range []string{"**Go API:** breaking changes", "Save: signature changed", "Not assessed: CLI contract, check results, runtime coverage."} {
+	for _, want := range []string{"**API diff:** breaking changes", "Save: signature changed", "Not assessed: CLI contract, check results, runtime coverage."} {
 		if !strings.Contains(markdown, want) {
 			t.Errorf("missing %q in %s", want, markdown)
 		}
@@ -38,7 +38,7 @@ func TestUnavailableAndPartialAPIAreNotCompatibilityPasses(t *testing.T) {
 		if report.Risk != Unknown || report.APIRisk != Unknown {
 			t.Fatalf("missing API evidence became a pass: %+v", report)
 		}
-		if strings.Contains(Markdown(report), "**Go API:** unchanged") {
+		if strings.Contains(Markdown(report), "**API diff:** unchanged") {
 			t.Fatalf("missing API evidence rendered as unchanged: %+v", report)
 		}
 	}

@@ -26,7 +26,7 @@ New filesystem write: os.WriteFile in store.go:42.
 Dependencies: unchanged ✅
 No module or package-import changes.
 
-Go API: unchanged ✅
+API diff: unchanged ✅
 No exported API changes in the root module (current build).
 
 Analysis limits: None detected in the compared scope.
