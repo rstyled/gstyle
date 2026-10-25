@@ -71,6 +71,8 @@ type Mutation struct {
 }
 
 type Call struct {
+	// PrivateBuilder proves a modeled format writes a closed zero-value strings.Builder.
+	PrivateBuilder bool `json:"private_builder,omitempty"`
 	// LocalMemoryRead proves IO operates only on a closed fresh memory reader.
 	LocalMemoryRead bool `json:"local_memory_read,omitempty"`
 	// MemoryWriter proves a modeled call writes only to memory with no callbacks.

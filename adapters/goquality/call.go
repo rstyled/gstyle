@@ -30,6 +30,7 @@ func (x *extractor) call(call *ast.CallExpr) {
 		callee := resolvedName(object)
 		fact = quality.Call{
 			MemoryWriter: x.memoryWrite(call, callee), LocalMemoryRead: x.localMemoryRead(call),
+			PrivateBuilder:   x.privateBuilderFormat(call, callee),
 			CallbackExpanded: x.containerCallback(object, call), Site: site, Line: line,
 			Callee: callee, Local: object.Pkg() == x.pkg.Types, Dynamic: interfaceCall(x.pkg.TypesInfo, fun),
 			Args: args, MutationTarget: x.containerMutationTarget(object, call),
