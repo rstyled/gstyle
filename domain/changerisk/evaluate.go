@@ -160,11 +160,28 @@ func callLine(nodes []Node, callee string) int {
 }
 
 func analysisReasons(base, head Snapshot) []Reason {
-	var reasons []Reason
+	reasons := declarationReasons(base, head)
 	for _, snapshot := range []Snapshot{base, head} {
 		if snapshot.AnalysisError != "" {
 			reasons = append(reasons, Reason{Rule: "analysis_unavailable", Level: Unknown, Message: snapshot.AnalysisError})
 		}
+	}
+	return reasons
+}
+
+func declarationReasons(base, head Snapshot) []Reason {
+	paths := map[string]string{}
+	maps.Copy(paths, base.Declarations)
+	maps.Copy(paths, head.Declarations)
+	var reasons []Reason
+	for _, path := range slices.Sorted(maps.Keys(paths)) {
+		before, existed := base.Declarations[path]
+		after, exists := head.Declarations[path]
+		if existed == exists && before == after {
+			continue
+		}
+		reasons = append(reasons, Reason{Rule: "analysis_unavailable", Level: Unknown, Path: path,
+			Message: "Go declarations or comments changed outside the function-body PDG comparison"})
 	}
 	return reasons
 }

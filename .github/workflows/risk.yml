@@ -1,0 +1,63 @@
+name: Merge risk
+
+"on":
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: risk-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  risk-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Build the trusted base analyzer
+        run: |
+          go build -buildvcs=false -o "$RUNNER_TEMP/gstyle-risk" .
+          if ! "$RUNNER_TEMP/gstyle-risk" risk --help | grep -qE '(^|[[:space:]])--check([[:space:]]|$)'; then
+            echo '::error::The trusted base lacks risk --check. This bootstrap needs operator review.'
+            exit 1
+          fi
+
+      - name: Fetch the exact candidate commit
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --no-tags origin "refs/pull/$PR_NUMBER/head"
+          test "$(git rev-parse FETCH_HEAD)" = "$PR_HEAD"
+
+      - name: Require low merge risk
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          "$RUNNER_TEMP/gstyle-risk" risk \
+            --base "$PR_BASE" --head "$PR_HEAD" --check \
+            > "$RUNNER_TEMP/merge-risk.md"
+
+      - name: Show the measured report
+        if: always()
+        run: |
+          if test -f "$RUNNER_TEMP/merge-risk.md"; then
+            cat "$RUNNER_TEMP/merge-risk.md" >> "$GITHUB_STEP_SUMMARY"
+          fi

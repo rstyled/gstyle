@@ -16,17 +16,27 @@ import (
 )
 
 func Extract(ctx context.Context, root string, paths []string) ([]changerisk.Function, error) {
+	snapshot, err := ExtractSource(ctx, root, paths)
+	return snapshot.Functions, err
+}
+
+func ExtractSource(ctx context.Context, root string, paths []string) (changerisk.Snapshot, error) {
 	if len(paths) == 0 {
-		return nil, nil
+		return changerisk.Snapshot{}, nil
 	}
 	ext, err := gopatterns.Extract(ctx, root, paths)
 	if err != nil {
-		return nil, err
+		return changerisk.Snapshot{}, err
 	}
 	if err := gopatterns.CheckFixSources(ext.Sources); err != nil {
-		return nil, err
+		return changerisk.Snapshot{}, err
 	}
-	return projectExtraction(ext, paths)
+	functions, err := projectExtraction(ext, paths)
+	if err != nil {
+		return changerisk.Snapshot{}, err
+	}
+	declarations, message, err := sourceDeclarations(ext.Sources, paths)
+	return changerisk.Snapshot{Functions: functions, Declarations: declarations, AnalysisError: message}, err
 }
 
 func projectExtraction(ext *gopatterns.Extraction, paths []string) ([]changerisk.Function, error) {
@@ -113,10 +123,14 @@ func functionTokens(graph *pdg.Graph) (string, error) {
 }
 
 func tokens(source []byte) (string, error) {
+	return sourceTokens(source, 0)
+}
+
+func sourceTokens(source []byte, mode scanner.Mode) (string, error) {
 	file := token.NewFileSet().AddFile("function.go", -1, len(source))
 	var scan scanner.Scanner
 	var scanErr error
-	scan.Init(file, source, func(pos token.Position, message string) { scanErr = fmt.Errorf("%s: %s", pos, message) }, 0)
+	scan.Init(file, source, func(pos token.Position, message string) { scanErr = fmt.Errorf("%s: %s", pos, message) }, mode)
 	var items []string
 	for {
 		_, kind, literal := scan.Scan()
@@ -132,7 +146,7 @@ func tokens(source []byte) (string, error) {
 
 func ExistingPaths(root string, changed []string) ([]string, string, error) {
 	var paths []string
-	excluded := 0
+	var excluded []string
 	for _, name := range changed {
 		class, err := classifyPath(root, name)
 		if err != nil {
@@ -142,12 +156,12 @@ func ExistingPaths(root string, changed []string) ([]string, string, error) {
 		case includedPath:
 			paths = append(paths, name)
 		case excludedPath:
-			excluded++
+			excluded = append(excluded, name)
 		}
 	}
 	message := ""
-	if excluded > 0 {
-		message = fmt.Sprintf("%d changed test or nested-module Go files are outside the PDG comparison", excluded)
+	if len(excluded) > 0 {
+		message = "changed paths outside the source comparison: " + strings.Join(excluded, ", ")
 	}
 	return paths, message, nil
 }
@@ -158,23 +172,34 @@ const (
 	missingPath pathClass = iota
 	includedPath
 	excludedPath
+	documentationPath
 )
 
 func classifyPath(root, name string) (pathClass, error) {
-	if !strings.HasSuffix(name, ".go") {
-		return missingPath, nil
-	}
-	_, err := os.Stat(filepath.Join(root, name))
+	info, err := os.Lstat(filepath.Join(root, name))
 	if os.IsNotExist(err) {
 		return missingPath, nil
 	}
 	if err != nil {
 		return missingPath, err
 	}
-	if strings.HasSuffix(name, "_test.go") || nestedModule(root, name) {
+	if !info.Mode().IsRegular() || info.Mode().Perm()&0111 != 0 {
 		return excludedPath, nil
 	}
-	return includedPath, nil
+	return classifyRegularPath(root, name), nil
+}
+
+func classifyRegularPath(root, name string) pathClass {
+	if strings.HasSuffix(name, ".go") {
+		if strings.HasSuffix(name, "_test.go") || nestedModule(root, name) {
+			return excludedPath
+		}
+		return includedPath
+	}
+	if inertDocumentation(name) {
+		return documentationPath
+	}
+	return excludedPath
 }
 
 func nestedModule(root, name string) bool {

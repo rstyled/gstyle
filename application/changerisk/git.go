@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 )
@@ -38,9 +40,49 @@ func fields(data []byte) []string {
 	return strings.Split(strings.TrimSuffix(string(data), "\x00"), "\x00")
 }
 
-func changedPaths(ctx context.Context, root, base, head string) ([]string, error) {
-	data, err := command(ctx, root, "git", "diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--name-only", "-z", base, head, "--")
-	return fields(data), err
+type changeSet struct {
+	paths   []string
+	warning string
+}
+
+func changedPaths(ctx context.Context, root, base, head string) (changeSet, error) {
+	data, err := command(ctx, root, "git", "diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--raw", "-z", base, head, "--")
+	if err != nil {
+		return changeSet{}, err
+	}
+	return parseChangedPaths(fields(data))
+}
+
+func parseChangedPaths(records []string) (changeSet, error) {
+	if len(records)%2 != 0 {
+		return changeSet{}, fmt.Errorf("incomplete Git file metadata")
+	}
+	result := changeSet{}
+	var unsupported []string
+	for index := 0; index < len(records); index += 2 {
+		name := records[index+1]
+		regular, err := regularChange(records[index], name)
+		if err != nil {
+			return changeSet{}, err
+		}
+		result.paths = append(result.paths, name)
+		if !regular {
+			unsupported = append(unsupported, name)
+		}
+	}
+	if len(unsupported) != 0 {
+		result.warning = "changed executable, symlink or submodule paths need review: " + strings.Join(unsupported, ", ")
+	}
+	return result, nil
+}
+
+func regularChange(header, name string) (bool, error) {
+	metadata := strings.Fields(header)
+	if len(metadata) != 5 || !strings.HasPrefix(metadata[0], ":") || !fs.ValidPath(name) {
+		return false, fmt.Errorf("invalid Git file metadata")
+	}
+	modes := []string{"000000", "100644"}
+	return slices.Contains(modes, strings.TrimPrefix(metadata[0], ":")) && slices.Contains(modes, metadata[1]), nil
 }
 
 func withSnapshot(ctx context.Context, root, commit string, visit func(string) error) (err error) {

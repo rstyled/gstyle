@@ -56,6 +56,7 @@ type Function struct {
 type Snapshot struct {
 	Commit          string
 	Functions       []Function
+	Declarations    map[string]string
 	Dependencies    []string
 	DependencyError string
 	AnalysisError   string

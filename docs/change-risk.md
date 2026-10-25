@@ -60,10 +60,48 @@ API entries include typed declarations and physical source locations. A recogniz
 
 JSON reasons identify unresolved targets, excluded scope, unrepresented source changes and omitted diagrams. Ambiguous operation correspondence affects the illustration, not a known static change classification. Diagrams show at most three functions, eighteen nodes and twenty-four changed edges per function. They use generated node IDs and escaped labels. The JSON retains the complete measured deltas. Diagram limits are presentation limits, not evidence that omitted operations are safe. JSON and source links retain full commit SHAs.
 
-CLI contracts, check results and runtime test coverage are not collected. JSON `unmeasured` fields list them; Markdown omits this scope prose and emits no placeholder verdict rows. These unimplemented collectors do not force a static change rating to unknown. A low or medium static rating covers only the measured projection and is not an overall merge-risk assessment. Exit 0 means successful report generation, including high, unknown and unrated results; operational/configuration/analysis failures exit 2. There is no merge permission, GitHub comment writer or automatic merge task.
+CLI contracts, check results and runtime test coverage are not collected. JSON `unmeasured` fields list them; Markdown omits this scope prose and emits no placeholder verdict rows. These unimplemented collectors do not force a static change rating to unknown. A low or medium static rating covers only the measured projection and is not an overall merge-risk assessment. Advisory report generation exits 0 at any risk level. Add `--check` and an explicit `--base` to enforce the automation gate: low exits 0, medium/high/unknown/unrated exit 1, and operational/configuration/analysis failures exit 2. The gate writes its report before returning a review-required result. There is no merge permission, GitHub comment writer or automatic merge task.
 
 ## Verification
 
 Tests cover a committed file-write addition, a candidate that disables its own policy, dirty source exclusion, deterministic Markdown, source-position and opaque-ID changes, closure calls and moves, cross-file separation, literal identity text, repeated callees, malformed policy and dependency output, temporary worktree cleanup, cancellation, snapshot mutation and escaping symlinks. Renderer controls check Markdown escaping, graph bounds and empty/ambiguous diagram omission.
 
 API controls include type-only changes without any function PDG, changed signatures with updated in-repository callers, compatible additions, unchanged bodies and parameter names, methods, fields, interfaces, constants, aliases, whole-package removal, default import-name changes, generic constraints and unavailable type inventories. An end-to-end Git control proves that a candidate cannot disable its base's breaking API policy. CLI, coverage and CI evidence can be added later without changing the native graph representation or fabricating unavailable results now.
+
+## Coverage required for a low gate result
+
+The collector records declaration fingerprints from the actual compiled source
+inventory. Function bodies are removed from that fingerprint, so covered body
+changes still use the configured PDG rule. Package variables, initializers,
+signatures and raw parser-owned comments stay in the fingerprint. Changes there,
+or missing compiled-source coverage, require review. The fingerprint is not a
+behavior-preservation proof.
+
+Non-Go controls, scripts, assets, agent rules and unsupported paths require
+review. Only regular root README and documentation Markdown receive inert-file
+treatment. Executable files, symlinks and gitlinks require review, including
+uninitialized submodules detected from the complete Git file metadata. Embedded
+documents are program resources and require review across build variants.
+
+## CI and auto-merge activation
+
+The `risk-gate` job builds the analyzer from the PR base commit, fetches the exact
+head commit and runs `risk --base BASE --head HEAD --check`. It uses a read-only
+token and never falls back to a candidate-built analyzer. The report appears in
+the Actions job summary. Every PR update reruns the gate.
+
+Protect the default branch with two rulesets. Required CI has no bypass and
+requires the existing test, guard, quality and verification checks against an
+up-to-date branch. Risk review requires `risk-gate` and code-owner review for
+workflow, gate, policy and baseline changes. Repository admins may bypass only
+that risk ruleset, only for pull requests, after reviewing the current commit.
+This permits a deliberate manual merge of a non-low PR without bypassing tests.
+An approving review does not turn a failed low-only gate green.
+
+The first PR is a bootstrap: the base lacks the trusted risk command and policy,
+so its gate must fail and an operator must merge it manually after CI passes.
+Enable unattended low-risk merges only after the trusted workflow, analyzer,
+policy and CODEOWNERS are present on the default branch. Do not treat the repo's
+Allow auto-merge option as risk enforcement. An agent using an administrator's
+credentials has the same bypass rights as that person; factory credentials
+should have write access without risk-rule bypass.

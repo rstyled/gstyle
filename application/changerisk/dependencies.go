@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -22,6 +24,8 @@ type replacement struct{ Path, Version string }
 type dependencyPackage struct {
 	ImportPath string
 	Imports    []string
+	Dir        string
+	EmbedFiles []string
 	Module     *struct{ Main bool }
 }
 
@@ -128,11 +132,57 @@ func appendPackageDependencies(ctx context.Context, dir string, items []string) 
 		} else if err != nil {
 			return nil, err
 		}
-		if pkg.ImportPath == "" {
-			return nil, fmt.Errorf("package output is missing its import path")
+		records, err := packageRecords(dir, pkg)
+		if err != nil {
+			return nil, err
 		}
-		items = append(items, packageImports(pkg)...)
+		items = append(items, records...)
 	}
+}
+
+func packageRecords(root string, pkg dependencyPackage) ([]string, error) {
+	if pkg.ImportPath == "" {
+		return nil, fmt.Errorf("package output is missing its import path")
+	}
+	resources, err := packageResources(root, pkg)
+	if err != nil {
+		return nil, err
+	}
+	return append(packageImports(pkg), resources...), nil
+}
+
+func packageResources(root string, pkg dependencyPackage) ([]string, error) {
+	if pkg.Module == nil || !pkg.Module.Main {
+		return nil, nil
+	}
+	var records []string
+	for _, name := range pkg.EmbedFiles {
+		relative, err := filepath.Rel(root, filepath.Join(pkg.Dir, name))
+		if err != nil || !fs.ValidPath(filepath.ToSlash(relative)) {
+			return nil, fmt.Errorf("embedded resource is outside the project module")
+		}
+		records = append(records, "embed:"+filepath.ToSlash(relative))
+	}
+	return records, nil
+}
+
+func embeddedScope(changed, records []string) string {
+	paths := map[string]bool{}
+	for _, name := range changed {
+		paths[name] = true
+	}
+	var affected []string
+	for _, record := range records {
+		scope, name, found := strings.Cut(record, ":embed:")
+		if found && paths[path.Join(scope, name)] {
+			affected = append(affected, path.Join(scope, name))
+		}
+	}
+	if len(affected) == 0 {
+		return ""
+	}
+	slices.Sort(affected)
+	return "changed embedded resources need review: " + strings.Join(slices.Compact(affected), ", ")
 }
 
 func packageImports(pkg dependencyPackage) []string {

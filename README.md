@@ -154,6 +154,7 @@ configuration, or IO error. Start with advisory reports before using it as a gat
 ```sh
 gstyle risk --base origin/master --head HEAD
 gstyle risk --base origin/master --head HEAD --format json
+gstyle risk --base origin/master --head HEAD --check
 ```
 
 `risk` compares committed revisions in temporary detached checkouts. It emits a
@@ -189,6 +190,11 @@ remain unknown. Changed tests and nested
 module source are explicitly outside the PDG comparison. Dependency collection
 includes nested project modules and excludes `testdata` and `vendor` fixtures.
 
+Uncovered changes require review: package-level declarations or comments, Go
+files excluded from the current build, test or nested-module source, controls,
+scripts, assets and unsafe file modes. Regular root README and documentation
+Markdown are eligible only when they are not embedded program resources.
+
 The API diff section reuses the typed package loader and applies
 `golang.org/x/exp/apidiff` to every importable package in the root module,
 including internal packages. It compares exported functions, types, methods,
@@ -218,8 +224,10 @@ The rating covers compared static evidence. CLI contracts, check results
 and runtime test coverage are not collected; JSON lists these unmeasured fields.
 Missing collectors do not produce placeholder verdicts or force the static rating to
 unknown. This report does not authorize a merge or prove behavior preservation.
-Exit 0 means the report was generated, including high, unknown and unrated
-results; exit 2 means an operational, configuration or analysis error.
+Without `--check`, exit 0 means the report was generated at any risk level.
+With `--check`, only low risk exits 0; medium, high, unknown and unrated exit 1
+and require human review. The report is still written. This mode requires an
+explicit `--base`. Operational, configuration and analysis errors exit 2.
 See [the comparison scope](docs/change-risk.md) for diagram limits and evidence.
 
 ## Find patterns and apply fixes
