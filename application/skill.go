@@ -27,7 +27,7 @@ File rules apply to every current path unless mode is added. Added rules check p
 
 Guard supports text, json and sarif. Exit 0 means no findings, 1 means findings and 2 means an operational/configuration failure. Guard findings are strict and do not use the quality baseline tolerance. These rules apply to all changes, independent of author identity.
 
-## Report change risk
+## Report merge risk
 
 Run ` + "`gstyle risk --base REF --head HEAD`" + ` for a compact Markdown report, or add --format json for structured evidence. This report applies to features, fixes and refactors. It reads the repository-relative --config path (default gstyle.toml) from the base commit, compares committed snapshots in temporary worktrees and excludes dirty files. It never merges or posts a comment.
 

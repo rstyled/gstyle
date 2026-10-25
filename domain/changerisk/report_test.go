@@ -18,7 +18,7 @@ func TestConfiguredCallsAndUnknownsRemainDistinct(t *testing.T) {
 		t.Fatalf("unconfigured changes were rated: %+v", got)
 	}
 	markdown := Markdown(report)
-	if strings.Count(strings.Split(markdown, "<details>")[0], "\n") > 20 || !strings.Contains(markdown, "**Change risk: high**") {
+	if strings.Count(strings.Split(markdown, "<details>")[0], "\n") > 20 || !strings.Contains(markdown, "**Merge risk: high**") {
 		t.Fatalf("summary is not compact: %s", markdown)
 	}
 }

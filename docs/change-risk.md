@@ -1,8 +1,8 @@
-# Change risk report
+# Merge risk report
 
 ## Settled direction
 
-- Add a deterministic change risk report in Go, using gstyle's existing PDG and checks.
+- Add a deterministic merge risk report in Go, using gstyle's existing PDG and checks.
 - Support features, bug fixes and refactors.
 - Read configured rules from `gstyle.toml`; do not require a task manifest.
 - Report a risk level and concrete reasons tied to affected files and functions.
@@ -18,7 +18,7 @@
 An illustrative output shape is:
 
 ```text
-Change risk: high
+Merge risk: high
 
 PDG changes: changed 👀
 New filesystem write: os.WriteFile in store.go:42.

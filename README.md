@@ -149,7 +149,7 @@ func Export(a, b, c, d, e int) {}
 `check` exits **0** with no findings, **1** with findings, and **2** on an analysis,
 configuration, or IO error. Start with advisory reports before using it as a gate.
 
-## Report change risk
+## Report merge risk
 
 ```sh
 gstyle risk --base origin/master --head HEAD
