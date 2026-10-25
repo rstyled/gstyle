@@ -17,6 +17,14 @@ From the repository root, build with ` + "`go build -o gstyle .`" + `.
 
 Use Gstyle to locate Go code whose control flow deserves inspection. Treat complexity as a signal, not a score to game.
 
+## Enforce repository policy
+
+Run ` + "`gstyle guard --config gstyle.toml --base REF .`" + ` to enforce configured file and Go-comment rules. Both rule types are disabled by default; a repository opts in through its TOML. The default config path is the repository's gstyle.toml. Quality rules remain under gstyle check.
+
+The guard.comments mode added rejects new or expanded Go comment tokens relative to the Git base, while preserving unchanged comments. Mode all rejects every Go comment. Strings containing comment-like text are not comments. Directives, tests and generated Go files are included. guard.files entries restrict configured extensions to allowed repository-relative directories; they inspect tracked and nonignored untracked filenames without loading Go packages. These are filename checks, not interpreter or language detection.
+
+Guard supports text, json and sarif. Exit 0 means no findings, 1 means findings and 2 means an operational/configuration failure. Guard findings are strict and do not use the quality baseline tolerance. These rules apply to all changes, independent of author identity.
+
 ## Inspect
 
 Run ` + "`gstyle .`" + ` for the current repository or ` + "`gstyle [paths...]`" + ` for selected Go files and directories.

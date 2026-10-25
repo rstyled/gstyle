@@ -39,14 +39,15 @@ Standard: https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html
 
 ## Verification
 
-Run `make verify-sarif` with Go and uv installed. The test-only validator is
-pinned; the Go application adds no dependencies. CI runs this check.
+Run `make verify-sarif` with Go installed. Pinned test-only schema and URI
+validators live in a separate Go module; application dependencies are unchanged.
+CI runs this check without a Python environment.
 
-The script builds the actual CLI, runs both commands against clean and failing
+The Go test builds the actual CLI, runs both commands against clean and failing
 Go source, validates every report with the full Draft 4 schema and URI format
 checks, checks rule IDs and escaped paths, and verifies the saved-facts path.
-Negative controls confirm the validator rejects invalid versions and missing
-driver data. Go unit tests check related locations, unknown lines, empty
+Negative controls confirm the validator rejects invalid versions, missing
+driver data, invalid URI references and nonpositive source lines. Go unit tests check related locations, unknown lines, empty
 reports, preserved messages, and writer errors.
 
 Schema validation proves the format contract. It does not prove that each

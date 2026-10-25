@@ -10,6 +10,20 @@ permissions:
   contents: read
 
 jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Enforce repository policy
+        env:
+          GUARD_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: make guard
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -323,7 +337,9 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-      - uses: astral-sh/setup-uv@v7
+          cache-dependency-path: |
+            go.sum
+            verification/sarif/go.sum
       - name: Validate SARIF output against OASIS schema
         run: make verify-sarif
 

@@ -82,6 +82,47 @@ Unknown calls remain unknown; a low score does not establish purity.
 See [the example TOML policy](examples/quality/gstyle.toml) for configuration.
 Unspecified settings retain their defaults; unknown keys are rejected.
 
+## Enforce repository policy
+
+`gstyle guard` checks repository files without loading Go packages. Both rule
+types are disabled by default. This repository enables them in `gstyle.toml`:
+
+```toml
+[guard.comments]
+mode = "added"
+
+[[guard.files]]
+id = "python_outside_lean"
+extensions = [".py", ".pyi", ".pyw", ".pyc", ".pyo", ".ipynb"]
+allow_directories = ["verification/lean"]
+```
+
+```sh
+gstyle guard --config gstyle.toml --base origin/master .
+gstyle guard --format json .
+make guard GUARD_BASE=origin/master
+```
+
+The default config path is the repository's `gstyle.toml`. `added` compares Go
+comment tokens with the base commit, preserving unchanged comments in edited or
+Git-recognized renamed files. New or expanded comments, including directives,
+are findings. Comment-like text in strings is ignored. `all` reports every Go
+comment. Tests, generated Go files and files in nested modules are included.
+
+File rules check tracked and nonignored untracked paths. Extensions match
+case-insensitively; allowed directories use repository-relative paths and exact
+directory boundaries. These are filename rules, not language detection or a
+scan for interpreter commands. Deleted files are excluded. Neither rule depends
+on the author's identity.
+
+The same TOML file can hold quality and repository rules. Quality rules run with
+`gstyle check`; repository rules run with `gstyle guard`. Guard supports text,
+JSON and SARIF. Exit 0 means no findings, 1 means policy findings, and 2 means an
+operational or configuration failure. Guard findings are strict and do not use
+the quality baseline's tolerance. CI runs `make guard` against the event's base
+commit; local added-comment checks use the existing Git base selection unless
+`--base` is supplied. `make guard` returns a nonzero status on any finding.
+
 Suppress a rule with a reason when the tradeoff is intentional:
 
 ```go

@@ -88,8 +88,8 @@ concurrency, new cells published after entry, library-internal writes, arbitrary
 destination graphs, and multiple-target helper calls. Compilation, execution,
 type-checking, and observation errors abort the experiment.
 
-The fixed matrix, pinned analyzer/policy, independent controls, three unsafe
-analyzer builds, reduced witnesses, raw evidence, and limits are documented in
+The fixed matrix, independent controls, current-source unsafe analyzer builds,
+historical evidence, and limits are documented in
 [`verification/quality/mutation-assurance`](../../verification/quality/mutation-assurance/README.md).
 
 ## Validation
@@ -100,6 +100,11 @@ runtime expectations are caught, and tests detection of hidden writes and
 phantom mutations. It also rechecks the saved reduced counterexample. These
 tests run automatically through the repository's normal test and race jobs;
 Tree-sitter and frozen binaries are not required for CI.
+
+`TestMutationAssuranceRejectsUnsafeAnalyzers` builds the current analyzer and
+three isolated faulty overlays. The current build must pass; every faulty build
+must compile and then fail the same 291-observation runtime contract with missing
+caller-write evidence. A build or setup failure cannot count as a detected fault.
 
 The first negative-control experiment uses a build from before the
 parenthesized-target fixes. It detects a phantom blank-identifier mutation,
