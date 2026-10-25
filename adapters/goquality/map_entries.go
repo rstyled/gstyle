@@ -66,13 +66,26 @@ func referenceEntryContainer(typ types.Type) bool {
 func (x *extractor) emptyEntries(value ast.Expr) bool {
 	switch value := ast.Unparen(value).(type) {
 	case *ast.CompositeLit:
-		return len(value.Elts) == 0
+		return x.nilEntries(value)
 	case *ast.CallExpr:
 		builtin, ok := x.calledObject(unwrappedCallee(value.Fun)).(*types.Builtin)
 		return ok && builtin.Name() == "make"
 	default:
 		return false
 	}
+}
+
+func (x *extractor) nilEntries(literal *ast.CompositeLit) bool {
+	for _, element := range literal.Elts {
+		value := element
+		if entry, ok := element.(*ast.KeyValueExpr); ok {
+			value = entry.Value
+		}
+		if !x.pkg.TypesInfo.Types[value].IsNil() {
+			return false
+		}
+	}
+	return true
 }
 
 func (x *extractor) privateMapUse(id *ast.Ident, object types.Object) bool {
@@ -123,6 +136,14 @@ func (x *extractor) privateMapEntryUse(entry *ast.IndexExpr, object types.Object
 	}
 }
 
+func (x *extractor) discardedMapEntry(statement *ast.AssignStmt, object types.Object) bool {
+	if len(statement.Lhs) != 2 || len(statement.Rhs) != 1 || x.mapEntryRoot(statement.Rhs[0]) != object {
+		return false
+	}
+	id, ok := ast.Unparen(statement.Lhs[0]).(*ast.Ident)
+	return ok && id.Name == "_"
+}
+
 func (x *extractor) privateRowWrite(row, element *ast.IndexExpr) bool {
 	if element.X != row {
 		return false
@@ -144,12 +165,18 @@ func (x *extractor) mapAppendWrite(call *ast.CallExpr, object types.Object) bool
 }
 
 func (x *extractor) mapEntryAssignment(statement *ast.AssignStmt, object types.Object) bool {
+	if x.discardedMapEntry(statement, object) {
+		return true
+	}
 	return len(statement.Lhs) == 1 && len(statement.Rhs) == 1 &&
 		x.mapEntryRoot(statement.Lhs[0]) == object &&
 		(x.mapEntryAppend(statement.Rhs[0], object) || x.allocatedEntry(statement.Rhs[0]))
 }
 
 func (x *extractor) allocatedEntry(value ast.Expr) bool {
+	if x.pkg.TypesInfo.Types[value].IsNil() {
+		return true
+	}
 	switch value := ast.Unparen(value).(type) {
 	case *ast.CompositeLit:
 		return true
