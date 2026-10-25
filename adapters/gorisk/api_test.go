@@ -2,6 +2,7 @@ package gorisk
 
 import (
 	"context"
+	"go/types"
 	"os"
 	"path/filepath"
 	"strings"
@@ -107,6 +108,49 @@ func TestAPILoadFailuresCannotBecomeCompatibilityPasses(t *testing.T) {
 		report := CompareAPI(pair[0], pair[1])
 		if report.Status != changerisk.APIUnavailable || report.Error == "" || strings.Contains(report.Error, root) {
 			t.Fatalf("incomplete inventory became a pass or leaked its checkout path: %+v", report)
+		}
+	}
+}
+
+func TestAPIChangesRetainTypedDeclarationsAndPhysicalSources(t *testing.T) {
+	base := checkedAPI(t, "package sample\nfunc Save(value int) {}\ntype Options struct { Value int }\ntype Handler struct{}\nfunc (*Handler) Run(value int) {}\nconst Limit = 1\n")
+	head := checkedAPI(t, "package sample\nfunc Save(value string) {}\ntype Options struct { Value string }\ntype Handler struct{}\nfunc (*Handler) Run(value string) {}\n")
+	report := CompareAPI(base, head)
+	for _, change := range report.Changes {
+		if change.Before == nil || change.Before.Path != "api.go" || change.Before.Line < 2 || change.Before.Declaration == "" {
+			t.Errorf("missing original declaration: %+v", change)
+		}
+		if strings.HasPrefix(change.Message, "Limit:") {
+			if change.After != nil || change.Before.Line != 6 {
+				t.Errorf("removed constant has the wrong source: %+v", change)
+			}
+			continue
+		}
+		if change.After == nil || change.After.Path != "api.go" || change.After.Line < 2 || !strings.Contains(change.After.Declaration, "string") {
+			t.Errorf("missing changed declaration: %+v", change)
+		}
+	}
+	if len(report.Changes) != 4 {
+		t.Fatalf("expected function, field, method and constant changes: %+v", report)
+	}
+}
+
+func TestNewAPIPackageIncludesDirectoryAndExportCount(t *testing.T) {
+	head := checkedAPI(t, "package sample\nfunc Added() {}\ntype Options struct{}\nvar hidden bool\n")
+	report := CompareAPI(API{Packages: map[string]*types.Package{}}, head)
+	change := report.Changes[0]
+	if change.Before != nil || change.After == nil || change.After.Path != "." || change.After.Exports != 2 {
+		t.Fatalf("new package lacks useful source evidence: %+v", change)
+	}
+}
+
+func TestAPILinksIgnoreLogicalLineDirectives(t *testing.T) {
+	base := checkedAPI(t, "package sample\n//line spoofed.go:900\nfunc Save(value int) {}\n")
+	head := checkedAPI(t, "package sample\n//line spoofed.go:900\nfunc Save(value string) {}\n")
+	change := CompareAPI(base, head).Changes[0]
+	for _, declaration := range []*changerisk.APIDeclaration{change.Before, change.After} {
+		if declaration == nil || declaration.Path != "api.go" || declaration.Line != 3 {
+			t.Fatalf("logical source position leaked into a review link: %+v", declaration)
 		}
 	}
 }

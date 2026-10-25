@@ -93,6 +93,7 @@ type Report struct {
 	Head                string    `json:"head"`
 	Policy              string    `json:"policy"`
 	PolicyConfigured    bool      `json:"policy_configured"`
+	RepositoryURL       string    `json:"repository_url,omitempty"`
 	Risk                Level     `json:"risk"`
 	PDGRisk             Level     `json:"pdg_risk"`
 	DependencyRisk      Level     `json:"dependency_risk"`

@@ -13,9 +13,18 @@ const (
 )
 
 type APIChange struct {
-	Package    string `json:"package"`
-	Message    string `json:"message"`
-	Compatible bool   `json:"compatible"`
+	Package    string          `json:"package"`
+	Message    string          `json:"message"`
+	Compatible bool            `json:"compatible"`
+	Before     *APIDeclaration `json:"before,omitempty"`
+	After      *APIDeclaration `json:"after,omitempty"`
+}
+
+type APIDeclaration struct {
+	Path        string `json:"path,omitempty"`
+	Line        int    `json:"line,omitempty"`
+	Declaration string `json:"declaration"`
+	Exports     int    `json:"exports,omitempty"`
 }
 
 type APIReport struct {

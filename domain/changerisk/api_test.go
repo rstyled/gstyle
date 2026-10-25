@@ -12,7 +12,7 @@ func TestAPISeverityAndUnmeasuredScopesStaySeparate(t *testing.T) {
 		t.Fatalf("API break did not receive its own configured severity: %+v", report)
 	}
 	markdown := Markdown(report)
-	for _, want := range []string{"**API diff:** breaking changes", "Save: signature changed", "Not assessed: CLI contract, check results, runtime coverage."} {
+	for _, want := range []string{"**API diff:** breaking changes", "`lib.Save`: signature changed", "Not assessed: CLI contract, check results, runtime coverage."} {
 		if !strings.Contains(markdown, want) {
 			t.Errorf("missing %q in %s", want, markdown)
 		}

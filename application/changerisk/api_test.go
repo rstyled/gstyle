@@ -15,6 +15,7 @@ func TestAPIOnlyBreakUsesBasePolicyWithoutAnyFunctionPDG(t *testing.T) {
 	write(t, root, "gstyle.toml", "[risk]\napi_breaking='high'\n")
 	write(t, root, "api.go", "package sample\ntype Options struct { Value int }\n")
 	base := commit(t, root)
+	git(t, root, "remote", "add", "origin", "git@github.com:owner/repo.git")
 	write(t, root, "gstyle.toml", "")
 	write(t, root, "api.go", "package sample\ntype Options struct { Value string }\n")
 	head := commit(t, root)
@@ -32,6 +33,18 @@ func TestAPIOnlyBreakUsesBasePolicyWithoutAnyFunctionPDG(t *testing.T) {
 	}
 	if len(report.GoAPI.Changes) == 0 || !strings.Contains(report.GoAPI.Changes[0].Message, "Value") {
 		t.Fatalf("API break lacks concrete evidence: %+v", report.GoAPI)
+	}
+	change := report.GoAPI.Changes[0]
+	if report.RepositoryURL != "https://github.com/owner/repo" || change.Before == nil || change.After == nil {
+		t.Fatalf("committed report lost API sources or repository: %+v", report)
+	}
+	for _, source := range []*changerisk.APIDeclaration{change.Before, change.After} {
+		if source.Path != "api.go" || source.Line != 2 {
+			t.Fatalf("API source is not repository-relative: %+v", source)
+		}
+	}
+	if markdown := changerisk.Markdown(report); !strings.Contains(markdown, "/blob/"+head+"/api.go#L2") || !strings.Contains(markdown, "/blob/"+base+"/api.go#L2") {
+		t.Fatalf("API links are not pinned to the compared revisions: %s", markdown)
 	}
 	for _, field := range report.Unmeasured {
 		if field == "compatibility" || field == "go_api" {

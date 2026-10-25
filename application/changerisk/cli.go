@@ -130,6 +130,7 @@ func compareRevisions(ctx context.Context, root string, opts options) (changeris
 	api := gorisk.CompareAPI(base.API, head.API)
 	report := changerisk.Evaluate(base.Source, head.Source, config, api)
 	report.Policy = opts.config
+	report.RepositoryURL = repositoryURL(ctx, root)
 	return report, nil
 }
 

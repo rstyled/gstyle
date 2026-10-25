@@ -9,18 +9,37 @@ import (
 )
 
 func Markdown(report Report) string {
-	lines := []string{
-		"**Merge risk: " + string(report.Risk) + "**", ratingSummary(report), "",
-		"**Code impact:** " + pdgVerdict(report) + "  ", pdgSummary(report), "",
-		"**Dependencies:** " + dependencyVerdict(report) + "  ", dependencySummary(report), "",
-		"**Analysis limits:** " + analysisSummary(report), "",
-		unmeasuredSummary(report.Unmeasured),
-		fmt.Sprintf("Compared `%s` → `%s`.", text(shortRevision(report.Base)), text(shortRevision(report.Head))),
+	dependencies := append([]string{"**Dependencies:** " + dependencyVerdict(report) + "  ", dependencySummary(report)}, dependencyLines(report)...)
+	sections := []string{
+		"**Merge risk: " + string(report.Risk) + "**\n" + ratingSummary(report),
+		"**Code impact:** " + pdgVerdict(report) + " · " + pdgSummary(report),
+		strings.Join(dependencies, "\n"), apiSection(report, maxAPIChanges),
 	}
-	if report.GoAPI.Status != "" {
-		lines = slices.Insert(lines, 9, "**API diff:** "+apiVerdict(report.GoAPI)+"  ", apiSummary(report.GoAPI), "")
+	return strings.Join(sections, "\n\n") + "\n\n" + analysisDetails(report) + graphSection(prioritizedChanges(report))
+}
+
+func analysisDetails(report Report) string {
+	var modules []string
+	for _, change := range moduleChanges(report) {
+		modules = append(modules, "- "+moduleChangeLine(change))
 	}
-	return strings.Join(lines, "\n") + "\n" + graphSection(prioritizedChanges(report))
+	lines := []string{"<details>", "<summary>Analysis details</summary>", "",
+		"**Analysis limits:** " + analysisSummary(report), "", unmeasuredSummary(report.Unmeasured),
+		fmt.Sprintf("Compared `%s` → `%s`.", text(shortRevision(report.Base)), text(shortRevision(report.Head))), "",
+		strings.Join(modules, "\n"), "", apiSection(report, len(report.GoAPI.Changes)), "", "</details>", ""}
+	return strings.Join(lines, "\n")
+}
+
+func apiSection(report Report, limit int) string {
+	if report.GoAPI.Status == "" {
+		return ""
+	}
+	heading := "**API diff:** " + apiVerdict(report.GoAPI)
+	changes := orderedAPIChanges(report.GoAPI.Changes)
+	if len(changes) == 0 {
+		return heading + "\n" + apiSummary(report.GoAPI)
+	}
+	return heading + "\n" + strings.Join(apiChangeLines(report, changes[:min(limit, len(changes))]), "\n")
 }
 
 func prioritizedChanges(report Report) []Delta {
@@ -86,9 +105,9 @@ func dependencySummary(report Report) string {
 	if !report.DependenciesChanged {
 		return "No module-requirement, replacement or package-import changes."
 	}
-	addedImports, addedModules := dependencyCounts(report.DependenciesAdded)
-	removedImports, removedModules := dependencyCounts(report.DependenciesRemoved)
-	return fmt.Sprintf("Import edges +%d/−%d; module records +%d/−%d.", addedImports, removedImports, addedModules, removedModules)
+	addedImports, _ := dependencyCounts(report.DependenciesAdded)
+	removedImports, _ := dependencyCounts(report.DependenciesRemoved)
+	return fmt.Sprintf("Imports: **+%d / −%d**.", addedImports, removedImports)
 }
 
 func dependencyCounts(records []string) (int, int) {

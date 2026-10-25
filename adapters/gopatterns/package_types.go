@@ -3,13 +3,20 @@ package gopatterns
 import (
 	"context"
 	"fmt"
+	"go/token"
 	"go/types"
 
 	"golang.org/x/tools/go/packages"
 )
 
-func LoadPackageTypes(ctx context.Context, root string) ([]*types.Package, error) {
-	config := &packages.Config{Context: ctx, Dir: root, Mode: packages.LoadTypes, BuildFlags: []string{"-mod=readonly"}}
+type PackageTypes struct {
+	Types   *types.Package
+	FileSet *token.FileSet
+	Files   []string
+}
+
+func LoadPackageTypes(ctx context.Context, root string) ([]PackageTypes, error) {
+	config := &packages.Config{Context: ctx, Dir: root, Mode: packages.LoadSyntax, Fset: token.NewFileSet(), BuildFlags: []string{"-mod=readonly"}}
 	loaded, err := loadSourcePackages(config, []string{"./..."}, nil)
 	if err != nil {
 		return nil, err
@@ -20,14 +27,14 @@ func LoadPackageTypes(ctx context.Context, root string) ([]*types.Package, error
 	return checkedPackageTypes(loaded)
 }
 
-func checkedPackageTypes(loaded []*packages.Package) ([]*types.Package, error) {
-	var result []*types.Package
+func checkedPackageTypes(loaded []*packages.Package) ([]PackageTypes, error) {
+	var result []PackageTypes
 	for _, pkg := range loaded {
 		if pkg.IllTyped || pkg.Types == nil || !pkg.Types.Complete() {
 			return nil, fmt.Errorf("incomplete package types: %s", pkg.PkgPath)
 		}
 		if pkg.Name != "main" {
-			result = append(result, pkg.Types)
+			result = append(result, PackageTypes{Types: pkg.Types, FileSet: pkg.Fset, Files: pkg.GoFiles})
 		}
 	}
 	return result, nil

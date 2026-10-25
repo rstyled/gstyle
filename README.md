@@ -200,6 +200,13 @@ break already establishes incompatibility. The check uses the current build
 environment, excludes command packages and nested modules, and follows
 apidiff's source compatibility rules; it does not prove behavior preservation.
 
+API entries show the changed declaration and its type or signature. A GitHub
+`origin` remote enables source links pinned to the compared commit, with old
+declarations linked to the base. Added packages link to their directory and show
+the number of exported declarations. Dependency entries pair old and new module
+versions; import counts stay separate. Longer lists and analysis limits appear
+under **Analysis details**. JSON retains the full evidence and source locations.
+
 Change status is separate from severity: measured PDG and dependency changes
 remain visible when no severity policy is configured. `unrated` means policy
 does not assign a severity; `unknown` means static analysis has a real gap.

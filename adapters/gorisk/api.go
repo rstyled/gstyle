@@ -14,6 +14,8 @@ import (
 
 type API struct {
 	Packages map[string]*types.Package
+	Sources  map[string]gopatterns.PackageTypes
+	Root     string
 	Error    string
 }
 
@@ -23,10 +25,12 @@ func ExtractAPI(ctx context.Context, root string) API {
 		return API{Error: "Go API type loading failed for the root module"}
 	}
 	result := map[string]*types.Package{}
+	sources := map[string]gopatterns.PackageTypes{}
 	for _, pkg := range packages {
-		result[pkg.Path()] = pkg
+		result[pkg.Types.Path()] = pkg.Types
+		sources[pkg.Types.Path()] = pkg
 	}
-	return API{Packages: result}
+	return API{Packages: result, Sources: sources, Root: root}
 }
 
 func CompareAPI(base, head API) changerisk.APIReport {
@@ -39,6 +43,10 @@ func CompareAPI(base, head API) changerisk.APIReport {
 		}
 	}
 	changes := packageAPIChanges(base.Packages, head.Packages)
+	for i := range changes {
+		changes[i].Before = apiDeclaration(base, changes[i])
+		changes[i].After = apiDeclaration(head, changes[i])
+	}
 	limits := apiLimits(base.Packages, head.Packages)
 	slices.SortFunc(changes, func(a, b changerisk.APIChange) int {
 		return cmp.Or(cmp.Compare(a.Package, b.Package), cmp.Compare(a.Message, b.Message))
