@@ -8,7 +8,8 @@
 - Report a risk level and concrete reasons tied to affected files and functions.
 - Determine severity from configured kinds of changes. A PDG difference alone does not imply high risk.
 - Use a compact human report similar to merge-risk: an overall risk, consistent categories, emoji verdicts and short reasons, totaling 10–20 lines.
-- Distinguish unavailable evidence from a passing check in the compact report.
+- Separate measured change status from configured severity. Missing policy is unrated; real static analysis gaps are unknown.
+- Show only implemented measurements as verdict rows. List uncollected evidence in one scope note.
 - Append an optional, collapsed Graph changes section after the compact report when meaningful graph changes are available.
 - Emit Mermaid text from Go and use GitHub's native rendering. Do not add Pele or a JavaScript rendering dependency for PR descriptions or comments.
 - Show a bounded view of changed nodes and edges with enough surrounding context, rather than the entire PDG. Label additions and removals explicitly.
@@ -19,27 +20,23 @@ An illustrative output shape is:
 ```text
 Change risk: high
 
-PDG effects: high ⚠️
+PDG changes: changed 👀
 New filesystem write: os.WriteFile in store.go:42.
 
 Dependencies: unchanged ✅
 No module or package-import changes.
 
-Compatibility: unchanged ✅
-No public API or CLI contract changes.
+Analysis limits: None detected in the compared scope.
 
-Checks: passed ✅
-Build, tests, race, guards and quality checks pass.
-
-Coverage: unknown 👀
-Base-to-head coverage comparison is unavailable.
+Not assessed: API/CLI compatibility, check results, runtime coverage.
+Compared base → head.
 ```
 
 The rendered report uses Markdown emphasis for verdicts. This example establishes the output shape; its facts are illustrative. It does not establish that every PDG change is high risk.
 
 ## Comparison requirements
 
-Source positions, graph-local references and other metadata must not be mistaken for semantic changes. Rule severities come from the base revision's policy. Unavailable evidence stays unknown; a measured high-risk reason takes precedence over unknown evidence.
+Source positions, graph-local references and other metadata must not be mistaken for semantic changes. Rule severities come from the base revision's policy. Missing severities remain unrated. Unavailable static evidence stays unknown; a measured high-risk reason takes precedence over unknown evidence. With no risk rules at all, the overall rating is unrated and analysis limits remain visible separately.
 
 ## First implementation
 
@@ -53,9 +50,9 @@ Changed production Go files in the root module are analyzed with their enclosing
 
 Dependency collection compares the module graph, resolved module identities and replacement paths, plus production and test package imports. It includes nested project modules, excludes `testdata` and `vendor` fixture modules, and uses the current Go build environment. It is not a platform/build-tag matrix. Missing dependency evidence is marked unavailable. Go loader changes to a snapshot cause the report to fail.
 
-The Markdown summary is eighteen lines before the optional diagram section. Diagrams show at most three functions, eighteen nodes and twenty-four changed edges per function. They use generated node IDs and escaped labels. The JSON retains the complete measured deltas. Diagram limits are presentation limits, not evidence that omitted operations are safe.
+The Markdown summary stays within twenty lines before the optional diagram section. PDG and dependency rows show changed, unchanged, partial or unavailable status independently of severity. Dependency counts separate import edges from module records, and JSON retains the added and removed records. Analysis limits identify unresolved targets, excluded scope, unrepresented source changes and omitted diagrams. Ambiguous operation correspondence affects the illustration, not a known static change classification. Diagrams show at most three functions, eighteen nodes and twenty-four changed edges per function. They use generated node IDs and escaped labels. The JSON retains the complete measured deltas. Diagram limits are presentation limits, not evidence that omitted operations are safe. Markdown abbreviates commit IDs to twelve characters; JSON retains full SHAs.
 
-API/CLI compatibility, CI status and runtime test coverage are not collected in this slice. Their categories and JSON `unmeasured` fields remain explicit. Consequently the overall risk is unknown unless a measured, configured high-risk reason takes precedence. Exit 0 means successful report generation, including high and unknown results; operational/configuration/analysis failures exit 2. There is no merge permission, GitHub comment writer or automatic merge task.
+API/CLI compatibility, check results and runtime test coverage are not collected. One scope note and JSON `unmeasured` fields list them; no placeholder verdict rows are emitted. These unimplemented collectors do not force a static change rating to unknown. A low or medium static rating covers only the measured projection and is not an overall merge-risk assessment. Exit 0 means successful report generation, including high, unknown and unrated results; operational/configuration/analysis failures exit 2. There is no merge permission, GitHub comment writer or automatic merge task.
 
 ## Verification
 

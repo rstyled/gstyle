@@ -10,16 +10,19 @@ func Evaluate(base, head Snapshot, config Config) Report {
 	changes, reasons := functionChanges(base, head, config)
 	reasons = append(reasons, analysisReasons(base, head)...)
 	pdgRisk := reasonsLevel(reasons)
-	dependency, changed := dependencyReason(base, head, config)
-	dependencyRisk := Low
-	if dependency != nil {
-		dependencyRisk = dependency.Level
-		reasons = append(reasons, *dependency)
-	}
+	dependency := compareDependencies(base, head, config)
 	return Report{SchemaVersion: 1, Base: base.Commit, Head: head.Commit, PDGRisk: pdgRisk,
-		DependencyRisk: dependencyRisk, DependenciesChanged: changed,
-		Risk: strongest(Unknown, strongest(pdgRisk, dependencyRisk)), Reasons: reasons, Changes: changes,
+		DependencyRisk: dependency.risk, DependenciesChanged: dependency.changed,
+		DependenciesAdded: dependency.added, DependenciesRemoved: dependency.removed,
+		Risk: measuredRisk(config, pdgRisk, dependency.risk), Reasons: append(reasons, dependency.reasons...), Changes: changes,
 		ChangedFunctions: len(changes), Unmeasured: []string{"compatibility", "checks", "test_coverage"}}
+}
+
+func measuredRisk(config Config, pdg, dependencies Level) Level {
+	if !config.enabled() {
+		return Unrated
+	}
+	return strongest(pdg, dependencies)
 }
 
 func functionChanges(base, head Snapshot, config Config) ([]Delta, []Reason) {
@@ -40,6 +43,9 @@ func functionChanges(base, head Snapshot, config Config) ([]Delta, []Reason) {
 func reasonsLevel(reasons []Reason) Level {
 	result := Low
 	for _, reason := range reasons {
+		if reason.Rule == "pdg_matching_ambiguous" {
+			continue
+		}
 		result = strongest(result, reason.Level)
 	}
 	return result

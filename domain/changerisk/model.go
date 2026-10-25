@@ -7,6 +7,7 @@ const (
 	Medium  Level = "medium"
 	High    Level = "high"
 	Unknown Level = "unknown"
+	Unrated Level = "unrated"
 )
 
 type CallRule struct {
@@ -94,6 +95,8 @@ type Report struct {
 	PDGRisk             Level    `json:"pdg_risk"`
 	DependencyRisk      Level    `json:"dependency_risk"`
 	DependenciesChanged bool     `json:"dependencies_changed"`
+	DependenciesAdded   []string `json:"dependencies_added"`
+	DependenciesRemoved []string `json:"dependencies_removed"`
 	Reasons             []Reason `json:"reasons"`
 	Changes             []Delta  `json:"changes"`
 	ChangedFunctions    int      `json:"changed_functions"`

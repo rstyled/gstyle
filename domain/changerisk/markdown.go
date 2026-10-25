@@ -10,15 +10,24 @@ import (
 
 func Markdown(report Report) string {
 	lines := []string{
-		"**Change risk: " + string(report.Risk) + "**", "",
-		"**PDG changes:** " + verdict(report.PDGRisk) + "  ", pdgSummary(report), "",
+		"**Change risk: " + string(report.Risk) + "**", ratingSummary(report.Risk), "",
+		"**PDG changes:** " + pdgVerdict(report) + "  ", pdgSummary(report), "",
 		"**Dependencies:** " + dependencyVerdict(report) + "  ", dependencySummary(report), "",
-		"**Compatibility:** unknown 👀  ", "API and CLI contracts have not been compared.", "",
-		"**Checks:** unknown 👀  ", "CI results have not been collected.", "",
-		"**Coverage:** unknown 👀  ", "Base-to-head test coverage has not been measured.", "",
-		fmt.Sprintf("Compared `%s` → `%s`.", text(report.Base), text(report.Head)),
+		"**Analysis limits:** " + analysisSummary(report), "",
+		unmeasuredSummary(report.Unmeasured),
+		fmt.Sprintf("Compared `%s` → `%s`.", text(shortRevision(report.Base)), text(shortRevision(report.Head))),
 	}
 	return strings.Join(lines, "\n") + "\n" + graphSection(prioritizedChanges(report))
+}
+
+func ratingSummary(level Level) string {
+	if level == Unrated {
+		return "Base policy does not assign severity to all measured changes."
+	}
+	if level == Unknown {
+		return "Static analysis has gaps; review the limits below."
+	}
+	return "Severity reflects configured static change rules; this is not merge approval."
 }
 
 func prioritizedChanges(report Report) []Delta {
@@ -33,25 +42,28 @@ func prioritizedChanges(report Report) []Delta {
 	return changes
 }
 
-func verdict(level Level) string {
-	return string(level) + " " + map[Level]string{Low: "✅", Medium: "👀", High: "⚠️", Unknown: "👀"}[level]
-}
-
 func text(value string) string {
 	value = strings.Join(strings.Fields(value), " ")
 	return strings.ReplaceAll(html.EscapeString(value), "`", "&#96;")
 }
 
+func pdgVerdict(report Report) string {
+	if unknownReasons(report.Reasons, "analysis_unavailable") != 0 || unknownReasons(report.Reasons, "pdg_change") != 0 {
+		return "partial 👀"
+	}
+	if report.ChangedFunctions != 0 {
+		return "changed 👀"
+	}
+	return "unchanged ✅"
+}
+
 func pdgSummary(report Report) string {
 	for _, reason := range report.Reasons {
-		if reason.Level == report.PDGRisk && reason.Rule != "dependency_change" {
+		if reason.Rule == "added_call" && reason.Level == report.PDGRisk {
 			return reasonSummary(reason)
 		}
 	}
-	if report.ChangedFunctions == 0 {
-		return "No changes detected in the compared function projection."
-	}
-	return fmt.Sprintf("%d function(s) changed; see graph changes.", report.ChangedFunctions)
+	return fmt.Sprintf("Affected functions: %d.", report.ChangedFunctions)
 }
 
 func reasonSummary(reason Reason) string {
@@ -63,17 +75,42 @@ func reasonSummary(reason Reason) string {
 }
 
 func dependencyVerdict(report Report) string {
-	if report.DependencyRisk == Low && !report.DependenciesChanged {
-		return "unchanged ✅"
+	if report.DependencyRisk == Unknown && !report.DependenciesChanged {
+		return "unavailable ⚠️"
 	}
-	return verdict(report.DependencyRisk)
+	if report.DependenciesChanged {
+		return "changed 👀"
+	}
+	return "unchanged ✅"
 }
 
 func dependencySummary(report Report) string {
 	for _, reason := range report.Reasons {
-		if reason.Rule == "dependencies_unavailable" || reason.Rule == "dependency_change" {
+		if reason.Rule == "dependencies_unavailable" {
 			return reasonSummary(reason)
 		}
 	}
-	return "No module-requirement, replacement or package-import changes."
+	if !report.DependenciesChanged {
+		return "No module-requirement, replacement or package-import changes."
+	}
+	addedImports, addedModules := dependencyCounts(report.DependenciesAdded)
+	removedImports, removedModules := dependencyCounts(report.DependenciesRemoved)
+	return fmt.Sprintf("Import edges +%d/−%d; module records +%d/−%d.", addedImports, removedImports, addedModules, removedModules)
+}
+
+func dependencyCounts(records []string) (int, int) {
+	imports := 0
+	for _, record := range records {
+		if strings.Contains(record, ":import:") {
+			imports++
+		}
+	}
+	return imports, len(records) - imports
+}
+
+func shortRevision(commit string) string {
+	if len(commit) > 12 {
+		return commit[:12]
+	}
+	return commit
 }

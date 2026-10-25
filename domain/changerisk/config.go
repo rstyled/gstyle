@@ -39,7 +39,7 @@ func validCallee(callee string) bool {
 
 func configured(level Level) Level {
 	if level == "" {
-		return Unknown
+		return Unrated
 	}
 	return level
 }
@@ -52,5 +52,9 @@ func strongest(a, b Level) Level {
 }
 
 func levelScore(level Level) int {
-	return map[Level]int{Low: 1, Medium: 2, Unknown: 3, High: 4}[level]
+	return map[Level]int{Low: 1, Medium: 2, Unrated: 3, Unknown: 4, High: 5}[level]
+}
+
+func (c Config) enabled() bool {
+	return c.PDGChange != "" || c.DependencyChange != "" || len(c.Calls) != 0
 }

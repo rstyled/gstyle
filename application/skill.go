@@ -35,7 +35,7 @@ Risk rules are off by default. Under [risk], pdg_change and dependency_change ac
 
 Markdown contains an optional collapsed Graph changes section with native Mermaid, at most three functions, eighteen nodes and twenty-four edges per function. Plus and minus labels identify additions and removals. The command compares changed production Go files in the root module; changed tests and nested-module source are explicitly unmeasured. Dependency evidence covers project modules, excluding testdata/vendor fixtures, and includes replacements and package imports.
 
-Compatibility, CI and test coverage are currently unmeasured and stay unknown. The overall result stays unknown unless measured high-risk evidence takes precedence. Exit 0 means report generated, even for high/unknown risk; exit 2 means an operational/configuration/analysis failure. Never treat success or an unchanged projection as merge approval.
+Change status and severity are separate: PDG and dependency rows show measured changes even without a severity policy. Missing policy is unrated; real static analysis gaps are unknown. Ambiguous matching omits a diagram without overriding a known static change rating. JSON retains added and removed dependency records. API/CLI compatibility, check results and runtime coverage are unmeasured and appear in one scope note, not placeholder verdicts. The rating covers static evidence only. Exit 0 means report generated, including high/unknown/unrated risk; exit 2 means an operational/configuration/analysis failure. Never treat success or an unchanged projection as merge approval.
 
 ## Inspect
 

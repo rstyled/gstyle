@@ -51,7 +51,7 @@ func TestRiskReportsCommittedGraphsUsingBasePolicy(t *testing.T) {
 	if err := Run(context.Background(), []string{"--base", base, "--head", head}, &output); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(output.String(), "```mermaid") || !strings.Contains(output.String(), "os.WriteFile") || !strings.Contains(output.String(), "**Checks:** unknown") {
+	if !strings.Contains(output.String(), "```mermaid") || !strings.Contains(output.String(), "os.WriteFile") || !strings.Contains(output.String(), "Not assessed:") || strings.Contains(output.String(), "**Checks:**") {
 		t.Fatalf("missing Markdown evidence: %s", output.String())
 	}
 	first := output.String()
@@ -80,7 +80,7 @@ func TestRiskIgnoresSourcePositionsAndReportsMissingMeasurements(t *testing.T) {
 	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
-	if report.ChangedFunctions != 0 || report.Risk != changerisk.Unknown || report.DependenciesChanged {
+	if report.ChangedFunctions != 0 || report.Risk != changerisk.Unrated || report.DependenciesChanged {
 		t.Fatalf("positions or missing measurements became a verdict: %s", output.String())
 	}
 }

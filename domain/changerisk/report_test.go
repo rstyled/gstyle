@@ -14,7 +14,7 @@ func TestConfiguredCallsAndUnknownsRemainDistinct(t *testing.T) {
 	if report.Risk != High || report.PDGRisk != High || len(report.Reasons) != 2 {
 		t.Fatalf("configured risk lost: %+v", report)
 	}
-	if got := Evaluate(before, after, Config{}); got.Risk != Unknown || got.PDGRisk != Unknown {
+	if got := Evaluate(before, after, Config{}); got.Risk != Unrated || got.PDGRisk != Unrated {
 		t.Fatalf("unconfigured changes were rated: %+v", got)
 	}
 	markdown := Markdown(report)
@@ -27,7 +27,7 @@ func TestUnrepresentedSourceAndAmbiguousGraphsStayUnknown(t *testing.T) {
 	before := Snapshot{Functions: []Function{{Name: "p.F", Body: "before", Graph: Graph{Shape: "same"}}}}
 	after := Snapshot{Functions: []Function{{Name: "p.F", Body: "after", Graph: Graph{Shape: "same", Ambiguous: true}}}}
 	report := Evaluate(before, after, Config{PDGChange: Low})
-	if report.PDGRisk != Unknown || report.Risk != Unknown || strings.Contains(Markdown(report), "```mermaid") {
+	if report.PDGRisk != Unknown || report.Risk != Unknown || strings.Contains(Markdown(report), "```mermaid") || !strings.Contains(Markdown(report), "**PDG changes:** partial") {
 		t.Fatalf("incomplete comparison was treated as proof: %+v", report)
 	}
 }
@@ -59,6 +59,7 @@ func TestRiskConfigRejectsInvalidRules(t *testing.T) {
 	for _, config := range []Config{
 		{PDGChange: "typo"},
 		{DependencyChange: Unknown},
+		{PDGChange: Unrated},
 		{Calls: []CallRule{{Callee: "", Level: High}}},
 		{Calls: []CallRule{{Callee: "os.WriteFile"}}},
 		{Calls: []CallRule{{Callee: "os.WriteFile", Level: High}, {Callee: "os.WriteFile", Level: Low}}},
@@ -69,6 +70,59 @@ func TestRiskConfigRejectsInvalidRules(t *testing.T) {
 	}
 	if err := (Config{}).Validate(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestStaticRatingDoesNotInventUncollectedChecks(t *testing.T) {
+	before := Snapshot{Functions: []Function{{Name: "p.F", Body: "old", Graph: Graph{Shape: "old"}}}}
+	after := Snapshot{Functions: []Function{{Name: "p.F", Body: "new", Graph: Graph{Shape: "new", Ambiguous: true}}}}
+	report := Evaluate(before, after, Config{PDGChange: Medium})
+	if report.Risk != Medium || report.PDGRisk != Medium {
+		t.Fatalf("uncollected checks or diagram limits replaced the measured static rating: %+v", report)
+	}
+	markdown := Markdown(report)
+	for _, placeholder := range []string{"**Compatibility:**", "**Checks:**", "**Coverage:**"} {
+		if strings.Contains(markdown, placeholder) {
+			t.Fatalf("unimplemented category shown as a verdict: %s", markdown)
+		}
+	}
+	for _, evidence := range []string{"**PDG changes:** changed", "Affected functions: 1", "diagrams omitted", "Not assessed: API/CLI compatibility, check results, runtime coverage."} {
+		if !strings.Contains(markdown, evidence) {
+			t.Errorf("missing %q in %s", evidence, markdown)
+		}
+	}
+}
+
+func TestDependencyFactsDoNotDependOnSeverityPolicy(t *testing.T) {
+	base := Snapshot{Dependencies: []string{".:import:pkg -> old", ".:module:old"}}
+	head := Snapshot{Dependencies: []string{".:import:pkg -> new", ".:module:new"}}
+	report := Evaluate(base, head, Config{})
+	if report.Risk != Unrated || report.DependencyRisk != Unrated || !report.DependenciesChanged {
+		t.Fatalf("missing policy hid measured changes: %+v", report)
+	}
+	if len(report.DependenciesAdded) != 2 || len(report.DependenciesRemoved) != 2 {
+		t.Fatalf("dependency deltas missing: %+v", report)
+	}
+	markdown := Markdown(report)
+	if !strings.Contains(markdown, "**Dependencies:** changed") || !strings.Contains(markdown, "Import edges +1/−1; module records +1/−1.") {
+		t.Fatalf("dependency facts missing: %s", markdown)
+	}
+	head.DependencyError = "enumeration unavailable"
+	report = Evaluate(base, head, Config{DependencyChange: High})
+	if len(report.DependenciesAdded)+len(report.DependenciesRemoved) != 0 || report.Risk != Unknown || !strings.Contains(Markdown(report), "**Dependencies:** unavailable") {
+		t.Fatalf("failed enumeration invented a delta or verdict: %+v", report)
+	}
+}
+
+func TestUnresolvedTargetsRemainVisibleWithUnratedPolicy(t *testing.T) {
+	head := Snapshot{Functions: []Function{{Name: "p.F", Body: "new", Graph: Graph{Shape: "new", Nodes: []Node{{Key: "call", UnresolvedCall: true}}}}}}
+	report := Evaluate(Snapshot{}, head, Config{})
+	if report.Risk != Unrated || report.PDGRisk != Unknown {
+		t.Fatalf("missing policy and analysis gap were conflated: %+v", report)
+	}
+	markdown := Markdown(report)
+	if !strings.Contains(markdown, "**PDG changes:** changed") || !strings.Contains(markdown, "functions with unresolved call targets: 1") {
+		t.Fatalf("real analysis gap hidden: %s", markdown)
 	}
 }
 

@@ -188,12 +188,18 @@ remain unknown. Changed tests and nested
 module source are explicitly outside the PDG comparison. Dependency collection
 includes nested project modules and excludes `testdata` and `vendor` fixtures.
 
-Compatibility, CI results and runtime test coverage are currently **unknown**;
-the command does not collect them. Without a measured high-risk reason, the
-overall result therefore remains unknown. A high-risk reason can coexist with
-unavailable evidence. This is a report, not a merge authorization or a proof of
-behavior preservation. Exit 0 means the report was generated, including high
-and unknown results; exit 2 means an operational, configuration or analysis error.
+Change status is separate from severity: measured PDG and dependency changes
+remain visible when no severity policy is configured. `unrated` means policy
+does not assign a severity; `unknown` means static analysis has a real gap.
+Ambiguous operation matching omits a diagram without erasing a known change.
+The JSON retains added and removed dependency records as well as PDG deltas.
+
+The rating covers compared static evidence. API/CLI compatibility, check results
+and runtime test coverage are not collected; one scope note lists them. Missing
+collectors do not produce placeholder verdicts or force the static rating to
+unknown. This report does not authorize a merge or prove behavior preservation.
+Exit 0 means the report was generated, including high, unknown and unrated
+results; exit 2 means an operational, configuration or analysis error.
 See [the comparison scope](docs/change-risk.md) for diagram limits and evidence.
 
 ## Find patterns and apply fixes
