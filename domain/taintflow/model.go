@@ -6,6 +6,7 @@ import (
 	"github.com/rstyled/gstyle/domain/callflow"
 	"github.com/rstyled/gstyle/domain/pdg"
 	"maps"
+	"reflect"
 )
 
 type Site struct {
@@ -55,6 +56,11 @@ type cell struct {
 	Object object
 	Fields string
 }
+
+type setKey interface {
+	string | atom | object
+}
+
 type value struct {
 	Functions map[string]bool
 	Opaque    bool
@@ -119,9 +125,15 @@ func cloneState(old state) state {
 	return result
 }
 
-func setContains[K comparable](to, from map[K]bool) bool {
+func setContains[K setKey](to, from map[K]bool) bool {
+	if len(from) == 0 {
+		return true
+	}
 	if len(from) > len(to) {
 		return false
+	}
+	if reflect.ValueOf(to).UnsafePointer() == reflect.ValueOf(from).UnsafePointer() {
+		return true
 	}
 	for item := range from {
 		if !to[item] {
@@ -134,13 +146,23 @@ func valueContains(to, from value) bool {
 	return containsCallable(to, from) && setContains(to.Data, from.Data) && setContains(to.Objects, from.Objects)
 }
 func valueEqual(left, right value) bool {
-	return left.Nil == right.Nil && left.Opaque == right.Opaque && maps.Equal(left.Functions, right.Functions) && maps.Equal(left.Data, right.Data) && maps.Equal(left.Objects, right.Objects)
+	return left.Nil == right.Nil && left.Opaque == right.Opaque && setsEqual(left.Functions, right.Functions) && setsEqual(left.Data, right.Data) && setsEqual(left.Objects, right.Objects)
 }
 func stateEqual(left, right state) bool {
-	return maps.Equal(left.Repeated, right.Repeated) && maps.EqualFunc(left.Bindings, right.Bindings, valueEqual) && maps.EqualFunc(left.Memory, right.Memory, valueEqual) && maps.EqualFunc(left.Nodes, right.Nodes, valueEqual)
+	return setsEqual(left.Repeated, right.Repeated) && maps.EqualFunc(left.Bindings, right.Bindings, valueEqual) && maps.EqualFunc(left.Memory, right.Memory, valueEqual) && maps.EqualFunc(left.Nodes, right.Nodes, valueEqual)
 }
 func summaryEqual(left, right summary) bool {
-	return maps.Equal(left.Repeated, right.Repeated) && maps.EqualFunc(left.Results, right.Results, valueEqual) && maps.EqualFunc(left.Writes, right.Writes, valueEqual) && maps.EqualFunc(left.Sinks, right.Sinks, maps.Equal[dependencies, dependencies])
+	return setsEqual(left.Repeated, right.Repeated) && maps.EqualFunc(left.Results, right.Results, valueEqual) && maps.EqualFunc(left.Writes, right.Writes, valueEqual) && maps.EqualFunc(left.Sinks, right.Sinks, setsEqual[dependencies, atom])
+}
+
+func setsEqual[M ~map[K]bool, K setKey](left, right M) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	if len(left) == 0 || reflect.ValueOf(left).UnsafePointer() == reflect.ValueOf(right).UnsafePointer() {
+		return true
+	}
+	return maps.Equal(left, right)
 }
 
 func containsCallable(to, from value) bool {
