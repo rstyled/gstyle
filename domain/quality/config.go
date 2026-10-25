@@ -187,6 +187,7 @@ func defaultPrefixes() []Prefix {
 // stdlib table, unknown means "a call gstyle cannot see into".
 func thirdPartyPrefixes() []Prefix {
 	return []Prefix{
+		{Path: "charm.land/bubbletea/v2.NewView", Kind: None, exact: true},
 		{Path: "golang.org/x/tools/go/packages.Error.Error", Kind: None, exact: true},
 		{Path: "golang.org/x/tools/go/ast/astutil.Cursor.Node", Kind: None, exact: true},
 		{Path: "golang.org/x/tools/go/cfg.Block.Return", Kind: None, exact: true},
