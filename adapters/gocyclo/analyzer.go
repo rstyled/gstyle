@@ -248,6 +248,7 @@ func summarizeFile(path string, functions []domain.Function) domain.File {
 }
 
 func cognitiveStatsByOffset(file *ast.File, fileSet *token.FileSet) map[int]cognit.Stat {
+	normalizeMethodIdentities(file)
 	result := map[int]cognit.Stat{}
 	for _, stat := range cognit.ComplexityStatsWithDiagnostic(file, fileSet, nil, true) {
 		result[stat.Pos.Offset] = stat
