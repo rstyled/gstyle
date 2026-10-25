@@ -317,8 +317,10 @@ func (x *extractor) localReceiverField(value *ast.SelectorExpr) bool {
 	return x.closedReceiver && ok && x.pkg.TypesInfo.ObjectOf(id) == x.receiver
 }
 
-// This proves only the selected container's backing storage, not its elements.
-func (x *extractor) localReceiverStorage(value *ast.SelectorExpr) bool {
+// The package proof checks every construction and use of a closed type's field,
+// including local instances outside methods. It owns only the selected backing
+// storage, never referenced elements or other fields on the same root.
+func (x *extractor) closedFieldStorage(value *ast.SelectorExpr) bool {
 	selection := x.pkg.TypesInfo.Selections[value]
-	return x.localReceiverField(value) && selection != nil && len(selection.Index()) == 1 && x.receiverFields[selection.Obj()]
+	return selection != nil && len(selection.Index()) == 1 && x.receiverFields[selection.Obj()]
 }
