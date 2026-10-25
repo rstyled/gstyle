@@ -145,7 +145,7 @@ func prefixKind(normalizedCallee string, prefixes []Prefix) (Kind, bool) {
 func selectedPrefix(normalizedCallee string, prefixes []Prefix) (Prefix, bool) {
 	best, result := -1, Prefix{Kind: UnknownEffect}
 	for _, prefix := range prefixes {
-		if len(prefix.Path) >= best && strings.HasPrefix(normalizedCallee, prefix.Path) {
+		if len(prefix.Path) >= best && strings.HasPrefix(normalizedCallee, prefix.Path) && (!prefix.exact || normalizedCallee == prefix.Path) {
 			best, result = len(prefix.Path), prefix
 		}
 	}

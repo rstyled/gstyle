@@ -137,6 +137,7 @@ func (w Weights) environmentWeight(kind Kind) int64 {
 type Prefix struct {
 	// plainJSON refines only the built-in callback uncertainty.
 	plainJSON       bool
+	exact           bool
 	memoryWriter    bool
 	localMemoryRead bool
 	Path            string `toml:"path"`
@@ -186,6 +187,7 @@ func defaultPrefixes() []Prefix {
 // stdlib table, unknown means "a call gstyle cannot see into".
 func thirdPartyPrefixes() []Prefix {
 	return []Prefix{
+		{Path: "golang.org/x/tools/go/cfg.Block.Return", Kind: None, exact: true},
 		{Path: "charm.land/lipgloss", Kind: None},
 		{Path: "github.com/charmbracelet/lipgloss", Kind: None},
 		{Path: "github.com/charmbracelet/x/ansi.", Kind: None},
