@@ -10,7 +10,7 @@ import (
 
 func Markdown(report Report) string {
 	lines := []string{
-		"**Merge risk: " + string(report.Risk) + "**", ratingSummary(report.Risk), "",
+		"**Merge risk: " + string(report.Risk) + "**", ratingSummary(report), "",
 		"**Code impact:** " + pdgVerdict(report) + "  ", pdgSummary(report), "",
 		"**Dependencies:** " + dependencyVerdict(report) + "  ", dependencySummary(report), "",
 		"**Analysis limits:** " + analysisSummary(report), "",
@@ -21,16 +21,6 @@ func Markdown(report Report) string {
 		lines = slices.Insert(lines, 9, "**API diff:** "+apiVerdict(report.GoAPI)+"  ", apiSummary(report.GoAPI), "")
 	}
 	return strings.Join(lines, "\n") + "\n" + graphSection(prioritizedChanges(report))
-}
-
-func ratingSummary(level Level) string {
-	if level == Unrated {
-		return "Base policy does not assign severity to all measured changes."
-	}
-	if level == Unknown {
-		return "Static analysis has gaps; review the limits below."
-	}
-	return "Severity reflects configured static change rules; this is not merge approval."
 }
 
 func prioritizedChanges(report Report) []Delta {

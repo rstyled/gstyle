@@ -41,6 +41,8 @@ The rendered report uses Markdown emphasis for verdicts. This example establishe
 
 Source positions, graph-local references and other metadata must not be mistaken for semantic changes. Rule severities come from the base revision's policy. Missing severities remain unrated. Unavailable static evidence stays unknown; a measured high-risk reason takes precedence over unknown evidence. With no risk rules at all, the overall rating is unrated and analysis limits remain visible separately.
 
+An unrated summary names the policy file and distinguishes a base commit with no risk rules from specific missing rules for code impact, dependency changes or breaking API changes. JSON `policy_configured` preserves that distinction.
+
 ## First implementation
 
 `gstyle risk --base REF --head REF` writes Markdown; `--format json` writes schema version 1 evidence. Both inputs resolve to full commit SHAs. The command creates and removes detached temporary worktrees, reads the base's tracked policy, and rejects symlinked policy paths or checkouts modified during analysis. Source, configuration and dependency errors never become a passing report.

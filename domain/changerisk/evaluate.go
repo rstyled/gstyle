@@ -13,7 +13,7 @@ func Evaluate(base, head Snapshot, config Config, api APIReport) Report {
 	dependency := compareDependencies(base, head, config)
 	apiFindings := apiReasons(api, config)
 	apiRisk := reasonsLevel(apiFindings)
-	return Report{SchemaVersion: 1, Base: base.Commit, Head: head.Commit, PDGRisk: pdgRisk,
+	return Report{SchemaVersion: 1, Base: base.Commit, Head: head.Commit, PolicyConfigured: config.enabled(), PDGRisk: pdgRisk,
 		APIRisk: apiRisk, GoAPI: api,
 		DependencyRisk: dependency.risk, DependenciesChanged: dependency.changed,
 		DependenciesAdded: dependency.added, DependenciesRemoved: dependency.removed,
