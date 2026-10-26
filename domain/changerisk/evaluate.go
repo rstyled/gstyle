@@ -160,7 +160,7 @@ func callLine(nodes []Node, callee string) int {
 }
 
 func analysisReasons(base, head Snapshot) []Reason {
-	reasons := declarationReasons(base, head)
+	reasons := slices.Concat(declarationReasons(base, head), privateDeclarationReasons(base, head), auxiliaryReasons(base, head))
 	for _, snapshot := range []Snapshot{base, head} {
 		if snapshot.AnalysisError != "" {
 			reasons = append(reasons, Reason{Rule: "analysis_unavailable", Level: Unknown, Message: snapshot.AnalysisError})

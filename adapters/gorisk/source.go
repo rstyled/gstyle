@@ -35,8 +35,9 @@ func ExtractSource(ctx context.Context, root string, paths []string) (changerisk
 	if err != nil {
 		return changerisk.Snapshot{}, err
 	}
-	declarations, message, err := sourceDeclarations(ext.Sources, paths)
-	return changerisk.Snapshot{Functions: functions, Declarations: declarations, AnalysisError: message}, err
+	result, err := sourceDeclarations(ext.Sources, paths, functions)
+	result.Functions = functions
+	return result, err
 }
 
 func projectExtraction(ext *gopatterns.Extraction, paths []string) ([]changerisk.Function, error) {
