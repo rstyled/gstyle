@@ -2,6 +2,8 @@ package changerisk
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -50,5 +52,25 @@ func TestModuleRecordsKeepReplacementsAndDiscardCheckoutPaths(t *testing.T) {
 		if _, err := moduleRecords([]byte(input)); err == nil {
 			t.Errorf("incomplete dependency output accepted: %s", input)
 		}
+	}
+}
+
+func TestExistingReflectImportInAnotherPackageIsNotANewDependency(t *testing.T) {
+	root := repository(t)
+	if err := os.Mkdir(filepath.Join(root, "other"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	write(t, root, "gstyle.toml", "[risk]\npdg_change='medium'\npdg_low_risk_max_functions=3\ndependency_change='high'\napi_breaking='high'\n")
+	write(t, root, "other/source.go", "package other\nimport \"reflect\"\nfunc Type(v any) reflect.Type { return reflect.TypeOf(v) }\n")
+	write(t, root, "source.go", "package sample\nfunc Count(n int) int { return n+1 }\n")
+	base := commit(t, root)
+	write(t, root, "source.go", "package sample\nimport \"reflect\"\nfunc Count(n int) int { _=reflect.TypeOf(n); return n+1 }\n")
+	head := commit(t, root)
+	report, err := compareRevisions(context.Background(), root, options{base: base, head: head, config: "gstyle.toml"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.DependenciesChanged || report.DependencyRisk != "low" || len(report.DependenciesAdded)+len(report.DependenciesRemoved) != 0 {
+		t.Fatalf("existing import usage became a new dependency: %+v", report)
 	}
 }

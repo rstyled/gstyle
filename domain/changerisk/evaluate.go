@@ -192,10 +192,10 @@ func dependencyReason(base, head Snapshot, config Config) (*Reason, bool) {
 			return &Reason{Rule: "dependencies_unavailable", Level: Unknown, Message: snapshot.DependencyError}, false
 		}
 	}
-	if slices.Equal(base.Dependencies, head.Dependencies) {
+	if slices.Equal(dependencyInventory(base.Dependencies), dependencyInventory(head.Dependencies)) {
 		return nil, false
 	}
-	message := "module requirements, replacements or package imports changed"
+	message := "module requirements, replacements or imported package inventory changed"
 	if config.DependencyChange == "" {
 		message += "; no severity is configured"
 	}

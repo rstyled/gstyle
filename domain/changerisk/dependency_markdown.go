@@ -77,14 +77,17 @@ func dependencyImportLines(report Report) []string {
 func importChangeLines(records []string, action string) []string {
 	var lines []string
 	for _, record := range records {
-		_, value, found := strings.Cut(record, ":import:")
+		scope, value, found := strings.Cut(record, ":import:")
 		if !found {
 			continue
 		}
-		owner, imported, found := strings.Cut(value, " -> ")
+		_, imported, found := strings.Cut(value, " -> ")
 		if found {
-			owner, _, _ = strings.Cut(owner, " [")
-			lines = append(lines, fmt.Sprintf("- %s package import `%s` in `%s`.", action, text(imported), text(owner)))
+			location := ""
+			if scope != "." {
+				location = " in module `" + text(scope) + "`"
+			}
+			lines = append(lines, fmt.Sprintf("- %s package import `%s`%s.", action, text(imported), location))
 		}
 	}
 	slices.Sort(lines)
