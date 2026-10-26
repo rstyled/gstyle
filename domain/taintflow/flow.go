@@ -93,6 +93,9 @@ func joinState(left, right state) state {
 		result.Nodes[key] = joinValue(result.Nodes[key], item)
 	}
 	for key, item := range left.Memory {
+		if _, found := right.Memory[key]; found {
+			continue
+		}
 		result.Memory[key] = joinValue(item, readCell(right, key))
 	}
 	for key, item := range right.Memory {
