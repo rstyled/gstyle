@@ -16,10 +16,11 @@ type CallRule struct {
 }
 
 type Config struct {
-	PDGChange        Level      `toml:"pdg_change"`
-	DependencyChange Level      `toml:"dependency_change"`
-	APIBreaking      Level      `toml:"api_breaking"`
-	Calls            []CallRule `toml:"calls"`
+	PDGChange              Level      `toml:"pdg_change"`
+	PDGLowRiskMaxFunctions int        `toml:"pdg_low_risk_max_functions"`
+	DependencyChange       Level      `toml:"dependency_change"`
+	APIBreaking            Level      `toml:"api_breaking"`
+	Calls                  []CallRule `toml:"calls"`
 }
 
 type Node struct {
