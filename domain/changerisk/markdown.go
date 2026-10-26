@@ -9,11 +9,14 @@ import (
 )
 
 func Markdown(report Report) string {
-	dependencies := append([]string{"**Dependencies:** " + dependencyVerdict(report) + "  ", dependencySummary(report)}, dependencyLines(report)...)
+	heading := "**Merge risk: " + string(report.Risk) + "** " + ratingIcon(report.Risk)
+	if summary := ratingSummary(report); summary != "" {
+		heading += "\n" + summary
+	}
 	sections := []string{
-		"**Merge risk: " + string(report.Risk) + "** " + ratingIcon(report.Risk) + "\n" + ratingSummary(report),
+		heading,
 		"**Code impact:** " + pdgVerdict(report) + " · " + pdgSummary(report),
-		strings.Join(dependencies, "\n"), apiSection(report),
+		dependencySection(report), apiSection(report),
 	}
 	return strings.Join(sections, "\n\n") + "\n\n" + graphSection(prioritizedChanges(report))
 }
@@ -91,7 +94,7 @@ func dependencySummary(report Report) string {
 		}
 	}
 	if !report.DependenciesChanged {
-		return "No module-requirement, replacement or package-import changes."
+		return ""
 	}
 	return moduleSummary(moduleChanges(report))
 }

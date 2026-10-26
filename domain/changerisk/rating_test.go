@@ -5,6 +5,16 @@ import (
 	"testing"
 )
 
+func TestRatedMarkdownStartsWithEvidence(t *testing.T) {
+	for _, risk := range []Level{Low, Medium, High, Unknown} {
+		report := Report{Risk: risk}
+		want := "**Merge risk: " + string(risk) + "** " + ratingIcon(risk) + "\n\n**Code impact:**"
+		if got := Markdown(report); !strings.HasPrefix(got, want) {
+			t.Errorf("%s report adds a preamble before the evidence: %s", risk, got)
+		}
+	}
+}
+
 func TestUnratedSummaryExplainsMissingBaseRules(t *testing.T) {
 	report := Evaluate(Snapshot{}, Snapshot{}, Config{}, APIReport{})
 	if report.PolicyConfigured {

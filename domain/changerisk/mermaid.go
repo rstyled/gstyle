@@ -25,7 +25,7 @@ func graphSection(changes []Delta) string {
 		return ""
 	}
 	return "\n<details>\n<summary>Graph changes</summary>\n\n" +
-		fmt.Sprintf("Showing %d of %d changed functions. `+` added; `−` removed. Context is bounded.\n\n", len(diagrams), len(changes)) +
+		fmt.Sprintf("Showing %d of %d changed functions. `+` added; `−` removed. At most %d nodes and %d changed edges per function.\n\n", len(diagrams), len(changes), maxDiagramNodes, maxDiagramEdges) +
 		strings.Join(diagrams, "\n") + "\n</details>\n"
 }
 

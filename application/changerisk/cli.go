@@ -217,7 +217,7 @@ func populateSnapshot(ctx context.Context, root string, changed []string) (repos
 	items, dependencyErr := dependencies(ctx, root)
 	dependencyMessage := ""
 	if dependencyErr != nil {
-		dependencyMessage = "Go dependency enumeration failed; no dependency verdict is available"
+		dependencyMessage = "Go dependency enumeration failed: " + strings.ReplaceAll(dependencyErr.Error(), root, ".")
 	}
 	source.AnalysisError = strings.TrimSpace(strings.Join([]string{source.AnalysisError, message, embeddedScope(changed, items), embeddedDocumentationScope(ctx, root, changed)}, "\n"))
 	source.Dependencies, source.DependencyError = items, dependencyMessage

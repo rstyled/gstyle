@@ -46,7 +46,7 @@ func apiSummary(api APIReport) string {
 		return text(strings.Join(api.Limits, "; ")) + "."
 	}
 	if len(api.Changes) == 0 {
-		return fmt.Sprintf("No exported API changes in %d root-module packages (current build).", api.PackagesAfter)
+		return fmt.Sprintf("%d root-module packages (current build).", api.PackagesAfter)
 	}
 	return fmt.Sprintf("Exported API changes: %d (root module, current build).", len(api.Changes))
 }

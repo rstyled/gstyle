@@ -6,6 +6,7 @@ import (
 	"go/types"
 	"maps"
 	"slices"
+	"strings"
 
 	"github.com/rstyled/gstyle/adapters/gopatterns"
 	"github.com/rstyled/gstyle/domain/changerisk"
@@ -22,7 +23,7 @@ type API struct {
 func ExtractAPI(ctx context.Context, root string) API {
 	packages, err := gopatterns.LoadPackageTypes(ctx, root)
 	if err != nil {
-		return API{Error: "Go API type loading failed for the root module"}
+		return API{Error: "Go API type loading failed: " + strings.ReplaceAll(err.Error(), root, ".")}
 	}
 	result := map[string]*types.Package{}
 	sources := map[string]gopatterns.PackageTypes{}

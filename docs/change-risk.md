@@ -24,10 +24,9 @@ Code impact: changed 👀
 New filesystem write: os.WriteFile in store.go:42.
 
 Dependencies: unchanged ✅
-No module or package-import changes.
 
 API diff: unchanged ✅
-No exported API changes in the root module (current build).
+Root module (current build).
 ```
 
 The rendered report uses Markdown emphasis for verdicts. This example establishes the output shape; its facts are illustrative. It does not establish that every PDG change is high risk.
@@ -88,7 +87,24 @@ documents are program resources and require review across build variants.
 The `risk-gate` job builds the analyzer from the PR base commit, fetches the exact
 head commit and runs `risk --base BASE --head HEAD --check`. It uses a read-only
 token and never falls back to a candidate-built analyzer. The report appears in
-the Actions job summary. Every PR update reruns the gate.
+the Actions job summary and a `merge-risk-report` artifact. Every PR update
+reruns the gate.
+
+After `Merge risk` completes, `Merge risk description` appends or replaces the
+section between `<!-- gstyle:merge-risk:start -->` and
+`<!-- gstyle:merge-risk:end -->`. It preserves the author's text and includes
+the compared commits and run link. Failed gates still publish their report;
+analysis failures publish an unavailable result.
+
+The publisher runs from the default branch with `pull-requests: write` and
+`actions: read`. It checks the source run's PR association and current base/head
+before writing. It reads the artifact as data and does not check out code.
+The built-in `GITHUB_TOKEN` prevents description edits from starting another
+run. A concurrent author edit between the final GET and PATCH can still race.
+
+Both workflows must be merged before automatic updates start. Source runs must
+include the artifact upload steps; older runs cannot publish. Reports that
+exceed the description limit remain available in the Actions summary.
 
 Protect the default branch with two rulesets. Required CI has no bypass and
 requires the existing test, guard, quality and verification checks against an

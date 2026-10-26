@@ -11,6 +11,16 @@ type moduleChange struct {
 	name, before, after string
 }
 
+func dependencySection(report Report) string {
+	heading := "**Dependencies:** " + dependencyVerdict(report)
+	lines := append([]string{dependencySummary(report)}, dependencyLines(report)...)
+	details := strings.Join(lines, "\n")
+	if details == "" {
+		return heading
+	}
+	return heading + "  \n" + details
+}
+
 func moduleVersions(records []string) map[string]string {
 	result := map[string]string{}
 	for _, record := range records {
@@ -62,7 +72,7 @@ func dependencyLines(report Report) []string {
 
 func moduleSummary(changes []moduleChange) string {
 	if len(changes) == 0 {
-		return "Package imports or module requirements changed."
+		return "Selected module versions unchanged."
 	}
 	var updated, added, removed int
 	for _, change := range changes {
