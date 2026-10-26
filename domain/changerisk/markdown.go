@@ -27,10 +27,14 @@ func apiSection(report Report) string {
 	}
 	heading := "**API diff:** " + apiVerdict(report.GoAPI)
 	changes := orderedAPIChanges(report.GoAPI.Changes)
-	if len(changes) == 0 {
-		return heading + "\n" + apiSummary(report.GoAPI)
+	details := apiSummary(report.GoAPI)
+	if len(changes) != 0 {
+		details = strings.Join(apiChangeLines(report, changes), "\n")
 	}
-	return heading + "\n" + strings.Join(apiChangeLines(report, changes), "\n")
+	if details == "" {
+		return heading
+	}
+	return heading + "\n" + details
 }
 
 func prioritizedChanges(report Report) []Delta {
