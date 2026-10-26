@@ -6,24 +6,22 @@ import (
 	"testing"
 )
 
-func TestAdditiveTestsDoNotHideExistingChanges(t *testing.T) {
-	before := TestFile{Package: "sample", Imports: map[string]bool{"testing": true}, Declarations: map[string]string{"TestExisting": "before"}}
+func TestPreservedDeclarationsCoverHelperAndTestChanges(t *testing.T) {
 	for _, test := range []struct {
-		name  string
-		after map[string]TestFile
-		want  Level
+		name          string
+		before, after map[string]map[string]string
+		want          Level
 	}{
-		{"new file", map[string]TestFile{"old_test.go": before, "new_test.go": before}, Low},
-		{"unchanged", map[string]TestFile{"old_test.go": before}, Low},
-		{"removed", nil, Unknown},
-		{"changed test", map[string]TestFile{"old_test.go": {Package: "sample", Imports: before.Imports, Declarations: map[string]string{"TestExisting": "after"}}}, Unknown},
-		{"removed test", map[string]TestFile{"old_test.go": {Package: "sample", Imports: before.Imports}}, Unknown},
-		{"changed package", map[string]TestFile{"old_test.go": {Package: "sample_test", Imports: before.Imports, Declarations: before.Declarations}}, Unknown},
-		{"removed import", map[string]TestFile{"old_test.go": {Package: "sample", Declarations: before.Declarations}}, Unknown},
-		{"added test", map[string]TestFile{"old_test.go": {Package: "sample", Imports: before.Imports, Declarations: map[string]string{"TestExisting": "before", "TestNew": "new"}}}, Low},
+		{"new helper", map[string]map[string]string{"source.go": {"helper": "same"}}, map[string]map[string]string{"source.go": {"helper": "same", "extra": "new"}}, Low},
+		{"changed signature", map[string]map[string]string{"source.go": {"helper": "old"}}, map[string]map[string]string{"source.go": {"helper": "new"}}, Unknown},
+		{"removed helper", map[string]map[string]string{"source.go": {"helper": "old"}}, nil, Unknown},
+		{"new test file", nil, map[string]map[string]string{"new_test.go": {"": "source"}}, Low},
+		{"unchanged tests", map[string]map[string]string{"old_test.go": {"": "same"}}, map[string]map[string]string{"old_test.go": {"": "same"}}, Low},
+		{"changed tests", map[string]map[string]string{"old_test.go": {"": "old"}}, map[string]map[string]string{"old_test.go": {"": "new"}}, Unknown},
+		{"removed tests", map[string]map[string]string{"old_test.go": {"": "old"}}, nil, Unknown},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			report := Evaluate(Snapshot{TestFiles: map[string]TestFile{"old_test.go": before}}, Snapshot{TestFiles: test.after}, Config{PDGChange: Low}, APIReport{})
+			report := Evaluate(Snapshot{PreservedDeclarations: test.before}, Snapshot{PreservedDeclarations: test.after}, Config{PDGChange: Low}, APIReport{})
 			if report.Risk != test.want {
 				t.Fatalf("risk=%s want=%s: %+v", report.Risk, test.want, report.Reasons)
 			}

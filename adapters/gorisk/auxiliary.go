@@ -2,9 +2,11 @@ package gorisk
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"io/fs"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
@@ -13,36 +15,48 @@ import (
 	"github.com/rstyled/gstyle/domain/changerisk"
 )
 
-type Auxiliary struct {
-	Uncovered []string
-	Tests     map[string]changerisk.TestFile
-	Baseline  *changerisk.QualityBaseline
+func ExtractRiskSource(ctx context.Context, root string, changed []string) (changerisk.Snapshot, error) {
+	auxiliary, uncovered := extractAuxiliary(root, changed)
+	paths, message, err := ExistingPaths(root, uncovered)
+	if err != nil {
+		return changerisk.Snapshot{}, err
+	}
+	source, err := ExtractSource(ctx, root, paths)
+	if err != nil {
+		return source, err
+	}
+	maps.Copy(auxiliary.PreservedDeclarations, source.PreservedDeclarations)
+	source.PreservedDeclarations = auxiliary.PreservedDeclarations
+	source.QualityBaseline = auxiliary.QualityBaseline
+	source.AnalysisError = strings.TrimSpace(source.AnalysisError + "\n" + message)
+	return source, nil
 }
 
-func ExtractAuxiliary(root string, changed []string) Auxiliary {
-	result := Auxiliary{Tests: map[string]changerisk.TestFile{}}
+func extractAuxiliary(root string, changed []string) (changerisk.Snapshot, []string) {
+	result := changerisk.Snapshot{PreservedDeclarations: map[string]map[string]string{}}
+	var uncovered []string
 	for _, path := range changed {
-		if !result.include(root, path) {
-			result.Uncovered = append(result.Uncovered, path)
+		if !includeAuxiliary(&result, root, path) {
+			uncovered = append(uncovered, path)
 		}
 	}
-	return result
+	return result, uncovered
 }
 
-func (result *Auxiliary) include(root, path string) bool {
+func includeAuxiliary(result *changerisk.Snapshot, root, path string) bool {
 	content, ok := readAuxiliary(root, path)
 	if !ok {
 		return false
 	}
 	if path == "quality-baseline.json" {
-		result.Baseline = qualityBaseline(content)
-		return result.Baseline != nil
+		result.QualityBaseline = qualityBaseline(content)
+		return result.QualityBaseline != nil
 	}
-	file, ok := testFile(path, content)
-	if ok {
-		result.Tests[path] = file
+	if !testFile(path, content) {
+		return false
 	}
-	return ok
+	result.PreservedDeclarations[path] = map[string]string{"": string(content)}
+	return true
 }
 
 func readAuxiliary(root, path string) ([]byte, bool) {
@@ -51,9 +65,6 @@ func readAuxiliary(root, path string) ([]byte, bool) {
 	}
 	current, ok := auxiliaryPath(root, path)
 	if !ok {
-		return nil, false
-	}
-	if !regularAuxiliaryFile(current) {
 		return nil, false
 	}
 	content, err := os.ReadFile(current)
@@ -70,21 +81,18 @@ func auxiliaryCandidate(root, path string) bool {
 	return path == "quality-baseline.json" || strings.HasSuffix(path, "_test.go")
 }
 
-func regularAuxiliaryFile(path string) bool {
-	info, err := os.Lstat(path)
-	return err == nil && info.Mode().IsRegular() && info.Mode().Perm()&0111 == 0
-}
-
 func auxiliaryPath(root, path string) (string, bool) {
 	current := root
+	var info fs.FileInfo
+	var err error
 	for _, part := range strings.Split(path, "/") {
 		current = filepath.Join(current, part)
-		info, err := os.Lstat(current)
+		info, err = os.Lstat(current)
 		if err != nil || info.Mode()&os.ModeSymlink != 0 {
 			return "", false
 		}
 	}
-	return current, true
+	return current, info.Mode().IsRegular() && info.Mode().Perm()&0111 == 0
 }
 
 func qualityBaseline(content []byte) *changerisk.QualityBaseline {
@@ -104,10 +112,7 @@ func qualityBaseline(content []byte) *changerisk.QualityBaseline {
 }
 
 func validQualityBaseline(baseline changerisk.QualityBaseline) bool {
-	if baseline.Version != 1 || baseline.Functions <= 0 || baseline.Tolerance < 0 {
-		return false
-	}
-	if len(baseline.Rules) == 0 {
+	if baseline.Version != 1 || baseline.Functions <= 0 || baseline.Tolerance < 0 || len(baseline.Rules) == 0 {
 		return false
 	}
 	return validBaselineRules(baseline)

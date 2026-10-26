@@ -31,7 +31,7 @@ func TestAuxiliaryTestCoverageIsAdditiveAndHasNoStartupHooks(t *testing.T) {
 		{"duplicate", "package sample; func helper() {}; func helper() {}", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			_, accepted := testFile("value_test.go", []byte(test.source))
+			accepted := testFile("value_test.go", []byte(test.source))
 			if accepted != test.accepted {
 				t.Fatalf("accepted=%v, want %v", accepted, test.accepted)
 			}
@@ -75,8 +75,8 @@ func TestAuxiliaryRejectsUnsafePathsAndModes(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			result := ExtractAuxiliary(root, []string{name})
-			if len(result.Tests) != 0 || len(result.Uncovered) != 1 {
+			result, uncovered := extractAuxiliary(root, []string{name})
+			if len(result.PreservedDeclarations) != 0 || len(uncovered) != 1 {
 				t.Fatalf("unsafe path covered: %+v", result)
 			}
 		})
@@ -114,17 +114,21 @@ func TestQualityBaselineCoverageValidatesSchemaAndRates(t *testing.T) {
 	}
 }
 
-func TestTestFingerprintsPreserveExampleOutputAndAssertions(t *testing.T) {
+func TestExistingTestFileEditsRequireReview(t *testing.T) {
 	const source = "package sample\nfunc ExampleValue() {\nprintln(1)\n// Output: 1\n}\n"
-	before, ok := testFile("value_test.go", []byte(source))
-	if !ok {
-		t.Fatal("example rejected")
-	}
-	after, ok := testFile("value_test.go", []byte(strings.Replace(source, "Output: 1", "Output: 2", 1)))
-	if !ok {
-		t.Fatal("example rejected")
-	}
-	if before.Declarations["ExampleValue"] == after.Declarations["ExampleValue"] {
-		t.Fatal("changed expected output lost")
+	root := t.TempDir()
+	coverageWrite(t, root, "value_test.go", source)
+	before, _ := extractAuxiliary(root, []string{"value_test.go"})
+	for _, after := range []string{
+		strings.Replace(source, "Output: 1", "Output: 2", 1),
+		strings.Replace(source, "println(1)", "println(2)", 1),
+		source + "func TestExtra() {}\n",
+	} {
+		coverageWrite(t, root, "value_test.go", after)
+		head, _ := extractAuxiliary(root, []string{"value_test.go"})
+		report := changerisk.Evaluate(before, head, changerisk.Config{PDGChange: changerisk.Low}, changerisk.APIReport{})
+		if report.Risk != changerisk.Unknown {
+			t.Fatal("existing test edit received a low rating")
+		}
 	}
 }

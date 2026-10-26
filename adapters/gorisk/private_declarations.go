@@ -2,42 +2,42 @@ package gorisk
 
 import (
 	"go/ast"
-	"go/printer"
 	"go/token"
-	"strings"
 
 	"github.com/rstyled/gstyle/domain/changerisk"
 )
 
-func separatePrivateDeclarations(fset *token.FileSet, file *ast.File, path string, functions map[declarationBody]string) (map[string]changerisk.PrivateDeclaration, error) {
-	result := map[string]changerisk.PrivateDeclaration{}
+type declarationBody struct{ path, body string }
+
+func separatePrivateDeclarations(fset *token.FileSet, file *ast.File, content []byte, functions map[declarationBody]string) (map[string]string, error) {
+	result := map[string]string{}
 	kept := make([]ast.Decl, 0, len(file.Decls))
 	for _, declaration := range file.Decls {
-		id, function := coveredPrivateDeclaration(fset, path, declaration, functions)
+		id, function := coveredPrivateDeclaration(fset, declaration, content, functions)
 		if function == nil {
 			kept = append(kept, declaration)
 			continue
 		}
-		fingerprint, err := privateSignature(fset, function)
+		fingerprint, err := tokens(sourceText(fset, content, function.Pos(), function.Body.Pos()))
 		if err != nil {
 			return nil, err
 		}
-		result[id] = changerisk.PrivateDeclaration{Path: path, Name: function.Name.Name, Signature: fingerprint}
+		result[id] = fingerprint
 	}
 	file.Decls = kept
 	return result, nil
 }
 
-func coveredPrivateDeclaration(fset *token.FileSet, path string, declaration ast.Decl, functions map[declarationBody]string) (string, *ast.FuncDecl) {
+func coveredPrivateDeclaration(fset *token.FileSet, declaration ast.Decl, content []byte, functions map[declarationBody]string) (string, *ast.FuncDecl) {
 	function, ok := declaration.(*ast.FuncDecl)
 	if !ok || !plainPrivateFunction(function) {
 		return "", nil
 	}
-	body, err := declarationTokens(fset, function)
+	body, err := tokens(sourceText(fset, content, function.Pos(), function.End()))
 	if err != nil {
 		return "", nil
 	}
-	id, exists := functions[declarationBody{path, body}]
+	id, exists := functions[declarationBody{fset.File(function.Pos()).Name(), body}]
 	if !exists {
 		return "", nil
 	}
@@ -51,15 +51,10 @@ func plainPrivateFunction(function *ast.FuncDecl) bool {
 	return function.Name.Name != "init" && function.Name.Name != "_"
 }
 
-func declarationTokens(fset *token.FileSet, declaration ast.Node) (string, error) {
-	var source strings.Builder
-	if err := printer.Fprint(&source, fset, declaration); err != nil {
-		return "", err
-	}
-	return tokens([]byte(source.String()))
+func sourceText(fset *token.FileSet, content []byte, start, end token.Pos) []byte {
+	file := fset.File(start)
+	return content[file.Offset(start):file.Offset(end)]
 }
-
-type declarationBody struct{ path, body string }
 
 func declarationIdentities(functions []changerisk.Function) map[declarationBody]string {
 	result := map[declarationBody]string{}
@@ -67,10 +62,4 @@ func declarationIdentities(functions []changerisk.Function) map[declarationBody]
 		result[declarationBody{function.Path, function.Body}] = function.ID
 	}
 	return result
-}
-
-func privateSignature(fset *token.FileSet, function *ast.FuncDecl) (string, error) {
-	signature := *function
-	signature.Body = nil
-	return declarationTokens(fset, &signature)
 }
