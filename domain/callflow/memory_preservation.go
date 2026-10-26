@@ -1,6 +1,27 @@
 package callflow
 
-import "github.com/rstyled/gstyle/domain/pdg"
+import (
+	"context"
+
+	"github.com/rstyled/gstyle/domain/pdg"
+)
+
+func MemoryPreservationWithQueries(prepared map[string]Queries) (map[string]bool, error) {
+	bodies, err := prepareExitBodies(context.Background(), prepared)
+	if err != nil {
+		return nil, err
+	}
+	summaries := ExitSummaries{}
+	for name, body := range bodies {
+		summaries[name] = ExitSummary{PreservesCallerMemory: memoryBodyKnown(body)}
+	}
+	solveMemoryPreservation(bodies, summaries)
+	result := make(map[string]bool, len(summaries))
+	for name, summary := range summaries {
+		result[name] = summary.PreservesCallerMemory
+	}
+	return result, nil
+}
 
 // Memory preservation is a greatest fixed point: a recursive component without
 // an external store preserves memory on every finite execution prefix.
