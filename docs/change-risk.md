@@ -24,10 +24,9 @@ Code impact: changed 👀
 New filesystem write: os.WriteFile in store.go:42.
 
 Dependencies: unchanged ✅
-No module or package-import changes.
 
 API diff: unchanged ✅
-No exported API changes in the root module (current build).
+Root module (current build).
 ```
 
 The rendered report uses Markdown emphasis for verdicts. This example establishes the output shape; its facts are illustrative. It does not establish that every PDG change is high risk.
@@ -88,7 +87,39 @@ documents are program resources and require review across build variants.
 The `risk-gate` job builds the analyzer from the PR base commit, fetches the exact
 head commit and runs `risk --base BASE --head HEAD --check`. It uses a read-only
 token and never falls back to a candidate-built analyzer. The report appears in
-the Actions job summary. Every PR update reruns the gate.
+the Actions job summary and a `merge-risk-report` artifact. Every PR update
+reruns the gate.
+
+PR description publishing is part of this setup. After the `Merge risk` workflow
+finishes, `Merge risk description` appends the report between
+`<!-- gstyle:merge-risk:start -->` and `<!-- gstyle:merge-risk:end -->` markers.
+Later runs replace that section and preserve the author's text outside it.
+The section includes the compared commits and an Actions run link. Reports
+still publish when the low-only gate requires human review. Analysis failures
+publish an unavailable result with the run link instead of retaining an old
+verdict for that comparison.
+
+The publisher runs from the default branch with `pull-requests: write`,
+`contents: read` and `actions: read`. It checks out its own trusted workflow
+commit, downloads the source run's artifact outside the checkout and reads it
+as data. It never builds or runs candidate code. It checks the source run's PR
+association and the PR's current base and head before updating the current
+description. Closed PRs and stale comparisons are skipped. Malformed markers
+fail without changing the body. If the full report exceeds the description
+limit, the section shows the verdict and a link to the full Actions report.
+GitHub has no conditional PR-body update: an author edit or push between the
+final read and update can still race with publishing.
+
+Use the built-in `GITHUB_TOKEN` for publishing. Description edits made by this
+token do not trigger another `pull_request: edited` run, so publishing does not
+loop. No personal token or extra secret is required. Run
+`bun test ./.github/scripts` to check the publisher; CI runs the same checks.
+
+Both workflows and the publisher script must reach the default branch before
+automatic description updates start. Existing PR branches need the artifact
+upload steps from `risk.yml`; update those branches and rerun their risk check
+to populate their descriptions. Publishing does not change the `risk-gate`
+result.
 
 Protect the default branch with two rulesets. Required CI has no bypass and
 requires the existing test, guard, quality and verification checks against an

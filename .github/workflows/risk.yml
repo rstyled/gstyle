@@ -19,6 +19,15 @@ jobs:
       run:
         shell: bash
     steps:
+      - name: Prepare the description report
+        run: |
+          mkdir -p "$RUNNER_TEMP/merge-risk-report"
+          jq '{number: .number, base: .pull_request.base.sha, head: .pull_request.head.sha}' \
+            "$GITHUB_EVENT_PATH" > "$RUNNER_TEMP/merge-risk-report/metadata.json"
+          printf '%s\n\n%s\n' '**Merge risk: unavailable ⚠️**' \
+            'See the failed step in the Actions run.' \
+            > "$RUNNER_TEMP/merge-risk-report/merge-risk.md"
+
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.base.sha }}
@@ -34,7 +43,7 @@ jobs:
         run: |
           go build -buildvcs=false -o "$RUNNER_TEMP/gstyle-risk" .
           if ! timeout 10s "$RUNNER_TEMP/gstyle-risk" help risk | grep -qE '(^|[[:space:]])--check([[:space:]]|$)'; then
-            echo '::error::The trusted base has no usable risk --check command. Operator review is required.'
+            echo '::error::The trusted base has no usable risk --check command.'
             exit 1
           fi
 
@@ -51,13 +60,26 @@ jobs:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
+          risk_exit=0
           "$RUNNER_TEMP/gstyle-risk" risk \
             --base "$PR_BASE" --head "$PR_HEAD" --check \
-            > "$RUNNER_TEMP/merge-risk.md"
+            > "$RUNNER_TEMP/merge-risk.md" || risk_exit=$?
+          if test "$risk_exit" -le 1; then
+            test -s "$RUNNER_TEMP/merge-risk.md"
+            cp "$RUNNER_TEMP/merge-risk.md" "$RUNNER_TEMP/merge-risk-report/merge-risk.md"
+          fi
+          exit "$risk_exit"
 
       - name: Show the measured report
         if: always()
         run: |
-          if test -f "$RUNNER_TEMP/merge-risk.md"; then
-            cat "$RUNNER_TEMP/merge-risk.md" >> "$GITHUB_STEP_SUMMARY"
-          fi
+          cat "$RUNNER_TEMP/merge-risk-report/merge-risk.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Preserve the description report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: merge-risk-report
+          path: ${{ runner.temp }}/merge-risk-report/
+          if-no-files-found: error
+          retention-days: 7

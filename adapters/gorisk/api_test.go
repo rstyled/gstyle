@@ -101,8 +101,12 @@ func TestAPILoadFailuresCannotBecomeCompatibilityPasses(t *testing.T) {
 	valid := checkedAPI(t, "package sample\nfunc Exported() {}")
 	root := sourceModule(t, map[string]string{"api.go": "package sample\nfunc Broken() { missing() }"})
 	invalid := ExtractAPI(context.Background(), root)
-	if invalid.Error == "" {
-		t.Fatal("type error disappeared")
+	if !strings.Contains(invalid.Error, "undefined: missing") {
+		t.Fatalf("type error cause disappeared: %s", invalid.Error)
+	}
+	repeatRoot := sourceModule(t, map[string]string{"api.go": "package sample\nfunc Broken() { missing() }"})
+	if repeat := ExtractAPI(context.Background(), repeatRoot); repeat.Error != invalid.Error {
+		t.Fatalf("checkout paths changed the error: %q != %q", repeat.Error, invalid.Error)
 	}
 	for _, pair := range [][2]API{{valid, invalid}, {invalid, valid}, {{}, valid}} {
 		report := CompareAPI(pair[0], pair[1])
