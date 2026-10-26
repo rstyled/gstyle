@@ -296,19 +296,11 @@ axiom Provenance.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Source.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
-axiom Role.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
 axiom Parameter.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
-axiom Symbol.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Definition.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Location.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
-axiom EdgeKind.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
-
-axiom Edge.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
 axiom Severity.underlying [FfiSyntax] [GoGlobalContext] : go.GoType
 
@@ -373,7 +365,8 @@ axiom ParameterRole [FfiSyntax] [GoGlobalContext] : val
 
 axiom LocalRole [FfiSyntax] [GoGlobalContext] : val
 
-axiom GlobalRole [FfiSyntax] [GoGlobalContext] : val
+@[reducible] noncomputable def GlobalRole [FfiSyntax] [GoGlobalContext] : val :=
+  #(W8 2)
 
 axiom CaptureRole [FfiSyntax] [GoGlobalContext] : val
 
@@ -432,7 +425,8 @@ axiom ExceptionalExit [FfiSyntax] [GoGlobalContext] : val
 
 axiom OtherExit [FfiSyntax] [GoGlobalContext] : val
 
-axiom Data [FfiSyntax] [GoGlobalContext] : val
+@[reducible] noncomputable def Data [FfiSyntax] [GoGlobalContext] : val :=
+  #(W8 0)
 
 axiom ControlEdge [FfiSyntax] [GoGlobalContext] : val
 
@@ -1312,18 +1306,15 @@ attribute [instance] Producer.TypeAssumptions.type_repr
   Producer.TypeAssumptions.get_Configuration
   Producer.TypeAssumptions.set_Configuration
 
-axiom Role : Type
-axiom Role.zero_val : ZeroVal Role
-attribute [instance] Role.zero_val
+abbrev Role [FfiSyntax] : Type := w8
+
+@[reducible] def Role.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  go.uint8
 
 class Role.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
-  type_repr : go.TypeReprUnderlying Role.underlying Role
   underlying : go.UnderlyingDirectedEq Role.ty Role.underlying
-  isUnderlying : go.IsUnderlying Role.underlying Role.underlying
 
-attribute [instance] Role.TypeAssumptions.type_repr
-  Role.TypeAssumptions.underlying
-  Role.TypeAssumptions.isUnderlying
+attribute [instance] Role.TypeAssumptions.underlying
 
 axiom Parameter : Type
 axiom Parameter.zero_val : ZeroVal Parameter
@@ -1458,18 +1449,68 @@ attribute [instance] Function.TypeAssumptions.type_repr
   Function.TypeAssumptions.get_ReferenceCount
   Function.TypeAssumptions.set_ReferenceCount
 
-axiom Symbol : Type
-axiom Symbol.zero_val : ZeroVal Symbol
-attribute [instance] Symbol.zero_val
+structure Symbol [FfiSyntax] where
+  mk ::
+  ID' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  Scope' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  Name' : Fact
+  Type' : Fact
+  Role' : Role
+  Extensions' : GoSlice
+
+instance Symbol.zero_val [FfiSyntax] : ZeroVal Symbol :=
+  ⟨Symbol.mk zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def Symbol.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"ID" Text.ty),
+(go.field_decl.FieldDecl go!"Scope" Text.ty),
+(go.field_decl.FieldDecl go!"Name" Fact.ty),
+(go.field_decl.FieldDecl go!"Type" Fact.ty),
+(go.field_decl.FieldDecl go!"Role" Role.ty),
+(go.field_decl.FieldDecl go!"Extensions" (go.GoType.SliceType Extension.ty))]
+
+@[irreducible] def Symbol.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Symbol.fieldsUnsealed
+
+instance equals_unfold_Symbol [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Symbol.fields Symbol.fieldsUnsealed :=
+  ⟨by unfold Symbol.fields; rfl⟩
+
+@[reducible] def Symbol.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Symbol.fields)
 
 class Symbol.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying Symbol.underlying Symbol
   underlying : go.UnderlyingDirectedEq Symbol.ty Symbol.underlying
-  isUnderlying : go.IsUnderlying Symbol.underlying Symbol.underlying
+  layout : go.StructLayout Symbol [(go!"ID", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Scope", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Name", typeSize Fact, typeAlign Fact), (go!"Type", typeSize Fact, typeAlign Fact), (go!"Role", typeSize Role, typeAlign Role), (go!"Extensions", typeSize GoSlice, typeAlign GoSlice)]
+  get_ID : ∀ (x : Symbol), go.IsGoStepPureDetTagged under (StructFieldGet Symbol.underlying go!"ID") #x (Val #(x.ID'))
+  set_ID : ∀ (x : Symbol) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Symbol.underlying go!"ID") (PairV #x #y) (Val #(({ x with ID' := y } : Symbol)))
+  get_Scope : ∀ (x : Symbol), go.IsGoStepPureDetTagged under (StructFieldGet Symbol.underlying go!"Scope") #x (Val #(x.Scope'))
+  set_Scope : ∀ (x : Symbol) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Symbol.underlying go!"Scope") (PairV #x #y) (Val #(({ x with Scope' := y } : Symbol)))
+  get_Name : ∀ (x : Symbol), go.IsGoStepPureDetTagged under (StructFieldGet Symbol.underlying go!"Name") #x (Val #(x.Name'))
+  set_Name : ∀ (x : Symbol) (y : Fact), go.IsGoStepPureDetTagged under (StructFieldSet Symbol.underlying go!"Name") (PairV #x #y) (Val #(({ x with Name' := y } : Symbol)))
+  get_Type : ∀ (x : Symbol), go.IsGoStepPureDetTagged under (StructFieldGet Symbol.underlying go!"Type") #x (Val #(x.Type'))
+  set_Type : ∀ (x : Symbol) (y : Fact), go.IsGoStepPureDetTagged under (StructFieldSet Symbol.underlying go!"Type") (PairV #x #y) (Val #(({ x with Type' := y } : Symbol)))
+  get_Role : ∀ (x : Symbol), go.IsGoStepPureDetTagged under (StructFieldGet Symbol.underlying go!"Role") #x (Val #(x.Role'))
+  set_Role : ∀ (x : Symbol) (y : Role), go.IsGoStepPureDetTagged under (StructFieldSet Symbol.underlying go!"Role") (PairV #x #y) (Val #(({ x with Role' := y } : Symbol)))
+  get_Extensions : ∀ (x : Symbol), go.IsGoStepPureDetTagged under (StructFieldGet Symbol.underlying go!"Extensions") #x (Val #(x.Extensions'))
+  set_Extensions : ∀ (x : Symbol) (y : GoSlice), go.IsGoStepPureDetTagged under (StructFieldSet Symbol.underlying go!"Extensions") (PairV #x #y) (Val #(({ x with Extensions' := y } : Symbol)))
 
 attribute [instance] Symbol.TypeAssumptions.type_repr
   Symbol.TypeAssumptions.underlying
-  Symbol.TypeAssumptions.isUnderlying
+  Symbol.TypeAssumptions.layout
+  Symbol.TypeAssumptions.get_ID
+  Symbol.TypeAssumptions.set_ID
+  Symbol.TypeAssumptions.get_Scope
+  Symbol.TypeAssumptions.set_Scope
+  Symbol.TypeAssumptions.get_Name
+  Symbol.TypeAssumptions.set_Name
+  Symbol.TypeAssumptions.get_Type
+  Symbol.TypeAssumptions.set_Type
+  Symbol.TypeAssumptions.get_Role
+  Symbol.TypeAssumptions.set_Role
+  Symbol.TypeAssumptions.get_Extensions
+  Symbol.TypeAssumptions.set_Extensions
 
 axiom Definition : Type
 axiom Definition.zero_val : ZeroVal Definition
@@ -1768,31 +1809,126 @@ attribute [instance] Node.TypeAssumptions.type_repr
   Node.TypeAssumptions.get_Synthetic
   Node.TypeAssumptions.set_Synthetic
 
-axiom EdgeKind : Type
-axiom EdgeKind.zero_val : ZeroVal EdgeKind
-attribute [instance] EdgeKind.zero_val
+abbrev EdgeKind [FfiSyntax] : Type := w8
+
+@[reducible] def EdgeKind.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  go.uint8
 
 class EdgeKind.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
-  type_repr : go.TypeReprUnderlying EdgeKind.underlying EdgeKind
   underlying : go.UnderlyingDirectedEq EdgeKind.ty EdgeKind.underlying
-  isUnderlying : go.IsUnderlying EdgeKind.underlying EdgeKind.underlying
 
-attribute [instance] EdgeKind.TypeAssumptions.type_repr
-  EdgeKind.TypeAssumptions.underlying
-  EdgeKind.TypeAssumptions.isUnderlying
+attribute [instance] EdgeKind.TypeAssumptions.underlying
 
-axiom Edge : Type
-axiom Edge.zero_val : ZeroVal Edge
-attribute [instance] Edge.zero_val
+structure Edge [FfiSyntax] where
+  mk ::
+  ID' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  Subkind' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  Source' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Target' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Evidence' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Provenance' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Annotations' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Symbol' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Definition' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Location' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref
+  Outcome' : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text
+  Position' : Position
+  Kind' : EdgeKind
+  LoopCarried' : w8
+
+instance Edge.zero_val [FfiSyntax] : ZeroVal Edge :=
+  ⟨Edge.mk zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef zeroValDef⟩
+
+@[reducible] def Edge.fieldsUnsealed [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  [(go.field_decl.FieldDecl go!"ID" Text.ty),
+(go.field_decl.FieldDecl go!"Subkind" Text.ty),
+(go.field_decl.FieldDecl go!"Source" Ref.ty),
+(go.field_decl.FieldDecl go!"Target" Ref.ty),
+(go.field_decl.FieldDecl go!"Evidence" Ref.ty),
+(go.field_decl.FieldDecl go!"Provenance" Ref.ty),
+(go.field_decl.FieldDecl go!"Annotations" Ref.ty),
+(go.field_decl.FieldDecl go!"Symbol" Ref.ty),
+(go.field_decl.FieldDecl go!"Definition" Ref.ty),
+(go.field_decl.FieldDecl go!"Location" Ref.ty),
+(go.field_decl.FieldDecl go!"Outcome" Text.ty),
+(go.field_decl.FieldDecl go!"Position" Position.ty),
+(go.field_decl.FieldDecl go!"Kind" EdgeKind.ty),
+(go.field_decl.FieldDecl go!"LoopCarried" go.uint8)]
+
+@[irreducible] def Edge.fields [FfiSyntax] [GoGlobalContext] : List go.field_decl :=
+  Edge.fieldsUnsealed
+
+instance equals_unfold_Edge [FfiSyntax] [GoGlobalContext] :
+    EqualsUnfold Edge.fields Edge.fieldsUnsealed :=
+  ⟨by unfold Edge.fields; rfl⟩
+
+@[reducible] def Edge.underlying [FfiSyntax] [GoGlobalContext] : go.GoType :=
+  (go.GoType.StructType Edge.fields)
 
 class Edge.TypeAssumptions [FfiSyntax] [GoGlobalContext] [GoLocalContext] [GoSemanticsFunctions] : Prop where
   type_repr : go.TypeReprUnderlying Edge.underlying Edge
   underlying : go.UnderlyingDirectedEq Edge.ty Edge.underlying
-  isUnderlying : go.IsUnderlying Edge.underlying Edge.underlying
+  layout : go.StructLayout Edge [(go!"ID", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Subkind", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Source", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Target", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Evidence", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Provenance", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Annotations", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Symbol", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Definition", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Location", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), (go!"Outcome", typeSize _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text, typeAlign _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), (go!"Position", typeSize Position, typeAlign Position), (go!"Kind", typeSize EdgeKind, typeAlign EdgeKind), (go!"LoopCarried", typeSize w8, typeAlign w8)]
+  get_ID : ∀ (x : Edge), go.IsGoStepPureDetTagged under (StructFieldGet Edge.underlying go!"ID") #x (Val #(x.ID'))
+  set_ID : ∀ (x : Edge) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Edge.underlying go!"ID") (PairV #x #y) (Val #(({ x with ID' := y } : Edge)))
+  get_Subkind : ∀ (x : Edge), go.IsGoStepPureDetTagged under (StructFieldGet Edge.underlying go!"Subkind") #x (Val #(x.Subkind'))
+  set_Subkind : ∀ (x : Edge) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Edge.underlying go!"Subkind") (PairV #x #y) (Val #(({ x with Subkind' := y } : Edge)))
+  get_Source : ∀ (x : Edge), go.IsGoStepPureDetTagged under (StructFieldGet Edge.underlying go!"Source") #x (Val #(x.Source'))
+  set_Source : ∀ (x : Edge) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Edge.underlying go!"Source") (PairV #x #y) (Val #(({ x with Source' := y } : Edge)))
+  get_Target : ∀ (x : Edge), go.IsGoStepPureDetTagged under (StructFieldGet Edge.underlying go!"Target") #x (Val #(x.Target'))
+  set_Target : ∀ (x : Edge) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Edge.underlying go!"Target") (PairV #x #y) (Val #(({ x with Target' := y } : Edge)))
+  get_Evidence : ∀ (x : Edge), go.IsGoStepPureDetTagged under (StructFieldGet Edge.underlying go!"Evidence") #x (Val #(x.Evidence'))
+  set_Evidence : ∀ (x : Edge) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Edge.underlying go!"Evidence") (PairV #x #y) (Val #(({ x with Evidence' := y } : Edge)))
+  get_Provenance : ∀ (x : Edge), go.IsGoStepPureDetTagged under (StructFieldGet Edge.underlying go!"Provenance") #x (Val #(x.Provenance'))
+  set_Provenance : ∀ (x : Edge) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Edge.underlying go!"Provenance") (PairV #x #y) (Val #(({ x with Provenance' := y } : Edge)))
+  get_Annotations : ∀ (x : Edge), go.IsGoStepPureDetTagged under (StructFieldGet Edge.underlying go!"Annotations") #x (Val #(x.Annotations'))
+  set_Annotations : ∀ (x : Edge) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Edge.underlying go!"Annotations") (PairV #x #y) (Val #(({ x with Annotations' := y } : Edge)))
+  get_Symbol : ∀ (x : Edge), go.IsGoStepPureDetTagged under (StructFieldGet Edge.underlying go!"Symbol") #x (Val #(x.Symbol'))
+  set_Symbol : ∀ (x : Edge) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Edge.underlying go!"Symbol") (PairV #x #y) (Val #(({ x with Symbol' := y } : Edge)))
+  get_Definition : ∀ (x : Edge), go.IsGoStepPureDetTagged under (StructFieldGet Edge.underlying go!"Definition") #x (Val #(x.Definition'))
+  set_Definition : ∀ (x : Edge) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Edge.underlying go!"Definition") (PairV #x #y) (Val #(({ x with Definition' := y } : Edge)))
+  get_Location : ∀ (x : Edge), go.IsGoStepPureDetTagged under (StructFieldGet Edge.underlying go!"Location") #x (Val #(x.Location'))
+  set_Location : ∀ (x : Edge) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Ref), go.IsGoStepPureDetTagged under (StructFieldSet Edge.underlying go!"Location") (PairV #x #y) (Val #(({ x with Location' := y } : Edge)))
+  get_Outcome : ∀ (x : Edge), go.IsGoStepPureDetTagged under (StructFieldGet Edge.underlying go!"Outcome") #x (Val #(x.Outcome'))
+  set_Outcome : ∀ (x : Edge) (y : _root_.Perennial.github_com.rstyled.gstyle.domain.pdg.query.Text), go.IsGoStepPureDetTagged under (StructFieldSet Edge.underlying go!"Outcome") (PairV #x #y) (Val #(({ x with Outcome' := y } : Edge)))
+  get_Position : ∀ (x : Edge), go.IsGoStepPureDetTagged under (StructFieldGet Edge.underlying go!"Position") #x (Val #(x.Position'))
+  set_Position : ∀ (x : Edge) (y : Position), go.IsGoStepPureDetTagged under (StructFieldSet Edge.underlying go!"Position") (PairV #x #y) (Val #(({ x with Position' := y } : Edge)))
+  get_Kind : ∀ (x : Edge), go.IsGoStepPureDetTagged under (StructFieldGet Edge.underlying go!"Kind") #x (Val #(x.Kind'))
+  set_Kind : ∀ (x : Edge) (y : EdgeKind), go.IsGoStepPureDetTagged under (StructFieldSet Edge.underlying go!"Kind") (PairV #x #y) (Val #(({ x with Kind' := y } : Edge)))
+  get_LoopCarried : ∀ (x : Edge), go.IsGoStepPureDetTagged under (StructFieldGet Edge.underlying go!"LoopCarried") #x (Val #(x.LoopCarried'))
+  set_LoopCarried : ∀ (x : Edge) (y : w8), go.IsGoStepPureDetTagged under (StructFieldSet Edge.underlying go!"LoopCarried") (PairV #x #y) (Val #(({ x with LoopCarried' := y } : Edge)))
 
 attribute [instance] Edge.TypeAssumptions.type_repr
   Edge.TypeAssumptions.underlying
-  Edge.TypeAssumptions.isUnderlying
+  Edge.TypeAssumptions.layout
+  Edge.TypeAssumptions.get_ID
+  Edge.TypeAssumptions.set_ID
+  Edge.TypeAssumptions.get_Subkind
+  Edge.TypeAssumptions.set_Subkind
+  Edge.TypeAssumptions.get_Source
+  Edge.TypeAssumptions.set_Source
+  Edge.TypeAssumptions.get_Target
+  Edge.TypeAssumptions.set_Target
+  Edge.TypeAssumptions.get_Evidence
+  Edge.TypeAssumptions.set_Evidence
+  Edge.TypeAssumptions.get_Provenance
+  Edge.TypeAssumptions.set_Provenance
+  Edge.TypeAssumptions.get_Annotations
+  Edge.TypeAssumptions.set_Annotations
+  Edge.TypeAssumptions.get_Symbol
+  Edge.TypeAssumptions.set_Symbol
+  Edge.TypeAssumptions.get_Definition
+  Edge.TypeAssumptions.set_Definition
+  Edge.TypeAssumptions.get_Location
+  Edge.TypeAssumptions.set_Location
+  Edge.TypeAssumptions.get_Outcome
+  Edge.TypeAssumptions.set_Outcome
+  Edge.TypeAssumptions.get_Position
+  Edge.TypeAssumptions.set_Position
+  Edge.TypeAssumptions.get_Kind
+  Edge.TypeAssumptions.set_Kind
+  Edge.TypeAssumptions.get_LoopCarried
+  Edge.TypeAssumptions.set_LoopCarried
 
 axiom Severity : Type
 axiom Severity.zero_val : ZeroVal Severity

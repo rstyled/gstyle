@@ -18,6 +18,10 @@ transfer, block, successor and post-constructor solver execution, plus range
 meaning and acyclic progress. The three commands, controls and exact open
 source/constructor/report boundary are documented together there.
 
+[Production solver setup](SETUP.md) proves actual scalar graph construction,
+allocation and entry enqueue establish the initial snapshot and solver invariant.
+Source meaning and final report composition remain separate obligations.
+
 ## Function-length profile
 
 The production metric counts physical lines containing Go tokens. Blank lines,
@@ -56,6 +60,8 @@ of the production-code proofs.
 Install elan and Go, then run `make verify-length`. Put elan's `bin` directory on
 `PATH`. The pinned Lean version installs through elan. The first build fetches
 and compiles Perennial, Iris, Batteries and Qq; later builds reuse Lake's cache.
+Canonical translation uses Go 1.27.3, pinned in the Lean CI jobs. Set
+`GOTOOLCHAIN=go1.27.3` when running verification with a different Go installation.
 
 The command checks regenerated output against the checked-in translation, checks
 all nine theorem axiom lists, and retranslates four deliberately broken Go
@@ -101,7 +107,7 @@ evidence executes the controls. Each fresh shard still checks its own baseline,
 source binding, and axioms. The aggregate `verify-length` check requires successful
 preflight plus every needed shard; a skipped shard matrix passes only when
 preflight reports no misses. A complete checked bundle is saved after aggregation.
-The matrix in `ci_profiles.json` covers all 492 controls exactly once. Runtime
+The matrix in `ci_profiles.json` covers all 502 controls exactly once. Runtime
 validation rejects omitted profiles, gaps, and duplicate controls.
 Local commands default to one shard and execute every mutation.
 

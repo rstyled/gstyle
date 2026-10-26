@@ -103,7 +103,8 @@ class VerificationGuardTests(unittest.TestCase):
                                 (verify.operator_profile, "Gstyle.Proof.Transfer.Operator"),
                                 (verify.pdg_list_profile, "Gstyle.Proof.Pdg.List"),
                                 (verify.pdg_attributes_profile, "Gstyle.Proof.Pdg.Attributes"),
-                                (verify.runtime_facts_profile, "Gstyle.Proof.Transfer.Extension")):
+                                (verify.runtime_facts_profile, "Gstyle.Proof.Transfer.Extension"),
+                                (verify.setup_profile, "Gstyle.Proof.Worklist.Setup")):
             profile = factory()
             mutation = next(iter(profile.mutations.items()))
             with self.subTest(package=profile.package), tempfile.TemporaryDirectory(dir=verify.PROJECT, prefix=".guard-") as directory:
@@ -241,7 +242,8 @@ class VerificationGuardTests(unittest.TestCase):
                                (verify.one_sided_profile, 1),
                                (verify.shared_flow_profile, 1),
                                (verify.assume_profile, 1),
-                               (verify.worklist_profile, 2), (verify.scalar_flow_profile, 1), (verify.solver_profile, 1)):
+                               (verify.worklist_profile, 2), (verify.scalar_flow_profile, 1), (verify.solver_profile, 1),
+                               (verify.setup_profile, 1)):
             mutations = factory().mutations
             selected = [name for index in range(count)
                         for name in verify.shard_mutations(mutations, (index, count))]
@@ -300,7 +302,22 @@ class VerificationGuardTests(unittest.TestCase):
         run.assert_called_once()
         self.assertEqual(run.call_args.args[0][0], "goose")
         self.assertEqual(profile.generated, ("Code",))
-        self.assertEqual(run.call_args.args[0][-4:], ["./domain/runtimeguard", "./domain/runtimeguard/interval", "./domain/pdg", "./domain/pdg/query"])
+        self.assertIn(("encoding/json.lean", "encoding/json"), profile.bindings)
+        self.assertEqual(run.call_args.args[0][-5:], ["./domain/runtimeguard", "./domain/runtimeguard/interval", "./domain/pdg", "./domain/pdg/query", "encoding/json"])
+        arguments = run.call_args.args[0]
+        roots = [arguments[index + 1] for index, argument in enumerate(arguments) if argument == "-lean-root"]
+        self.assertEqual(roots, ["github.com/rstyled/gstyle=Gstyle", "encoding/json=Gstyle"])
+
+    def test_other_profiles_keep_their_generation_packages(self):
+        for factory in (verify.length_profile, verify.pdg_profile, verify.output_profile, verify.interval_profile):
+            profile = factory()
+            with self.subTest(profile=profile.report.name), patch.object(verify, "run") as run:
+                verify.generate(profile, Path("goose"), Path("proofgen"), verify.ROOT, Path("out"), "source")
+            self.assertEqual(run.call_count, len(profile.generated))
+            for call in run.call_args_list:
+                arguments = call.args[0]
+                self.assertEqual(arguments[arguments.index("-dir") + 2:], [profile.go_package])
+                self.assertIn("encoding/json=Gstyle", arguments)
 
     def test_runtime_value_rejects_stale_imported_code(self):
         profile = verify.runtime_value_profile()

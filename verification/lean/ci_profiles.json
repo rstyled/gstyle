@@ -306,5 +306,12 @@
     "shard": "0/1",
     "argument": "--solver",
     "cache-index": 43
+  },
+  {
+    "profile": "setup",
+    "target": "verify-setup",
+    "shard": "0/1",
+    "argument": "--setup",
+    "cache-index": 44
   }
 ]

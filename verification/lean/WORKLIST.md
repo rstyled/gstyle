@@ -12,6 +12,7 @@ success; that premise is not an implementation correctness proof.
 | `make verify-worklist` | 61 | 44 | Queue, decisions, scalar transfer, block and successor execution |
 | `make verify-scalar-flow` | 37 | 6 | Scalar identity, metadata and concrete range meaning |
 | `make verify-solver` | 35 | 5 | Actual post-constructor cursor loop and acyclic progress |
+| `make verify-setup` | 55 | 10 | Actual scalar constructor and initial solver state |
 
 Each profile checks pinned dependencies, regenerates and compares the selected
 production translation, binds its sources and audits the named theorems. CI
@@ -48,15 +49,16 @@ premises (A1). An axiom audit does not establish these premises.
 | C7: an accepted report contains every grammar result for every signed 64-bit input; direct literals retain exact bounds | [`checkReport_sound`](Gstyle/Proof/Programs/Structural.lean#L98), actual-certificate binding in [`verify_programs.py`](verify_programs.py); captured [`analysis.call`](../../domain/runtimeguard/flow.go#L127) ranges via [`collect`](../programs/collect.go) | Checker acceptance, captured subject equality and trusted source/collector meaning (A1). Does not establish unconditional solver/report correctness. | Conditional | `wrong-endpoint`, `erased-bounds`, `substituted-report`, `certificate-axiom` |
 | T1: compiled source agrees with the grammar on sampled executions | [`checkRuntime` / `compareRuntime`](../programs/runtime.go) | Go compiler/runtime and the supplied finite corpus; endpoints and threshold neighbors are sampled. | Tested | Executed Go results must equal independent grammar results; this is not the all-input Lean proof in C7. |
 | A1: external execution contracts and interpretation | [`parseInt64Contract`](Gstyle/Proof/Transfer/ParseIntContract.lean#L20), [`parseEmptyUint32Contract`](Gstyle/Proof/Worklist/ScalarTransfer.lean#L41); pinned Goose/Perennial, parser/compiler, source renderer and collector | Callers supply the stdlib execution contracts, heap/layout/package-init and resource premises. Tool/model adequacy and renderer meaning remain external boundaries. | Assumed | Dependency/source/axiom audits and T1 check evidence; they do not prove these contracts or official Go adequacy. |
-| O1: setup establishes the solver's initial invariant and ownership | [`newGraphView`](../../domain/runtimeguard/graph.go#L21), initial maps and entry enqueue in [`solve`](../../domain/runtimeguard/flow.go#L185) | Constructor and initial-state producer; required by C1/C3/C4/C6. | Open | Complete when actual successful setup execution derives the snapshot, allocated containers and initial invariant instead of receiving them as premises. |
+| O1: setup establishes the solver's initial invariant and ownership | [`wp_newGraphView_scalar`](Gstyle/Proof/Worklist/Constructor.lean), [`wp_solve_setup_entry`](Gstyle/Proof/Worklist/SetupEntry.lean); actual `newGraphView` and setup in `solve` | Represented raw graph, scalar structural restrictions, package data and allocation bounds; see [SETUP.md](SETUP.md). No constructor contract, initial snapshot or invariant premise. | Conditional, scalar subset | Actual construction derives snapshot validity, exclusive empty roots, exact initial containers, scalar invariant and reachable queue. Source production of admitted data remains O2; wider constructor cases remain outside this theorem. |
 | O2: admitted source establishes primitive meaning and solver data | [`runtimeFlow` / `runtimeFlowCFG` / `runtimeBlock` / `runtimeCondition`](../../adapters/gopatterns/ir_runtime_flow.go) and graph metadata construction | Typed source lowering must supply write sites, metadata, value/branch meaning, signed-word facts, `SolverDataComplete` and acyclic weights used by C2–C6. | Open | Complete when those facts follow for every admitted finite branch tree within the stated machine/resource bounds, without taking their correctness as input. No current source theorem or fault control closes this bridge. |
 | O3: source paths compose through solve and actual report projection | [`analysis.report` / non-nil `block` / `call`](../../domain/runtimeguard/flow.go#L74), composed with O1/O2 | Source meaning through the constructed solver, not only prior-input preservation from C6. | Open | Complete when actual execution yields a raw report containing every admitted source result, without assuming checker acceptance or child/report soundness. |
 
 Control names are examples from [the registered profiles](verify.py),
 [branch controls](verify_branches.py) and [certificate controls](verify_programs.py).
 They test failure detection, not premise establishment or coverage completeness.
-O1–O3 are continuation obligations, not work completed by creating an evidence
-record. The sections below give the supported cases and remaining limits.
+The O1 scalar theorem executes the actual setup; O2 and O3 remain continuation
+obligations. Creating an evidence record does not discharge them. The sections
+below give the supported cases and remaining limits.
 
 ## Execution and meaning covered
 
@@ -142,8 +144,9 @@ allocation or official-Go total-correctness theorem.
 
 ## Open source-to-report boundary
 
-1. Execute `newGraphView`, producer/snapshot metadata and initial maps, queue and
-   entry enqueue.
+1. The represented scalar setup now executes `newGraphView`, metadata construction,
+   initial maps, queue and entry enqueue in [SETUP.md](SETUP.md). Source production
+   of these admitted inputs and wider constructor features remain separate work.
 2. Establish scalar write sites, finite value/branch derivations, operator
    tables, metadata agreement and complete execution data from actual admitted
    source lowering. Prove its acyclic rank and signed-word domain facts.
