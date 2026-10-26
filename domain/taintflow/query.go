@@ -26,14 +26,15 @@ type query struct {
 	live         map[pdg.Ref]bool
 }
 type evaluation struct {
-	solver    *summarySolver
-	arguments map[pdg.Position]value
-	query     *query
-	catalog   map[string]*query
-	summaries map[string]summary
-	state     state
-	result    *summary
-	exits     map[pdg.Ref]state
+	solver        *summarySolver
+	arguments     map[pdg.Position]value
+	argumentPaths map[argumentPath]value
+	query         *query
+	catalog       map[string]*query
+	summaries     map[string]summary
+	state         state
+	result        *summary
+	exits         map[pdg.Ref]state
 }
 
 // Analyze solves symbolic parameter/result/field summaries to a fixed point.

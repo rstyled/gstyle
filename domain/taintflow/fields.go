@@ -34,11 +34,7 @@ func (e *evaluation) substituteAtom(dep atom, call pdg.Ref) value {
 	if dep.Input == 0 {
 		return value{Data: dependencies{dep: true}, Objects: map[object]bool{}}
 	}
-	actual := e.actual(call, pdg.Position(dep.Input))
-	if dep.Fields == "" {
-		return actual
-	}
-	return pathValue(e.state, actual, dep.Fields)
+	return e.argumentPathValue(call, dep.Input, dep.Fields)
 }
 func (e *evaluation) substituteObject(target map[object]bool, root object, call pdg.Ref) {
 	if root.Input == 0 {
@@ -46,8 +42,7 @@ func (e *evaluation) substituteObject(target map[object]bool, root object, call 
 		target[root] = true
 		return
 	}
-	actual := e.actual(call, pdg.Position(root.Input))
-	for item := range pathValue(e.state, actual, root.Fields).Objects {
+	for item := range e.argumentPathValue(call, root.Input, root.Fields).Objects {
 		target[item] = true
 	}
 }
