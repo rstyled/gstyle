@@ -55,12 +55,15 @@ type Function struct {
 }
 
 type Snapshot struct {
-	Commit          string
-	Functions       []Function
-	Declarations    map[string]string
-	Dependencies    []string
-	DependencyError string
-	AnalysisError   string
+	Commit              string
+	Functions           []Function
+	Declarations        map[string]string
+	Dependencies        []string
+	DependencyError     string
+	AnalysisError       string
+	PrivateDeclarations map[string]PrivateDeclaration
+	TestFiles           map[string]TestFile
+	QualityBaseline     *QualityBaseline
 }
 
 type Reason struct {
