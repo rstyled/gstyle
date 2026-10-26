@@ -308,7 +308,8 @@ def runtime_value_profile():
         ("PDG extraction", "other state transfers, state-map joins and fixpoint traversal", "Access and Candidate projection"), ("Code",),
         (("github_com/rstyled/gstyle/domain/runtimeguard/interval.lean", "./domain/runtimeguard/interval"),
          ("github_com/rstyled/gstyle/domain/pdg.lean", "./domain/pdg"),
-         ("github_com/rstyled/gstyle/domain/pdg/query.lean", "./domain/pdg/query")),
+         ("github_com/rstyled/gstyle/domain/pdg/query.lean", "./domain/pdg/query"),
+         ("encoding/json.lean", "encoding/json")),
     )
 
 
@@ -1327,13 +1328,111 @@ def solver_profile():
                                "signed word domains and machine resource bounds", "ParseInt and empty-input ParseUint execution contracts; Go adequacy"))
 
 
+def setup_profile():
+    base = solver_profile()
+    proof = "Gstyle/Proof/Worklist/Setup.lean"
+    worklist = PROJECT / "Gstyle/Proof/Worklist"
+    required = {worklist / (name + ".lean") for name in ('SetupSyntax', 'Setup', 'Initial')}
+    sources = tuple(sorted(required.union(worklist.glob("Setup*.lean"), worklist.glob("Constructor*.lean"))))
+    names = (
+        'solve_analysis_found',
+        'solve_setup_cursor_found',
+        'solve_setup_context_exact',
+        'solve_setup_stops_before_cursor',
+        'setupContext_terminal',
+        'inputStatesOwn_nil',
+        'wp_solve_setup_containers',
+        'wp_solve_setup_invariant',
+        'unqueuedWorkState_shape',
+        'initialWorkState_shape',
+        'unqueuedWorkState_entry',
+        'initialWorkState_entry',
+        'initialWorkState_input_other',
+        'initialWorkState_entry_flag',
+        'initialWorkState_flag_other',
+        'unqueuedWorkState_entry_flag',
+        'unqueuedWorkState_enqueue',
+        'validBranchState_empty',
+        'unqueuedWorkState_valid',
+        'unqueuedWorkState_scalar',
+        'unqueuedWorkState_queueInvariant',
+        'initialWorkState_queueInvariant',
+        'unqueuedWorkState_scalarWorkInvariant',
+        'initialWorkState_scalarWorkInvariant',
+        'unqueuedWorkState_reachableQueue',
+        'initialWorkState_reachableQueue',
+        'initialWorkState_entry_last',
+        'inputStatesOwn_seed',
+        'wp_solve_setup_raw',
+        'solve_setup_function_exact',
+        'solve_setup_function_shape',
+        'constructor_allocation_context_exact',
+        'constructor_symbol_suffix_found',
+        'constructor_symbols_found',
+        'constructor_edges_found',
+        'wp_validateRefs_valid',
+        'wp_validateBlock_valid',
+        'wp_validateFlow_valid',
+        'wp_validateFlow_singleton',
+        'wp_newGraphView_allocations',
+        'wp_constructor_symbols_raw',
+        'wp_operandReferences_result',
+        'wp_sourceOperandEdge_result',
+        'wp_operandEdge_filtered',
+        'wp_constructor_edges_filtered_raw',
+        'constructorRowsValid_filtered_zero',
+        'wp_fieldBindings_scalar',
+        'wp_tracking_writes_raw',
+        'wp_trackBindings_scalar',
+        'constructorSnapshot_valid',
+        'constructorSnapshot_tracking',
+        'constructorInputOwn_flow',
+        'wp_newGraphView_scalar',
+        'wp_solve_setup_entry_bind',
+        'wp_solve_setup_entry',
+    )
+    changes = {
+        "setup-wrong-inputs-length": ("inputs: make([]State, len(g.ValueFlow.Blocks))", "inputs: make([]State, len(g.ValueFlow.Blocks)+1)"),
+        "setup-wrong-flags-length": ("queued: make([]bool, len(g.ValueFlow.Blocks))", "queued: make([]bool, len(g.ValueFlow.Blocks)+1)"),
+        "setup-nil-entry-map": ("a.inputs[g.ValueFlow.Entry-1] = State{}", "a.inputs[g.ValueFlow.Entry-1] = nil"),
+        "setup-wrong-entry-slot": ("a.inputs[g.ValueFlow.Entry-1] = State{}", "a.inputs[g.ValueFlow.Entry] = State{}"),
+        "setup-missing-entry-enqueue": ("a.enqueue(g.ValueFlow.Entry)", "_ = g.ValueFlow.Entry"),
+        "setup-wrong-view": ("a := analysis{view: view,", "_ = view\n\ta := analysis{view: nil,"),
+    }
+    graph = "domain/runtimeguard/graph.go"
+    changes.update({
+        "constructor-wrong-symbol-kind": ('view.kinds[i] = extension(g, symbol.Extensions, "type")',
+                                          'view.kinds[i] = extension(g, symbol.Extensions, "unstable")', graph),
+        "constructor-inverts-global-instability": ("symbol.Role == pdg.GlobalRole", "symbol.Role != pdg.GlobalRole", graph),
+        "constructor-wrong-operand-row": ("v.operands[edge.Target-1][edge.Position-1] = edge.Source",
+                                           "v.operands[edge.Source-1][edge.Position-1] = edge.Source", graph),
+        "constructor-wrong-operand-value": ("v.operands[edge.Target-1][edge.Position-1] = edge.Source",
+                                             "v.operands[edge.Target-1][edge.Position-1] = edge.Target", graph),
+    })
+    targets = {name: proof for name in changes}
+    targets.update({name: "Gstyle/Proof/Worklist/ConstructorSymbols.lean" for name in
+                    ("constructor-wrong-symbol-kind", "constructor-inverts-global-instability")})
+    targets.update({name: "Gstyle/Proof/Worklist/ConstructorOperands.lean" for name in
+                    ("constructor-wrong-operand-row", "constructor-wrong-operand-value")})
+    return replace(base, report=ROOT / "dist/verification/setup",
+                   sources=base.sources + sources,
+                   theorems={"Perennial.github_com.rstyled.gstyle.domain.runtimeguard." + name for name in names},
+                   mutations=changes, mutation_modules=targets,
+                   audit="AuditSetup.lean", proof_file=proof,
+                   verified="actual bounded scalar graph construction and solve setup establish a valid readonly snapshot, empty roots, exact initial containers and scalar worklist invariants",
+                   unverified=("source lowering and metadata/primitive meaning establishment",
+                               "whole solve/report composition", "calls, pointer/field roots and recursive parentheses",
+                               "package initialization, Go adequacy and machine resource bounds"))
+
+
 def generate(profile, goose, proofgen, source_root, output, log_prefix, *, environment=None):
     for tool, directory in ((goose, "Code"), (proofgen, "GeneratedProof")):
         if directory not in profile.generated:
             continue
         run([str(tool), "-out", str(output / directory),
              "-configdir", str(PROJECT / "Gstyle/Code"),
-             "-lean-root", "github.com/rstyled/gstyle=Gstyle", "-dir", str(source_root), profile.go_package, *[package for _, package in profile.bindings]],
+             "-lean-root", "github.com/rstyled/gstyle=Gstyle", "-lean-root", "encoding/json=Gstyle",
+             "-dir", str(source_root), profile.go_package, *[package for _, package in profile.bindings]],
             ROOT, f"{log_prefix}-{directory}.log", report=profile.report, environment=environment)
 
 
@@ -1541,7 +1640,7 @@ def main(profile=None):
 
 
 
-PROFILE_FACTORIES = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile, ("--shared-flow",): shared_flow_profile, ("--assume",): assume_profile, ("--worklist",): worklist_profile, ("--scalar-flow",): scalar_flow_profile, ("--solver",): solver_profile}
+PROFILE_FACTORIES = {(): length_profile, ("--pdg",): pdg_profile, ("--output",): output_profile, ("--interval",): interval_profile, ("--runtime-value",): runtime_value_profile, ("--state-map",): state_map_profile, ("--numeric-transfer",): numeric_transfer_profile, ("--signed-step",): signed_step_profile, ("--assignment",): assignment_profile, ("--branch",): branch_profile, ("--pdg-text",): pdg_text_profile, ("--operator",): operator_profile, ("--pdg-list",): pdg_list_profile, ("--pdg-attributes",): pdg_attributes_profile, ("--runtime-facts",): runtime_facts_profile, ("--value-evaluation",): value_evaluation_profile, ("--comparison",): comparison_profile, ("--one-sided",): one_sided_profile, ("--shared-flow",): shared_flow_profile, ("--assume",): assume_profile, ("--worklist",): worklist_profile, ("--scalar-flow",): scalar_flow_profile, ("--solver",): solver_profile, ("--setup",): setup_profile}
 
 
 if __name__ == "__main__":
@@ -1550,7 +1649,7 @@ if __name__ == "__main__":
 
         arguments = tuple(sys.argv[1:])
         if arguments not in PROFILE_FACTORIES:
-            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison | --one-sided | --shared-flow | --assume | --worklist | --scalar-flow | --solver]")
+            raise SystemExit("usage: verify.py [--pdg | --output | --interval | --runtime-value | --state-map | --numeric-transfer | --signed-step | --assignment | --branch | --pdg-text | --operator | --pdg-list | --pdg-attributes | --runtime-facts | --value-evaluation | --comparison | --one-sided | --shared-flow | --assume | --worklist | --scalar-flow | --solver | --setup]")
         main(PROFILE_FACTORIES[arguments]())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error

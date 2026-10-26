@@ -208,3 +208,8 @@ verify-scalar-flow:
 verify-solver:
 	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
 	python3 -B verification/lean/verify.py --solver
+
+.PHONY: verify-setup
+verify-setup:
+	python3 -B -m unittest discover -s verification/lean -p 'test_*.py'
+	python3 -B verification/lean/verify.py --setup
