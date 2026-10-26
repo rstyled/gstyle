@@ -1,6 +1,10 @@
 package changerisk
 
-import "slices"
+import (
+	"maps"
+	"slices"
+	"strings"
+)
 
 type dependencyComparison struct {
 	risk           Level
@@ -25,14 +29,34 @@ func compareDependencies(base, head Snapshot, config Config) dependencyCompariso
 func dependencyDifference(items, excluded []string) []string {
 	set := map[string]bool{}
 	for _, item := range excluded {
-		set[item] = true
+		set[dependencyIdentity(item)] = true
 	}
 	result := []string{}
 	for _, item := range items {
-		if !set[item] {
+		if !set[dependencyIdentity(item)] {
 			result = append(result, item)
 		}
 	}
 	slices.Sort(result)
 	return slices.Compact(result)
+}
+
+func dependencyInventory(records []string) []string {
+	set := map[string]bool{}
+	for _, record := range records {
+		set[dependencyIdentity(record)] = true
+	}
+	return slices.Sorted(maps.Keys(set))
+}
+
+func dependencyIdentity(record string) string {
+	scope, value, found := strings.Cut(record, ":import:")
+	if !found {
+		return record
+	}
+	_, imported, found := strings.Cut(value, " -> ")
+	if !found {
+		return record
+	}
+	return scope + ":import:" + imported
 }
