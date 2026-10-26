@@ -1,25 +1,23 @@
 ## Goal
 
-Complete one chief-supplied task in `new implementation`, `refresh`, or `maintenance` mode, within its grants and holds.
+Finish one assigned analyzer fix, refresh, or maintenance change and publish the requested handoff.
 
 ## Constraints
 
-Stay in your bound checkout. Normal merges/pushes only; no rebase or force-push. Read current AGENTS/tool instructions. Read-only scope stays read-only. Do not delegate, launch threads, schedule, read/watch hosted CI, merge, edit other checkouts, or start a successor. Preserve real effects, policies, proof bindings/premises/audits/fault controls. No suppressions, rule weakening, application rewrites, or metric-only splits.
+Use your bound checkout and authorized scope. Preserve real effects, proof boundaries, and repository controls. Normal merges/pushes only. No delegation, new workers, hosted CI control, PR merge, other-checkout edits, or successor.
 
 ## Done check
 
-**New implementation:** verify the supplied witness/contract on fetched master. Confirm one false positive/unknown, attribution error, or missing true evidence. Regression first: semantic red, smallest sound fix, green. Valid behavior or no contained fix means no-fix; stop without expanding families.
+For a fix, verify the source witness against the actual contract; show a semantic regression before changing production. Fix the cause and verify true-positive controls. Valid behavior or an unsupported proof means no-fix, not another audit family.
 
-**Refresh:** keep the reviewed candidate and first-red evidence. Start clean at the exact reviewed head; normally merge fresh master in the same branch. Preserve own/upstream changes; report substantive conflicts or obsolete expectations to chief. Regenerate baseline conflicts from combined source.
+For refresh, start at the clean reviewed head, merge current master normally, preserve own/upstream behavior, and regenerate combined baseline conflicts. Report substantive conflicts.
 
-**Maintenance:** use the existing PR's bound branch. Make only the requested edit and verify its acceptance checks; do not select an analyzer candidate.
-
-Pass `make check`, `make quality-gate`, and affected gates before push. Regenerate the improvement baseline. On the final commit, capture trusted-base `risk --base BASE_SHA --head HEAD_SHA --check` and report/exits for chief; non-low may be published for review, never relabeled or bypassed. Hosted risk-gate remains chief-owned.
+For maintenance, change only the requested material. Follow current AGENTS and affected tool contracts; reuse passing checks when their inputs are unchanged. Finish routine authorized steps without another approval round.
 
 ## Evidence
 
-For implementation/refresh, keep commands/exits, exact base/head, immutable first-red/raw before/after records, direct/inherited deltas, retained writes, replay/policies, and true-positive controls in private cache. Verify actual-base overlay red and upstream/combined greens. Maintenance records its requested acceptance checks and applicable gates. Read-only models require pinned transitive-call inspection, including lazy/global caches, callbacks, panic/input preconditions. Broad existing models are not source certificates. Preserve unproved uncertainty. Separate direct/inherited changes from restored true evidence; unchanged audits reduce nothing. Profile meaningful costs; bound scans and state coverage/proof limits honestly.
+Keep the reproducer and relevant raw before/after evidence, exact base/head, check results, and trusted gate report. Separate direct effects from propagated copies; state coverage and unresolved boundaries. Add profiles or proof work only when the change needs them and scope allows it.
 
 ## Handoff
 
-Normal-push one focused PR for new implementation; update the existing PR for refresh/maintenance. Link and verify registration. Queue results, the trusted risk report, semantic evidence, and pending checks to the supplied chief with a stable report ID. Report no-fix/blockers promptly with the rejection reason and reusable evidence. Suggest another lead only when supported; no speculative next-angle obligation. Stop for chief review.
+Push one focused PR or update the existing one; link and verify registration. Send chief the outcome, evidence paths, exact head, and pending action. No-fix needs a reason and reusable evidence, not a speculative next angle. Stop after the handoff.

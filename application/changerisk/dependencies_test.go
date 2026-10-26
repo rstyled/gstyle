@@ -1,9 +1,32 @@
 package changerisk
 
 import (
+	"context"
 	"reflect"
+	"strings"
 	"testing"
 )
+
+func TestDependencyFailureRetainsItsCauseWithoutCheckoutPaths(t *testing.T) {
+	var previous string
+	for range 2 {
+		root := repository(t)
+		write(t, root, "source.go", "package sample\nimport _ \"example.com/missing\"\n")
+		git(t, root, "add", ".")
+		snapshot, err := populateSnapshot(context.Background(), root, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		message := snapshot.Source.DependencyError
+		if !strings.Contains(message, "example.com/missing") || strings.Contains(message, root) {
+			t.Fatalf("missing dependency cause or leaked checkout path: %s", message)
+		}
+		if previous != "" && previous != message {
+			t.Fatalf("checkout paths changed the error: %q != %q", previous, message)
+		}
+		previous = message
+	}
+}
 
 func TestModuleRecordsKeepReplacementsAndDiscardCheckoutPaths(t *testing.T) {
 	a := []byte(`{"Path":"example.com/module","Version":"v1.0.0","GoVersion":"1.26","Dir":"/temporary/base","Replace":{"Path":"../replacement","Dir":"/temporary/base/replacement"}}`)

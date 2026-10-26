@@ -43,7 +43,7 @@ func TestImportAndRequirementOnlyChangesRemainVisibleWithoutModuleCounts(t *test
 		if report.DependencyRisk != High || !report.DependenciesChanged || len(moduleChanges(report)) != 0 || len(report.DependenciesAdded) != 1 || len(report.DependenciesRemoved) != 1 {
 			t.Fatalf("non-module dependency evidence changed: %+v", report)
 		}
-		if !strings.Contains(markdown, "**Dependencies:** changed") || !strings.Contains(markdown, "Package imports or module requirements changed.") || strings.Contains(markdown, "Imports:") {
+		if !strings.Contains(markdown, "**Dependencies:** changed") || !strings.Contains(markdown, "Selected module versions unchanged.") || strings.Contains(markdown, "Imports:") {
 			t.Fatalf("non-module changes were hidden or counted as modules: %s", markdown)
 		}
 	}
