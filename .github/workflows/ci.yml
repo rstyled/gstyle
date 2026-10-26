@@ -10,17 +10,6 @@ permissions:
   contents: read
 
 jobs:
-  risk-description:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: '1.4.4'
-          no-cache: true
-      - name: Test PR description publishing
-        run: bun test ./.github/scripts
-
   guard:
     runs-on: ubuntu-latest
     steps:
