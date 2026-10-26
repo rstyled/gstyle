@@ -1,7 +1,7 @@
 name: Merge risk
 
 "on":
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened, edited, ready_for_review]
 
 permissions:
@@ -13,6 +13,10 @@ concurrency:
 
 jobs:
   risk-gate:
+    permissions:
+      contents: read
+    outputs:
+      report: ${{ steps.report.outputs.text }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -21,12 +25,9 @@ jobs:
     steps:
       - name: Prepare the description report
         run: |
-          mkdir -p "$RUNNER_TEMP/merge-risk-report"
-          jq '{number: .number, base: .pull_request.base.sha, head: .pull_request.head.sha}' \
-            "$GITHUB_EVENT_PATH" > "$RUNNER_TEMP/merge-risk-report/metadata.json"
           printf '%s\n\n%s\n' '**Merge risk: unavailable ⚠️**' \
             'See the failed step in the Actions run.' \
-            > "$RUNNER_TEMP/merge-risk-report/merge-risk.md"
+            > "$RUNNER_TEMP/merge-risk.md"
 
       - uses: actions/checkout@v6
         with:
@@ -63,23 +64,65 @@ jobs:
           risk_exit=0
           "$RUNNER_TEMP/gstyle-risk" risk \
             --base "$PR_BASE" --head "$PR_HEAD" --check \
-            > "$RUNNER_TEMP/merge-risk.md" || risk_exit=$?
+            > "$RUNNER_TEMP/measured-risk.md" || risk_exit=$?
           if test "$risk_exit" -le 1; then
-            test -s "$RUNNER_TEMP/merge-risk.md"
-            cp "$RUNNER_TEMP/merge-risk.md" "$RUNNER_TEMP/merge-risk-report/merge-risk.md"
+            test -s "$RUNNER_TEMP/measured-risk.md"
+            cp "$RUNNER_TEMP/measured-risk.md" "$RUNNER_TEMP/merge-risk.md"
           fi
           exit "$risk_exit"
 
-      - name: Show the measured report
+      - name: Pass the report to the description job
+        id: report
         if: always()
         run: |
-          cat "$RUNNER_TEMP/merge-risk-report/merge-risk.md" >> "$GITHUB_STEP_SUMMARY"
+          printf 'text=%s\n' "$(jq -cRs . < "$RUNNER_TEMP/merge-risk.md")" >> "$GITHUB_OUTPUT"
 
-      - name: Preserve the description report
-        if: always()
-        uses: actions/upload-artifact@v4
+  publish:
+    needs: risk-gate
+    if: ${{ !cancelled() && needs.risk-gate.result != 'skipped' }}
+    permissions:
+      pull-requests: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Update the PR description
+        uses: actions/github-script@v8
+        env:
+          RISK_REPORT_JSON: ${{ needs.risk-gate.outputs.report }}
         with:
-          name: merge-risk-report
-          path: ${{ runner.temp }}/merge-risk-report/
-          if-no-files-found: error
-          retention-days: 7
+          script: |
+            const { number, base: { sha: base }, head: { sha: head } } = context.payload.pull_request;
+            const report = JSON.parse(process.env.RISK_REPORT_JSON).trimEnd();
+            const { data: pull } = await github.rest.pulls.get({ ...context.repo, pull_number: number });
+            if (pull.state !== 'open' || pull.head.sha !== head || pull.base.sha !== base ||
+                pull.base.repo.full_name !== `${context.repo.owner}/${context.repo.repo}`) {
+              core.info('Skip closed PR or stale comparison');
+              return;
+            }
+            const startMarker = '<!-- gstyle:merge-risk:start -->';
+            const endMarker = '<!-- gstyle:merge-risk:end -->';
+            if (!report || report.includes(startMarker) || report.includes(endMarker)) {
+              throw new Error('Report is empty or contains reserved markers');
+            }
+            const body = pull.body || '';
+            const start = body.indexOf(startMarker);
+            const end = body.indexOf(endMarker);
+            const block = [startMarker, report, '',
+              `Compared base: \`${base}\` · head: \`${head}\``,
+              endMarker].join('\n');
+            let updated;
+            if (start === -1 && end === -1) {
+              updated = body + (body ? '\n\n' : '') + block;
+            } else if (start >= 0 && end > start &&
+                       body.indexOf(startMarker, start + startMarker.length) === -1 &&
+                       body.indexOf(endMarker, end + endMarker.length) === -1) {
+              updated = body.slice(0, start) + block + body.slice(end + endMarker.length);
+            } else {
+              throw new Error('Description contains incomplete or duplicate report markers');
+            }
+            if (Buffer.byteLength(updated, 'utf8') > 65536) {
+              throw new Error('Report exceeds the PR description limit');
+            }
+            if (updated !== body) {
+              await github.rest.pulls.update({ ...context.repo, pull_number: number, body: updated });
+            }

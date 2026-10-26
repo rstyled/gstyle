@@ -86,7 +86,7 @@ func TestStaticRatingDoesNotInventUncollectedChecks(t *testing.T) {
 			t.Fatalf("unimplemented category shown as a verdict: %s", markdown)
 		}
 	}
-	for _, evidence := range []string{"**Code impact:** changed", "Affected functions: 1"} {
+	for _, evidence := range []string{"**Code impact:** changed 👀  \nAffected functions: 1."} {
 		if !strings.Contains(markdown, evidence) {
 			t.Errorf("missing %q in %s", evidence, markdown)
 		}
