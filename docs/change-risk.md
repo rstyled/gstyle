@@ -84,27 +84,32 @@ documents are program resources and require review across build variants.
 
 ## CI and auto-merge activation
 
-The `Merge risk` workflow runs from the trusted base branch on
-`pull_request_target`. Its `risk-gate` job builds the analyzer from the PR base
-commit, fetches the exact head commit and runs
-`risk --base BASE --head HEAD --check`. The analysis job uses a read-only token,
-disables dependency caching and never falls back to a candidate-built analyzer.
-Every PR update reruns the gate.
+The `Merge risk` workflow starts on `pull_request`, alongside the other CI
+jobs, with no dependency on their completion. Its `risk-gate` job builds the
+analyzer from the PR base commit, fetches the exact head commit and runs
+`risk --base BASE --head HEAD --check`. It uses a read-only token and never
+falls back to a candidate-built analyzer. Go dependency and build caches are
+restored to reduce setup time. Every PR update reruns the gate.
 
-A separate `publish` job receives the report as a job output and appends or
-replaces the section between `<!-- gstyle:merge-risk:start -->` and
-`<!-- gstyle:merge-risk:end -->` in the PR description. It preserves the author's
-text and includes the compared commits. Failed gates still publish their report;
-analysis failures publish an unavailable result. The workflow does not upload a
-report artifact, copy the report to the job summary, or add an Actions link.
+After `Merge risk` completes, `Merge risk description` appends or replaces the
+section between `<!-- gstyle:merge-risk:start -->` and
+`<!-- gstyle:merge-risk:end -->`. It preserves the author's text and includes
+the compared commits. Failed gates still publish their report; analysis
+failures publish an unavailable result. The description has no Actions link,
+and the report is not copied to the job summary.
 
-Only the publisher receives `pull-requests: write`. It does not check out code
-and checks the current PR base/head before writing. The built-in `GITHUB_TOKEN`
-prevents description edits from starting another run. A concurrent author edit
-between the final GET and PATCH can still race. Reports that exceed the
-description limit fail publication.
+The publisher runs from the default branch with `pull-requests: write` and
+`actions: write`. It checks the source run's PR association and current base/head
+before writing. A temporary artifact transfers the report from the read-only
+analysis workflow, including for fork PRs. The publisher reads it as data,
+never checks out code, and deletes it after the update attempt, even on failure.
+The one-day retention is a fallback if the publisher cannot run. The built-in
+`GITHUB_TOKEN` prevents description edits from starting another run. A concurrent
+author edit between the final GET and PATCH can still race.
 
-These changes take effect after the workflow is merged into the base branch.
+Both workflows must be merged before publisher changes take effect. Source runs
+must include the artifact upload steps; older runs cannot publish. Reports that
+exceed the description limit fail publication.
 
 Protect the default branch with two rulesets. Required CI has no bypass and
 requires the existing test, guard, quality and verification checks against an
