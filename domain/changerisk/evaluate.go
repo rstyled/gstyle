@@ -40,7 +40,7 @@ func functionChanges(base, head Snapshot, config Config) ([]Delta, []Reason) {
 			reasons = append(reasons, items...)
 		}
 	}
-	return changes, reasons
+	return changes, smallChangeReasons(reasons, len(changes), config.PDGLowRiskMaxFunctions)
 }
 
 func reasonsLevel(reasons []Reason) Level {

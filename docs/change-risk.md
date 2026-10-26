@@ -41,7 +41,11 @@ An unrated summary names the policy file and distinguishes a base commit with no
 
 `gstyle risk --base REF --head REF` writes Markdown; `--format json` writes schema version 1 evidence. Both inputs resolve to full commit SHAs. The command creates and removes detached temporary worktrees, reads the base's tracked policy, and rejects symlinked policy paths or checkouts modified during analysis. Source, configuration and dependency errors never become a passing report.
 
-`risk.pdg_change`, `risk.dependency_change` and `risk.api_breaking` assign low, medium or high severity. `risk.calls` entries assign severity to an exact direct compiler callee identity whose occurrence count increases. Changed functions with indirect or unresolved call targets carry explicit unknown evidence. These rules have no enabled defaults. This repository opts into medium PDG changes, high dependency and breaking API changes, and high added calls to `os.WriteFile` and `os.RemoveAll`.
+`risk.pdg_change`, `risk.dependency_change` and `risk.api_breaking` assign low, medium or high severity. `risk.calls` entries assign severity to an exact direct compiler callee identity whose occurrence count increases. Changed functions with indirect or unresolved call targets carry explicit unknown evidence. These rules have no enabled defaults.
+
+The optional `risk.pdg_low_risk_max_functions` lowers medium PDG-change reasons to low when the total affected-function count is at most that limit. Zero or omission disables it; negative values and a missing `pdg_change` are rejected. Explicit high PDG severity, call rules, analysis gaps, dependency changes and API changes retain their severity. This is a size policy, not a behavior-preservation proof.
+
+This repository sets the limit to 3 and otherwise uses medium PDG changes, high dependency and breaking API changes, and high added calls to `os.WriteFile` and `os.RemoveAll`.
 
 The existing native PDG is the input. A report projection retains operation categories, types, symbols, operators, literals, call identities, writes, reads and typed dependency edges. It excludes source positions, opaque IDs and closure identity offsets. The projection is deliberately incomplete: source-token changes that it cannot distinguish are reported as unknown, not equivalent behavior. Literal text resembling a closure identity is not normalized away.
 
@@ -89,27 +93,25 @@ jobs, with no dependency on their completion. Its `risk-gate` job builds the
 analyzer from the PR base commit, fetches the exact head commit and runs
 `risk --base BASE --head HEAD --check`. It uses a read-only token and never
 falls back to a candidate-built analyzer. Go dependency and build caches are
-restored to reduce setup time. Every PR update reruns the gate.
+restored to reduce setup time. New commits and PR open, reopen and
+ready-for-review events rerun the gate. Description edits do not rerun analysis.
 
-After `Merge risk` completes, `Merge risk description` appends or replaces the
-section between `<!-- gstyle:merge-risk:start -->` and
-`<!-- gstyle:merge-risk:end -->`. It preserves the author's text and includes
-the compared commits. Failed gates still publish their report; analysis
-failures publish an unavailable result. The description has no Actions link,
-and the report is not copied to the job summary.
+A separate `publish` job receives the Markdown as a job output and appends or
+replaces the section between `<!-- gstyle:merge-risk:start -->` and
+`<!-- gstyle:merge-risk:end -->` in the PR description. It preserves the author's
+text and includes the compared commits. Failed gates still publish their report;
+analysis failures publish an unavailable result. The publisher also normalizes
+older base-analyzer output to put code-impact details on the next line and omit
+the unchanged API package count. There is no report artifact, job-summary copy,
+Actions link, or second workflow.
 
-The publisher runs from the default branch with `pull-requests: write` and
-`actions: write`. It checks the source run's PR association and current base/head
-before writing. A temporary artifact transfers the report from the read-only
-analysis workflow, including for fork PRs. The publisher reads it as data,
-never checks out code, and deletes it after the update attempt, even on failure.
-The one-day retention is a fallback if the publisher cannot run. The built-in
-`GITHUB_TOKEN` prevents description edits from starting another run. A concurrent
-author edit between the final GET and PATCH can still race.
-
-Both workflows must be merged before publisher changes take effect. Source runs
-must include the artifact upload steps; older runs cannot publish. Reports that
-exceed the description limit fail publication.
+Only the publisher receives `pull-requests: write`. It does not check out code
+and checks the current PR base/head before writing. It runs only for same-repo
+PRs; fork PRs retain the read-only gate because their tokens cannot update the
+base repository's PR description. The built-in `GITHUB_TOKEN` prevents
+description edits from starting another run. A concurrent author edit between
+the final GET and PATCH can still race. Reports that exceed the description
+limit fail publication.
 
 Protect the default branch with two rulesets. Required CI has no bypass and
 requires the existing test, guard, quality and verification checks against an

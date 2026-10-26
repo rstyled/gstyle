@@ -58,6 +58,8 @@ func TestMermaidEscapesSourceAndBoundsGraphs(t *testing.T) {
 func TestRiskConfigRejectsInvalidRules(t *testing.T) {
 	for _, config := range []Config{
 		{PDGChange: "typo"},
+		{PDGLowRiskMaxFunctions: -1},
+		{PDGLowRiskMaxFunctions: 3},
 		{DependencyChange: Unknown},
 		{PDGChange: Unrated},
 		{Calls: []CallRule{{Callee: "", Level: High}}},
