@@ -50,6 +50,7 @@ func miningFacts(f *FuncFacts) *MiningFacts {
 		NilErrHits:          f.NilErrHits,
 		ForceTypeAssertHits: f.ForceTypeAssertHits,
 		TypedNilHits:        f.TypedNilHits,
+		ConstantBoolReturns: f.ConstantBoolReturns,
 		ErrorCheckSites:     f.ErrorCheckSites,
 		ReleasedFileLines:   f.ReleasedFileLines,
 		FileObligationSites: f.FileObligationSites,

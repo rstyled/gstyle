@@ -132,7 +132,8 @@ const (
 	NegativeIndex CandidateKind = "negative_index"
 	// LiteralIndex flags an index range entirely outside a known collection extent.
 	// Unknown and partly valid ranges are not findings.
-	LiteralIndex CandidateKind = "literal_index"
+	LiteralIndex       CandidateKind = "literal_index"
+	ConstantBoolReturn CandidateKind = "constant_bool_return"
 	// DependenceCluster flags functions whose PDG contains a large
 	// strongly-connected region — "everything affects everything"
 	// spaghetti that resists testing. Following Binkley & Harman.
@@ -251,6 +252,7 @@ var FixKindOrder = []CandidateKind{
 	NilGuard,
 	NegativeIndex,
 	LiteralIndex,
+	ConstantBoolReturn,
 	DependenceCluster,
 	MinedRule,
 	DeviantBehavior,

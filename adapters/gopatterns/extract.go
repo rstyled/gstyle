@@ -83,7 +83,8 @@ type FuncPdg struct {
 	// ForceTypeAssertHits are unchecked `x.(T)` (gostaticanalysis).
 	ForceTypeAssertHits []patterns.ForceTypeAssertHit
 	// TypedNilHits are typed-nil comparisons (gostaticanalysis).
-	TypedNilHits []patterns.TypedNilHit
+	TypedNilHits        []patterns.TypedNilHit
+	ConstantBoolReturns []patterns.ConstantBoolReturnHit
 	// ErrorCheckSites tracks per-call error checking for deviant_behavior
 	// mining (Engler et al., SOSP 2001).
 	ErrorCheckSites []patterns.ErrorCheckSite
@@ -539,7 +540,8 @@ func extractFunc(pkg *packages.Package, source functionGraph, ctx extractCtx) (F
 		// ForceTypeAssertHits are unchecked `x.(T)` (gostaticanalysis).
 		ForceTypeAssertHits: findForceTypeAssertHits(fn, pkg.Fset, provenTypeAssertions(pkg, source, ctx.concreteReturns, bindings), ctx.privateAssertions),
 		// TypedNilHits are typed-nil comparisons (gostaticanalysis).
-		TypedNilHits: nil,
+		TypedNilHits:        nil,
+		ConstantBoolReturns: findConstantBoolReturns(fn, pkg.Fset, pkg.TypesInfo, graph),
 		// ErrorCheckSites tracks per-call error checking for deviant_behavior.
 		ErrorCheckSites:     sites,
 		ReleasedFileLines:   releasedFiles,

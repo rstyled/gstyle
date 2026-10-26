@@ -298,6 +298,13 @@ those transformations for manual review.
 Coverage can be partial; no finding does not establish that a dependency or bug
 is absent.
 
+The advisory `constant_bool_return` rule finds terminal `if` paths that return
+the same typed boolean constant. It supports a direct `else` or a following
+return, with one unnamed boolean result and straight-line setup. Compiler-constant
+and short-circuit conditions, named results, deferred calls, and more complex control
+flow stay outside this rule. Calls in setup or the condition can have effects;
+the warning does not establish purity or the intended result. It has no auto-fix.
+
 `fix` previews changes by default. Apply a specific kind after reviewing it:
 
 ```sh
