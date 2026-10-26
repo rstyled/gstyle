@@ -15,7 +15,7 @@ func Markdown(report Report) string {
 	}
 	sections := []string{
 		heading,
-		"**Code impact:** " + pdgVerdict(report) + " · " + pdgSummary(report),
+		"**Code impact:** " + pdgVerdict(report) + "  \n" + pdgSummary(report),
 		dependencySection(report), apiSection(report),
 	}
 	return strings.Join(sections, "\n\n") + "\n\n" + graphSection(prioritizedChanges(report))
@@ -27,10 +27,14 @@ func apiSection(report Report) string {
 	}
 	heading := "**API diff:** " + apiVerdict(report.GoAPI)
 	changes := orderedAPIChanges(report.GoAPI.Changes)
-	if len(changes) == 0 {
-		return heading + "\n" + apiSummary(report.GoAPI)
+	details := apiSummary(report.GoAPI)
+	if len(changes) != 0 {
+		details = strings.Join(apiChangeLines(report, changes), "\n")
 	}
-	return heading + "\n" + strings.Join(apiChangeLines(report, changes), "\n")
+	if details == "" {
+		return heading
+	}
+	return heading + "\n" + details
 }
 
 func prioritizedChanges(report Report) []Delta {

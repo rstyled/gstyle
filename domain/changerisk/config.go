@@ -7,6 +7,12 @@ import (
 )
 
 func (c Config) Validate() error {
+	if c.PDGLowRiskMaxFunctions < 0 {
+		return fmt.Errorf("risk.pdg_low_risk_max_functions must not be negative")
+	}
+	if c.PDGLowRiskMaxFunctions > 0 && c.PDGChange == "" {
+		return fmt.Errorf("risk.pdg_low_risk_max_functions requires pdg_change")
+	}
 	for _, level := range []Level{c.PDGChange, c.DependencyChange, c.APIBreaking} {
 		if !validLevel(level) {
 			return fmt.Errorf("risk levels must be low, medium, high, or omitted")

@@ -167,6 +167,7 @@ Risk rules are disabled by default. A repository opts in through `gstyle.toml`:
 ```toml
 [risk]
 pdg_change = "medium"
+pdg_low_risk_max_functions = 3
 dependency_change = "high"
 api_breaking = "high"
 
@@ -174,6 +175,11 @@ api_breaking = "high"
 callee = "os.WriteFile"
 level = "high"
 ```
+
+The optional `pdg_low_risk_max_functions` lowers medium PDG-change severity to
+low for changes within the function-count limit. Higher-risk calls, API and
+dependency changes, and incomplete analysis still require review. Zero or
+omission disables the limit.
 
 The policy comes from the base revision, so editing the candidate's policy
 cannot downgrade its own report. `--config` selects a tracked repository-relative

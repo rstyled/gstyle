@@ -17,6 +17,8 @@ func TestRiskCheckAllowsOnlyLowAndPreservesTheReport(t *testing.T) {
 		want                        changerisk.Level
 	}{
 		{"low", "[risk]\npdg_change='low'\n", "func Count() int { return 1 }", "func Count() int { return 2 }", changerisk.Low},
+		{"small change", "[risk]\npdg_change='medium'\npdg_low_risk_max_functions=3\n", "func Count() int { return 1 }", "func Count() int { return 2 }", changerisk.Low},
+		{"small unresolved change", "[risk]\npdg_change='medium'\npdg_low_risk_max_functions=3\n", "func Count(next func() int) int { return next()+1 }", "func Count(next func() int) int { return next()+2 }", changerisk.Unknown},
 		{"medium", "[risk]\npdg_change='medium'\n", "func Count() int { return 1 }", "func Count() int { return 2 }", changerisk.Medium},
 		{"high", "[risk]\npdg_change='high'\n", "func Count() int { return 1 }", "func Count() int { return 2 }", changerisk.High},
 		{"unrated", "", "func Count() int { return 1 }", "func Count() int { return 2 }", changerisk.Unrated},
