@@ -27,7 +27,7 @@ func (e *evaluation) callableReferences(ref pdg.Ref) value {
 	return references
 }
 func (e *evaluation) havocCallableInputs(ref pdg.Ref, incoming value) {
-	reachable := reachableStore(e.state, e.callableReferences(ref))
+	reachable := reachableStore(e.state, e.mutableCallableReferences(ref))
 	for root := range reachable.Objects {
 		key, affected := callbackCell(root)
 		if !affected {
