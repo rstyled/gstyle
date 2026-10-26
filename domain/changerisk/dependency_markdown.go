@@ -67,7 +67,28 @@ func dependencyLines(report Report) []string {
 	for _, change := range moduleChanges(report) {
 		lines = append(lines, "- "+moduleChangeLine(change))
 	}
-	return lines
+	return append(lines, dependencyImportLines(report)...)
+}
+
+func dependencyImportLines(report Report) []string {
+	return slices.Concat(importChangeLines(report.DependenciesAdded, "Added"), importChangeLines(report.DependenciesRemoved, "Removed"))
+}
+
+func importChangeLines(records []string, action string) []string {
+	var lines []string
+	for _, record := range records {
+		_, value, found := strings.Cut(record, ":import:")
+		if !found {
+			continue
+		}
+		owner, imported, found := strings.Cut(value, " -> ")
+		if found {
+			owner, _, _ = strings.Cut(owner, " [")
+			lines = append(lines, fmt.Sprintf("- %s package import `%s` in `%s`.", action, text(imported), text(owner)))
+		}
+	}
+	slices.Sort(lines)
+	return slices.Compact(lines)
 }
 
 func moduleSummary(changes []moduleChange) string {

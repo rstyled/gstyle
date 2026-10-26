@@ -100,5 +100,12 @@ func dependencySummary(report Report) string {
 	if !report.DependenciesChanged {
 		return ""
 	}
-	return moduleSummary(moduleChanges(report))
+	changes := moduleChanges(report)
+	if len(changes) != 0 {
+		return moduleSummary(changes)
+	}
+	if len(dependencyImportLines(report)) != 0 {
+		return "Package imports changed; module versions unchanged."
+	}
+	return "Dependency metadata changed; module versions unchanged."
 }
