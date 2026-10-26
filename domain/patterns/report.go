@@ -109,6 +109,7 @@ var singleFunctionBuilders = []singleFunctionBuilder{
 	{NilGuard, func(_ []*MiningFacts, options Options) []Candidate { return options.NilGuards }},
 	{NegativeIndex, func(_ []*MiningFacts, options Options) []Candidate { return options.NegativeIndices }},
 	{LiteralIndex, func(_ []*MiningFacts, options Options) []Candidate { return options.LiteralIndices }},
+	{ConstantBoolReturn, func(prepared []*MiningFacts, _ Options) []Candidate { return constantBoolReturnCandidates(prepared) }},
 	{TaintFlowKind, func(prepared []*MiningFacts, options Options) []Candidate {
 		if options.semantic != nil {
 			return options.semantic.candidates(TaintFlowKind)

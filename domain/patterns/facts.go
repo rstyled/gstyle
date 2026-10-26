@@ -91,7 +91,8 @@ type FunctionFacts[G any] struct {
 	// ForceTypeAssertHits are unchecked `x.(T)` assertions (gostaticanalysis).
 	ForceTypeAssertHits []ForceTypeAssertHit
 	// TypedNilHits are typed-nil vs untyped-nil comparisons (gostaticanalysis).
-	TypedNilHits []TypedNilHit
+	TypedNilHits        []TypedNilHit
+	ConstantBoolReturns []ConstantBoolReturnHit
 	// ErrorCheckSites tracks per-call error checking for deviant_behavior
 	// mining (Engler et al., SOSP 2001).
 	ErrorCheckSites []ErrorCheckSite
