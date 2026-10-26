@@ -5,14 +5,6 @@ import (
 	"slices"
 )
 
-type PrivateDeclaration struct{ Path, Name, Signature string }
-
-type TestFile struct {
-	Package      string
-	Imports      map[string]bool
-	Declarations map[string]string
-}
-
 type QualityBaseline struct {
 	Version   int                     `json:"version"`
 	Generated string                  `json:"generated_at"`
@@ -28,27 +20,14 @@ type BaselineRule struct {
 	Rate   float64 `json:"per_1000_functions"`
 }
 
-func privateDeclarationReasons(base, head Snapshot) []Reason {
-	var reasons []Reason
-	for _, id := range slices.Sorted(maps.Keys(base.PrivateDeclarations)) {
-		before := base.PrivateDeclarations[id]
-		if after, exists := head.PrivateDeclarations[id]; exists && before == after {
-			continue
-		}
-		reasons = append(reasons, Reason{Rule: "analysis_unavailable", Level: Unknown, Path: before.Path, Function: before.Name,
-			Message: "existing private function declaration changed or was removed"})
-	}
-	return reasons
-}
-
 func auxiliaryReasons(base, head Snapshot) []Reason {
 	var reasons []Reason
-	for _, path := range slices.Sorted(maps.Keys(base.TestFiles)) {
-		if after, exists := head.TestFiles[path]; exists && additiveTestFile(base.TestFiles[path], after) {
+	for _, path := range slices.Sorted(maps.Keys(base.PreservedDeclarations)) {
+		if preservedDeclarations(base.PreservedDeclarations[path], head.PreservedDeclarations[path]) {
 			continue
 		}
 		reasons = append(reasons, Reason{Rule: "analysis_unavailable", Level: Unknown, Path: path,
-			Message: "test declarations or imports changed or were removed; only additions are covered"})
+			Message: "existing covered declarations or test file changed or were removed"})
 	}
 	if !baselineTightens(base.QualityBaseline, head.QualityBaseline) {
 		reasons = append(reasons, Reason{Rule: "analysis_unavailable", Level: Unknown, Path: "quality-baseline.json",
@@ -57,24 +36,9 @@ func auxiliaryReasons(base, head Snapshot) []Reason {
 	return reasons
 }
 
-func additiveTestFile(base, head TestFile) bool {
-	if base.Package != head.Package {
-		return false
-	}
-	if !testImportsRetained(base.Imports, head.Imports) {
-		return false
-	}
-	for name, declaration := range base.Declarations {
-		if current, exists := head.Declarations[name]; !exists || current != declaration {
-			return false
-		}
-	}
-	return true
-}
-
-func testImportsRetained(base, head map[string]bool) bool {
-	for imported := range base {
-		if !head[imported] {
+func preservedDeclarations(base, head map[string]string) bool {
+	for name, before := range base {
+		if after, exists := head[name]; !exists || before != after {
 			return false
 		}
 	}
@@ -82,20 +46,11 @@ func testImportsRetained(base, head map[string]bool) bool {
 }
 
 func baselineTightens(base, head *QualityBaseline) bool {
-	if base == nil && head == nil {
-		return true
-	}
 	if base == nil || head == nil {
-		return false
+		return base == head
 	}
-	if !baselinePolicyMatches(base, head) {
-		return false
-	}
-	return baselineRulesTighten(base.Rules, head.Rules)
-}
-
-func baselinePolicyMatches(base, head *QualityBaseline) bool {
-	return head.Version == base.Version && head.Tolerance <= base.Tolerance && len(head.Rules) == len(base.Rules)
+	return head.Version == base.Version && head.Tolerance <= base.Tolerance &&
+		len(head.Rules) == len(base.Rules) && baselineRulesTighten(base.Rules, head.Rules)
 }
 
 func baselineRulesTighten(base, head map[string]BaselineRule) bool {

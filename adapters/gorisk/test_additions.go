@@ -4,25 +4,17 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"slices"
 	"strconv"
 	"strings"
-
-	"github.com/rstyled/gstyle/domain/changerisk"
 )
 
-func testFile(path string, content []byte) (changerisk.TestFile, bool) {
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, path, content, parser.ParseComments|parser.SkipObjectResolution)
+func testFile(path string, content []byte) bool {
+	file, err := parser.ParseFile(token.NewFileSet(), path, content, parser.ParseComments|parser.DeclarationErrors)
 	if err != nil || specialTestComments(file) {
-		return changerisk.TestFile{}, false
+		return false
 	}
-	result := changerisk.TestFile{Package: file.Name.Name, Imports: map[string]bool{}, Declarations: map[string]string{}}
-	for _, declaration := range file.Decls {
-		if !addTestDeclaration(fset, declaration, content, &result) {
-			return changerisk.TestFile{}, false
-		}
-	}
-	return result, true
+	return !slices.ContainsFunc(file.Decls, forbiddenTestDeclaration) && !slices.ContainsFunc(file.Imports, forbiddenTestImport)
 }
 
 func specialTestComments(file *ast.File) bool {
@@ -36,65 +28,23 @@ func specialTestComments(file *ast.File) bool {
 	return false
 }
 
-func addTestDeclaration(fset *token.FileSet, declaration ast.Decl, content []byte, result *changerisk.TestFile) bool {
-	if group, ok := declaration.(*ast.GenDecl); ok && group.Tok == token.IMPORT {
-		return testImports(group, result.Imports)
-	}
-
-	name, fingerprint, ok := testFunctionSource(fset, declaration, content)
-	if !ok {
-		return false
-	}
-	if _, exists := result.Declarations[name]; exists {
-		return false
-	}
-	result.Declarations[name] = fingerprint
-	return true
-}
-
-func testFunctionSource(fset *token.FileSet, declaration ast.Decl, content []byte) (string, string, bool) {
-	function, ok := declaration.(*ast.FuncDecl)
-	if !ok || !plainTestFunction(function) {
-		return "", "", false
-	}
-	start := fset.PositionFor(function.Pos(), false).Offset
-	end := fset.PositionFor(function.End(), false).Offset
-	return function.Name.Name, string(content[start:end]), true
-}
-
-func plainTestFunction(function *ast.FuncDecl) bool {
-	if function.Body == nil || function.Recv != nil {
-		return false
-	}
-	switch function.Name.Name {
-	case "init", "TestMain", "_":
-		return false
-	}
-	return true
-}
-
-func testImports(group *ast.GenDecl, result map[string]bool) bool {
-	for _, spec := range group.Specs {
-		key, ok := testImportKey(spec.(*ast.ImportSpec))
-		if !ok {
-			return false
+func forbiddenTestDeclaration(declaration ast.Decl) bool {
+	switch item := declaration.(type) {
+	case *ast.GenDecl:
+		return item.Tok != token.IMPORT
+	case *ast.FuncDecl:
+		if item.Body == nil || item.Recv != nil {
+			return true
 		}
-		result[key] = true
+		return slices.Contains([]string{"init", "TestMain", "_"}, item.Name.Name)
 	}
 	return true
 }
 
-func testImportKey(imported *ast.ImportSpec) (string, bool) {
+func forbiddenTestImport(imported *ast.ImportSpec) bool {
 	path, err := strconv.Unquote(imported.Path.Value)
 	if err != nil || path == "C" {
-		return "", false
+		return true
 	}
-	name := ""
-	if imported.Name != nil {
-		name = imported.Name.Name
-	}
-	if name == "." || name == "_" {
-		return "", false
-	}
-	return name + ":" + path, true
+	return imported.Name != nil && slices.Contains([]string{".", "_"}, imported.Name.Name)
 }

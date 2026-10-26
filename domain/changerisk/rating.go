@@ -27,19 +27,14 @@ func ratingSummary(report Report) string {
 
 func unknownSummary(reasons []Reason) string {
 	var lines []string
-	seen := map[string]bool{}
 	for _, reason := range reasons {
 		if reason.Level != Unknown || reason.Rule == "pdg_matching_ambiguous" {
 			continue
 		}
-		line := "- " + reasonSummary(reason)
-		if seen[line] {
-			continue
-		}
-		seen[line] = true
-		lines = append(lines, line)
+		lines = append(lines, "- "+reasonSummary(reason))
 	}
-	return strings.Join(lines, "\n")
+	slices.Sort(lines)
+	return strings.Join(slices.Compact(lines), "\n")
 }
 
 func unratedSummary(report Report) string {

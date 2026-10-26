@@ -16,7 +16,7 @@ import (
 )
 
 func sourceDeclarations(sources *pdg.SourceContext, paths []string, functions []changerisk.Function) (changerisk.Snapshot, error) {
-	result := changerisk.Snapshot{Declarations: map[string]string{}, PrivateDeclarations: map[string]changerisk.PrivateDeclaration{}}
+	result := changerisk.Snapshot{Declarations: map[string]string{}, PreservedDeclarations: map[string]map[string]string{}}
 	identities := declarationIdentities(functions)
 	var missing []string
 	for _, path := range paths {
@@ -30,9 +30,7 @@ func sourceDeclarations(sources *pdg.SourceContext, paths []string, functions []
 			return result, err
 		}
 		result.Declarations[path] = fingerprint
-		for id, helper := range helpers {
-			result.PrivateDeclarations[id] = helper
-		}
+		result.PreservedDeclarations[path] = helpers
 	}
 	if len(missing) > 0 {
 		result.AnalysisError = "changed Go sources were not compiled for analysis: " + strings.Join(missing, ", ")
@@ -40,18 +38,13 @@ func sourceDeclarations(sources *pdg.SourceContext, paths []string, functions []
 	return result, nil
 }
 
-func declarationFingerprint(path, content string) (string, error) {
-	fingerprint, _, err := declarationFacts(path, content, nil)
-	return fingerprint, err
-}
-
-func declarationFacts(path, content string, functions map[declarationBody]string) (string, map[string]changerisk.PrivateDeclaration, error) {
+func declarationFacts(path, content string, functions map[declarationBody]string) (string, map[string]string, error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, path, content, parser.ParseComments|parser.SkipObjectResolution)
 	if err != nil {
 		return "", nil, err
 	}
-	helpers, err := separatePrivateDeclarations(fset, file, path, functions)
+	helpers, err := separatePrivateDeclarations(fset, file, []byte(content), functions)
 	if err != nil {
 		return "", nil, err
 	}
