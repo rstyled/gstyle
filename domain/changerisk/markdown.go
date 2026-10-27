@@ -67,16 +67,16 @@ func pdgVerdict(report Report) string {
 func pdgSummary(report Report) string {
 	for _, reason := range report.Reasons {
 		if reason.Rule == "added_call" && reason.Level == report.PDGRisk {
-			return reasonSummary(reason)
+			return reasonSummary(report, reason)
 		}
 	}
 	return fmt.Sprintf("Affected functions: %d.", report.ChangedFunctions)
 }
 
-func reasonSummary(reason Reason) string {
+func reasonSummary(report Report, reason Reason) string {
 	message := text(reason.Message)
 	if reason.Path != "" {
-		message += fmt.Sprintf(" in `%s:%d`", text(reason.Path), reason.Line)
+		message += " in " + reasonLocation(report, reason)
 	}
 	return message + "."
 }
@@ -94,7 +94,7 @@ func dependencyVerdict(report Report) string {
 func dependencySummary(report Report) string {
 	for _, reason := range report.Reasons {
 		if reason.Rule == "dependencies_unavailable" {
-			return reasonSummary(reason)
+			return reasonSummary(report, reason)
 		}
 	}
 	if !report.DependenciesChanged {

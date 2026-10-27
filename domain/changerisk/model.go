@@ -73,6 +73,7 @@ type Reason struct {
 	Line     int    `json:"line,omitempty"`
 	Message  string `json:"message"`
 	Callee   string `json:"callee,omitempty"`
+	Removed  bool   `json:"removed,omitempty"`
 }
 
 type Delta struct {
