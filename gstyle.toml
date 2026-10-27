@@ -25,3 +25,7 @@ level = "high"
 [[risk.calls]]
 callee = "os.RemoveAll"
 level = "high"
+
+[[overrides]]
+paths = ["adapters"]
+weights = { io = 0, network = 0 }
