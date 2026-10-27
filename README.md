@@ -94,9 +94,20 @@ side_effect_density = { max = 800 }
 An override takes the same rule, weight, `min_statements`, `count_self` and
 `granularity` keys as the top level. Keys it leaves out keep their top-level
 values. `paths` lists repository-relative files or directories; a directory
-covers everything below it. When several overrides match, the last one wins,
-and it is applied to the top-level settings alone. Overrides cannot set
-`guard`, `risk`, `prefixes` or `grouping`.
+covers everything below it. When several overrides match a file, they apply in
+file order, each changing only the keys it sets:
+
+```toml
+[[overrides]]
+paths = ["domain"]
+weights = { io = 1000, global = 1000 }
+
+[[overrides]]
+paths = ["domain/legacy"]
+fn_length = { max = 400 }   # domain/legacy keeps the domain weights
+```
+
+Overrides cannot set `guard`, `risk`, `prefixes` or `grouping`.
 
 ## Enforce repository policy
 

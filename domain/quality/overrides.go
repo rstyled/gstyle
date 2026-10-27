@@ -2,49 +2,45 @@ package quality
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/rstyled/gstyle/domain/guard"
 )
 
-type Override struct {
-	Paths  []string
+type Scope struct {
+	Path   string
 	Config Config
 }
 
+func Covers(scope, path string) bool {
+	return path == scope || strings.HasPrefix(path, scope+"/")
+}
+
 func (c Config) For(path string) Config {
-	for _, override := range slices.Backward(c.Overrides) {
-		if override.matches(path) {
-			return override.Config
+	result, depth := c, -1
+	for _, scope := range c.Scopes {
+		if Covers(scope.Path, path) && len(scope.Path) > depth {
+			result, depth = scope.Config, len(scope.Path)
 		}
 	}
-	return c
+	return result
 }
 
-func (o Override) matches(path string) bool {
-	return slices.ContainsFunc(o.Paths, func(scope string) bool {
-		return path == scope || strings.HasPrefix(path, scope+"/")
-	})
-}
-
-func (c Config) validateOverrides() error {
-	for index, override := range c.Overrides {
-		if err := override.validate(); err != nil {
-			return fmt.Errorf("overrides[%d]: %w", index, err)
+func (c Config) validateScopes() error {
+	for _, scope := range c.Scopes {
+		if err := scope.validate(); err != nil {
+			return fmt.Errorf("overrides for %q: %w", scope.Path, err)
 		}
 	}
 	return nil
 }
 
-func (o Override) validate() error {
-	if len(o.Paths) == 0 || slices.ContainsFunc(o.Paths, invalidScope) {
+func (s Scope) validate() error {
+	if !guard.ValidRelativePath(s.Path) {
 		return fmt.Errorf("paths must list repository-relative files or directories")
 	}
-	if len(o.Config.Overrides) != 0 {
+	if len(s.Config.Scopes) != 0 {
 		return fmt.Errorf("overrides cannot nest")
 	}
-	return o.Config.Validate()
+	return s.Config.Validate()
 }
-
-func invalidScope(scope string) bool { return !guard.ValidRelativePath(scope) }
