@@ -9,31 +9,34 @@ import (
 )
 
 type query struct {
-	cells        map[pdg.Ref]cell
-	captures     []pdg.Ref
-	environments map[string]map[pdg.Ref]pdg.Ref
-	key          string
-	functions    map[int][]string
-	calls        *callflow.CallSites
-	facts        bindingflow.Facts
-	graph        *pdg.Graph
-	paths        *bindingflow.Query
-	flow         *pdg.NormalFlow
-	models       Models
-	name         string
-	inputs       map[pdg.Ref]int
-	addresses    map[pdg.Ref]map[pdg.Position]pdg.Ref
-	live         map[pdg.Ref]bool
+	prepared        callflow.Queries
+	memoryPreserved bool
+	cells           map[pdg.Ref]cell
+	captures        []pdg.Ref
+	environments    map[string]map[pdg.Ref]pdg.Ref
+	key             string
+	functions       map[int][]string
+	calls           *callflow.CallSites
+	facts           bindingflow.Facts
+	graph           *pdg.Graph
+	paths           *bindingflow.Query
+	flow            *pdg.NormalFlow
+	models          Models
+	name            string
+	inputs          map[pdg.Ref]int
+	addresses       map[pdg.Ref]map[pdg.Position]pdg.Ref
+	live            map[pdg.Ref]bool
 }
 type evaluation struct {
-	solver    *summarySolver
-	arguments map[pdg.Position]value
-	query     *query
-	catalog   map[string]*query
-	summaries map[string]summary
-	state     state
-	result    *summary
-	exits     map[pdg.Ref]state
+	solver        *summarySolver
+	arguments     map[pdg.Position]value
+	argumentPaths map[argumentPath]value
+	query         *query
+	catalog       map[string]*query
+	summaries     map[string]summary
+	state         state
+	result        *summary
+	exits         map[pdg.Ref]state
 }
 
 // Analyze solves symbolic parameter/result/field summaries to a fixed point.
@@ -49,6 +52,9 @@ func Analyze(graphs map[string]*pdg.Graph, models Models) ([]Finding, error) {
 	}
 	if !hasEndpoints(queries) {
 		return nil, nil
+	}
+	if err := proveMemory(queries); err != nil {
+		return nil, err
 	}
 	summaries := map[string]summary{}
 	for name := range queries {
@@ -84,7 +90,7 @@ func newQuery(graph *pdg.Graph, models Models) (*query, error) {
 	if flow == nil {
 		return nil, nil
 	}
-	q := &query{graph: graph, paths: paths, flow: flow, models: models, name: graph.Tables.Text(graph.Function.ID), inputs: map[pdg.Ref]int{}, addresses: map[pdg.Ref]map[pdg.Position]pdg.Ref{}}
+	q := &query{prepared: prepared, graph: graph, paths: paths, flow: flow, models: models, name: graph.Tables.Text(graph.Function.ID), inputs: map[pdg.Ref]int{}, addresses: map[pdg.Ref]map[pdg.Position]pdg.Ref{}}
 	q.calls, q.facts = prepared.Calls, prepared.Facts
 	q.indexInputs()
 	for _, edge := range graph.Edges {
