@@ -35,8 +35,8 @@ type Config struct {
 	// together. A violation's footprint is its function plus, for caller
 	// rules, its callers up to CallerHops, because a signature fix edits
 	// every call site.
-	Grouping  Grouping   `toml:"grouping"`
-	Overrides []Override `toml:"-"`
+	Grouping Grouping `toml:"grouping"`
+	Scopes   []Scope  `toml:"-"`
 }
 
 func (c Config) Validate() error {
@@ -46,7 +46,7 @@ func (c Config) Validate() error {
 	if !within(int64(c.MinStatements), 1_000_000) {
 		return fmt.Errorf("min_statements must be between 0 and 1000000")
 	}
-	for _, validate := range []func() error{c.validateLimits, c.validateWeights, c.validatePrefixes, c.validateGrouping, c.validateOverrides, c.Guard.Validate, c.Risk.Validate} {
+	for _, validate := range []func() error{c.validateLimits, c.validateWeights, c.validatePrefixes, c.validateGrouping, c.validateScopes, c.Guard.Validate, c.Risk.Validate} {
 		if err := validate(); err != nil {
 			return err
 		}

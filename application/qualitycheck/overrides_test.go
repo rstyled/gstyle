@@ -7,7 +7,7 @@ import (
 	"github.com/rstyled/gstyle/domain/quality"
 )
 
-func TestOverridesReuseTopLevelKeysAndLastMatchWins(t *testing.T) {
+func TestOverridesReuseTopLevelKeysAndCascade(t *testing.T) {
 	path := writeTemp(t, "gstyle.toml", `fn_params = { max = 6 }
 [weights]
 global = 5
@@ -27,23 +27,43 @@ fn_params = { enabled = false }
 		t.Fatal(err)
 	}
 	adapters := config.For("adapters/git/diff.go")
-	if adapters.SideEffectDensity.Max != 800 || adapters.Weights.IO != 0 || adapters.Weights.Global != 5 || adapters.Weights.Network != 3 || adapters.FnParams.Max != 6 {
+	if adapters.SideEffectDensity.Max != 800 || adapters.Weights.IO != 0 || adapters.Weights.Global != 5 || adapters.Weights.Network != 3 || adapters.FnParams.Max != 6 || !adapters.FnParams.Enabled {
 		t.Fatalf("adapters override lost inherited settings: %+v", adapters)
 	}
 	if !slices.ContainsFunc(adapters.Prefixes, func(prefix quality.Prefix) bool { return prefix.Path == "example.com/store.Save" }) || len(adapters.Prefixes) != len(config.Prefixes) {
 		t.Fatal("override must keep default and user prefixes")
 	}
 	sql := config.For("adapters/sql/store.go")
-	if sql.FnParams.Enabled || sql.SideEffectDensity.Max != 500 || sql.Weights.IO != 3 {
-		t.Fatalf("last matching override must apply alone over the top level: %+v", sql)
+	if sql.FnParams.Enabled || sql.FnParams.Max != 6 || sql.SideEffectDensity.Max != 800 || sql.Weights.IO != 0 {
+		t.Fatalf("nested override must keep the outer override's keys: %+v", sql)
 	}
-	if file := config.For("cmd/main.go"); file.FnParams.Enabled {
-		t.Fatal("file path override did not match")
+	if file := config.For("cmd/main.go"); file.FnParams.Enabled || file.Weights.IO != 3 {
+		t.Fatalf("file override must apply alone over the top level: %+v", file)
 	}
 	for _, path := range []string{"adapterstool/x.go", "domain/a.go", "cmd/main.go.bak"} {
 		if got := config.For(path); got.SideEffectDensity.Max != 500 || !got.FnParams.Enabled {
 			t.Errorf("%s matched an override across a path boundary", path)
 		}
+	}
+}
+
+func TestOverridesApplyInFileOrder(t *testing.T) {
+	config, err := LoadConfig(writeTemp(t, "gstyle.toml", `[[overrides]]
+paths = ["adapters/sql"]
+fn_params = { max = 6 }
+weights = { io = 1 }
+[[overrides]]
+paths = ["adapters"]
+fn_params = { max = 8 }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sql := config.For("adapters/sql/store.go"); sql.FnParams.Max != 8 || sql.Weights.IO != 1 {
+		t.Fatalf("a later broader override must overwrite only its own keys: %+v", sql)
+	}
+	if git := config.For("adapters/git/diff.go"); git.FnParams.Max != 8 || git.Weights.IO != 3 {
+		t.Fatalf("a nested override leaked to a sibling: %+v", git)
 	}
 }
 
@@ -56,6 +76,7 @@ func TestOverridesRejectRepositoryKeysTyposAndBadPaths(t *testing.T) {
 		"[[overrides]]\npaths = ['a']\nside_effect_densty = { max = 1 }",
 		"[[overrides]]\npaths = ['a']\nweights = { io = -1 }",
 		"[[overrides]]\nfn_params = { max = 9 }",
+		"[[overrides]]\npaths = []",
 		"[[overrides]]\npaths = ['../a']",
 		"[[overrides]]\npaths = ['a/**']",
 		"[[overrides]]\npaths = ['/a']",

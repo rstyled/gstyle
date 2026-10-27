@@ -40,7 +40,8 @@ path = "example.com/project/storage.Store.Save"
 kind = "io"
 
 # Overrides reuse the keys above for repository-relative files or
-# directories. The last matching override wins over the top level.
+# directories. Matching overrides apply in file order, each changing
+# only the keys it sets.
 [[overrides]]
 paths = ["adapters"]
 weights = { io = 0, network = 0 }
