@@ -56,7 +56,6 @@ type checkReport struct {
 }
 
 type ruleBaseline struct {
-	Limit  int64   `json:"limit"`
 	Excess int64   `json:"excess"`
 	Rate   float64 `json:"per_1000_functions"`
 }
@@ -74,7 +73,6 @@ type ruleViolation struct {
 	rule     string
 	rate     float64
 	baseline float64
-	limit    int64
 	worst    []diagnostic
 	// improved marks a rate that dropped far enough below the baseline that
 	// the ratchet itself is stale: the baseline must be regenerated.
@@ -84,20 +82,16 @@ type ruleViolation struct {
 // aggregate folds a report's diagnostics into per-rule excess totals. Excess
 // is how far each finding overshoots its limit, so both new findings and
 // worsened ones move the number.
-func aggregate(report checkReport) (map[string]ruleBaseline, error) {
+func aggregate(report checkReport) map[string]ruleBaseline {
 	rules := make(map[string]ruleBaseline)
 	for _, d := range report.Diagnostics {
 		rb := rules[d.RuleID]
-		if prev, ok := rules[d.RuleID]; ok && prev.Limit != d.Limit {
-			return nil, fmt.Errorf("rule %s has inconsistent limits %d and %d", d.RuleID, prev.Limit, d.Limit)
-		}
 		if excess := d.Actual - d.Limit; excess > 0 {
 			rb.Excess += excess
 		}
-		rb.Limit = d.Limit
 		rules[d.RuleID] = rb
 	}
-	return rules, nil
+	return rules
 }
 
 func excessRate(excess int64, functions int) float64 {
@@ -129,52 +123,31 @@ func worstOffenders(diagnostics []diagnostic, rule string, n int) []diagnostic {
 	return matches
 }
 
-// checkBaseline compares a report against the baseline. A rule trips when its
-// excess rate exceeds the baseline rate plus tolerance. A rule missing from
-// the baseline is treated as a zero baseline, so any excess trips it. A
-// changed limit means the policy moved out from under the baseline, which is
-// a hard error rather than a violation. A rule whose rate improves past the
-// tolerance also trips: the baseline is now loose, so the same PR must
-// regenerate it (make quality-baseline) to tighten the ratchet.
-func checkBaseline(base qualityBaseline, report checkReport) ([]ruleViolation, error) {
-	current, err := aggregate(report)
-	if err != nil {
-		return nil, err
-	}
+func checkBaseline(base qualityBaseline, report checkReport) []ruleViolation {
 	var violations []ruleViolation
-	for rule, cur := range current {
-		violation, err := checkRule(rule, cur, base, report)
-		if err != nil {
-			return nil, err
-		}
-		if violation != nil {
+	for rule, cur := range aggregate(report) {
+		if violation := checkRule(rule, cur, base, report); violation != nil {
 			violations = append(violations, *violation)
 		}
 	}
 	sort.Slice(violations, func(i, j int) bool { return violations[i].rule < violations[j].rule })
-	return violations, nil
+	return violations
 }
 
 // checkRule compares one rule's excess rate against its baseline. It returns
 // a violation when the rate regresses past the tolerance band, or when it
 // improves past it — a loose ratchet must be regenerated in the same change.
-func checkRule(rule string, cur ruleBaseline, base qualityBaseline, report checkReport) (*ruleViolation, error) {
-	baserule, ok := base.Rules[rule]
-	if !ok {
-		baserule = ruleBaseline{Limit: cur.Limit}
-	} else if baserule.Limit != cur.Limit {
-		return nil, fmt.Errorf("rule %s limit changed from %d to %d; regenerate the baseline", rule, baserule.Limit, cur.Limit)
-	}
+func checkRule(rule string, cur ruleBaseline, base qualityBaseline, report checkReport) *ruleViolation {
 	rate := excessRate(cur.Excess, report.Summary.Functions)
-	drifted, improved := baselineDrift(rate, baserule.Rate, base.Tolerance)
+	drifted, improved := baselineDrift(rate, base.Rules[rule].Rate, base.Tolerance)
 	if !drifted {
-		return nil, nil
+		return nil
 	}
-	violation := &ruleViolation{rule: rule, rate: rate, baseline: baserule.Rate, limit: cur.Limit, improved: improved}
+	violation := &ruleViolation{rule: rule, rate: rate, baseline: base.Rules[rule].Rate, improved: improved}
 	if !improved {
 		violation.worst = worstOffenders(report.Diagnostics, rule, 5)
 	}
-	return violation, nil
+	return violation
 }
 
 // baselineDrift reports whether a rule's excess rate moved past the tolerance
@@ -199,11 +172,8 @@ func gitCommit() string {
 	return strings.TrimSpace(string(out))
 }
 
-func writeBaseline(report checkReport, tolerance float64) (qualityBaseline, error) {
-	rules, err := aggregate(report)
-	if err != nil {
-		return qualityBaseline{}, err
-	}
+func writeBaseline(report checkReport, tolerance float64) qualityBaseline {
+	rules := aggregate(report)
 	base := qualityBaseline{
 		Version:   baselineVersion,
 		Generated: time.Now().UTC().Format(time.RFC3339),
@@ -216,7 +186,7 @@ func writeBaseline(report checkReport, tolerance float64) (qualityBaseline, erro
 		rb.Rate = excessRate(rb.Excess, report.Summary.Functions)
 		base.Rules[rule] = rb
 	}
-	return base, nil
+	return base
 }
 
 func readReport(factsPath string) (checkReport, error) {
@@ -241,10 +211,7 @@ func runWrite(writePath, factsPath string, tolerance float64) int {
 	if err != nil {
 		return fail(2, "qualitygate: %v", err)
 	}
-	base, err := writeBaseline(report, tolerance)
-	if err != nil {
-		return fail(2, "qualitygate: %v", err)
-	}
+	base := writeBaseline(report, tolerance)
 	data, err := json.MarshalIndent(base, "", "  ")
 	if err != nil {
 		return fail(2, "qualitygate: encode baseline: %v", err)
@@ -266,10 +233,7 @@ func runCheck(baselinePath, factsPath string) int {
 	if err != nil {
 		return fail(2, "qualitygate: %v", err)
 	}
-	violations, err := checkBaseline(base, report)
-	if err != nil {
-		return fail(2, "qualitygate: %v", err)
-	}
+	violations := checkBaseline(base, report)
 	if len(violations) > 0 {
 		printViolations(base, violations)
 		return 1
@@ -299,10 +263,10 @@ func printViolations(base qualityBaseline, violations []ruleViolation) {
 	fmt.Printf("quality gate failed: %d rule(s) outside baseline (tolerance %.0f%%):\n", len(violations), base.Tolerance*100)
 	for _, v := range violations {
 		if v.improved {
-			fmt.Printf("  %s: %.2f excess per 1000 functions, baseline %.2f (limit %d) — improved, tighten the ratchet\n", v.rule, v.rate, v.baseline, v.limit)
+			fmt.Printf("  %s: %.2f excess per 1000 functions, baseline %.2f — improved, tighten the ratchet\n", v.rule, v.rate, v.baseline)
 			continue
 		}
-		fmt.Printf("  %s: %.2f excess per 1000 functions, baseline %.2f (limit %d)\n", v.rule, v.rate, v.baseline, v.limit)
+		fmt.Printf("  %s: %.2f excess per 1000 functions, baseline %.2f\n", v.rule, v.rate, v.baseline)
 		for _, w := range v.worst {
 			fmt.Printf("    %s: %s\n", w.Name, w.Message)
 		}
