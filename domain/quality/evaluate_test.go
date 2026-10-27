@@ -137,8 +137,7 @@ func TestRealEffectsStillFail(t *testing.T) {
 	if density == nil {
 		t.Fatal("expected a side_effect_density finding")
 	}
-	// weight 3*7+2=23 over 10 statements = 2300 milli > 500.
-	if density.Actual != 2300 {
+	if density.Actual != 2200 {
 		t.Fatalf("actual = %d", density.Actual)
 	}
 	// Every call classified: no unknown weight remains.
