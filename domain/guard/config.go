@@ -74,7 +74,7 @@ func (r FileRule) validateMatches() error {
 func (r FileRule) validateAllowances() error {
 	for _, paths := range [][]string{r.AllowDirectories, r.AllowPaths} {
 		for _, name := range paths {
-			if !validRelativePath(name) {
+			if !ValidRelativePath(name) {
 				return fmt.Errorf("guard file rule %q requires repository-relative allowed directories and paths", r.ID)
 			}
 		}
@@ -87,14 +87,14 @@ func (c Config) HasAddedFileRules() bool {
 }
 
 func validName(name string) bool {
-	return validRelativePath(name) && path.Base(name) == name
+	return ValidRelativePath(name) && path.Base(name) == name
 }
 
 func validExtension(extension string) bool {
 	return strings.HasPrefix(extension, ".") && len(extension) > 1 && path.Ext(extension) == extension && !strings.ContainsAny(extension, "/\\*?[] \t\n")
 }
 
-func validRelativePath(directory string) bool {
+func ValidRelativePath(directory string) bool {
 	if slices.Contains([]string{"", ".", ".."}, directory) || strings.ContainsAny(directory, "\\*?[]") {
 		return false
 	}
