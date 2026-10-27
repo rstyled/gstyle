@@ -92,3 +92,15 @@ func TestRemovedSourcesLocateInBase(t *testing.T) {
 		t.Fatalf("missing removal reasons: %+v", reasons)
 	}
 }
+
+func TestLocatedReasonsLeadWithTheirSourceLikeAPIChanges(t *testing.T) {
+	head := strings.Repeat("b", 40)
+	report := Report{RepositoryURL: "https://github.com/owner/repo", Head: head}
+	got := reasonSummary(report, Reason{Path: "stdlib.go", Message: "declarations changed"})
+	if want := "[`stdlib.go`](https://github.com/owner/repo/blob/" + head + "/stdlib.go): declarations changed."; got != want {
+		t.Errorf("summary = %s, want %s", got, want)
+	}
+	if got := reasonSummary(report, Reason{Message: "dependencies unavailable"}); got != "dependencies unavailable." {
+		t.Errorf("unlocated summary = %s", got)
+	}
+}

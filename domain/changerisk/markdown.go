@@ -74,11 +74,11 @@ func pdgSummary(report Report) string {
 }
 
 func reasonSummary(report Report, reason Reason) string {
-	message := text(reason.Message)
-	if reason.Path != "" {
-		message += " in " + reasonLocation(report, reason)
+	message := text(reason.Message) + "."
+	if reason.Path == "" {
+		return message
 	}
-	return message + "."
+	return reasonLocation(report, reason) + ": " + message
 }
 
 func dependencyVerdict(report Report) string {
