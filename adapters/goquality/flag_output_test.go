@@ -82,3 +82,40 @@ func Global(out io.Writer){flag.CommandLine.SetOutput(out)}
 		}
 	}
 }
+
+func TestFlagSetMethodsTouchOnlyTheirReceiver(t *testing.T) {
+	root := qualitySourceModule(t, []byte(`package repro
+import "flag"
+type options struct{name string;verbose bool;count int}
+func Define(o *options){flags:=flag.NewFlagSet("x",flag.ContinueOnError);flags.StringVar(&o.name,"name","","");flags.BoolVar(&o.verbose,"v",false,"");flags.IntVar(&o.count,"n",0,"")}
+func Init(flags *flag.FlagSet){flags.Init("x",flag.ExitOnError)}
+func Visit(flags *flag.FlagSet){flags.VisitAll(func(*flag.Flag){})}
+func Custom(flags *flag.FlagSet, value flag.Value){flags.Var(value,"custom","")}
+func Assign(flags *flag.FlagSet)error{return flags.Set("name","value")}
+func Global(o *options){flag.CommandLine.StringVar(&o.name,"name","","")}
+`))
+	facts, err := (Analyzer{Root: root}).Extract(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := quality.Evaluate(facts, quality.DefaultConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string][]quality.Kind{
+		"Define": {quality.MutationEffect, quality.MutationEffect, quality.MutationEffect},
+		"Init":   {quality.MutationEffect},
+		"Visit":  nil,
+		"Custom": {quality.UnknownEffect},
+		"Assign": {quality.UnknownEffect},
+		"Global": {quality.Global, quality.MutationEffect},
+	} {
+		var got []quality.Kind
+		for _, effect := range resultNamed(t, report, name).Effects {
+			got = append(got, effect.Kind)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("%s effects = %v, want %v", name, got, want)
+		}
+	}
+}
