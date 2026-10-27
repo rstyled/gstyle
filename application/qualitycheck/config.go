@@ -46,17 +46,26 @@ func LoadConfig(path string) (quality.Config, error) {
 	return config, config.Validate()
 }
 
+type override struct {
+	settings toml.Primitive
+	paths    []string
+}
+
+func (o override) covers(scope string) bool {
+	return slices.ContainsFunc(o.paths, func(path string) bool { return quality.Covers(path, scope) })
+}
+
 func decodeOverrides(metadata toml.MetaData, entries []toml.Primitive, base quality.Config) ([]quality.Scope, error) {
 	if err := rejectRepositoryOverrides(metadata); err != nil {
 		return nil, err
 	}
-	paths, err := overridePaths(metadata, entries)
+	overrides, err := readOverrides(metadata, entries)
 	if err != nil {
 		return nil, err
 	}
 	var scopes []quality.Scope
-	for _, scope := range slices.Compact(slices.Sorted(slices.Values(slices.Concat(paths...)))) {
-		config, err := cascade(metadata, entries, paths, base, scope)
+	for _, scope := range overrideScopes(overrides) {
+		config, err := cascade(metadata, overrides, base, scope)
 		if err != nil {
 			return nil, err
 		}
@@ -65,8 +74,8 @@ func decodeOverrides(metadata toml.MetaData, entries []toml.Primitive, base qual
 	return scopes, nil
 }
 
-func overridePaths(metadata toml.MetaData, entries []toml.Primitive) ([][]string, error) {
-	paths := make([][]string, len(entries))
+func readOverrides(metadata toml.MetaData, entries []toml.Primitive) ([]override, error) {
+	overrides := make([]override, len(entries))
 	for index, entry := range entries {
 		var scope struct {
 			Paths []string `toml:"paths"`
@@ -77,17 +86,26 @@ func overridePaths(metadata toml.MetaData, entries []toml.Primitive) ([][]string
 		if len(scope.Paths) == 0 {
 			return nil, fmt.Errorf("quality overrides[%d] needs paths", index)
 		}
-		paths[index] = scope.Paths
+		overrides[index] = override{settings: entry, paths: scope.Paths}
 	}
-	return paths, nil
+	return overrides, nil
 }
 
-func cascade(metadata toml.MetaData, entries []toml.Primitive, paths [][]string, config quality.Config, scope string) (quality.Config, error) {
-	for index, entry := range entries {
-		if !slices.ContainsFunc(paths[index], func(path string) bool { return quality.Covers(path, scope) }) {
+func overrideScopes(overrides []override) []string {
+	var paths []string
+	for _, override := range overrides {
+		paths = append(paths, override.paths...)
+	}
+	slices.Sort(paths)
+	return slices.Compact(paths)
+}
+
+func cascade(metadata toml.MetaData, overrides []override, config quality.Config, scope string) (quality.Config, error) {
+	for index, override := range overrides {
+		if !override.covers(scope) {
 			continue
 		}
-		if err := metadata.PrimitiveDecode(entry, &config); err != nil {
+		if err := metadata.PrimitiveDecode(override.settings, &config); err != nil {
 			return config, fmt.Errorf("decode quality overrides[%d]: %w", index, err)
 		}
 	}
