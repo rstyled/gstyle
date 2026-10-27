@@ -95,15 +95,16 @@ func (c Config) validateGrouping() error {
 }
 
 type Weights struct {
-	Mutation int64 `toml:"mutation"`
-	IO       int64 `toml:"io"`
-	Network  int64 `toml:"network"`
-	Global   int64 `toml:"global"`
-	Unsafe   int64 `toml:"unsafe"`
-	Time     int64 `toml:"time"`
-	Random   int64 `toml:"random"`
-	Panic    int64 `toml:"panic"`
-	Unknown  int64 `toml:"unknown"`
+	Mutation   int64 `toml:"mutation"`
+	IO         int64 `toml:"io"`
+	Network    int64 `toml:"network"`
+	Global     int64 `toml:"global"`
+	GlobalRead int64 `toml:"global_read"`
+	Unsafe     int64 `toml:"unsafe"`
+	Time       int64 `toml:"time"`
+	Random     int64 `toml:"random"`
+	Panic      int64 `toml:"panic"`
+	Unknown    int64 `toml:"unknown"`
 }
 
 func (w Weights) value(kind Kind) int64 {
@@ -125,6 +126,8 @@ func (w Weights) value(kind Kind) int64 {
 
 func (w Weights) environmentWeight(kind Kind) int64 {
 	switch kind {
+	case GlobalRead:
+		return w.GlobalRead
 	case Time:
 		return w.Time
 	case Random:
@@ -158,7 +161,7 @@ func DefaultConfig() Config {
 		MutationPerTarget: Rule{true, 3}, MutatedTargets: Rule{true, 3},
 		SideEffectDensity: Rule{true, 500}, MinStatements: 3, Granularity: "root",
 		Aggregate: Rule{true, 1}, Repository: Rule{true, 0}, MutableIdentity: Rule{true, 0},
-		Weights: Weights{1, 3, 3, 2, 4, 1, 1, 0, 1}, Prefixes: defaultPrefixes(),
+		Weights: Weights{Mutation: 1, IO: 3, Network: 3, Global: 2, GlobalRead: 1, Unsafe: 4, Time: 1, Random: 1, Panic: 0, Unknown: 1}, Prefixes: defaultPrefixes(),
 		Grouping: Grouping{CallerRules: []string{"fn_params"}, CallerHops: 1},
 	}
 }

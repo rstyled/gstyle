@@ -500,10 +500,8 @@ var stdlibRules = []stdlibRule{
 	// The rest: pure or inert.
 	{pkg: "embed", kind: None},
 	{pkg: "expvar", kind: Global},
-	{pkg: "flag", kind: Global, names: []string{
-		"Parse", "NFlag", "NArg", "Arg", "Args", "Lookup", "Set",
-		"Visit", "VisitAll", "Var",
-	}},
+	{pkg: "flag", kind: Global, names: []string{"Parse", "Set", "Var"}},
+	{pkg: "flag", kind: GlobalRead, names: []string{"NFlag", "NArg", "Arg", "Args", "Lookup", "Visit", "VisitAll"}},
 	{pkg: "flag", kind: IO, names: []string{"FlagSet.Parse", "FlagSet.PrintDefaults"}},
 	// SetOutput only stores a writer on this set; it does not call the writer.
 	{pkg: "flag", kind: MutationEffect, names: []string{"FlagSet.SetOutput"}},

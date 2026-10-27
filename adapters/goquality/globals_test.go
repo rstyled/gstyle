@@ -213,7 +213,7 @@ func closure() func() { return func() { closureWritten[0]++ } }
 	for _, name := range []string{"ColorValue", "ColorRender", "ColorEffects", "LocalIndex", "NestedIndex", "BorrowedIndex", "FixedContains", "ParenthesizedContains", "ParenthesizedIndex", "GenericContains", "RecordValue", "ErrorValue", "Fixed", "Records", "Dispatch", "DispatchRecord", "DispatchCallback", "StyleValue", "StyleRender", "StyleMethodValue", "StyleColorReference", "StyleColorRender"} {
 		fact := findFunction(t, facts, name)
 		for _, effect := range fact.Effects {
-			if effect.Kind == quality.Global {
+			if effect.Kind.GlobalState() {
 				t.Errorf("%s retains global read: %+v", name, effect)
 			}
 		}
@@ -222,7 +222,7 @@ func closure() func() { return func() { closureWritten[0]++ } }
 		fact := findFunction(t, facts, name)
 		found := false
 		for _, effect := range fact.Effects {
-			found = found || effect.Kind == quality.Global
+			found = found || effect.Kind.GlobalState()
 		}
 		if !found {
 			t.Errorf("%s loses observable global dependence", name)
@@ -369,7 +369,7 @@ func Custom()reflect.Type{return custom[0]}
 	}
 	for _, name := range []string{"Match", "Types", "TypeArray"} {
 		for _, effect := range findFunction(t, facts, name).Effects {
-			if effect.Kind == quality.Global {
+			if effect.Kind.GlobalState() {
 				t.Errorf("%s retains global read: %+v", name, effect)
 			}
 		}
@@ -377,7 +377,7 @@ func Custom()reflect.Type{return custom[0]}
 	for _, name := range []string{"Mutate", "Names", "Copy", "Escaped", "Address", "Exported", "Written", "Slice", "TableAddress", "Custom"} {
 		found := false
 		for _, effect := range findFunction(t, facts, name).Effects {
-			found = found || effect.Kind == quality.Global
+			found = found || effect.Kind.GlobalState()
 		}
 		if !found {
 			t.Errorf("%s loses shared metadata effect", name)

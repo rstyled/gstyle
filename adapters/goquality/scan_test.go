@@ -89,7 +89,7 @@ func IO(){var value int;fmt.Sscan("1",&value);println("write")}
 	}
 	found := false
 	for _, effect := range resultNamed(t, report, "ArgumentEffect").Effects {
-		found = found || effect.Kind == quality.Global
+		found = found || effect.Kind.GlobalState()
 	}
 	if !found {
 		t.Error("scan argument lost its global effect")

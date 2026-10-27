@@ -190,7 +190,11 @@ func (x *extractor) globalRead(id *ast.Ident) {
 	if hasGlobalEffect(x.fact.Effects, line, detail) {
 		return
 	}
-	x.fact.Effects = append(x.fact.Effects, quality.Effect{Kind: quality.Global, Detail: detail, Line: line})
+	kind := quality.Global
+	if stableGlobalRead(id, x.fields.parents, x.pkg.TypesInfo) {
+		kind = quality.GlobalRead
+	}
+	x.fact.Effects = append(x.fact.Effects, quality.Effect{Kind: kind, Detail: detail, Line: line})
 }
 
 func (x *extractor) objectID(object types.Object) string {
@@ -329,7 +333,7 @@ func countedStatement(node ast.Node) bool {
 
 func hasGlobalEffect(effects []quality.Effect, line int, detail string) bool {
 	for _, effect := range effects {
-		if effect.Kind == quality.Global && effect.Line == line && effect.Detail == detail {
+		if effect.Kind.GlobalState() && effect.Line == line && effect.Detail == detail {
 			return true
 		}
 	}

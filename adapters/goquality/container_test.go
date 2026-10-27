@@ -429,7 +429,7 @@ func Caller(){helper()}
 		kind quality.Kind
 	}{
 		{"NamedNoisy", quality.Global}, {"NamedPointee", quality.UnknownEffect}, {"NamedShared", quality.MutationEffect},
-		{"ReturnedRelativeEffect", quality.Global}, {"ReturnedCalled", quality.Global}, {"ReturnedOutput", quality.IO}, {"InlineOutput", quality.IO}, {"InlineCaptured", quality.MutationEffect}, {"InlineGlobal", quality.Global}, {"InlineLaunch", quality.UnknownEffect}, {"InlineChannel", quality.UnknownEffect},
+		{"ReturnedRelativeEffect", quality.Global}, {"ReturnedCalled", quality.Global}, {"ReturnedOutput", quality.IO}, {"InlineOutput", quality.IO}, {"InlineCaptured", quality.MutationEffect}, {"InlineGlobal", quality.GlobalRead}, {"InlineLaunch", quality.UnknownEffect}, {"InlineChannel", quality.UnknownEffect},
 	} {
 		got := resultNamed(t, report, tc.name)
 		found := false

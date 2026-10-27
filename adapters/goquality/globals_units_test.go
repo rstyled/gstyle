@@ -62,7 +62,7 @@ func TestUnitGlobalReadsRespectStorageBoundaries(t *testing.T) {
 	for _, name := range []string{"ValueMethod", "Pass", "Return", "Local"} {
 		fact := findFunction(t, facts, name)
 		for _, effect := range fact.Effects {
-			if effect.Kind == quality.Global {
+			if effect.Kind.GlobalState() {
 				t.Errorf("%s retains unit global dependence: %+v", name, effect)
 			}
 		}
@@ -71,7 +71,7 @@ func TestUnitGlobalReadsRespectStorageBoundaries(t *testing.T) {
 		fact := findFunction(t, facts, name)
 		found := false
 		for _, effect := range fact.Effects {
-			found = found || effect.Kind == quality.Global
+			found = found || effect.Kind.GlobalState()
 		}
 		if !found {
 			t.Errorf("%s loses global storage evidence", name)
