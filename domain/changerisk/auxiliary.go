@@ -26,11 +26,11 @@ func auxiliaryReasons(base, head Snapshot) []Reason {
 		if preservedDeclarations(base.PreservedDeclarations[path], head.PreservedDeclarations[path]) {
 			continue
 		}
-		reasons = append(reasons, Reason{Rule: "analysis_unavailable", Level: Unknown, Path: path,
+		reasons = append(reasons, Reason{Rule: "analysis_unavailable", Level: Unknown, Path: path, Removed: head.PreservedDeclarations[path] == nil,
 			Message: "existing covered declarations or test file changed or were removed"})
 	}
 	if !baselineTightens(base.QualityBaseline, head.QualityBaseline) {
-		reasons = append(reasons, Reason{Rule: "analysis_unavailable", Level: Unknown, Path: "quality-baseline.json",
+		reasons = append(reasons, Reason{Rule: "analysis_unavailable", Level: Unknown, Path: "quality-baseline.json", Removed: head.QualityBaseline == nil,
 			Message: "quality baseline was added, removed, or changes its rules or permitted excess rates"})
 	}
 	return reasons

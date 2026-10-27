@@ -85,7 +85,14 @@ func compareFunction(before, after Function, config Config) (*Delta, []Reason) {
 		reasons = append(reasons, atFunction(current, Reason{Rule: "pdg_matching_ambiguous", Level: Unknown, Message: "operation correspondence is ambiguous; graph illustration omitted"}))
 	}
 	reasons = append(reasons, compareCalls(callComparison{before: before, current: current, nodes: after.Graph.Nodes}, config.Calls)...)
-	return &delta, reasons
+	return &delta, located(reasons, after.Name == "")
+}
+
+func located(reasons []Reason, removed bool) []Reason {
+	for index := range reasons {
+		reasons[index].Removed = removed
+	}
+	return reasons
 }
 
 func hasUnresolvedCalls(nodes []Node) bool {
@@ -180,7 +187,7 @@ func declarationReasons(base, head Snapshot) []Reason {
 		if existed == exists && before == after {
 			continue
 		}
-		reasons = append(reasons, Reason{Rule: "analysis_unavailable", Level: Unknown, Path: path,
+		reasons = append(reasons, Reason{Rule: "analysis_unavailable", Level: Unknown, Path: path, Removed: !exists,
 			Message: "Go declarations or comments changed outside the function-body PDG comparison"})
 	}
 	return reasons

@@ -51,3 +51,44 @@ func TestDeclarationCodeSpansPreserveQuotedValuesAndEmbeddedBackticks(t *testing
 		t.Fatalf("backticks escaped the code span: %s", got)
 	}
 }
+
+func TestReasonLocationsLinkTheRevisionThatHoldsThem(t *testing.T) {
+	base, head := strings.Repeat("a", 40), strings.Repeat("b", 40)
+	report := Report{RepositoryURL: "https://github.com/owner/repo", Base: base, Head: head}
+	for _, check := range []struct {
+		reason Reason
+		want   string
+	}{
+		{Reason{Path: "stdlib.go"}, "[`stdlib.go`](https://github.com/owner/repo/blob/" + head + "/stdlib.go)"},
+		{Reason{Path: "gone_test.go", Removed: true}, "[`gone_test.go`](https://github.com/owner/repo/blob/" + base + "/gone_test.go)"},
+		{Reason{Path: "run.go", Line: 12}, "[`run.go:12`](https://github.com/owner/repo/blob/" + head + "/run.go#L12)"},
+	} {
+		if got := reasonLocation(report, check.reason); got != check.want {
+			t.Errorf("location = %s, want %s", got, check.want)
+		}
+	}
+	report.RepositoryURL = ""
+	if got := reasonLocation(report, Reason{Path: "stdlib.go"}); got != "`stdlib.go`" {
+		t.Errorf("unlinked whole-file location = %s", got)
+	}
+}
+
+func TestRemovedSourcesLocateInBase(t *testing.T) {
+	base := Snapshot{
+		Functions:             []Function{{Name: "old", Path: "old.go", Line: 4, Body: "a"}},
+		Declarations:          map[string]string{"old.go": "decl"},
+		PreservedDeclarations: map[string]map[string]string{"old_test.go": {"": "test"}},
+	}
+	head := Snapshot{Declarations: map[string]string{}, PreservedDeclarations: map[string]map[string]string{}}
+	_, reasons := functionChanges(base, head, Config{})
+	reasons = append(reasons, declarationReasons(base, head)...)
+	reasons = append(reasons, auxiliaryReasons(base, head)...)
+	for _, reason := range reasons {
+		if reason.Path != "" && !reason.Removed {
+			t.Errorf("%s at %s must locate in base", reason.Rule, reason.Path)
+		}
+	}
+	if len(reasons) < 3 {
+		t.Fatalf("missing removal reasons: %+v", reasons)
+	}
+}

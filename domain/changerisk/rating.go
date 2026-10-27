@@ -17,7 +17,7 @@ func ratingIcon(level Level) string {
 
 func ratingSummary(report Report) string {
 	if report.Risk == Unknown {
-		return unknownSummary(report.Reasons)
+		return unknownSummary(report)
 	}
 	if report.Risk == Unrated {
 		return unratedSummary(report)
@@ -25,13 +25,13 @@ func ratingSummary(report Report) string {
 	return ""
 }
 
-func unknownSummary(reasons []Reason) string {
+func unknownSummary(report Report) string {
 	var lines []string
-	for _, reason := range reasons {
+	for _, reason := range report.Reasons {
 		if reason.Level != Unknown || reason.Rule == "pdg_matching_ambiguous" {
 			continue
 		}
-		lines = append(lines, "- "+reasonSummary(reason))
+		lines = append(lines, "- "+reasonSummary(report, reason))
 	}
 	slices.Sort(lines)
 	return strings.Join(slices.Compact(lines), "\n")

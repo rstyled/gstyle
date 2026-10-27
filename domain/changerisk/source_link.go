@@ -33,18 +33,43 @@ func codeSpan(value string) string {
 	return delimiter + value + delimiter
 }
 
+func reasonLocation(report Report, reason Reason) string {
+	revision := report.Head
+	if reason.Removed {
+		revision = report.Base
+	}
+	label := reason.Path
+	if reason.Line > 0 {
+		label += fmt.Sprintf(":%d", reason.Line)
+	}
+	label = codeSpan(label)
+	link := pinnedURL(report.RepositoryURL, revision, "blob", reason.Path, reason.Line)
+	if link == "" {
+		return label
+	}
+	return "[" + label + "](" + link + ")"
+}
+
 func sourceURL(repository string, declaration *APIDeclaration, revision string) string {
-	if declaration == nil || !githubURL.MatchString(repository) || !fs.ValidPath(declaration.Path) {
+	if declaration == nil {
 		return ""
 	}
-	if !fullRevision(revision) {
-		return ""
-	}
-	kind, fragment := "tree", ""
+	kind := "tree"
 	if declaration.Line > 0 {
-		kind, fragment = "blob", fmt.Sprintf("L%d", declaration.Line)
+		kind = "blob"
 	}
-	link := url.URL{Scheme: "https", Host: "github.com", Path: strings.TrimPrefix(repository, "https://github.com") + "/" + kind + "/" + revision + "/" + declaration.Path, Fragment: fragment}
+	return pinnedURL(repository, revision, kind, declaration.Path, declaration.Line)
+}
+
+func pinnedURL(repository, revision, kind, path string, line int) string {
+	if !githubURL.MatchString(repository) || !fs.ValidPath(path) || !fullRevision(revision) {
+		return ""
+	}
+	fragment := ""
+	if line > 0 {
+		fragment = fmt.Sprintf("L%d", line)
+	}
+	link := url.URL{Scheme: "https", Host: "github.com", Path: strings.TrimPrefix(repository, "https://github.com") + "/" + kind + "/" + revision + "/" + path, Fragment: fragment}
 	return strings.NewReplacer("(", "%28", ")", "%29").Replace(link.String())
 }
 
