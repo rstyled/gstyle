@@ -97,7 +97,7 @@ func Evaluate(facts []Function, config Config) (Report, error) {
 	diagnostics := []Diagnostic{}
 	sites := stackSites(functions)
 	for idx, function := range functions {
-		result, findings := evaluateFunction(function, config)
+		result, findings := evaluateFunction(function, config.For(function.Path))
 		planFindings(functions, sites, idx, findings)
 		results = append(results, result)
 		diagnostics = append(diagnostics, findings...)

@@ -82,6 +82,22 @@ Unknown calls remain unknown; a low score does not establish purity.
 See [the example TOML policy](examples/quality/gstyle.toml) for configuration.
 Unspecified settings retain their defaults; unknown keys are rejected.
 
+Give parts of the repository their own policy with `[[overrides]]`:
+
+```toml
+[[overrides]]
+paths = ["adapters"]
+weights = { io = 0, network = 0 }
+side_effect_density = { max = 800 }
+```
+
+An override takes the same rule, weight, `min_statements`, `count_self` and
+`granularity` keys as the top level. Keys it leaves out keep their top-level
+values. `paths` lists repository-relative files or directories; a directory
+covers everything below it. When several overrides match, the last one wins,
+and it is applied to the top-level settings alone. Overrides cannot set
+`guard`, `risk`, `prefixes` or `grouping`.
+
 ## Enforce repository policy
 
 `gstyle guard` checks repository files without loading Go packages. Both rule
