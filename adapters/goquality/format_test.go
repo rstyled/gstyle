@@ -73,7 +73,7 @@ func ArgumentEffect(){var out bytes.Buffer;fmt.Fprint(&out,next())}
 	}
 	found := false
 	for _, effect := range resultNamed(t, report, "ArgumentEffect").Effects {
-		found = found || effect.Kind == quality.Global
+		found = found || effect.Kind.GlobalState()
 	}
 	if !found {
 		t.Fatal("format argument lost its global effect")

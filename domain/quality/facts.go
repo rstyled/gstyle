@@ -135,6 +135,7 @@ const (
 	IO             Kind = "io"
 	Network        Kind = "network"
 	Global         Kind = "global"
+	GlobalRead     Kind = "global_read"
 	Unsafe         Kind = "unsafe"
 	Time           Kind = "time"
 	Random         Kind = "random"
@@ -143,7 +144,11 @@ const (
 	None           Kind = "none"
 )
 
-var kinds = []Kind{MutationEffect, IO, Network, Global, Unsafe, Time, Random, Panic, UnknownEffect}
+func (k Kind) GlobalState() bool {
+	return k == Global || k == GlobalRead
+}
+
+var kinds = []Kind{MutationEffect, IO, Network, Global, GlobalRead, Unsafe, Time, Random, Panic, UnknownEffect}
 
 type Effect struct {
 	// Site is the outer call charged by density; zero keeps independent evidence.

@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/rstyled/gstyle/domain/quality"
 )
 
 func TestStableGlobalsAgreeAcrossLoadedTestVariants(t *testing.T) {
@@ -51,7 +49,7 @@ func Read() int { if frozen != nil { return fixed["a"] }; return 0 }
 				t.Fatal(err)
 			}
 			for _, effect := range findFunction(t, production, "Read").Effects {
-				if effect.Kind == quality.Global {
+				if effect.Kind.GlobalState() {
 					t.Fatalf("unloaded tests change production proof: %+v", effect)
 				}
 			}
@@ -70,7 +68,7 @@ func Read() int { if frozen != nil { return fixed["a"] }; return 0 }
 			}
 			global := false
 			for _, effect := range findFunction(t, variants, "Read").Effects {
-				global = global || effect.Kind == quality.Global
+				global = global || effect.Kind.GlobalState()
 			}
 			if global != tc.wantGlobal {
 				t.Fatalf("loaded test variants: global=%v want=%v", global, tc.wantGlobal)

@@ -14,6 +14,7 @@ var kindToEffectBit = map[quality.Kind]uint16{
 	quality.IO:             patterns.EffectIO,
 	quality.Network:        patterns.EffectNetwork,
 	quality.Global:         patterns.EffectGlobal,
+	quality.GlobalRead:     patterns.EffectGlobal,
 	quality.Unsafe:         patterns.EffectUnsafe,
 	quality.Time:           patterns.EffectTime,
 	quality.Random:         patterns.EffectRandom,

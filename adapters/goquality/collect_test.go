@@ -57,7 +57,7 @@ func CallbackEffect(){out:=slices.Collect(func(yield func(int)bool){counter++;yi
 		result := resultNamed(t, report, name)
 		found := false
 		for _, effect := range result.Effects {
-			found = found || effect.Kind == quality.Global
+			found = found || effect.Kind.GlobalState()
 		}
 		if !found {
 			t.Errorf("%s loses global effect: %+v", name, result)

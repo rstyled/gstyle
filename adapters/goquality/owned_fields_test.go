@@ -132,7 +132,7 @@ func PromotedReference() { f:=Embedded{Fields:&Fields{Items:[]int{1}}}; f.Items[
 	argument := resultNamed(t, report, "ArgumentEffects")
 	foundGlobal := false
 	for _, effect := range argument.Effects {
-		foundGlobal = foundGlobal || effect.Kind == quality.Global
+		foundGlobal = foundGlobal || effect.Kind.GlobalState()
 	}
 	if !foundGlobal {
 		t.Fatalf("factory argument lost global effect: %+v", argument.Effects)

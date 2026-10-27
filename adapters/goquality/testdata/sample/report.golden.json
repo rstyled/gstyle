@@ -23,6 +23,10 @@
         "count": 1
       },
       {
+        "kind": "global_read",
+        "count": 0
+      },
+      {
         "kind": "unsafe",
         "count": 2
       },
