@@ -160,7 +160,7 @@ func callLine(nodes []Node, callee string) int {
 }
 
 func analysisReasons(base, head Snapshot) []Reason {
-	reasons := declarationReasons(base, head)
+	reasons := slices.Concat(declarationReasons(base, head), auxiliaryReasons(base, head))
 	for _, snapshot := range []Snapshot{base, head} {
 		if snapshot.AnalysisError != "" {
 			reasons = append(reasons, Reason{Rule: "analysis_unavailable", Level: Unknown, Message: snapshot.AnalysisError})
@@ -192,10 +192,10 @@ func dependencyReason(base, head Snapshot, config Config) (*Reason, bool) {
 			return &Reason{Rule: "dependencies_unavailable", Level: Unknown, Message: snapshot.DependencyError}, false
 		}
 	}
-	if slices.Equal(base.Dependencies, head.Dependencies) {
+	if slices.Equal(dependencyInventory(base.Dependencies), dependencyInventory(head.Dependencies)) {
 		return nil, false
 	}
-	message := "module requirements, replacements or package imports changed"
+	message := "module requirements, replacements or imported package inventory changed"
 	if config.DependencyChange == "" {
 		message += "; no severity is configured"
 	}

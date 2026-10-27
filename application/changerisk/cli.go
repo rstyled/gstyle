@@ -205,11 +205,7 @@ func snapshotPolicy(root, name string) (changerisk.Config, error) {
 }
 
 func populateSnapshot(ctx context.Context, root string, changed []string) (repositorySnapshot, error) {
-	paths, message, err := gorisk.ExistingPaths(root, changed)
-	if err != nil {
-		return repositorySnapshot{}, err
-	}
-	source, err := gorisk.ExtractSource(ctx, root, paths)
+	source, err := gorisk.ExtractRiskSource(ctx, root, changed)
 	if err != nil {
 		return repositorySnapshot{}, err
 	}
@@ -219,7 +215,8 @@ func populateSnapshot(ctx context.Context, root string, changed []string) (repos
 	if dependencyErr != nil {
 		dependencyMessage = "Go dependency enumeration failed: " + strings.ReplaceAll(dependencyErr.Error(), root, ".")
 	}
-	source.AnalysisError = strings.TrimSpace(strings.Join([]string{source.AnalysisError, message, embeddedScope(changed, items), embeddedDocumentationScope(ctx, root, changed)}, "\n"))
+	source.AnalysisError = strings.TrimSpace(strings.Join([]string{source.AnalysisError, embeddedScope(changed, items), embeddedDocumentationScope(ctx, root, changed)}, "\n"))
 	source.Dependencies, source.DependencyError = items, dependencyMessage
+
 	return repositorySnapshot{Source: source, API: api}, ctx.Err()
 }

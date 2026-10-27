@@ -35,11 +35,11 @@ func TestDeclarationFingerprintSeparatesBodyAndDeclarationChanges(t *testing.T) 
 		{"raw carriage return", "package p\n/* a\rb */\nfunc value() {}", "package p\n/* ab */\nfunc value() {}", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			before, err := declarationFingerprint("source.go", test.before)
+			before, _, err := declarationFacts("source.go", test.before, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
-			after, err := declarationFingerprint("source.go", test.after)
+			after, _, err := declarationFacts("source.go", test.after, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -48,7 +48,7 @@ func TestDeclarationFingerprintSeparatesBodyAndDeclarationChanges(t *testing.T) 
 			}
 		})
 	}
-	if _, err := declarationFingerprint("broken.go", "package"); err == nil {
+	if _, _, err := declarationFacts("broken.go", "package", nil); err == nil {
 		t.Fatal("invalid source received a fingerprint")
 	}
 }

@@ -43,9 +43,35 @@ func TestImportAndRequirementOnlyChangesRemainVisibleWithoutModuleCounts(t *test
 		if report.DependencyRisk != High || !report.DependenciesChanged || len(moduleChanges(report)) != 0 || len(report.DependenciesAdded) != 1 || len(report.DependenciesRemoved) != 1 {
 			t.Fatalf("non-module dependency evidence changed: %+v", report)
 		}
-		if !strings.Contains(markdown, "**Dependencies:** changed") || !strings.Contains(markdown, "Selected module versions unchanged.") || strings.Contains(markdown, "Imports:") {
+		if !strings.Contains(markdown, "**Dependencies:** changed") || !strings.Contains(markdown, "module versions unchanged.") || strings.Contains(markdown, "Imports:") {
 			t.Fatalf("non-module changes were hidden or counted as modules: %s", markdown)
 		}
+		if strings.Contains(records[0], ":import:") && !strings.Contains(markdown, "Package imports changed;") {
+			t.Fatalf("import-only changes have no explanation: %s", markdown)
+		}
+	}
+}
+
+func TestDependencyMarkdownExplainsTheAddedReflectImport(t *testing.T) {
+	report := Evaluate(Snapshot{}, Snapshot{Dependencies: []string{".:import:github.com/rstyled/gstyle/domain/taintflow -> reflect"}},
+		Config{DependencyChange: High}, APIReport{})
+	markdown := Markdown(report)
+	for _, want := range []string{"Package imports changed; module versions unchanged.", "Added package import `reflect`."} {
+		if strings.Count(markdown, want) != 1 {
+			t.Fatalf("missing exact import explanation %q: %s", want, markdown)
+		}
+	}
+	if report.DependencyRisk != High || report.Risk != High {
+		t.Fatal("rendering change weakened dependency policy")
+	}
+}
+
+func TestDependencyMarkdownListsAddedAndRemovedImportsInStableOrder(t *testing.T) {
+	report := Report{DependenciesChanged: true, DependenciesAdded: []string{".:import:p -> z", ".:import:p -> a", ".:import:p -> a", ".:import:p [p.test] -> a", ".:import:other -> a"},
+		DependenciesRemoved: []string{".:import:p -> old"}}
+	lines := dependencyImportLines(report)
+	if strings.Join(lines, "\n") != "- Added package import `a`.\n- Added package import `z`.\n- Removed package import `old`." {
+		t.Fatalf("unstable or incomplete import changes: %v", lines)
 	}
 }
 

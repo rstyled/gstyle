@@ -109,8 +109,13 @@ func TestDependencyFactsDoNotDependOnSeverityPolicy(t *testing.T) {
 		t.Fatalf("dependency deltas missing: %+v", report)
 	}
 	markdown := Markdown(report)
-	if !strings.Contains(markdown, "**Dependencies:** changed") || !strings.Contains(markdown, "Selected module versions unchanged.") {
+	if !strings.Contains(markdown, "**Dependencies:** changed") || !strings.Contains(markdown, "Package imports changed; module versions unchanged.") {
 		t.Fatalf("dependency facts missing: %s", markdown)
+	}
+	for _, evidence := range []string{"Added package import `new`", "Removed package import `old`"} {
+		if !strings.Contains(markdown, evidence) {
+			t.Fatalf("dependency change missing %q: %s", evidence, markdown)
+		}
 	}
 	head.DependencyError = "enumeration unavailable"
 	report = Evaluate(base, head, Config{DependencyChange: High}, APIReport{})

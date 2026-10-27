@@ -17,13 +17,13 @@ import (
 func embeddedDocumentationScope(ctx context.Context, root string, changed []string) string {
 	message, err := embeddedDocumentationCoverage(ctx, root, changed)
 	if err != nil {
-		return "Go embed coverage is unavailable; documentation changes need review: " + err.Error()
+		return "Go embed coverage is unavailable; resource changes need review: " + err.Error()
 	}
 	return message
 }
 
 func embeddedDocumentationCoverage(ctx context.Context, root string, changed []string) (string, error) {
-	documents, err := changedMarkdownPaths(changed)
+	documents, err := changedResourcePaths(changed)
 	if err != nil {
 		return "", err
 	}
@@ -45,14 +45,14 @@ func embeddedDocumentationCoverage(ctx context.Context, root string, changed []s
 	return embeddedDocumentationMessage(affected), nil
 }
 
-func changedMarkdownPaths(changed []string) ([]string, error) {
+func changedResourcePaths(changed []string) ([]string, error) {
 	var documents []string
 	for _, name := range changed {
-		if path.Ext(name) != ".md" {
+		if !inertResourcePath(name) {
 			continue
 		}
 		if !validConfigPath(name) {
-			return nil, fmt.Errorf("documentation path is outside the repository scope: %q", name)
+			return nil, fmt.Errorf("resource path is outside the repository scope: %q", name)
 		}
 		documents = append(documents, name)
 	}
@@ -231,4 +231,8 @@ func embedPatternsMatch(patterns []string, name string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+func inertResourcePath(name string) bool {
+	return path.Ext(name) == ".md" || name == "quality-baseline.json" || strings.HasSuffix(name, "_test.go")
 }
