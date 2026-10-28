@@ -42,12 +42,16 @@ package exit refinement. It requires a known source snapshot and target width,
 an exact source inventory, binding and interface agreement, CFG transitions,
 execution/control completeness, reaching definitions, value dependencies and
 projection agreement. The whole body must exclude unspecified sibling-operand
-orders, and the interface must have at most one output.
+orders, and routine certification requires exactly one scalar output. Void
+fallthrough and multiple-output functions keep their partial evidence.
 
 Only graphs that pass these checks report `node_extraction=supported` and
 `conformance=conformant`, under `gstyle.go.scalar-normal/0.2.0`. Unsupported or
-unverified functions keep incomplete evidence; verifier failures retain their
-reason in the conformance assessment. Exceptional flow remains unsupported:
+unverified functions keep incomplete evidence. Missing source/target evidence
+also blocks certification. For an admitted scalar function with that evidence,
+a verifier failure stops extraction with an error identifying the function and
+failed check; it cannot silently downgrade a broken graph to partial support.
+Exceptional flow remains unsupported:
 certification concerns bounded normal flow. Compiler/runtime agreement, exact
 graph equivalence, schema validity and producer evidence remain separate checks.
 
@@ -57,3 +61,11 @@ selected values, positions and controller identities for conjunction,
 disjunction, repeated reads and nested expressions. The external six-case
 compatibility suite uses independent handwritten expectations, not regenerated
 producer snapshots.
+
+The Go/Rust compatibility workflow runs the external suite at a fixed commit
+against the PR checkout and a fixed Rust producer revision. It preserves raw
+outputs and checks exact graphs, schemas, source identity, spans, evidence,
+renaming and runtime results. A second job corrupts those raw outputs while
+leaving their conformance claims intact. Missing/reversed/duplicate dependencies,
+wrong literals, binding/definition identities and short-circuit selections must
+fail the independent oracle. Evidence and source corruptions must also fail.

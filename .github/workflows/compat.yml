@@ -1,0 +1,57 @@
+name: Go/Rust compatibility
+
+"on":
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: compat-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compatibility:
+    uses: rstyled/compat/.github/workflows/compat.yml@7366049160309bb0a764c57f7e07ae543a039048
+    with:
+      compat_ref: 7366049160309bb0a764c57f7e07ae543a039048
+      gstyle_ref: ${{ github.sha }}
+      rstyle_ref: 5b1b4e09ba4762ffe402338b65fa4fd472e652b6
+
+  controls:
+    name: Reject corrupt producer graphs
+    needs: compatibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: rstyled/compat
+          ref: 7366049160309bb0a764c57f7e07ae543a039048
+          path: .compat
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v8
+        with:
+          name: compat-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/compat-results
+      - name: Require independent rejection of corrupted raw outputs
+        run: >-
+          python -B verification/lean/compat_controls.py
+          --suite .compat/suite
+          --results "$RUNNER_TEMP/compat-results/ci"
+          --out "$RUNNER_TEMP/compat-controls.json"
+      - name: Preserve fault-control results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: compat-controls
+          path: ${{ runner.temp }}/compat-controls.json

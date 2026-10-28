@@ -3,6 +3,7 @@ package gopatterns
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/rstyled/gstyle/domain/pdg"
@@ -26,6 +27,7 @@ func Loop(a int32) int32 { for a > 0 { a-- }; return a }
 func Call(a int32) int32 { return Identity(a) }
 func Memory(a *int32) int32 { return *a }
 func Closure(a int32) func() int32 { return func() int32 { return a } }
+func Void() {}
 `)
 	root := filepath.Dir(pkg.Fset.PositionFor(pkg.Syntax[0].Pos(), false).Filename)
 	extraction, err := Extract(context.Background(), root, []string{"."})
@@ -89,8 +91,13 @@ func TestScalarAssessmentRejectsMissingAndCorruptEvidence(t *testing.T) {
 				graph.Edges = nil
 			}
 			analysis := packageAnalysis{pkg: &loaded, pool: pool}
-			if err := analysis.assessScalarExtraction(functionGraph{declaration: fn, graph: &graph}); err != nil {
+			err = analysis.assessScalarExtraction(functionGraph{declaration: fn, graph: &graph})
+			missingEvidence := fault == "source" || fault == "target"
+			if missingEvidence && err != nil {
 				t.Fatal(err)
+			}
+			if !missingEvidence && (err == nil || !strings.Contains(err.Error(), "verify scalar extraction")) {
+				t.Fatalf("invalid extraction must fail explicitly: %v", err)
 			}
 			if graph.Conformance.Status != pdg.NonConformant || len(graph.Conformance.Reasons) == 0 {
 				t.Fatal("invalid extraction is certified")
