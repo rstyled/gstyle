@@ -82,7 +82,9 @@ transfers over the finite set of source definitions. The entry always includes
 formal input and named-result definitions, even when a back edge reaches entry.
 Only changed block outputs schedule successors. Reads do not alter this analysis
 domain. After convergence, each read receives its reaching definitions once;
-multiple definitions form an explicit value join. This avoids making a fresh
+multiple definitions form an explicit value join in the cyclic profile.
+The acyclic scalar profile instead retains direct source-definition edges; see
+[pdg-scalar-compatibility.md](pdg-scalar-compatibility.md). This avoids making a fresh
 merge on each loop iteration. No iteration cutoff can turn incomplete analysis
 into success. The operation-CFG size limit applies before data analysis starts.
 

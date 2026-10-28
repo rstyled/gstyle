@@ -10,8 +10,10 @@ import (
 )
 
 type valueEdge struct {
-	from, to pdg.Ref
-	position pdg.Position
+	from, to   pdg.Ref
+	position   pdg.Position
+	controller pdg.Ref
+	outcome    string
 }
 
 type valueCheck struct {
@@ -19,6 +21,7 @@ type valueCheck struct {
 	fset     *token.FileSet
 	info     *types.Info
 	nodes    map[site]pdg.Ref
+	ids      map[string]pdg.Ref
 	retained []bool
 	expected map[valueEdge]int
 	err      error
@@ -40,7 +43,7 @@ func (a *valueCheck) edge(from, to pdg.Ref, position pdg.Position) {
 		a.err = fmt.Errorf("reachable value has an unreachable source")
 		return
 	}
-	a.expected[valueEdge{from, to, position}]++
+	a.expected[valueEdge{from: from, to: to, position: position}]++
 }
 
 func (a *valueCheck) source(node ast.Node) bool {
@@ -137,11 +140,12 @@ func (a *valueCheck) expression(expression ast.Expr) {
 }
 
 func (a *valueCheck) binary(node *ast.BinaryExpr, owner pdg.Ref) {
+	if node.Op == token.LAND || node.Op == token.LOR {
+		a.logical(node, owner)
+		return
+	}
 	a.edge(a.expressionRef(node.X), owner, 1)
 	a.edge(a.expressionRef(node.Y), owner, 2)
-	if node.Op == token.LAND || node.Op == token.LOR {
-		a.edge(a.expressionRef(node.X), a.ref(node.X, pdg.Control, true), 1)
-	}
 }
 
 func (a *valueCheck) compare() error {
@@ -168,9 +172,16 @@ func (a *valueCheck) consume(edge pdg.Edge) error {
 	if !a.retained[edge.Source-1] {
 		return fmt.Errorf("reachable value has an unreachable source")
 	}
-	key := valueEdge{edge.Source, edge.Target, edge.Position}
+	key, err := a.key(edge)
+	if err != nil {
+		return err
+	}
+	return a.consumeKey(key)
+}
+
+func (a *valueCheck) consumeKey(key valueEdge) error {
 	if a.expected[key] == 0 {
-		return fmt.Errorf("unexpected value edge %d -> %d", edge.Source, edge.Target)
+		return fmt.Errorf("unexpected value edge %d -> %d", key.from, key.to)
 	}
 	a.expected[key]--
 	return nil
@@ -180,12 +191,13 @@ func Values(g *pdg.Graph, fn *ast.FuncDecl, fset *token.FileSet, info *types.Inf
 	if err := pdg.Validate(g); err != nil {
 		return err
 	}
-	a := valueCheck{g: g, fset: fset, info: info, nodes: map[site]pdg.Ref{}, retained: pdg.NormalProjection(g), expected: map[valueEdge]int{}}
+	a := valueCheck{g: g, fset: fset, info: info, nodes: map[site]pdg.Ref{}, ids: map[string]pdg.Ref{}, retained: pdg.NormalProjection(g), expected: map[valueEdge]int{}}
 	if a.retained == nil {
 		return fmt.Errorf("value reachability is missing")
 	}
 	for i, node := range g.Nodes {
 		a.nodes[site{g.Spans[node.Span-1], node.Category, node.Synthetic}] = pdg.Ref(i + 1)
+		a.ids[g.Tables.Text(node.ID)] = pdg.Ref(i + 1)
 	}
 	ast.Inspect(fn.Body, a.source)
 	if a.err != nil {
