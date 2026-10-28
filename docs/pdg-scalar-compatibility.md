@@ -1,0 +1,47 @@
+# Scalar extraction boundary
+
+The acyclic scalar producer exports each original reaching definition directly
+into a read. Reads do not create definitions or replace the reaching-definition
+set. For `x:=a; if b { x=1 } else { x=2 }; return x`, only the two arm assignments
+reach the final read: each arm kills `x:=a`. The assignments retain their own
+symbol and definition identities on those edges. The final read postdominates
+the branch, so neither branch outcome controls it and neither individual arm
+assignment dominates it. This is a representation contract for this profile;
+other profiles still use explicit binding-definition joins.
+
+Short-circuit expression merges remain nonexecuting value entities. Their
+incoming data edges use `subkind=value_alternative`, with explicit `outcome`
+and zero-based exported alternative slots: true at 0, false at 1. These are
+selection slots, not lexical operand positions. For `a && b`, the true input is
+`b` and the false input is the saved read of `a`. For `a || b`, true selects the
+saved `a` and false selects `b`. No second LHS evaluation or false literal is
+introduced. RHS execution/control dependencies retain conditional evaluation.
+
+Each alternative exports its own selecting decision in the existing edge
+annotation extension point, for example:
+
+```json
+{"gstyle.go:guards": [[{"controller_pdg_node_id": "n8", "outcome": "true"}]]}
+```
+
+The outer array is a disjunction of conjunctions of guard atoms. This producer
+emits one local decision atom per alternative. Nested expressions keep their
+own merge and decision identities; the local guard does not claim that an
+inner expression is available outside its enclosing execution region. Consumers
+must retain the controller reference as a graph relationship, not compare its
+incidental node ID as a string. This annotation and the edge outcome must agree.
+The shared JSON schema already permits namespaced annotations and string
+subkinds; no schema relaxation is required.
+
+These changes apply to the acyclic scalar profile only. General bindings and
+cyclic extraction retain their existing representations. They do not upgrade
+the root's nonconformance or approximate node-extraction claims. Compiler/runtime
+agreement, exact graph equivalence, schema validity and producer evidence must
+continue to be reported separately.
+
+Regression tests compare original definition identities without expanding
+merges, reject killed definitions and incorrect branch dependencies, and check
+selected values, positions and controller identities for conjunction,
+disjunction, repeated reads and nested expressions. The external six-case
+compatibility suite uses independent handwritten expectations, not regenerated
+producer snapshots.

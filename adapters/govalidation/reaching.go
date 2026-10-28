@@ -88,14 +88,7 @@ func (a *reachingCheck) read(ref, symbol pdg.Ref, expected []pdg.Ref) error {
 	if len(expected) == 0 {
 		return fmt.Errorf("read %d has no reaching source definition", ref)
 	}
-	if len(a.incoming[ref]) != 1 {
-		return fmt.Errorf("read %d requires one reaching value definition", ref)
-	}
-	definition := a.incoming[ref][0]
-	if a.g.Definitions[definition-1].Symbol != symbol {
-		return fmt.Errorf("reaching edge carries a different binding")
-	}
-	actual, err := a.leaves(definition)
+	actual, err := a.readDefinitions(ref, symbol)
 	if err != nil {
 		return err
 	}
@@ -103,6 +96,25 @@ func (a *reachingCheck) read(ref, symbol pdg.Ref, expected []pdg.Ref) error {
 		return fmt.Errorf("reaching definitions disagree at read %d", ref)
 	}
 	return nil
+}
+
+func (a *reachingCheck) readDefinitions(ref, symbol pdg.Ref) ([]pdg.Ref, error) {
+	inputs := a.incoming[ref]
+	if len(sortedRefs(inputs)) != len(inputs) {
+		return nil, fmt.Errorf("read repeats a reaching definition")
+	}
+	var actual []pdg.Ref
+	for _, definition := range inputs {
+		if a.g.Definitions[definition-1].Symbol != symbol {
+			return nil, fmt.Errorf("reaching edge carries a different binding")
+		}
+		leaves, err := a.leaves(definition)
+		if err != nil {
+			return nil, err
+		}
+		actual = append(actual, leaves...)
+	}
+	return actual, nil
 }
 
 // Each read uses linear scratch. Do not cache expanded definition histories:

@@ -54,41 +54,6 @@ func TestNormalFlowPreservesDistinctReadOccurrences(t *testing.T) {
 	}
 }
 
-func TestNormalFlowCreatesExplicitValueJoin(t *testing.T) {
-	source := `package example; func f(x int,c bool) int { if c { x=1 } else { x=2 }; return x }`
-	graph := parseIR(t, source, pdg.NewBuilder())
-	merges := 0
-	for i, node := range graph.Nodes {
-		if node.Category != pdg.Merge {
-			continue
-		}
-		merges++
-		attrs := graph.NodeAttributes(node)
-		if !node.Synthetic || len(attrs.Defines) != 1 || len(attrs.Symbols) != 1 {
-			t.Fatal("merge lacks value definition")
-		}
-		ref := pdg.Ref(i + 1)
-		incoming, outgoing := 0, 0
-		for _, edge := range graph.Edges {
-			if edge.Target == ref && edge.Kind == pdg.Data {
-				incoming++
-			}
-			if edge.Source == ref && edge.Kind == pdg.Data {
-				outgoing++
-			}
-			if (edge.Source == ref || edge.Target == ref) && edge.Kind == pdg.Execution {
-				t.Fatal("nonexecuting value join is treated as operation")
-			}
-		}
-		if incoming != 2 || outgoing != 1 {
-			t.Fatalf("join inputs=%d outputs=%d", incoming, outgoing)
-		}
-	}
-	if merges != 1 {
-		t.Fatalf("merges=%d; want 1", merges)
-	}
-}
-
 func TestScalarNormalProfileRejectsUnlistedSource(t *testing.T) {
 	functions := []string{
 		`func f() { _="text" }`,

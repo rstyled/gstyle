@@ -241,6 +241,7 @@ func (b *irBuilder) finishGraph(fn *ast.FuncDecl) (pdg.Graph, error) {
 	}
 
 	b.canonicalValueFacts(fn)
+	b.shortCircuitAlternatives()
 	b.capabilities()
 	if err := b.pack(); err != nil {
 		return pdg.Graph{}, err

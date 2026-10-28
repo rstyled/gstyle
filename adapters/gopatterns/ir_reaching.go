@@ -137,18 +137,28 @@ func (a *reachingAnalysis) valueEdge(source, target pdg.Ref, position pdg.Positi
 func (a *reachingAnalysis) operation(node pdg.Ref, state reachingState) {
 	attributes := a.builder.attributes[a.builder.graph.Nodes[node-1].Attributes-1]
 	for _, read := range attributes.Reads {
-		key := a.key(read.Symbol, read.Location)
-		definitions := state[key]
-		if len(definitions) == 0 {
-			continue
-		}
-		definition := a.joinedDefinition(key, node, definitions)
-		state[key] = []pdg.Ref{definition}
-		a.edge(definition, node, read.Position)
+		a.readDefinitions(node, read, state)
 	}
 	for _, ref := range attributes.Defines {
 		a.writeDefinition(ref, state)
 	}
+}
+
+func (a *reachingAnalysis) readDefinitions(node pdg.Ref, read pdg.Access, state reachingState) {
+	key := a.key(read.Symbol, read.Location)
+	definitions := state[key]
+	if len(definitions) == 0 {
+		return
+	}
+	if a.builder.scalarOperations && !a.builder.extendedScalar {
+		for _, definition := range definitions {
+			a.edge(definition, node, read.Position)
+		}
+		return
+	}
+	definition := a.joinedDefinition(key, node, definitions)
+	state[key] = []pdg.Ref{definition}
+	a.edge(definition, node, read.Position)
 }
 
 func (a *reachingAnalysis) edge(ref, target pdg.Ref, position pdg.Position) {
