@@ -118,7 +118,14 @@ func (a *sourceFlow) returnFlow(node *ast.ReturnStmt) []pdg.Ref {
 
 func (a *sourceFlow) declarations(node *ast.DeclStmt, next []pdg.Ref) []pdg.Ref {
 	declaration, ok := node.Decl.(*ast.GenDecl)
-	if !ok || declaration.Tok != token.VAR {
+	if !ok {
+		a.err = fmt.Errorf("unsupported declaration")
+		return nil
+	}
+	if declaration.Tok == token.TYPE {
+		return next
+	}
+	if declaration.Tok != token.VAR {
 		a.err = fmt.Errorf("unsupported declaration")
 		return nil
 	}
