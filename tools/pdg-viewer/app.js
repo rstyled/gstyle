@@ -54,7 +54,7 @@ function renderCamera() {
  canvas.setAttribute('viewBox', `${cam.x} ${cam.y} ${w / cam.k} ${h / cam.k}`);
  canvas.classList.toggle('far', cam.k < .5);
  $('#zoom-level').textContent = `${Math.round(cam.k * 100)}%`;
- if (labelScale !== cam.k) {
+ if (!state.view?.overview && labelScale !== cam.k) {
   labelScale = cam.k;
   stage.style.setProperty('--map-label-size', `${12 / cam.k}px`);
   stage.style.setProperty('--map-heading-size', `${14 / cam.k}px`);
@@ -117,7 +117,8 @@ addEventListener('pointermove', e => {
  if (!drag.moved) { drag.moved = true; if (state.hover) { state.hover = null; paint(); } canvas.classList.add('dragging'); canvas.setPointerCapture?.(e.pointerId); }
  cam.x = drag.cx - dx / cam.k; cam.y = drag.cy - dy / cam.k; applyCamera();
 });
-addEventListener('pointerup', () => { if (drag?.moved) setTimeout(() => drag = null); else drag = null; canvas.classList.remove('dragging'); });
+addEventListener('pointerup', () => { if (drag?.moved) setTimeout(() => { drag = null; applyCamera(); }); else drag = null; canvas.classList.remove('dragging'); });
+addEventListener('pointercancel', () => { drag = null; canvas.classList.remove('dragging'); applyCamera(); });
 new ResizeObserver(applyCamera).observe(canvas);
 $('#zoom-in').onclick = () => zoomAt(1.3);
 $('#zoom-out').onclick = () => zoomAt(1 / 1.3);
@@ -210,6 +211,7 @@ canvas.addEventListener('pointermove', e => {
 });
 canvas.addEventListener('pointerleave', () => {
  pointer = null;
+ canvas.querySelector('#overview-hover-title')?.replaceChildren();
  if (state.view?.overview && state.hover) { state.hover = null; paint(); }
 });
 canvas.addEventListener('click', e => {
@@ -290,10 +292,7 @@ function showAll(route) {
  const view = state.view?.key === 'all' ? state.view : drawGraph('all', graph, {
   overview: true,
   layout: (nodes, edges) => repositoryLayout(nodes, edges, packages),
-  radius: () => 2,
   title: n => `${n.label} · ${n.symbol.file}:${n.symbol.line}`,
-  nodeClass: n => `whole-function layer-${n.layer}`,
-  node: n => `<text class="name" x="6" y="14">${esc(clip(n.label, 16))}</text>`,
  });
  Object.assign(view, {
   related: id => view.overview.index.adjacent.get(id), edgeOn: touches,
@@ -311,7 +310,7 @@ function showAll(route) {
   moveCamera({k, x: frame.x + frame.w / 2 - canvas.clientWidth / 2 / k, y: frame.y + frame.h / 2 - canvas.clientHeight / 2 / k});
  }
  toolbar(`<div class="view-label">All functions <span>${graph.nodes.length.toLocaleString()} · ${plural(graph.edges.length, 'call link')}</span></div>${repositorySwitcher(true)}<div class="seg"><button id="all-calls" aria-pressed="${state.allCalls}">All call edges</button></div>`);
- $('#all-calls').onclick = () => { state.allCalls = !state.allCalls; canvas.classList.toggle('all-calls', state.allCalls); $('#all-calls').setAttribute('aria-pressed', state.allCalls); };
+ $('#all-calls').onclick = () => { state.allCalls = !state.allCalls; canvas.classList.toggle('all-calls', state.allCalls); $('#all-calls').setAttribute('aria-pressed', state.allCalls); applyCamera(); };
  legend('<span>Every tile is one function</span><span>Zoom to read names · select to trace calls</span>');
  crumbs([[model.module, href.repo()], ['all functions', symbol || route.pkg ? href.all() : null], ...(symbol ? [[symbol.name, null]] : route.pkg ? [[shortPackage(route.pkg, model.module), null]] : [])]);
  inspector(symbol ? functionPanel(symbol) : route.pkg ? packagePanel(route.pkg, true) : repoPanel(packageGraph(model)));
@@ -447,7 +446,7 @@ function setView(view, selected, refit = true) {
  if (changed && refit) fit(false);
  if (state.selected) centerOn(state.selected);
 }
-function notFound(message) { canvas.innerHTML = ''; state.view = null; toolbar(''); legend(''); inspector(''); overlay(`<div class="notice"><h3>Not found</h3><p>${esc(message)}</p><div class="actions"><a class="secondary" href="#/">Back to ${standalone ? 'export' : 'repository'}</a></div></div>`); return null; }
+function notFound(message) { state.view?.overview?.detach(); canvas.innerHTML = ''; state.view = null; toolbar(''); legend(''); inspector(''); overlay(`<div class="notice"><h3>Not found</h3><p>${esc(message)}</p><div class="actions"><a class="secondary" href="#/">Back to ${standalone ? 'export' : 'repository'}</a></div></div>`); return null; }
 const overlay = html => $('#overlay').innerHTML = html;
 const legend = html => $('#legend').innerHTML = html;
 const toolbar = html => $('#toolbar').innerHTML = html;
@@ -572,6 +571,7 @@ function highlightGo(text) {
  return lines;
 }
 
+let treeKey = null;
 // ── sidebar ────────────────────────────────────────────────────────────────
 function mark(text, query) {
  const i = query ? text.toLowerCase().indexOf(query) : -1;
@@ -584,6 +584,16 @@ function renderTree() {
   return;
  }
  const model = state.model, current = route.pkg || model.symbols.get(route.fn)?.package;
+ const key = `${route.view}:${current || ''}:${query}`;
+ if (treeKey === key) {
+  const active = $('#tree .row.fn.on');
+  const url = route.view === 'all' ? href.all(route.fn) : href.pkg(current, route.fn);
+  const next = route.fn ? $('#tree').querySelector(`a[href="${url}"]`) : null;
+  if (active !== next) { active?.classList.remove('on'); next?.classList.add('on'); next?.scrollIntoView({block:'nearest'}); }
+  return;
+ }
+ treeKey = key;
+
  const pkgRow = p => `<a class="row${p.id === current ? ' on' : ''}" href="${route.view === 'all' ? href.all(null, p.id) : href.pkg(p.id)}"><i class="dot" style="--c:${layerVar(layerOf(p.id, model.module))}"></i><span class="name">${mark(shortPackage(p.id, model.module), query)}</span><span class="count">${model.byPackage.get(p.id)?.length || 0}</span></a>`;
  const fnRow = (s, extra = '') => `<a class="row fn${s.id === route.fn ? ' on' : ''}" href="${route.view === 'all' ? href.all(s.id) : href.pkg(s.package, s.id)}"><span class="name">${mark(s.name, query)}</span><span class="count">${extra}</span></a>`;
  if (query) {
@@ -631,6 +641,7 @@ function route() {
  canvas.removeAttribute('tabindex'); canvas.removeAttribute('aria-describedby'); canvas.removeAttribute('aria-activedescendant');
  canvas.style.cursor = ''; labelScale = null;
  const r = state.route;
+ if (r.view !== 'all') state.view?.overview?.detach();
  if (r.view === 'invalid') { notFound('This link has an invalid address.'); return; }
  if (r.view === 'all') showAll(r); else if (r.view === 'pdg') showPDG(r); else if (r.view === 'package') showPackage(r); else showRepo(r);
  renderTree();
@@ -639,7 +650,7 @@ addEventListener('hashchange', route);
 (async () => {
  if (standalone) { $('#stats').textContent = plural(embedded.length, 'function'); route(); return; }
  try {
-  const response = await fetch('/api/index');
+  const response = await fetch('/api/index', {cache:'no-store'});
   if (!response.ok) throw new Error(await response.text());
   state.model = indexModel(await response.json());
   const {index} = state.model;

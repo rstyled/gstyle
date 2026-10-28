@@ -23,9 +23,12 @@ controls background links; selection always highlights direct calls. Search and
 package focus move the camera without filtering out functions. Zoom reveals names;
 Fit restores the whole map. This view shares the index's production-source scope.
 The overview caches function tiles and background wires in bounded raster layers.
-Visible zoomed-in tiles and selected call paths use sharp SVG detail. Spatial
-buckets handle hit testing and viewport detail; camera and hover work runs once
-per animation frame. Rendering does not filter the underlying graph. Use arrow
+A viewport-sized canvas draws sharp close-up tiles, text, and selected call paths
+at display resolution. Spatial buckets handle hit testing and visible detail;
+camera and hover work runs once per animation frame. Hover leaves the graph DOM
+intact, and nearby selections reuse the sidebar. A padded canvas surface moves
+through the compositor while dragging; it repaints when the pan reaches new
+content, then returns to viewport size after release. Rendering does not filter the underlying graph. Use arrow
 keys to select functions when the map has keyboard focus, then Enter to open a PDG.
 
 Open **Dependence graph** to load a typed PDG on demand. **Statements** folds nested
@@ -82,6 +85,7 @@ The function chooser handles multi-function exports. JSON is HTML-escaped before
 ```sh
 go test ./tools/pdg-viewer
 bun test tools/pdg-viewer/*.test.ts
+# The browser regression test runs when Chromium is installed.
 make check
 make quality-gate
 ```
