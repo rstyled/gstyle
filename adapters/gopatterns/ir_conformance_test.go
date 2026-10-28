@@ -34,7 +34,7 @@ func Void() {}
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]bool{"Identity": true, "Chain": true, "Overwrite": true, "Branch": true, "Early": true, "ShortCircuit": true, "Renamed": true}
+	want := map[string]bool{"Identity": true, "Chain": true, "Overwrite": true, "Branch": true, "Early": true, "ShortCircuit": true, "Renamed": true, "Void": true}
 	seen := map[string]bool{}
 	for _, graph := range extraction.Callables {
 		name := graph.Tables.Text(graph.Function.Name.Value)

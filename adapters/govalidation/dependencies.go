@@ -9,6 +9,13 @@ import (
 type dependency struct {
 	from, to pdg.Ref
 	kind     pdg.EdgeKind
+	position pdg.Position
+	outcome  string
+}
+
+type controlArm struct {
+	controller pdg.Ref
+	position   pdg.Position
 }
 
 // Ordering independently checks the complete sparse execution/control basis on
@@ -31,9 +38,7 @@ func Ordering(g *pdg.Graph) error {
 	if err != nil {
 		return err
 	}
-	for controller, successors := range next {
-		controlDependencies(expected, controller, successors, post)
-	}
+	controlFlowDependencies(g.NormalFlow, expected, post)
 	return compareOrdering(g, expected)
 }
 
@@ -41,7 +46,7 @@ func executionDependencies(dom map[pdg.Ref]pdg.Ref) map[dependency]bool {
 	expected := map[dependency]bool{}
 	for ref, parent := range dom {
 		if ref != 0 && parent != 0 {
-			expected[dependency{parent, ref, pdg.Execution}] = true
+			expected[dependency{from: parent, to: ref, kind: pdg.Execution}] = true
 		}
 	}
 	return expected
@@ -66,15 +71,28 @@ func reverseFlow(next map[pdg.Ref][]pdg.Ref) map[pdg.Ref][]pdg.Ref {
 	return out
 }
 
-func controlDependencies(expected map[dependency]bool, controller pdg.Ref, successors []pdg.Ref, post map[pdg.Ref]pdg.Ref) {
-	if controller == 0 {
+func controlFlowDependencies(flow *pdg.NormalFlow, expected map[dependency]bool, post map[pdg.Ref]pdg.Ref) {
+	for _, block := range flow.Blocks {
+		if !block.Reachable || len(block.Operations) == 0 || len(block.Successors) != 2 {
+			continue
+		}
+		controller := block.Operations[len(block.Operations)-1]
+		for arm, successor := range block.Successors {
+			branch := controlArm{controller, pdg.Position(arm + 1)}
+			controlDependencies(expected, branch, firstOperations(flow, []pdg.Ref{successor}), post)
+		}
+	}
+}
+
+func controlDependencies(expected map[dependency]bool, arm controlArm, successors []pdg.Ref, post map[pdg.Ref]pdg.Ref) {
+	if arm.controller == 0 {
 		return
 	}
-	stop := post[controller]
+	stop := post[arm.controller]
 	for _, next := range successors {
 		for runner := next; runner != stop && runner != 0; runner = post[runner] {
-			if controller != runner {
-				expected[dependency{controller, runner, pdg.ControlEdge}] = true
+			if arm.controller != runner {
+				expected[dependency{arm.controller, runner, pdg.ControlEdge, arm.position, [2]string{"true", "false"}[arm.position-1]}] = true
 			}
 		}
 	}
@@ -85,7 +103,7 @@ func compareOrdering(g *pdg.Graph, expected map[dependency]bool) error {
 		if edge.Kind == pdg.Data {
 			continue
 		}
-		key := dependency{edge.Source, edge.Target, edge.Kind}
+		key := dependency{edge.Source, edge.Target, edge.Kind, edge.Position, g.Tables.Text(edge.Outcome)}
 		if !expected[key] {
 			return fmt.Errorf("unexpected or duplicate ordering dependency %d -> %d", edge.Source, edge.Target)
 		}

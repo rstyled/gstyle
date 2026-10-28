@@ -33,7 +33,7 @@ var irNormalCapabilities = map[string]irCapability{
 	"control_dependencies":        {pdg.Supported, normalDependencyDescription},
 	"execution_dependencies":      {pdg.Approximated, normalExecutionDescription},
 	"reference_counting":          {pdg.Supported, "Distinct local/parameter bindings read by reachable normal-flow read operations; repeated reads count once, shadowed bindings separately."},
-	"returns":                     {pdg.Supported, "Explicit and bare return values under bounded scalar normal flow; deferred writes and exceptional exits are excluded by the source scan."},
+	"returns":                     {pdg.Supported, "Explicit and bare returns and implicit void fallthrough under bounded scalar normal flow; deferred writes and exceptional exits are excluded by the source scan."},
 	"calls":                       {pdg.NotApplicable, "The entire scalar source body is checked to contain no calls."},
 	"memory_aliases":              {pdg.NotApplicable, "The entire scalar source body and interface exclude reference-bearing types and memory operations."},
 	"loop_carried_dependencies":   {pdg.NotApplicable, "The entire scalar source body excludes loops and branch transfers; the retained normal CFG is acyclic."},

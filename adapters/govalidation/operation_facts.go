@@ -4,12 +4,16 @@ import (
 	"fmt"
 	"go/ast"
 	"go/types"
+	"slices"
 
 	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 func (a *inventory) operationFacts(g *pdg.Graph, node pdg.Node, source ast.Node) error {
 	if err := sourceKind(g, node, source); err != nil {
+		return err
+	}
+	if err := sourceSemanticFacts(g, node, source); err != nil {
 		return err
 	}
 	attrs := g.NodeAttributes(node)
@@ -22,6 +26,43 @@ func (a *inventory) operationFacts(g *pdg.Graph, node pdg.Node, source ast.Node)
 		return err
 	}
 	return a.sourceLiteral(g, node, source)
+}
+
+func sourceSemanticFacts(g *pdg.Graph, node pdg.Node, source ast.Node) error {
+	switch source.(type) {
+	case *ast.BlockStmt:
+		return implicitReturnFacts(g, node)
+	case *ast.IfStmt:
+		return controlFacts(g, node, "if")
+	case *ast.BinaryExpr:
+		if node.Category == pdg.Control {
+			return controlFacts(g, node, "short-circuit")
+		}
+	case *ast.ReturnStmt:
+		return normalReturnFacts(g, node)
+	}
+	return nil
+}
+
+func controlFacts(g *pdg.Graph, node pdg.Node, construct string) error {
+	attrs := g.NodeAttributes(node)
+	valid := slices.EqualFunc(attrs.Outcomes, []string{"true", "false"}, func(actual pdg.Text, expected string) bool {
+		return g.Tables.Text(actual) == expected
+	})
+	if g.Tables.Text(attrs.Construct) != construct || !valid {
+		return fmt.Errorf("predicate construct or outcomes disagree with source")
+	}
+	return nil
+}
+
+func normalReturnFacts(g *pdg.Graph, node pdg.Node) error {
+	if node.Category != pdg.Return {
+		return nil
+	}
+	if g.NodeAttributes(node).ExitKind != pdg.NormalExit {
+		return fmt.Errorf("source return must record a normal exit")
+	}
+	return nil
 }
 
 func (a *inventory) sourceLiteral(g *pdg.Graph, node pdg.Node, source ast.Node) error {

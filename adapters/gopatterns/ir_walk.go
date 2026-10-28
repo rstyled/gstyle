@@ -48,7 +48,7 @@ func (b *irBuilder) operation(n ast.Node) {
 func (b *irBuilder) statementOperation(n ast.Node) {
 	switch n := n.(type) {
 	case *ast.ReturnStmt:
-		b.addNode(n, pdg.Return, pdg.Attributes{})
+		b.addNode(n, pdg.Return, pdg.Attributes{ExitKind: pdg.NormalExit})
 	case *ast.IncDecStmt:
 		b.increment(n)
 	case *ast.RangeStmt:
