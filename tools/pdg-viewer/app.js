@@ -44,17 +44,26 @@ function go(hash, replace = false) {
 // ── camera ─────────────────────────────────────────────────────────────────
 const canvas = $('#canvas'), stage = $('#stage');
 const cam = {x: 0, y: 0, k: 1, frame: 0};
+let cameraFrame = 0, labelScale = null;
 function applyCamera() {
+ if (cameraFrame) return;
+ cameraFrame = requestAnimationFrame(() => { cameraFrame = 0; renderCamera(); });
+}
+function renderCamera() {
  const w = canvas.clientWidth, h = canvas.clientHeight;
  canvas.setAttribute('viewBox', `${cam.x} ${cam.y} ${w / cam.k} ${h / cam.k}`);
  canvas.classList.toggle('far', cam.k < .5);
- stage.style.setProperty('--map-label-size', `${12 / cam.k}px`);
- stage.style.setProperty('--map-heading-size', `${14 / cam.k}px`);
  $('#zoom-level').textContent = `${Math.round(cam.k * 100)}%`;
- for (const text of canvas.querySelectorAll('.package-frame text')) {
-  const chars = Math.max(3, Math.floor((Number(text.dataset.width) - 32) * cam.k / 7));
-  text.textContent = clip(text.dataset.label, chars);
+ if (labelScale !== cam.k) {
+  labelScale = cam.k;
+  stage.style.setProperty('--map-label-size', `${12 / cam.k}px`);
+  stage.style.setProperty('--map-heading-size', `${14 / cam.k}px`);
+  for (const text of canvas.querySelectorAll('.package-frame text')) {
+   const chars = Math.max(3, Math.floor((Number(text.dataset.width) - 32) * cam.k / 7));
+   text.textContent = clip(text.dataset.label, chars);
+  }
  }
+ state.view?.overview?.camera();
  let grid = 24 * cam.k;
  while (grid < 14) grid *= 2;
  while (grid > 30) grid /= 2;
@@ -100,12 +109,12 @@ function zoomAt(factor, px = canvas.clientWidth / 2, py = canvas.clientHeight / 
 }
 canvas.addEventListener('wheel', e => { e.preventDefault(); const r = canvas.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? .01 : .0015)), e.clientX - r.left, e.clientY - r.top); }, {passive: false});
 let drag = null;
-canvas.addEventListener('pointerdown', e => { if (e.button !== 0) return; cancelAnimationFrame(cam.frame); drag = {x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false}; });
+canvas.addEventListener('pointerdown', e => { if (e.button !== 0) return; cancelAnimationFrame(cam.frame); canvas.style.cursor = ''; drag = {x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false}; });
 addEventListener('pointermove', e => {
  if (!drag) return;
  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
  if (!drag.moved && Math.hypot(dx, dy) < 4) return;
- if (!drag.moved) { drag.moved = true; canvas.classList.add('dragging'); canvas.setPointerCapture?.(e.pointerId); }
+ if (!drag.moved) { drag.moved = true; if (state.hover) { state.hover = null; paint(); } canvas.classList.add('dragging'); canvas.setPointerCapture?.(e.pointerId); }
  cam.x = drag.cx - dx / cam.k; cam.y = drag.cy - dy / cam.k; applyCamera();
 });
 addEventListener('pointerup', () => { if (drag?.moved) setTimeout(() => drag = null); else drag = null; canvas.classList.remove('dragging'); });
@@ -125,6 +134,7 @@ const MARKERS = ['edge', 'data', 'control', 'execution'];
 function drawGraph(key, graph, spec) {
  if (!state.layouts.has(key)) state.layouts.set(key, spec.layout ? spec.layout(graph.nodes, graph.edges) : graphLayout(graph.nodes, graph.edges, {size: spec.size, rankGap: spec.rankGap}));
  const layout = state.layouts.get(key);
+ if (spec.overview) return drawOverview(key, graph, layout, spec);
  let edges = '', labels = '', nodes = '';
  graph.edges.forEach((e, i) => {
   const kind = spec.edgeKind?.(e) || '', marker = MARKERS.includes(kind) ? kind : 'edge';
@@ -164,28 +174,68 @@ function midpoint(route) {
 function paint() {
  const view = state.view;
  if (!view) return;
+ if (view.overview) {
+  const center = state.hover ?? state.selected;
+  canvas.classList.toggle('focus', !!center);
+  view.overview.highlight(center, state.selected);
+  return;
+ }
  const center = state.hover ?? state.selected;
  const related = center && view.nodeEls.has(center) ? view.related(center) : null;
  canvas.classList.toggle('focus', !!related);
  for (const [id, el] of view.nodeEls) { el.classList.toggle('on', !!related?.has(id)); el.classList.toggle('selected', id === state.selected); }
  view.graph.edges.forEach((e, i) => { const on = !!related && view.edgeOn(e, center, related); for (const el of view.edgeEls[i]) el.classList.toggle('on', on); });
 }
-canvas.addEventListener('pointerover', e => { const id = e.target.closest('.node')?.dataset.id; if (id !== undefined && !drag) { state.hover = id; paint(); } });
-canvas.addEventListener('pointerout', e => { if (e.target.closest('.node') && !e.relatedTarget?.closest?.('.node')) { state.hover = null; paint(); } });
+canvas.addEventListener('pointerover', e => { if (state.view?.overview) return; const id = e.target.closest('.node')?.dataset.id; if (id !== undefined && !drag) { state.hover = id; paint(); } });
+canvas.addEventListener('pointerout', e => { if (state.view?.overview) return; if (e.target.closest('.node') && !e.relatedTarget?.closest?.('.node')) { state.hover = null; paint(); } });
+const hitAt = e => {
+ const r = canvas.getBoundingClientRect();
+ return state.view?.overview?.hit(cam.x + (e.clientX - r.left) / cam.k, cam.y + (e.clientY - r.top) / cam.k);
+};
+let hoverFrame = 0, pointer = null;
+canvas.addEventListener('pointermove', e => {
+ if (!state.view?.overview || drag) return;
+ pointer = {clientX: e.clientX, clientY: e.clientY};
+ if (hoverFrame) return;
+ hoverFrame = requestAnimationFrame(() => {
+  hoverFrame = 0;
+  if (!state.view?.overview || !pointer || drag) return;
+  const hit = hitAt(pointer), id = hit?.id || null;
+  canvas.style.cursor = hit ? 'pointer' : '';
+  if (id === state.hover) return;
+  state.hover = id;
+  canvas.querySelector('#overview-hover-title').textContent = id ? state.view.spec.title(state.view.overview.index.nodes.get(id)) : '';
+  paint();
+ });
+});
+canvas.addEventListener('pointerleave', () => {
+ pointer = null;
+ if (state.view?.overview && state.hover) { state.hover = null; paint(); }
+});
 canvas.addEventListener('click', e => {
  if (drag?.moved) return;
- const id = e.target.closest('.node')?.dataset.id;
- const frame = e.target.closest('.package-frame');
- if (frame && state.route.view === 'all') { go(href.all(null, frame.dataset.package), true); return; }
+ const hit = hitAt(e), id = e.target.closest('.node')?.dataset.id ?? hit?.id;
+ const pkg = id === undefined ? e.target.closest('.package-frame')?.dataset.package || hit?.pkg : null;
+ if (pkg && state.route.view === 'all') { go(href.all(null, pkg), true); return; }
  if (id === undefined) { if (state.selected) state.view.select(null); return; }
  state.view.select(id);
 });
 canvas.addEventListener('dblclick', e => {
- const id = e.target.closest('.node')?.dataset.id, pkg = e.target.closest('.package-frame')?.dataset.package;
+ const hit = hitAt(e), id = e.target.closest('.node')?.dataset.id ?? hit?.id, pkg = e.target.closest('.package-frame')?.dataset.package || hit?.pkg;
  if (id !== undefined) state.view.open?.(id);
  else if (pkg) go(href.pkg(pkg));
 });
 canvas.addEventListener('keydown', e => {
+ if (state.view?.overview) {
+  const nodes = state.view.graph.nodes, index = nodes.findIndex(n => n.id === state.selected);
+  let next;
+  if (['ArrowRight', 'ArrowDown'].includes(e.key)) next = Math.min(nodes.length - 1, index + 1);
+  if (['ArrowLeft', 'ArrowUp'].includes(e.key)) next = Math.max(0, index - 1);
+  if (e.key === 'Home') next = 0;
+  if (e.key === 'End') next = nodes.length - 1;
+  if (next !== undefined && nodes[next]) { e.preventDefault(); e.stopPropagation(); state.view.select(nodes[next].id); return; }
+  if (['Enter', ' '].includes(e.key) && !state.selected && nodes.length) { e.preventDefault(); e.stopPropagation(); state.view.select(nodes[0].id); return; }
+ }
  const id = e.target.closest('.node')?.dataset.id;
  if (id === undefined || !['Enter', ' '].includes(e.key)) return;
  e.preventDefault(); e.stopPropagation();
@@ -232,11 +282,13 @@ function repositorySwitcher(all) {
 }
 
 function showAll(route) {
- const model = state.model, graph = repositoryGraph(model), packages = packageGraph(model).nodes;
+ const model = state.model;
+ const graph = model.repositoryGraph ||= repositoryGraph(model), packages = model.packageNodes ||= packageGraph(model).nodes;
  const symbol = model.symbols.get(route.fn);
  if (route.fn && !symbol) return notFound('This function is not in the index.');
  if (route.pkg && !model.packages.has(route.pkg)) return notFound('This package is not in the index.');
  const view = state.view?.key === 'all' ? state.view : drawGraph('all', graph, {
+  overview: true,
   layout: (nodes, edges) => repositoryLayout(nodes, edges, packages),
   radius: () => 2,
   title: n => `${n.label} · ${n.symbol.file}:${n.symbol.line}`,
@@ -244,12 +296,13 @@ function showAll(route) {
   node: n => `<text class="name" x="6" y="14">${esc(clip(n.label, 16))}</text>`,
  });
  Object.assign(view, {
-  related: id => neighbors(graph, id), edgeOn: touches,
+  related: id => view.overview.index.adjacent.get(id), edgeOn: touches,
   select: id => go(href.all(id), true),
   open: id => go(href.pdg(id)),
  });
  setView(view, route.fn);
  canvas.classList.add('whole-map');
+ canvas.setAttribute('tabindex', '0'); canvas.setAttribute('aria-describedby', 'overview-help');
  canvas.classList.toggle('all-calls', state.allCalls);
  for (const el of canvas.querySelectorAll('.package-frame')) el.classList.toggle('selected', el.dataset.package === (symbol?.package || route.pkg));
  if (route.pkg && !route.fn) {
@@ -575,6 +628,8 @@ function route() {
  state.route = parseRoute();
  overlay('');
  canvas.classList.remove('package-map', 'all-imports', 'whole-map', 'all-calls');
+ canvas.removeAttribute('tabindex'); canvas.removeAttribute('aria-describedby'); canvas.removeAttribute('aria-activedescendant');
+ canvas.style.cursor = ''; labelScale = null;
  const r = state.route;
  if (r.view === 'invalid') { notFound('This link has an invalid address.'); return; }
  if (r.view === 'all') showAll(r); else if (r.view === 'pdg') showPDG(r); else if (r.view === 'package') showPackage(r); else showRepo(r);

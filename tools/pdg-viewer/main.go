@@ -22,6 +22,9 @@ var layoutScript string
 //go:embed model.js
 var modelScript string
 
+//go:embed overview.js
+var overviewScript string
+
 //go:embed app.js
 var appScript string
 
@@ -71,7 +74,7 @@ func run(input io.Reader, output io.Writer, root string) error {
 // page assembles the app. Go's JSON encoder escapes "<", so data cannot close its script.
 // gstyle-allow(side_effect_density): Embedded assets are immutable inputs.
 func page(data []byte) string {
-	scripts := layoutScript + "\n" + modelScript + "\n" + appScript
+	scripts := layoutScript + "\n" + modelScript + "\n" + overviewScript + "\n" + appScript
 	html := strings.Replace(appPage, "/* SCRIPTS */", scripts, 1)
 	return strings.Replace(html, "__PDG_JSON__", string(data), 1)
 }

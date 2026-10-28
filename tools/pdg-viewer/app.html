@@ -124,6 +124,12 @@ kbd{font:11px var(--mono);color:var(--ink-3);border:1px solid var(--line);border
 .whole-map.focus .edge.on{opacity:1;stroke-width:1.2!important}
 .whole-map.focus .node:not(.on){opacity:.35}
 .whole-map .node{transition:none}
+.overview-calls,.overview-tiles{pointer-events:none}
+.overview-calls{opacity:.08}
+.whole-map:not(.all-calls) .overview-calls{display:none}
+.whole-map.focus .overview-tiles{opacity:.35}
+.whole-map:not(.far) .overview-tiles{visibility:hidden}
+.overview-focus{pointer-events:none}
 .node.stub .box{fill:none;stroke-dasharray:4 3}
 .node.stub .name{font:12px var(--sans);fill:var(--ink-2)}
 .node.control .box{stroke:color-mix(in srgb,var(--control) 55%,var(--line))}

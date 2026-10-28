@@ -22,6 +22,11 @@ retain their exact function endpoints and repeated-call counts. **All call edges
 controls background links; selection always highlights direct calls. Search and
 package focus move the camera without filtering out functions. Zoom reveals names;
 Fit restores the whole map. This view shares the index's production-source scope.
+The overview caches function tiles and background wires in bounded raster layers.
+Visible zoomed-in tiles and selected call paths use sharp SVG detail. Spatial
+buckets handle hit testing and viewport detail; camera and hover work runs once
+per animation frame. Rendering does not filter the underlying graph. Use arrow
+keys to select functions when the map has keyboard focus, then Enter to open a PDG.
 
 Open **Dependence graph** to load a typed PDG on demand. **Statements** folds nested
 expressions into their enclosing statements. **Expressions** keeps every exported
