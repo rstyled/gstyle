@@ -33,11 +33,23 @@ incidental node ID as a string. This annotation and the edge outcome must agree.
 The shared JSON schema already permits namespaced annotations and string
 subkinds; no schema relaxation is required.
 
-These changes apply to the acyclic scalar profile only. General bindings and
-cyclic extraction retain their existing representations. They do not upgrade
-the root's nonconformance or approximate node-extraction claims. Compiler/runtime
-agreement, exact graph equivalence, schema validity and producer evidence must
-continue to be reported separately.
+These representations apply to the acyclic scalar profile only. General bindings
+and cyclic extraction retain their existing representations.
+
+Routine extraction now checks eligible scalar graphs with the same independent
+verifiers used by native matching. Certification runs on the final graph after
+package exit refinement. It requires a known source snapshot and target width,
+an exact source inventory, binding and interface agreement, CFG transitions,
+execution/control completeness, reaching definitions, value dependencies and
+projection agreement. The whole body must exclude unspecified sibling-operand
+orders, and the interface must have at most one output.
+
+Only graphs that pass these checks report `node_extraction=supported` and
+`conformance=conformant`, under `gstyle.go.scalar-normal/0.2.0`. Unsupported or
+unverified functions keep incomplete evidence; verifier failures retain their
+reason in the conformance assessment. Exceptional flow remains unsupported:
+certification concerns bounded normal flow. Compiler/runtime agreement, exact
+graph equivalence, schema validity and producer evidence remain separate checks.
 
 Regression tests compare original definition identities without expanding
 merges, reject killed definitions and incorrect branch dependencies, and check
