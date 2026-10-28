@@ -213,6 +213,7 @@ func Inventory(g *pdg.Graph, fn *ast.FuncDecl, fset *token.FileSet, info *types.
 	}
 	a.targets(fn.Body)
 	ast.Inspect(fn.Body, a.source)
+	a.implicitReturn(fn)
 	return a.compare(g)
 }
 

@@ -42,8 +42,8 @@ package exit refinement. It requires a known source snapshot and target width,
 an exact source inventory, binding and interface agreement, CFG transitions,
 execution/control completeness, reaching definitions, value dependencies and
 projection agreement. The whole body must exclude unspecified sibling-operand
-orders, and routine certification requires exactly one scalar output. Void
-fallthrough and multiple-output functions keep their partial evidence.
+orders, and routine certification permits zero or one scalar output.
+Multiple-output functions keep their partial evidence.
 
 Only graphs that pass these checks report `node_extraction=supported` and
 `conformance=conformant`, under `gstyle.go.scalar-normal/0.2.0`. Unsupported or
@@ -69,3 +69,19 @@ renaming and runtime results. A second job corrupts those raw outputs while
 leaving their conformance claims intact. Missing/reversed/duplicate dependencies,
 wrong literals, binding/definition identities and short-circuit selections must
 fail the independent oracle. Evidence and source corruptions must also fail.
+
+Void functions retain a synthetic normal return when execution can fall off the
+end. Its source span is a zero-width boundary at the closing brace, its original
+kind is not applicable, and it has no return-value input or formal output.
+Explicit returns also record a normal exit in the internal graph. The independent
+source walk determines whether fallthrough is possible; it does not infer that
+fact from the producer's graph. Both-return branches and unreachable suffixes
+must not invent a fallthrough return. Routine export and native matching use the
+same admission and validation path.
+
+Control validation checks the true/false outcome and arm position of each
+dependency, in addition to its endpoints. The source inventory also checks the
+predicate construct, ordered outcome list and normal-return kind. Structurally
+valid graphs with missing, duplicate, detached or mislabeled return/control facts
+are rejected. The exact dependency regression for an early void return requires
+the implicit return to be controlled by the false outcome, without a data input.

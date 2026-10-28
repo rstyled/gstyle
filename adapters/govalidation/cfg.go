@@ -195,7 +195,7 @@ func CFG(g *pdg.Graph, fn *ast.FuncDecl, fset *token.FileSet) error {
 		return err
 	}
 	a := sourceFlow{fset: fset, nodes: nodes, next: map[pdg.Ref][]pdg.Ref{}, branches: map[pdg.Ref][2][]pdg.Ref{}}
-	entry := a.statements(fn.Body.List, nil)
+	entry := a.statements(fn.Body.List, a.implicitReturn(fn))
 	if a.err != nil {
 		return a.err
 	}

@@ -22,5 +22,5 @@ func (p *packageAnalysis) assessScalarExtraction(source functionGraph) error {
 }
 
 func scalarExtractionCandidate(graph *pdg.Graph, fn *ast.FuncDecl) bool {
-	return graph.NormalFlow != nil && len(graph.Function.Outputs) == 1 && scalarOrderKnown(fn.Body)
+	return graph.NormalFlow != nil && len(graph.Function.Outputs) <= 1 && scalarOrderKnown(fn.Body)
 }
