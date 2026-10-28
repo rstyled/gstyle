@@ -144,8 +144,6 @@ func (a *reachingAnalysis) operation(node pdg.Ref, state reachingState) {
 	}
 }
 
-// Scalar-normal reads observe source definitions without defining a new value
-// of the binding. A read must not replace the analysis state's definition set.
 func (a *reachingAnalysis) readDefinitions(node pdg.Ref, read pdg.Access, state reachingState) {
 	key := a.key(read.Symbol, read.Location)
 	definitions := state[key]

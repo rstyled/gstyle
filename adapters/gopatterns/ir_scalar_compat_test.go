@@ -16,8 +16,6 @@ func compatOperationSource(g *pdg.Graph, source string, ref pdg.Ref) string {
 	return source[span.Start:span.End]
 }
 
-// Compare raw definition identities, with no recursive merge expansion. Both
-// arm writes kill the initializer; repeated reads must not define the binding.
 func TestScalarBranchReadsOriginalDefinitions(t *testing.T) {
 	for _, tail := range []string{"return x", "y:=x; _=y; return x"} {
 		source := "package p; func f(a int32,b bool) int32 { x:=a; if b { x=1 } else { x=2 }; " + tail + " }"
@@ -70,8 +68,6 @@ func TestScalarBranchReadsOriginalDefinitions(t *testing.T) {
 	}
 }
 
-// Alternative slots are true then false (internally 1 and 2), independently of
-// lexical operand slots. Expectations below are derived from &&/|| semantics.
 func TestScalarShortCircuitSelectedValues(t *testing.T) {
 	tests := []struct {
 		expression string
@@ -155,7 +151,7 @@ func TestScalarVerifierRejectsCorruptedAlternatives(t *testing.T) {
 				case "position":
 					g.Edges[i].Position = 3 - edge.Position
 				case "outcome":
-					g.Edges[i].Outcome = pool.Text("false") // First operand of || selects true.
+					g.Edges[i].Outcome = pool.Text("false")
 				case "controller":
 					raw := `[[{"controller_pdg_node_id":"` + g.Tables.Text(g.Nodes[edge.Source-1].ID) + `","outcome":"true"}]]`
 					g.Annotations[edge.Annotations-1][0].Value = pool.Text(raw)
