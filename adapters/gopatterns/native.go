@@ -228,11 +228,15 @@ func certifyNative(graph *pdg.Graph, pool *pdg.Builder, build NativeBuild, width
 	if err != nil {
 		return err
 	}
-	graph.Profile = pool.Policy(ScalarNormalProfileID, NativeExtractionVersion)
 	graph.Producer.Configuration = pool.Text(string(configuration))
 	if graph.Producer.LanguageVersion.Status != pdg.Known {
 		graph.Producer.LanguageVersion = pool.Known(build.GOVERSION)
 	}
+	return certifyScalarExtraction(graph, pool)
+}
+
+func certifyScalarExtraction(graph *pdg.Graph, pool *pdg.Builder) error {
+	graph.Profile = pool.Policy(ScalarNormalProfileID, NativeExtractionVersion)
 	graph.Conformance = pdg.Conformance{Status: pdg.Conformant}
 	for i := range graph.Nodes {
 		graph.Nodes[i].Evidence = pool.Evidence(pdg.Supported, "Source inventory and value/binding sites independently checked under the scalar normal-flow profile.")

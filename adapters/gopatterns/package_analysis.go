@@ -150,6 +150,9 @@ func (p *packageAnalysis) publishGraphs(exits callflow.ExitSummaries) error {
 		if err := p.graphs[i].finalize(p.ctx, exits); err != nil {
 			return err
 		}
+		if err := p.assessScalarExtraction(p.graphs[i]); err != nil {
+			return err
+		}
 		if err := p.program.Add(p.graphs[i].graph); err != nil {
 			return err
 		}
