@@ -36,6 +36,12 @@ subkinds; no schema relaxation is required.
 These representations apply to the acyclic scalar profile only. General bindings
 and cyclic extraction retain their existing representations.
 
+A variable declaration without initializers can define several local scalar
+bindings in one operation, such as `var a, b int32`. Each binding has its own
+zero-initialized definition identity. There are no initializer expressions to
+order. Multiple initializer expressions, parallel assignments and multiple
+results retain the existing admission limits.
+
 Routine extraction now checks eligible scalar graphs with the same independent
 verifiers used by native matching. Certification runs on the final graph after
 package exit refinement. It requires a known source snapshot and target width,

@@ -36,6 +36,9 @@ func scalarOrderedSite(node ast.Node) bool {
 }
 
 func orderedDeclaration(node *ast.ValueSpec) bool {
+	if len(node.Values) == 0 {
+		return true
+	}
 	return len(node.Values) <= 1 && len(node.Names) <= 1
 }
 
