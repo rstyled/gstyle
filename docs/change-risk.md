@@ -116,7 +116,12 @@ limit fail publication.
 Protect the default branch with two rulesets. Required CI has no bypass and
 requires the existing test, guard, quality and verification checks against an
 up-to-date branch. Risk review requires `risk-gate` and code-owner review for
-workflow, gate, policy and baseline changes. Repository admins may bypass only
+workflow, gate and policy changes. Baseline refreshes use the trusted-base risk
+validator instead of blanket code-owner review. Valid refreshes can qualify as
+low only when the version, rule set and limits stay unchanged, tolerance does
+not increase, and no permitted excess rate increases. Added, removed, malformed
+or weaker baselines still require review through the risk gate. Changes to the
+validator itself retain code-owner review. Repository admins may bypass only
 that risk ruleset, only for pull requests, after reviewing the current commit.
 This permits a deliberate manual merge of a non-low PR without bypassing tests.
 An approving review does not turn a failed low-only gate green.
