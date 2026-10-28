@@ -1,6 +1,6 @@
 import {expect, test} from 'bun:test';
 import {readFileSync} from 'node:fs';
-const m = new Function(readFileSync(new URL('./model.js', import.meta.url), 'utf8') + ';return {indexModel,packageGraph,callGraph,pdgView,trace,sourceText,headerEnd}')();
+const m = new Function(readFileSync(new URL('./model.js', import.meta.url), 'utf8') + ';return {indexModel,packageGraph,repositoryGraph,callGraph,pdgView,trace,sourceText,headerEnd}')();
 const pkg = (id: string, imports: string[] = []) => ({id, imports, lines: 10, files: 1});
 const symbol = (id: string, p: string, targets: string[] = []) => ({id, package: p, name: id, file: p + '.go', line: 1, calls: targets.map(target => ({target}))});
 test('every production function stays in the index; cross-package calls aggregate without losing counts', () => {
@@ -49,4 +49,12 @@ test('control header braces in quoted strings and composite literals stay in the
 test('braces in control-header comments are not treated as the body', () => {
  const text = m.sourceText('if /* { } */ ready // {\n { body() }');
  expect(text.slice(0, m.headerEnd(text, 0, text.bytes.length))).toBe('if /* { } */ ready // {\n ');
+});
+
+test('repository graph contains every function and exact cross-package endpoints', () => {
+ const model = m.indexModel({module:'repo',packages:[pkg('repo/a'),pkg('repo/b')],symbols:[symbol('a','repo/a',['b','b','a']),symbol('b','repo/b',['a']),symbol('alone','repo/b')]});
+ const graph=m.repositoryGraph(model);
+ expect(graph.nodes.map((n: any)=>n.id)).toEqual(['a','b','alone']);
+ expect(graph.edges).toEqual([{source:'a',target:'b',count:2},{source:'a',target:'a',count:1},{source:'b',target:'a',count:1}]);
+ expect(graph.nodes.every((n: any)=>n.kind==='function')).toBe(true);
 });

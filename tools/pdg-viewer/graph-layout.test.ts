@@ -59,3 +59,23 @@ test('dependence layout flows down with normal node sizes and preserves every ed
  expect(result.routes[0].at(-1).y).toBe(b.y-23);
  expect(result.positions.size).toBe(3);
 });
+
+test('repository layout retains all functions in disjoint package frames with stable positions',()=>{
+ const all = new Function(readFileSync(new URL('./graph-layout.js',import.meta.url),'utf8')+';return repositoryLayout')();
+ const packages=[{id:'a',label:'a',layer:'application'},{id:'b',label:'b',layer:'domain'},{id:'empty',label:'empty',layer:'root'}];
+ const nodes=Array.from({length:6000},(_,i)=>({id:String(i),package:i<2000?'a':'b',symbol:{file:'f.go',start:i}}));
+ const edges=[{source:'0',target:'2000'},{source:'2000',target:'0'},{source:'0',target:'0'}];
+ const layout=all(nodes,edges,packages), withoutCalls=all(nodes,[],packages);
+ expect(layout.positions.size).toBe(6000);
+ expect(layout.frames).toHaveLength(3);
+ expect(layout.routes[2]).toBeNull();
+ expect([...layout.positions]).toEqual([...withoutCalls.positions]);
+ for(const frame of layout.frames){
+  const own=nodes.filter(n=>n.package===frame.id);
+  for(const n of own){const p=layout.positions.get(n.id);expect(p.x-p.w/2).toBeGreaterThanOrEqual(frame.x);expect(p.x+p.w/2).toBeLessThanOrEqual(frame.x+frame.w);expect(p.y+p.h/2).toBeLessThanOrEqual(frame.y+frame.h);}
+ }
+ for(let i=0;i<layout.frames.length;i++)for(let j=i+1;j<layout.frames.length;j++){
+  const a=layout.frames[i],b=layout.frames[j];
+  expect(a.x+a.w<=b.x || b.x+b.w<=a.x || a.y+a.h<=b.y || b.y+b.h<=a.y).toBe(true);
+ }
+});

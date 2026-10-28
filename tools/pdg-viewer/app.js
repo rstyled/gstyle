@@ -15,6 +15,7 @@ const state = {
  sources: new Map(), docs: new Map(), layouts: new Map(),
  imports: false, pendingDocs: new Map(),
  callScope: 'neighbors',
+ allCalls: true,
 };
 
 // ── routing ────────────────────────────────────────────────────────────────
@@ -26,10 +27,12 @@ function parseRoute() {
  if (view === 'pkg' && a) return {view: 'package', pkg: a, fn: b || null};
  if (view === 'pdg' && a) return {view: 'pdg', fn: a};
  if (standalone) return {view: 'pdg', fn: '0'};
+ if (view === 'all') return {view: 'all', fn: a || null, pkg: b || null};
  return {view: 'repo', pkg: a || null};
 }
 const href = {
  repo: () => '#/',
+ all: (fn, pkg) => '#/all' + (fn || pkg ? '/' + encodeURIComponent(fn || '') : '') + (pkg ? '/' + encodeURIComponent(pkg) : ''),
  pkg: (pkg, fn) => '#/pkg/' + encodeURIComponent(pkg) + (fn ? '/' + encodeURIComponent(fn) : ''),
  pdg: fn => '#/pdg/' + encodeURIComponent(fn),
 };
@@ -45,7 +48,13 @@ function applyCamera() {
  const w = canvas.clientWidth, h = canvas.clientHeight;
  canvas.setAttribute('viewBox', `${cam.x} ${cam.y} ${w / cam.k} ${h / cam.k}`);
  canvas.classList.toggle('far', cam.k < .5);
+ stage.style.setProperty('--map-label-size', `${12 / cam.k}px`);
+ stage.style.setProperty('--map-heading-size', `${14 / cam.k}px`);
  $('#zoom-level').textContent = `${Math.round(cam.k * 100)}%`;
+ for (const text of canvas.querySelectorAll('.package-frame text')) {
+  const chars = Math.max(3, Math.floor((Number(text.dataset.width) - 32) * cam.k / 7));
+  text.textContent = clip(text.dataset.label, chars);
+ }
  let grid = 24 * cam.k;
  while (grid < 14) grid *= 2;
  while (grid > 30) grid /= 2;
@@ -72,9 +81,9 @@ function moveCamera(target, animate = true) {
 function fit(animate = true) {
  const layout = state.view?.layout;
  if (!layout) return;
- const w = canvas.clientWidth, h = canvas.clientHeight, pad = 40;
- const k = clamp(Math.min((w - pad * 2) / layout.width, (h - pad * 2 - 40) / layout.height), .04, 1.1);
- moveCamera({k, x: layout.width / 2 - w / 2 / k, y: layout.height / 2 - h / 2 / k + 20 / k}, animate);
+ const w = canvas.clientWidth, h = canvas.clientHeight, pad = 40, top = state.view.key === 'all' ? 88 : 40, bottom = 80;
+ const k = clamp(Math.min((w - pad * 2) / layout.width, (h - top - bottom) / layout.height), .04, 1.1);
+ moveCamera({k, x: layout.width / 2 - w / 2 / k, y: layout.height / 2 - (h + top - bottom) / 2 / k}, animate);
 }
 function centerOn(id) {
  const p = state.view?.layout.positions.get(id);
@@ -129,14 +138,16 @@ function drawGraph(key, graph, spec) {
  });
  for (const n of graph.nodes) {
   const p = layout.positions.get(n.id);
-  nodes += `<g class="node ${esc(spec.nodeClass?.(n) || '')}" data-id="${esc(n.id)}" transform="translate(${p.x - p.w / 2},${p.y - p.h / 2})" role="button" aria-label="${esc(n.label || n.code)}" tabindex="0"><title>${esc(n.label || n.code)}</title><rect class="box" width="${p.w}" height="${p.h}" rx="${spec.radius?.(n, p) ?? 7}"/>${spec.node(n, p)}</g>`;
+  nodes += `<g class="node ${esc(spec.nodeClass?.(n) || '')}" data-id="${esc(n.id)}" transform="translate(${p.x - p.w / 2},${p.y - p.h / 2})" role="button" aria-label="${esc(n.label || n.code)}" tabindex="0"><title>${esc(spec.title?.(n) || n.label || n.code)}</title><rect class="box" width="${p.w}" height="${p.h}" rx="${spec.radius?.(n, p) ?? 7}"/>${spec.node(n, p)}</g>`;
  }
  const tray = layout.tray ? `<text class="tray-label" x="${layout.tray.x}" y="${layout.tray.y - 16}">${esc(spec.trayLabel)}</text>` : '';
  const defs = MARKERS.map(k => `<marker id="m-${k}" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0.8 L8,4 L0,7.2z" style="fill:var(--${k})"/></marker>`).join('');
  const sections = (layout.sections || []).map(s => `<g class="map-section"><text x="${s.x}" y="${s.y + 10}" style="fill:${layerVar(s.layer)}">${esc(s.layer)}${s.continued ? " · continued" : ""}</text><text class="count" x="${s.x + s.w}" y="${s.y + 10}" text-anchor="end">${s.count}</text><path d="M${s.x},${s.y + 20}h${s.w}"/></g>`).join('');
- canvas.innerHTML = `<defs>${defs}</defs><g>${sections}${tray}${edges}${labels}${nodes}</g>`;
+ const frames = (layout.frames || []).map(p => `<g class="package-frame" data-package="${esc(p.id)}"><rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="10"/><title>${esc(p.label)} · ${p.count.toLocaleString()} functions</title><text x="${p.x + 16}" y="${p.y + 60}" data-label="${esc(p.label)} · ${p.count.toLocaleString()}" data-width="${p.w}">${esc(p.label)} · ${p.count.toLocaleString()}</text></g>`).join('');
+ canvas.innerHTML = `<defs>${defs}</defs><g>${frames}${sections}${tray}${edges}${labels}${nodes}</g>`;
  const nodeEls = new Map([...canvas.querySelectorAll('.node')].map(el => [el.dataset.id, el]));
- const edgeEls = graph.edges.map((_, i) => canvas.querySelectorAll(`[data-e="${i}"]`));
+ const edgeEls = graph.edges.map(() => []);
+ for (const el of canvas.querySelectorAll('[data-e]')) edgeEls[Number(el.dataset.e)].push(el);
  return {key, graph, layout, nodeEls, edgeEls, spec};
 }
 function selfLoop(p) {
@@ -164,10 +175,16 @@ canvas.addEventListener('pointerout', e => { if (e.target.closest('.node') && !e
 canvas.addEventListener('click', e => {
  if (drag?.moved) return;
  const id = e.target.closest('.node')?.dataset.id;
+ const frame = e.target.closest('.package-frame');
+ if (frame && state.route.view === 'all') { go(href.all(null, frame.dataset.package), true); return; }
  if (id === undefined) { if (state.selected) state.view.select(null); return; }
  state.view.select(id);
 });
-canvas.addEventListener('dblclick', e => { const id = e.target.closest('.node')?.dataset.id; if (id !== undefined) state.view.open?.(id); });
+canvas.addEventListener('dblclick', e => {
+ const id = e.target.closest('.node')?.dataset.id, pkg = e.target.closest('.package-frame')?.dataset.package;
+ if (id !== undefined) state.view.open?.(id);
+ else if (pkg) go(href.pkg(pkg));
+});
 canvas.addEventListener('keydown', e => {
  const id = e.target.closest('.node')?.dataset.id;
  if (id === undefined || !['Enter', ' '].includes(e.key)) return;
@@ -204,10 +221,47 @@ function showRepo(route) {
  canvas.classList.add('package-map');
  canvas.classList.toggle('all-imports', state.imports);
  legend('<span>Select to trace imports</span><span>Double-click to open calls</span>');
- toolbar(`<div class="view-label">Package map <span>${graph.nodes.length}</span></div><div class="seg"><button id="all-imports" aria-pressed="${state.imports}">All imports</button></div>`);
+ toolbar(`<div class="view-label">Package map <span>${graph.nodes.length}</span></div>${repositorySwitcher(false)}<div class="seg"><button id="all-imports" aria-pressed="${state.imports}">All imports</button></div>`);
  $('#all-imports').onclick = () => { state.imports = !state.imports; canvas.classList.toggle('all-imports', state.imports); $('#all-imports').setAttribute('aria-pressed', state.imports); };
  crumbs([[model.module, null]]);
  inspector(route.pkg ? packagePanel(route.pkg, true) : repoPanel(graph));
+}
+
+function repositorySwitcher(all) {
+ return `<div class="seg"><a href="${href.repo()}" ${all ? '' : 'aria-current="page"'}>Packages</a><a href="${href.all()}" ${all ? 'aria-current="page"' : ''}>All functions</a></div>`;
+}
+
+function showAll(route) {
+ const model = state.model, graph = repositoryGraph(model), packages = packageGraph(model).nodes;
+ const symbol = model.symbols.get(route.fn);
+ if (route.fn && !symbol) return notFound('This function is not in the index.');
+ if (route.pkg && !model.packages.has(route.pkg)) return notFound('This package is not in the index.');
+ const view = state.view?.key === 'all' ? state.view : drawGraph('all', graph, {
+  layout: (nodes, edges) => repositoryLayout(nodes, edges, packages),
+  radius: () => 2,
+  title: n => `${n.label} · ${n.symbol.file}:${n.symbol.line}`,
+  nodeClass: n => `whole-function layer-${n.layer}`,
+  node: n => `<text class="name" x="6" y="14">${esc(clip(n.label, 16))}</text>`,
+ });
+ Object.assign(view, {
+  related: id => neighbors(graph, id), edgeOn: touches,
+  select: id => go(href.all(id), true),
+  open: id => go(href.pdg(id)),
+ });
+ setView(view, route.fn);
+ canvas.classList.add('whole-map');
+ canvas.classList.toggle('all-calls', state.allCalls);
+ for (const el of canvas.querySelectorAll('.package-frame')) el.classList.toggle('selected', el.dataset.package === (symbol?.package || route.pkg));
+ if (route.pkg && !route.fn) {
+  const frame = view.layout.frames.find(p => p.id === route.pkg);
+  const k = Math.min(1, (canvas.clientWidth - 80) / frame.w, (canvas.clientHeight - 120) / frame.h);
+  moveCamera({k, x: frame.x + frame.w / 2 - canvas.clientWidth / 2 / k, y: frame.y + frame.h / 2 - canvas.clientHeight / 2 / k});
+ }
+ toolbar(`<div class="view-label">All functions <span>${graph.nodes.length.toLocaleString()} · ${plural(graph.edges.length, 'call link')}</span></div>${repositorySwitcher(true)}<div class="seg"><button id="all-calls" aria-pressed="${state.allCalls}">All call edges</button></div>`);
+ $('#all-calls').onclick = () => { state.allCalls = !state.allCalls; canvas.classList.toggle('all-calls', state.allCalls); $('#all-calls').setAttribute('aria-pressed', state.allCalls); };
+ legend('<span>Every tile is one function</span><span>Zoom to read names · select to trace calls</span>');
+ crumbs([[model.module, href.repo()], ['all functions', symbol || route.pkg ? href.all() : null], ...(symbol ? [[symbol.name, null]] : route.pkg ? [[shortPackage(route.pkg, model.module), null]] : [])]);
+ inspector(symbol ? functionPanel(symbol) : route.pkg ? packagePanel(route.pkg, true) : repoPanel(packageGraph(model)));
 }
 
 function showPackage(route) {
@@ -351,13 +405,14 @@ function crumbs(parts) {
 
 // ── inspector panels ───────────────────────────────────────────────────────
 function repoPanel(graph) {
+ const all = state.route.view === 'all';
  const {index, module} = state.model, layers = LAYERS.filter(l => graph.nodes.some(n => n.layer === l));
  const typed = index.symbols.filter(s => s.call_resolution === 'typed').length;
  const resolution = `${typed.toLocaleString()} / ${index.symbols.length.toLocaleString()} functions type-checked. Other calls are unavailable.`;
  return `<section><h2 class="sans">${esc(base(module))}</h2><div class="sub mono">${esc(module)}</div>
-  <dl class="facts"><dt>Packages</dt><dd>${index.packages.length}</dd><dt>Functions</dt><dd>${index.symbols.length.toLocaleString()}</dd><dt>Go files</dt><dd>${index.packages.reduce((n, p) => n + p.files, 0)}</dd><dt>Lines</dt><dd>${index.lines.toLocaleString()}</dd><dt>Calls</dt><dd>${resolution}</dd></dl><p class="note">Production Go only. Excludes tests, testdata, dist, nested modules, vendor, and dependencies. Each box is a package; open it to see the functions inside.</p></section>
+  <dl class="facts"><dt>Packages</dt><dd>${index.packages.length}</dd><dt>Functions</dt><dd>${index.symbols.length.toLocaleString()}</dd><dt>Go files</dt><dd>${index.packages.reduce((n, p) => n + p.files, 0)}</dd><dt>Lines</dt><dd>${index.lines.toLocaleString()}</dd><dt>Calls</dt><dd>${resolution}</dd></dl><p class="note">Production Go only. Excludes tests, testdata, dist, nested modules, vendor, and dependencies. ${all ? 'Each tile is a function; frames group packages. Zoom to read names.' : 'Each box is a package; open it to see the functions inside.'}</p></section>
   <section><h3>Layers</h3><div class="list">${layers.map(l => { const pk = graph.nodes.filter(n => n.layer === l); return `<div class="link"><i class="dot" style="--c:${layerVar(l)}"></i><span>${l}</span><small>${plural(pk.length, 'package')} · ${pk.reduce((s, n) => s + n.functions, 0).toLocaleString()} fn</small></div>`; }).join('')}</div>
-  <p class="note">Select a package to trace its imports. Open it to explore function calls.</p></section>
+  <p class="note">${all ? 'Search or select a function to trace its calls. Every function stays on the map.' : 'Select a package to trace its imports. Open it to explore function calls.'}</p></section>
   <section><h3>Indexed checkout</h3><div class="sub mono">${esc(index.root)}</div></section>
   <section><h3>Read the map</h3><p class="note">Columns group packages by their path. Position does not imply execution order.</p><p class="note">Call graphs show static links. Interface dispatch, function values, tests, and callers in other modules can add calls. A missing link is not an unused-code finding.</p></section>`;
 }
@@ -382,7 +437,7 @@ function functionPanel(s) {
   else if (c.kind === 'dynamic') dynamic.add(c.spelling);
   else if (c.kind === 'external') { const pkg = c.package || '?'; if (!external.has(pkg)) external.set(pkg, new Set()); external.get(pkg).add(c.spelling.split('.').at(-1)); }
  }
- const fnLink = (t, count) => `<a class="link" href="${href.pkg(t.package, t.id)}"><code>${esc(t.name)}</code><small>${t.package === s.package ? '' : esc(shortPackage(t.package, model.module)) + ' · '}${esc(fileLine(t))}${count > 1 ? ' · ' + count + '×' : ''}</small></a>`;
+ const fnLink = (t, count) => `<a class="link" href="${state.route.view === 'all' ? href.all(t.id) : href.pkg(t.package, t.id)}"><code>${esc(t.name)}</code><small>${t.package === s.package ? '' : esc(shortPackage(t.package, model.module)) + ' · '}${esc(fileLine(t))}${count > 1 ? ' · ' + count + '×' : ''}</small></a>`;
  const source = state.sources.get(s.id);
  if (source === undefined) loadSource(s);
  return `<section><h2>${esc(s.name)}</h2><div class="sub mono">${esc(s.file)}:${s.line}–${s.end_line}</div>
@@ -476,8 +531,8 @@ function renderTree() {
   return;
  }
  const model = state.model, current = route.pkg || model.symbols.get(route.fn)?.package;
- const pkgRow = p => `<a class="row${p.id === current ? ' on' : ''}" href="${href.pkg(p.id)}"><i class="dot" style="--c:${layerVar(layerOf(p.id, model.module))}"></i><span class="name">${mark(shortPackage(p.id, model.module), query)}</span><span class="count">${model.byPackage.get(p.id)?.length || 0}</span></a>`;
- const fnRow = (s, extra = '') => `<a class="row fn${s.id === route.fn ? ' on' : ''}" href="${href.pkg(s.package, s.id)}"><span class="name">${mark(s.name, query)}</span><span class="count">${extra}</span></a>`;
+ const pkgRow = p => `<a class="row${p.id === current ? ' on' : ''}" href="${route.view === 'all' ? href.all(null, p.id) : href.pkg(p.id)}"><i class="dot" style="--c:${layerVar(layerOf(p.id, model.module))}"></i><span class="name">${mark(shortPackage(p.id, model.module), query)}</span><span class="count">${model.byPackage.get(p.id)?.length || 0}</span></a>`;
+ const fnRow = (s, extra = '') => `<a class="row fn${s.id === route.fn ? ' on' : ''}" href="${route.view === 'all' ? href.all(s.id) : href.pkg(s.package, s.id)}"><span class="name">${mark(s.name, query)}</span><span class="count">${extra}</span></a>`;
  if (query) {
   const packages = model.index.packages.filter(p => shortPackage(p.id, model.module).toLowerCase().includes(query));
   const functions = model.index.symbols.filter(s => `${s.name} ${s.file}`.toLowerCase().includes(query));
@@ -509,6 +564,7 @@ addEventListener('keydown', e => {
   const r = state.route;
   if (state.selected) state.view.select(null);
   else if (r.view === 'pdg' && !standalone) go(href.pkg(state.model.symbols.get(r.fn).package, r.fn));
+  else if (r.view === 'all' && r.pkg) go(href.all());
   else if (r.view === 'package') go(href.repo());
  }
 });
@@ -518,10 +574,10 @@ function route() {
  if (!standalone && !state.model) return;
  state.route = parseRoute();
  overlay('');
- canvas.classList.remove('package-map', 'all-imports');
+ canvas.classList.remove('package-map', 'all-imports', 'whole-map', 'all-calls');
  const r = state.route;
  if (r.view === 'invalid') { notFound('This link has an invalid address.'); return; }
- if (r.view === 'pdg') showPDG(r); else if (r.view === 'package') showPackage(r); else showRepo(r);
+ if (r.view === 'all') showAll(r); else if (r.view === 'pdg') showPDG(r); else if (r.view === 'package') showPackage(r); else showRepo(r);
  renderTree();
 }
 addEventListener('hashchange', route);

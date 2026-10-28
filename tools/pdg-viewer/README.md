@@ -15,6 +15,14 @@ nearby calls. **All functions** shows every indexed function in that package,
 including those with no recorded calls. Cross-package calls aggregate by package;
 counts retain repeated call sites.
 
+**All functions** beside the package map opens the entire repository on one map.
+Every indexed function has a tile, grouped by package and architectural layer,
+including functions with no recorded callers. All resolved internal call links
+retain their exact function endpoints and repeated-call counts. **All call edges**
+controls background links; selection always highlights direct calls. Search and
+package focus move the camera without filtering out functions. Zoom reveals names;
+Fit restores the whole map. This view shares the index's production-source scope.
+
 Open **Dependence graph** to load a typed PDG on demand. **Statements** folds nested
 expressions into their enclosing statements. **Expressions** keeps every exported
 operation. Both views retain dependency kinds. Select code or a graph node to

@@ -49,6 +49,48 @@ function dependenceLayout(nodes, edges, size) {
  return {...layout, positions, routes, tray: null, width: layout.height, height: layout.width, direction: 'down'};
 }
 
+// Expand package groups into individual function tiles. Architectural columns
+// stay stable regardless of calls, selection, search, or disconnected nodes.
+function repositoryLayout(nodes, edges, packages) {
+ const columns = [['cmd', 'internal', 'tools', 'root'], ['application'], ['adapters'], ['domain']];
+ const byPackage = new Map(packages.map(p => [p.id, []]));
+ for (const n of nodes) byPackage.get(n.package).push(n);
+ const positions = new Map(), frames = [], sections = [];
+ let x = 48, height = 0;
+ for (const layers of columns) {
+  const own = packages.filter(p => layers.includes(p.layer));
+  if (!own.length) continue;
+  const count = own.reduce((sum, p) => sum + byPackage.get(p.id).length, 0);
+  const cols = Math.max(2, Math.min(18, Math.ceil(Math.sqrt(count) / 3)));
+  const width = cols * 132 + 32;
+  let y = 160;
+  for (const layer of layers) {
+   const group = own.filter(p => p.layer === layer);
+   if (!group.length) continue;
+   sections.push({layer, x, y: y - 80, w: width, count: group.length});
+   for (const p of group) {
+    const functions = byPackage.get(p.id), top = y;
+    functions.sort((a, b) => a.symbol.file.localeCompare(b.symbol.file) || a.symbol.start - b.symbol.start);
+    y += 88;
+    functions.forEach((n, i) => positions.set(n.id, {x: x + 16 + (i % cols) * 132 + 60, y: y + Math.floor(i / cols) * 28 + 10, w: 120, h: 20}));
+    y += Math.max(1, Math.ceil(functions.length / cols)) * 28 + 24;
+    frames.push({id: p.id, label: p.label, layer, count: functions.length, x, y: top, w: width, h: y - top});
+    y += 24;
+   }
+   y += 120;
+  }
+  x += width + 160;
+  height = Math.max(height, y);
+ }
+ const routes = edges.map(e => {
+  const a = positions.get(e.source), b = positions.get(e.target);
+  if (a === b) return null;
+  const sign = b.x >= a.x ? 1 : -1;
+  return [{x: a.x + sign * a.w / 2, y: a.y}, {x: b.x - sign * b.w / 2, y: b.y}];
+ });
+ return {positions, routes, frames, sections, width: Math.max(200, x - 112), height: Math.max(200, height)};
+}
+
 function graphLayout(nodes, edges, options = {}) {
  const size = options.size || (() => ({w: 180, h: 40}));
  const rankGap = options.rankGap ?? 110, nodeGap = options.nodeGap ?? 16, pad = options.pad ?? 48;

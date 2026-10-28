@@ -71,9 +71,9 @@ kbd{font:11px var(--mono);color:var(--ink-3);border:1px solid var(--line);border
 .legend span{display:flex;align-items:center;gap:6px}
 .legend:empty{display:none}
 .seg{display:flex;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
-.seg button,.tool{border:0;background:none;padding:5px 10px;border-radius:6px;color:var(--ink-2);display:flex;align-items:center;gap:6px;white-space:nowrap}
-.seg button:hover,.tool:hover{color:var(--ink);background:var(--hover)}
-.seg button[aria-pressed=true]{background:var(--raised);color:var(--ink);box-shadow:0 1px 2px #0006}
+.seg button,.seg a,.tool{border:0;background:none;padding:5px 10px;border-radius:6px;color:var(--ink-2);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.seg button:hover,.seg a:hover,.tool:hover{color:var(--ink);background:var(--hover)}
+.seg button[aria-pressed=true],.seg a[aria-current=page]{background:var(--raised);color:var(--ink);box-shadow:0 1px 2px #0006}
 .seg button[aria-pressed=false] .dot{opacity:.3}
 .tool{border:1px solid var(--line);background:var(--panel);width:32px;height:32px;padding:0;justify-content:center}
 .overlay{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:3}
@@ -107,6 +107,23 @@ kbd{font:11px var(--mono);color:var(--ink-3);border:1px solid var(--line);border
 .package-map.all-imports .edge{opacity:.25}
 .package-map.focus .edge.on{opacity:1}
 .package-map.focus .node:not(.on){opacity:.38}
+.package-frame rect{fill:#191917;stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
+.package-frame.selected rect{stroke:var(--ink-2)}
+.package-frame{cursor:pointer}
+.package-frame text{fill:var(--ink-2);font:500 var(--map-label-size,12px) var(--sans);pointer-events:none}
+.whole-map .map-section text{font-size:var(--map-heading-size,14px)}
+.whole-map .map-section path{display:none}
+.whole-map .map-section .count{display:none}
+.whole-map .whole-function .name{font-size:11px}
+.whole-map.far .whole-function .name{display:none}
+.whole-map .whole-function .box{fill:color-mix(in srgb,var(--tile) 38%,var(--raised));stroke:color-mix(in srgb,var(--tile) 70%,var(--line))}
+.whole-map .whole-function:hover .box,.whole-map .whole-function.selected .box{fill:var(--tile);stroke:var(--ink)}
+.layer-domain{--tile:var(--domain)}.layer-application{--tile:var(--application)}.layer-adapters{--tile:var(--adapters)}.layer-internal{--tile:var(--internal)}.layer-cmd{--tile:var(--cmd)}.layer-tools{--tile:var(--tools)}.layer-root{--tile:var(--root)}
+.whole-map .edge{opacity:0;vector-effect:non-scaling-stroke;stroke-width:.6!important;transition:none}
+.whole-map.all-calls .edge{opacity:.08}
+.whole-map.focus .edge.on{opacity:1;stroke-width:1.2!important}
+.whole-map.focus .node:not(.on){opacity:.35}
+.whole-map .node{transition:none}
 .node.stub .box{fill:none;stroke-dasharray:4 3}
 .node.stub .name{font:12px var(--sans);fill:var(--ink-2)}
 .node.control .box{stroke:color-mix(in srgb,var(--control) 55%,var(--line))}

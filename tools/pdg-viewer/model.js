@@ -34,6 +34,20 @@ function packageGraph(model) {
  return {nodes, edges};
 }
 
+// Every indexed function has its own node, including disconnected declarations.
+// Only resolved internal calls create edges; repeated call sites retain a count.
+function repositoryGraph(model) {
+ const nodes = model.index.symbols.map(s => ({id: s.id, label: s.name, kind: 'function', package: s.package, layer: layerOf(s.package, model.module), symbol: s}));
+ const edges = new Map();
+ for (const s of model.index.symbols) for (const c of s.calls) {
+  if (!model.symbols.has(c.target)) continue;
+  const key = s.id + '\n' + c.target;
+  if (!edges.has(key)) edges.set(key, {source: s.id, target: c.target, count: 0});
+  edges.get(key).count++;
+ }
+ return {nodes, edges: [...edges.values()]};
+}
+
 // A package's functions and calls between them. Calls that cross the package
 // boundary collapse into one node per caller package (left) and callee package (right).
 function callGraph(model, pkg) {
