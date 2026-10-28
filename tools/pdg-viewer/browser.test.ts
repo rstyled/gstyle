@@ -42,27 +42,32 @@ test.skipIf(!chromium)('dense-map hover, selection, and panning keep the surface
   await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:2,mobile:false});
   await send('Page.navigate',{url:`${server.url}#/all/f%3A500`});
   const readyUntil=Date.now()+10000;
-  while(Date.now()<readyUntil){if(await evaluate("typeof state!=='undefined' && state.view?.overview && cam.k>=.5 && state.view.overview.visibleCount>0 && state.view.overview.ready && !cameraFrame"))break;await Bun.sleep(50);}
+  while(Date.now()<readyUntil){if(await evaluate("typeof state!=='undefined' && state.view?.overview && cam.k>=.799 && state.view.overview.visibleCount>0 && state.view.overview.ready && !cameraFrame"))break;await Bun.sleep(50);}
   await Bun.sleep(350);
   const result=await evaluate(`(async()=>{
    const scene=document.querySelector('.overview-scene');
    if(!scene)throw new Error('Map surface is missing');
    const observer=new MutationObserver(()=>{});observer.observe(canvas,{childList:true,subtree:true});
+   const ctx=scene.getContext('2d'),fill=ctx.fillText;let textPaints=0;ctx.fillText=function(...args){textPaints++;return fill.apply(this,args)};
    for(const id of [...state.view.overview.index.nodes.keys()].slice(400,450)){state.hover=id;paint()}
    await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);
-   const hoverStable=observer.takeRecords().filter(m=>m.type==='childList').length===0;
+   const hoverStable=observer.takeRecords().filter(m=>m.type==='childList').length===0&&textPaints===0;
    observer.disconnect();
    const tree=document.querySelector('#tree a');
+   if(document.querySelectorAll('#tree .row.fn').length>100)throw new Error('Function sidebar is not windowed');
    go(href.all('f:501'),true);
-   const treeStable=tree===document.querySelector('#tree a');
+   const treeStable=tree===document.querySelector('#tree a')&&document.querySelector('#tree .row.fn.on').textContent.includes('F501');
    cam.x+=256;applyCamera();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);
-   const panStable=scene===document.querySelector('.overview-scene')&&canvas.querySelectorAll('*').length<20;
+   const focus=document.querySelector('.overview-emphasis');
+   const panStable=scene===document.querySelector('.overview-scene')&&canvas.querySelectorAll('*').length<20&&focus.clientWidth===canvas.clientWidth&&focus.clientHeight===canvas.clientHeight;
    const position=state.view.layout.positions.get(state.selected), rect=canvas.getBoundingClientRect();
    const x=(position.x-cam.x)*cam.k,y=(position.y-cam.y)*cam.k;
    const pixel=scene.getContext('2d').getImageData(Math.floor(x*scene.width/rect.width),Math.floor(y*scene.height/rect.height),1,1).data;
    return {hoverStable,treeStable,panStable,count:state.view.overview.rasterCount,painted:pixel[3]>0&&pixel[2]>pixel[0]&&pixel[0]>25};
   })()`);
   expect(result).toEqual({hoverStable:true,treeStable:true,panStable:true,count:2000,painted:true});
+  const lastRow=await evaluate("(async()=>{const tree=document.querySelector('#tree');tree.scrollTop=tree.scrollHeight;await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);return [...tree.querySelectorAll('.row.fn')].some(a=>a.textContent.includes('F1999'))&&tree.querySelectorAll('.row.fn').length<100})()");
+  expect(lastRow).toBe(true);
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:700,y:400});
   await send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,x:700,y:400});
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',button:'left',buttons:1,x:720,y:410});

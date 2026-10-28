@@ -45,7 +45,7 @@ code,.mono{font-family:var(--mono)}
 .search input{flex:1;min-width:0;border:0;background:none;outline:none;height:100%}
 .search input::placeholder{color:var(--ink-3)}
 kbd{font:11px var(--mono);color:var(--ink-3);border:1px solid var(--line);border-radius:4px;padding:0 5px}
-.tree{overflow:auto;padding:0 8px 16px;flex:1}
+.tree{position:relative;overflow:auto;padding:0 8px 16px;flex:1}
 .group{margin:14px 6px 4px;display:flex;align-items:center;gap:8px;color:var(--ink-3);font-size:11.5px;font-weight:550}
 .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--c,var(--ink-3))}
 .row{display:flex;align-items:center;gap:8px;width:100%;padding:5px 8px;border:0;border-radius:6px;background:none;text-align:left;color:var(--ink-2);min-width:0}
@@ -54,6 +54,9 @@ kbd{font:11px var(--mono);color:var(--ink-3);border:1px solid var(--line);border
 .row .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .row .count{color:var(--ink-3);font-size:11.5px;font-variant-numeric:tabular-nums}
 .row.fn{padding-left:24px;font:12px var(--mono)}
+.virtual-functions{position:relative}
+.virtual-window{position:absolute;left:0;right:0}
+.virtual-functions .row.fn{height:28px}
 .row.fn.on{box-shadow:inset 2px 0 var(--ink-2)}
 .row mark{background:none;color:var(--ink);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--ink-3)}
 .hint{color:var(--ink-3);padding:8px 14px;font-size:12px}

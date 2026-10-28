@@ -77,7 +77,9 @@ function drawOverview(key, graph, layout, spec) {
  scene.className = 'overview-scene'; scene.setAttribute('aria-hidden', 'true');
  stage.insertBefore(scene, canvas);
  const ctx = scene.getContext('2d'), root = getComputedStyle(document.documentElement);
- let pose=null,dirty=true;
+ const emphasis=document.createElement('canvas');emphasis.className='overview-scene overview-emphasis';emphasis.setAttribute('aria-hidden','true');stage.insertBefore(emphasis,canvas);
+ const focusContext=emphasis.getContext('2d');
+ let pose=null,dirty=true,focusDirty=true,focusPose=null;
  const color = name => root.getPropertyValue('--' + name).trim();
  const mix = (a, b, ratio) => {
   const rgb = hex => hex.replace('#','').match(/../g).map(s => parseInt(s,16));
@@ -102,24 +104,48 @@ function drawOverview(key, graph, layout, spec) {
   ctx.drawImage(img,x/layout.width*img.width,y/layout.height*img.height,w/layout.width*img.width,h/layout.height*img.height,x,y,w,h);
   ctx.globalAlpha=1;
  };
- const tile = (target,id,alpha,label) => {
-  const n=index.nodes.get(id),p=layout.positions.get(id),colors=palette.get(n.layer),chosen=id===selected;
-  target.globalAlpha=alpha;target.fillStyle=chosen||id===center&&id===state.hover?colors.tile:colors.fill;
+ const tile = (target,id,alpha,label,highlight=false) => {
+  const n=index.nodes.get(id),p=layout.positions.get(id),colors=palette.get(n.layer),chosen=highlight&&id===selected;
+  target.globalAlpha=alpha;target.fillStyle=highlight&&(chosen||id===center&&id===state.hover)?colors.tile:colors.fill;
   target.strokeStyle=chosen?color('ink'):colors.line;target.lineWidth=chosen?1.2/cam.k:1;
   target.beginPath();target.roundRect(p.x-p.w/2,p.y-p.h/2,p.w,p.h,2);target.fill();target.stroke();
   if(label){target.fillStyle=color('ink');target.font='11px '+root.getPropertyValue('--mono');target.fillText(clip(n.label,16),p.x-p.w/2+6,p.y+4);}
   target.globalAlpha=1;
  };
- const arrow = (i) => {
+ const arrow = (target,i) => {
   const route=layout.routes[i],p=layout.positions.get(graph.edges[i].source);
   const end=route?.at(-1) || {x:p.x+p.w/2-6,y:p.y-p.h/2-1};
   const prev=route?.at(-2),angle=prev?Math.abs(end.x-prev.x)>.01?(end.x>prev.x?0:Math.PI):(end.y>prev.y?Math.PI/2:-Math.PI/2):Math.atan2(29,-8);
-  ctx.save();ctx.translate(end.x,end.y);ctx.rotate(angle);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-8,-3.2);ctx.lineTo(-8,3.2);ctx.closePath();ctx.fill();ctx.restore();
+  target.save();target.translate(end.x,end.y);target.rotate(angle);target.beginPath();target.moveTo(0,0);target.lineTo(-8,-3.2);target.lineTo(-8,3.2);target.closePath();target.fill();target.restore();
+ };
+ const drawEmphasis = (width,height,dpr) => {
+  scene.style.opacity=center?'.4':'1';
+  const packageID=state.route.pkg||index.nodes.get(selected)?.package;
+  const next=`${cam.x}:${cam.y}:${cam.k}:${width}:${height}:${dpr}:${packageID}`;
+  if(!focusDirty&&focusPose===next)return;
+  focusDirty=false;focusPose=next;
+  const pixelWidth=Math.round(width*dpr),pixelHeight=Math.round(height*dpr);
+  if(emphasis.width!==pixelWidth||emphasis.height!==pixelHeight){emphasis.width=pixelWidth;emphasis.height=pixelHeight;emphasis.style.width=width+'px';emphasis.style.height=height+'px';}
+  focusContext.setTransform(1,0,0,1,0,0);focusContext.clearRect(0,0,emphasis.width,emphasis.height);
+  focusContext.setTransform(cam.k*dpr,0,0,cam.k*dpr,-cam.x*cam.k*dpr,-cam.y*cam.k*dpr);
+  const frame=layout.frames.find(p=>p.id===packageID);
+  if(frame){focusContext.strokeStyle=color('ink-2');focusContext.lineWidth=1/cam.k;focusContext.beginPath();focusContext.roundRect(frame.x,frame.y,frame.w,frame.h,10);focusContext.stroke();}
+  if(!center)return;
+  focusContext.strokeStyle=color('ink-2');focusContext.fillStyle=color('ink-2');focusContext.lineWidth=1.2/cam.k;
+  for(const i of index.incident.get(center)){focusContext.stroke(strokes[i]);arrow(focusContext,i);}
+  const bounds={x:cam.x,y:cam.y,w:width/cam.k,h:height/cam.k};
+  for(const id of index.adjacent.get(center)){
+   const p=layout.positions.get(id);
+   if(inView({x:p.x-p.w/2,y:p.y-p.h/2,w:p.w,h:p.h},bounds))tile(focusContext,id,1,cam.k>=.5,true);
+  }
+  if(selected){const p=layout.positions.get(selected);focusContext.strokeStyle=color('ink');focusContext.lineWidth=1.2/cam.k;focusContext.strokeRect(p.x-p.w/2,p.y-p.h/2,p.w,p.h);}
  };
  const camera = () => {
   const width=canvas.clientWidth,height=canvas.clientHeight,dpr=Math.min(devicePixelRatio||1,2);
   // A padded surface moves through the compositor during a drag. Paint again
   // only when its margin is exhausted or the content changes.
+  drawEmphasis(width,height,dpr);
+  if(!dirty&&pose&&pose.x===cam.x&&pose.y===cam.y&&pose.k===cam.k&&pose.width===width&&pose.height===height&&pose.dpr===dpr&&pose.calls===state.allCalls&&pose.moving===!!drag?.moved)return;
   const moving=!!drag?.moved,dx=pose?(pose.x-cam.x)*cam.k:0,dy=pose?(pose.y-cam.y)*cam.k:0;
   if(moving&&!dirty&&pose&&pose.k===cam.k&&pose.width===width&&pose.height===height&&pose.dpr===dpr&&pose.calls===state.allCalls&&Math.abs(dx)<pose.pad*.75&&Math.abs(dy)<pose.pad*.75){
    scene.style.transform=`translate3d(${dx}px,${dy}px,0)`;
@@ -131,30 +157,25 @@ function drawOverview(key, graph, layout, spec) {
   if(scene.width!==pixelWidth||scene.height!==pixelHeight){scene.width=pixelWidth;scene.height=pixelHeight;}
   ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,scene.width,scene.height);
   ctx.setTransform(cam.k*dpr,0,0,cam.k*dpr,(-cam.x*cam.k+pad)*dpr,(-cam.y*cam.k+pad)*dpr);
-  const bounds={x:cam.x-pad/cam.k,y:cam.y-pad/cam.k,w:(width+2*pad)/cam.k,h:(height+2*pad)/cam.k},related=index.adjacent.get(center)||new Set();
+  const bounds={x:cam.x-pad/cam.k,y:cam.y-pad/cam.k,w:(width+2*pad)/cam.k,h:(height+2*pad)/cam.k};
   const frames=layout.frames.filter(p=>inView(p,bounds));
   ctx.lineWidth=1/cam.k;
-  for(const p of frames){ctx.fillStyle='#191917';ctx.strokeStyle=p.id===(state.route.pkg||index.nodes.get(selected)?.package)?color('ink-2'):color('line');ctx.beginPath();ctx.roundRect(p.x,p.y,p.w,p.h,10);ctx.fill();ctx.stroke();}
+  for(const p of frames){ctx.fillStyle='#191917';ctx.strokeStyle=color('line');ctx.beginPath();ctx.roundRect(p.x,p.y,p.w,p.h,10);ctx.fill();ctx.stroke();}
   if(state.allCalls)cached(images.calls,bounds,.08);
-  if(cam.k<.5)cached(images.tiles,bounds,center ? .35 : 1);
-  if(center){
-   ctx.strokeStyle=color('ink-2');ctx.fillStyle=color('ink-2');ctx.lineWidth=1.2/cam.k;
-   for(const i of index.incident.get(center)){ctx.stroke(strokes[i]);arrow(i);}
-  }
+  if(cam.k<.5)cached(images.tiles,bounds,1);
   if(cam.k>=.5){
    const visible=index.query(bounds);visibleCount=visible.size;
-   for(const id of visible)tile(ctx,id,!center||related.has(id)?1:.35,true);
-  } else {visibleCount=0;for(const id of related)tile(ctx,id,1,false);}
-  if(selected){const p=layout.positions.get(selected);ctx.strokeStyle=color('ink');ctx.lineWidth=1.2/cam.k;ctx.strokeRect(p.x-p.w/2,p.y-p.h/2,p.w,p.h);}
+   for(const id of visible)tile(ctx,id,1,true);
+  }else visibleCount=0;
   ctx.font=`500 ${12/cam.k}px `+root.getPropertyValue('--sans');ctx.fillStyle=color('ink-2');
   for(const p of frames){const chars=Math.max(3,Math.floor((p.w-32)*cam.k/7));ctx.fillText(clip(p.label+' · '+p.count.toLocaleString(),chars),p.x+16,p.y+60);}
   ctx.font=`600 ${14/cam.k}px `+root.getPropertyValue('--sans');
   for(const s of layout.sections){ctx.fillStyle=color(s.layer);ctx.fillText(s.layer,s.x,s.y+10);}
-  pose={x:cam.x,y:cam.y,k:cam.k,width,height,dpr,pad,calls:state.allCalls};dirty=false;
+  pose={x:cam.x,y:cam.y,k:cam.k,width,height,dpr,pad,calls:state.allCalls,moving};dirty=false;
  };
  const highlight = (id,chosen) => {
   if(center===id&&selected===chosen)return;
-  const changed=selected!==chosen;center=id;selected=chosen;dirty=true;
+  const changed=selected!==chosen;center=id;selected=chosen;focusDirty=true;
   if(changed&&selected){
    const p=layout.positions.get(selected);selection.setAttribute('aria-label',spec.title(index.nodes.get(selected)));
    selection.innerHTML=`<rect x="${p.x-p.w/2}" y="${p.y-p.h/2}" width="${p.w}" height="${p.h}" fill="transparent" pointer-events="none"/>`;
@@ -162,5 +183,5 @@ function drawOverview(key, graph, layout, spec) {
   }else if(changed){selection.replaceChildren();selection.removeAttribute('aria-label');canvas.removeAttribute('aria-activedescendant');}
   applyCamera();
  };
- return {key,graph,layout,spec,nodeEls:new Map(),edgeEls:[],overview:{index,hit:index.hit,camera,highlight,rasterCount:graph.nodes.length,get visibleCount(){return visibleCount;},get ready(){return Object.values(images).every(img=>img.complete&&img.naturalWidth);},detach:()=>{scene.remove();scene.width=scene.height=0;}}};
+ return {key,graph,layout,spec,nodeEls:new Map(),edgeEls:[],overview:{index,hit:index.hit,camera,highlight,rasterCount:graph.nodes.length,get visibleCount(){return visibleCount;},get ready(){return Object.values(images).every(img=>img.complete&&img.naturalWidth);},detach:()=>{scene.remove();emphasis.remove();scene.width=scene.height=emphasis.width=emphasis.height=0;}}};
 }

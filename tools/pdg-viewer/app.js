@@ -12,7 +12,7 @@ const KINDS = {data: 'value dependency', control: 'lexical nesting', execution: 
 const state = {
  model: null, view: null, selected: null, hover: null,
  pdg: {detail: 'statements', kinds: new Set(['data', 'control']), mode: 'direct'},
- sources: new Map(), docs: new Map(), layouts: new Map(),
+ sources: new Map(), sourceBlocks: new Map(), docs: new Map(), layouts: new Map(),
  imports: false, pendingDocs: new Map(),
  callScope: 'neighbors',
  allCalls: true,
@@ -495,7 +495,7 @@ function functionPanel(s) {
  return `<section><h2>${esc(s.name)}</h2><div class="sub mono">${esc(s.file)}:${s.line}–${s.end_line}</div>
   ${s.call_resolution !== 'typed' ? '<p class="note">Calls unavailable: this declaration is outside the active build or its package has type errors.</p>' : ''}
   <div class="actions"><a class="primary" href="${href.pdg(s.id)}">Dependence graph</a></div></section>
-  <section id="source">${source === undefined ? '<p class="empty">Loading source…</p>' : source == null ? '<p class="empty">Source is unavailable. Restart the atlas after changing files.</p>' : sourceBlock(source, s.line)}</section>
+  <section id="source">${source === undefined ? '<p class="empty">Loading source…</p>' : source == null ? '<p class="empty">Source is unavailable. Restart the atlas after changing files.</p>' : functionSource(s)}</section>
   <section><h3>Called by <span>${callers.length}</span></h3><div class="list">${callers.map(([t, n]) => fnLink(t, n)).join('') || `<span class="empty">${s.role ? 'Started by the Go runtime.' : 'No calls found in this repository. It may be called through an interface, by tests, or by another module.'}</span>`}</div></section>
   <section><h3>Calls <span>${calls.size}</span></h3><div class="list">${[...calls].map(([id, n]) => fnLink(model.symbols.get(id), n)).join('') || '<span class="empty">No functions from this repository.</span>'}</div>
   ${external.size ? `<h3 style="margin-top:16px">Outside this repository</h3><div class="chips">${[...external].map(([pkg, names]) => `<span class="chip"><b>${esc(base(pkg))}</b> ${esc([...names].join(', '))}</span>`).join('')}</div>` : ''}
@@ -507,7 +507,11 @@ async function loadSource(s) {
   state.sources.set(s.id, response.ok ? (await response.json()).content : null);
  } catch { state.sources.set(s.id, null); }
  const box = $('#source');
- if (box && state.route.fn === s.id) box.innerHTML = state.sources.get(s.id) == null ? '<p class="empty">Source changed on disk since indexing. Restart the atlas to refresh it.</p>' : sourceBlock(state.sources.get(s.id), s.line);
+ if (box && state.route.fn === s.id) box.innerHTML = state.sources.get(s.id) == null ? '<p class="empty">Source changed on disk since indexing. Restart the atlas to refresh it.</p>' : functionSource(s);
+}
+function functionSource(s) {
+ if(!state.sourceBlocks.has(s.id))state.sourceBlocks.set(s.id,sourceBlock(state.sources.get(s.id),s.line));
+ return state.sourceBlocks.get(s.id);
 }
 function sourceBlock(text, firstLine, marks = new Map()) {
  return `<div class="source">${highlightGo(text).map((html, i) => { const n = firstLine + i, m = marks.get(n) || ''; return `<div class="ln ${m}" data-n="${n}"><pre>${html || ' '}</pre></div>`; }).join('')}</div>`;
@@ -571,11 +575,39 @@ function highlightGo(text) {
  return lines;
 }
 
-let treeKey = null;
+let treeKey = null, treeVirtual = null, treeScrollFrame = 0;
+const functionRowHeight = 28;
+function syncTreeWindow(focus) {
+ const data=treeVirtual, tree=$('#tree');
+ if(!data?.node.isConnected)return;
+ const top=data.node.offsetTop, height=tree.clientHeight;
+ if(focus&&data.indices.has(focus)){
+  const y=top+data.indices.get(focus)*functionRowHeight;
+  if(y<tree.scrollTop||y+functionRowHeight>tree.scrollTop+height)tree.scrollTop=Math.max(0,y-height/2);
+ }
+ const first=clamp(Math.floor((tree.scrollTop-top)/functionRowHeight)-8,0,data.list.length);
+ const last=clamp(Math.ceil((tree.scrollTop-top+height)/functionRowHeight)+8,first,data.list.length);
+ const range=`${first}:${last}`;
+ if(range!==data.range){
+  data.range=range;data.window.style.top=first*functionRowHeight+'px';
+  data.window.innerHTML=data.list.slice(first,last).map((s,i)=>`<div role="listitem" aria-posinset="${first+i+1}" aria-setsize="${data.list.length}">${data.row(s)}</div>`).join('');
+ }
+ const active=tree.querySelector('.row.fn.on'), next=state.route.fn?data.window.querySelector(`a[data-function="${encodeURIComponent(state.route.fn)}"]`):null;
+ if(active!==next){active?.classList.remove('on');next?.classList.add('on');}
+}
+$('#tree').addEventListener('scroll',()=>{
+ if(treeScrollFrame||!treeVirtual)return;
+ treeScrollFrame=requestAnimationFrame(()=>{treeScrollFrame=0;syncTreeWindow();});
+});
+new ResizeObserver(()=>syncTreeWindow(state.route?.fn)).observe($('#tree'));
 // ── sidebar ────────────────────────────────────────────────────────────────
 function mark(text, query) {
  const i = query ? text.toLowerCase().indexOf(query) : -1;
  return i < 0 ? esc(text) : esc(text.slice(0, i)) + '<mark>' + esc(text.slice(i, i + query.length)) + '</mark>' + esc(text.slice(i + query.length));
+}
+function functionRows(list,row) {
+ if(list.length<=200)return list.map(s=>row(s)).join('');
+ return `<div class="virtual-functions" role="list" aria-label="${list.length} functions" style="height:${list.length*functionRowHeight}px"><div class="virtual-window"></div></div>`;
 }
 function renderTree() {
  const query = $('#search').value.trim().toLowerCase(), route = state.route;
@@ -586,16 +618,17 @@ function renderTree() {
  const model = state.model, current = route.pkg || model.symbols.get(route.fn)?.package;
  const key = `${route.view}:${current || ''}:${query}`;
  if (treeKey === key) {
+  if(treeVirtual){syncTreeWindow(route.fn);return;}
   const active = $('#tree .row.fn.on');
   const url = route.view === 'all' ? href.all(route.fn) : href.pkg(current, route.fn);
   const next = route.fn ? $('#tree').querySelector(`a[href="${url}"]`) : null;
   if (active !== next) { active?.classList.remove('on'); next?.classList.add('on'); next?.scrollIntoView({block:'nearest'}); }
   return;
  }
- treeKey = key;
+ treeKey = key;treeVirtual=null;
 
  const pkgRow = p => `<a class="row${p.id === current ? ' on' : ''}" href="${route.view === 'all' ? href.all(null, p.id) : href.pkg(p.id)}"><i class="dot" style="--c:${layerVar(layerOf(p.id, model.module))}"></i><span class="name">${mark(shortPackage(p.id, model.module), query)}</span><span class="count">${model.byPackage.get(p.id)?.length || 0}</span></a>`;
- const fnRow = (s, extra = '') => `<a class="row fn${s.id === route.fn ? ' on' : ''}" href="${route.view === 'all' ? href.all(s.id) : href.pkg(s.package, s.id)}"><span class="name">${mark(s.name, query)}</span><span class="count">${extra}</span></a>`;
+ const fnRow = (s, extra = '') => `<a class="row fn${s.id === state.route.fn ? ' on' : ''}" href="${route.view === 'all' ? href.all(s.id) : href.pkg(s.package, s.id)}" data-function="${encodeURIComponent(s.id)}"><span class="name">${mark(s.name, query)}</span><span class="count">${extra}</span></a>`;
  if (query) {
   const packages = model.index.packages.filter(p => shortPackage(p.id, model.module).toLowerCase().includes(query));
   const functions = model.index.symbols.filter(s => `${s.name} ${s.file}`.toLowerCase().includes(query));
@@ -607,9 +640,14 @@ function renderTree() {
  $('#tree').innerHTML = LAYERS.map(layer => {
   const packages = model.index.packages.filter(p => layerOf(p.id, model.module) === layer);
   if (!packages.length) return '';
-  return `<div class="group"><i class="dot" style="--c:${layerVar(layer)}"></i>${layer}</div>` + packages.map(p => pkgRow(p) + (p.id === current ? (model.byPackage.get(p.id) || []).map(s => fnRow(s)).join('') : '')).join('');
+  return `<div class="group"><i class="dot" style="--c:${layerVar(layer)}"></i>${layer}</div>` + packages.map(p => pkgRow(p) + (p.id === current ? functionRows(model.byPackage.get(p.id) || [], fnRow) : '')).join('');
  }).join('');
- $('#tree .row.fn.on, #tree .row.on')?.scrollIntoView({block: 'nearest'});
+ const block=$('#tree .virtual-functions');
+ if(block){
+  const list=model.byPackage.get(current)||[];
+  treeVirtual={node:block,window:block.firstElementChild,list,row:fnRow,indices:new Map(list.map((s,i)=>[s.id,i])),range:null};
+  syncTreeWindow(route.fn);
+ }else $('#tree .row.fn.on, #tree .row.on')?.scrollIntoView({block:'nearest'});
 }
 $('#search').addEventListener('input', renderTree);
 $('#search').addEventListener('keydown', e => { if (e.key === 'Enter') $('#tree a')?.click(); if (e.key === 'Escape') { e.target.value = ''; renderTree(); e.target.blur(); } });
