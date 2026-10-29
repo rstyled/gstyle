@@ -141,7 +141,7 @@ func TestSourcePatternRows(t *testing.T) {
 	if len(rows) == 0 {
 		t.Fatal("expected rows")
 	}
-	if len(rows) != 2 || !containsAll(rows[0], "ccgraph_clone") || !containsAll(rows[1], "guard_clause") {
+	if len(rows) != 2 || !containsAll(rows[0], "▲ ", "ccgraph_clone") || !containsAll(rows[1], "▲ ", "guard_clause") {
 		t.Fatalf("expected distinct sorted finding rows: %v", rows)
 	}
 }

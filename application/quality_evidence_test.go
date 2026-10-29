@@ -24,7 +24,7 @@ func TestEvidenceAt2986AppearsBelow2986AndIsNavigable(t *testing.T) {
 	m = m.applyReport(m.report)
 	plain := ansi.Strip(strings.Join(m.sourceLines(130, 100, "Source"), "\n"))
 	start, end := strings.Index(plain, "2986 │"), strings.Index(plain, "2987 │")
-	if start < 0 || end <= start || !strings.Contains(plain[start:end], "TARGET_LOCATION") || strings.Contains(plain[:start], "TARGET_LOCATION") || strings.Count(plain, "TARGET_LOCATION") != 1 {
+	if start < 0 || end <= start || !strings.Contains(plain[start:end], "╰─■ unknown: TARGET_LOCATION") || strings.Contains(plain[:start], "TARGET_LOCATION") || strings.Count(plain, "TARGET_LOCATION") != 1 {
 		t.Fatalf("evidence is displayed at the function header instead of L2986:\n%s", plain)
 	}
 	for _, want := range []int{2979, 2984, 2986, 2979} {

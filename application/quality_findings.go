@@ -24,6 +24,13 @@ type findingDetails struct {
 	messages []string
 }
 
+func (marker FindingMarker) symbol() string {
+	if marker.Diagnostic != nil {
+		return "■ "
+	}
+	return "▲ "
+}
+
 func (marker FindingMarker) label() string {
 	if marker.Diagnostic != nil {
 		return "quality: " + marker.Kind

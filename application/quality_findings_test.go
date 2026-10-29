@@ -14,10 +14,13 @@ func TestQualityGuardrailsAreInlineWithoutToggles(t *testing.T) {
 	diagnostic.Effects = []quality.Effect{{Line: 12, Kind: quality.UnknownEffect, Detail: "callback"}}
 	diagnostic.Mutations = m.report.Files[0].Functions[0].Quality.MutationEvents
 	plain := ansi.Strip(strings.Join(m.sourceLines(100, 40, "Source"), "\n"))
-	for _, want := range []string{"quality: mutation_per_target", "4 exceeds 3", "Actual: 4", "limit: 3", "L12 unknown: callback", "L11 state.count (external)"} {
+	for _, want := range []string{"╰─■ quality: mutation_per_target", "4 exceeds 3", "Actual: 4", "limit: 3", "╰─■ unknown: callback", "state.count (external)"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("inline quality hides %q:\n%s", want, plain)
 		}
+	}
+	if strings.Contains(plain, "▲") || strings.Contains(plain, "L12 unknown:") || strings.Contains(plain, "L11 state.count") || strings.Count(plain, "quality: mutation_per_target") != 1 {
+		t.Fatalf("inline evidence repeats its line or function heading:\n%s", plain)
 	}
 	if m.showPatterns || m.qualityView || m.filePatternCount("sample.go") != 0 {
 		t.Fatal("quality findings need a toggle or change the pattern count")

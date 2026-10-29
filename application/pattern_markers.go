@@ -148,12 +148,15 @@ func sourcePatternRows(markers []PatternMarker, width int) []string {
 	}
 	markers = uniquePatternMarkers(markers)
 	slices.SortStableFunc(markers, func(a, b PatternMarker) int { return cmp.Compare(a.Kind, b.Kind) })
-	prefix := muted.Render("      ╰─") + amber.Bold(true).Render("▲ ")
 	var rows []string
 	for _, marker := range markers {
-		rows = append(rows, annotationMessageRows(marker.label(), prefix, width)...)
+		prefix := muted.Render("      ╰─") + amber.Bold(true).Render(marker.symbol())
+		if marker.Scope != "source evidence" {
+			rows = append(rows, annotationMessageRows(marker.label(), prefix, width)...)
+			prefix = "          "
+		}
 		for _, message := range marker.detailMessages() {
-			rows = append(rows, annotationMessageRows(message, "          ", width)...)
+			rows = append(rows, annotationMessageRows(message, prefix, width)...)
 		}
 	}
 	return rows

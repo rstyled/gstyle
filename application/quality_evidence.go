@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 
 	"github.com/rstyled/gstyle/domain"
 	"github.com/rstyled/gstyle/domain/quality"
@@ -41,6 +42,8 @@ func groupedQualityEvidence(path string, function domain.Function, summary Findi
 		if !patternPathMatches(path, summary.Path) || !functionHasSourceLine(function, line) {
 			line = summary.Line
 			evidence.message = "Source location unavailable: " + evidence.message
+		} else {
+			evidence.message = strings.TrimPrefix(evidence.message, fmt.Sprintf("L%d ", line))
 		}
 		groups[line] = append(groups[line], evidence.message)
 	}
