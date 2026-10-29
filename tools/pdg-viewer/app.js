@@ -309,11 +309,19 @@ function showAll(route) {
   const k = Math.min(1, (canvas.clientWidth - 80) / frame.w, (canvas.clientHeight - 120) / frame.h);
   moveCamera({k, x: frame.x + frame.w / 2 - canvas.clientWidth / 2 / k, y: frame.y + frame.h / 2 - canvas.clientHeight / 2 / k});
  }
- toolbar(`<div class="view-label">All functions <span>${graph.nodes.length.toLocaleString()} · ${plural(graph.edges.length, 'call link')}</span></div>${repositorySwitcher(true)}<div class="seg"><button id="all-calls" aria-pressed="${state.allCalls}">All call edges</button></div>`);
- $('#all-calls').onclick = () => { state.allCalls = !state.allCalls; canvas.classList.toggle('all-calls', state.allCalls); $('#all-calls').setAttribute('aria-pressed', state.allCalls); applyCamera(); };
- legend('<span>Every tile is one function</span><span>Zoom to read names · select to trace calls</span>');
+ toolbar(`<div class="view-label">All functions <span>${graph.nodes.length.toLocaleString()} · ${plural(graph.edges.length, 'call link')}</span></div>${repositorySwitcher(true)}<div class="seg"><button id="all-calls" aria-pressed="${state.allCalls}" title="Show or hide all resolved call links. Selected calls stay visible.">All calls: ${state.allCalls ? 'on' : 'off'}</button></div>`);
+ $('#all-calls').onclick = () => {
+  state.allCalls = !state.allCalls; canvas.classList.toggle('all-calls', state.allCalls);
+  $('#all-calls').setAttribute('aria-pressed', state.allCalls); $('#all-calls').textContent = `All calls: ${state.allCalls ? 'on' : 'off'}`;
+  allCallsLegend(); applyCamera();
+ };
+ allCallsLegend();
  crumbs([[model.module, href.repo()], ['all functions', symbol || route.pkg ? href.all() : null], ...(symbol ? [[symbol.name, null]] : route.pkg ? [[shortPackage(route.pkg, model.module), null]] : [])]);
  inspector(symbol ? functionPanel(symbol) : route.pkg ? packagePanel(route.pkg, true) : repoPanel(packageGraph(model)));
+}
+
+function allCallsLegend() {
+ legend(`<span>Every tile is one function</span><span>${state.allCalls ? 'All resolved call links' : 'Selected calls only'}</span><span>Zoom to read names · select to trace calls</span>`);
 }
 
 function showPackage(route) {
@@ -402,7 +410,7 @@ function pdgToolbar() {
   + seg('mode', [['direct', 'Neighbors'], ['upstream', 'Upstream'], ['downstream', 'Downstream']], mode);
 }
 $('#toolbar').addEventListener('click', e => {
- const b = e.target.closest('button');
+ const b = e.target.closest('button[data-scope],button[data-detail],button[data-kind],button[data-mode]');
  if (!b) return;
  if (b.dataset.scope) { state.callScope = b.dataset.scope; route(); return; }
  const p = state.pdg;

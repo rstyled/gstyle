@@ -76,7 +76,31 @@ test.skipIf(!chromium)('dense-map hover, selection, and panning keep the surface
   const reused=await evaluate("(async()=>{await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);return window.__textPaints===0&&document.querySelector('.overview-scene').style.transform.includes('translate3d')})()");
   expect(reused).toBe(true);
   await send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,x:750,y:420});
-
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:100,y:20});
+  await evaluate("go(href.all('f:501'),true)");
+  await Bun.sleep(350);
+  for(const wide of [false,true]){
+   const links=await evaluate(`(async()=>{
+    if(${wide})fit(false);
+    const settle=async()=>{await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame)};
+    await settle();
+    const button=()=>document.querySelector('#all-calls'),scene=document.querySelector('.overview-scene'),ctx=scene.getContext('2d');
+    const pixels=()=>ctx.getImageData(0,0,scene.width,scene.height).data;
+    if(state.allCalls)button().click();await settle();
+    const off=pixels(),focus=document.querySelector('.overview-emphasis').toDataURL();
+    const offLabel=button().textContent==='All calls: off'&&button().getAttribute('aria-pressed')==='false'&&document.querySelector('#legend').textContent.includes('Selected calls only');
+    button().click();await settle();
+    const on=pixels();let visible=0;
+    const opacity=Number(getComputedStyle(scene).opacity);
+    for(let i=0;i<off.length;i+=4)if(Math.max(Math.abs(on[i]-off[i]),Math.abs(on[i+1]-off[i+1]),Math.abs(on[i+2]-off[i+2]))*opacity>=8)visible++;
+    const retained=focus===document.querySelector('.overview-emphasis').toDataURL()&&state.selected==='f:501'&&state.view.graph.nodes.length===2000;
+    const onLabel=button().textContent==='All calls: on'&&button().getAttribute('aria-pressed')==='true'&&document.querySelector('#legend').textContent.includes('All resolved call links');
+    button().click();await settle();
+    const restored=pixels();
+    return {visible:visible>100,retained,labels:offLabel&&onLabel,restored:off.every((value,i)=>value===restored[i])};
+   })()`);
+   expect(links).toEqual({visible:true,retained:true,labels:true,restored:true});
+  }
  } finally {
   socket?.close();browserProcess.kill();await browserProcess.exited;await server.stop(true);rmSync(profile,{recursive:true,force:true});
  }

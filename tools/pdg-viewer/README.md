@@ -18,8 +18,9 @@ counts retain repeated call sites.
 **All functions** beside the package map opens the entire repository on one map.
 Every indexed function has a tile, grouped by package and architectural layer,
 including functions with no recorded callers. All resolved internal call links
-retain their exact function endpoints and repeated-call counts. **All call edges**
-controls background links; selection always highlights direct calls. Search and
+retain their exact function endpoints and repeated-call counts. **All calls: on/off**
+shows or hides all resolved background links. The legend shows the active mode;
+selection always highlights direct calls. Search and
 package focus move the camera without filtering out functions. Zoom reveals names;
 Fit restores the whole map. This view shares the index's production-source scope.
 The overview caches function tiles and background wires in bounded raster layers.

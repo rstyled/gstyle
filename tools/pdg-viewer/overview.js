@@ -47,7 +47,8 @@ function overviewRasters(graph, layout, paths) {
  scratch.width = Math.ceil(layout.width * scale); scratch.height = Math.ceil(layout.height * scale);
  const ctx = scratch.getContext('2d'), colors = getComputedStyle(document.documentElement);
  ctx.scale(scale, scale);
- ctx.strokeStyle = colors.getPropertyValue('--edge').trim(); ctx.lineWidth = 1;
+ // Keep each link one cache pixel wide when the repository is scaled down.
+ ctx.strokeStyle = colors.getPropertyValue('--edge').trim(); ctx.lineWidth = 1 / scale;
  ctx.stroke(new Path2D(paths.join(' ')));
  const calls = scratch.toDataURL();
  ctx.clearRect(0, 0, layout.width, layout.height);
@@ -161,7 +162,7 @@ function drawOverview(key, graph, layout, spec) {
   const frames=layout.frames.filter(p=>inView(p,bounds));
   ctx.lineWidth=1/cam.k;
   for(const p of frames){ctx.fillStyle='#191917';ctx.strokeStyle=color('line');ctx.beginPath();ctx.roundRect(p.x,p.y,p.w,p.h,10);ctx.fill();ctx.stroke();}
-  if(state.allCalls)cached(images.calls,bounds,.08);
+  if(state.allCalls)cached(images.calls,bounds,.65);
   if(cam.k<.5)cached(images.tiles,bounds,1);
   if(cam.k>=.5){
    const visible=index.query(bounds);visibleCount=visible.size;
