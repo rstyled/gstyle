@@ -1,6 +1,7 @@
 package application
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -14,12 +15,12 @@ func TestQualityGuardrailsAreInlineWithoutToggles(t *testing.T) {
 	diagnostic.Effects = []quality.Effect{{Line: 12, Kind: quality.UnknownEffect, Detail: "callback"}}
 	diagnostic.Mutations = m.report.Files[0].Functions[0].Quality.MutationEvents
 	plain := ansi.Strip(strings.Join(m.sourceLines(100, 40, "Source"), "\n"))
-	for _, want := range []string{"╰─■ quality: mutation_per_target", "4 exceeds 3", "Actual: 4", "limit: 3", "╰─■ unknown: callback", "state.count (external)"} {
+	for _, want := range []string{"╰─■ quality: mutation_per_target", "4 exceeds 3", "Actual: 4", "limit: 3", "state.count (external)"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("inline quality hides %q:\n%s", want, plain)
 		}
 	}
-	if strings.Contains(plain, "▲") || strings.Contains(plain, "L12 unknown:") || strings.Contains(plain, "L11 state.count") || strings.Count(plain, "quality: mutation_per_target") != 1 {
+	if strings.Contains(plain, "▲") || strings.Contains(plain, "unknown:") || strings.Contains(plain, "L11 state.count") || strings.Count(plain, "quality: mutation_per_target") != 1 {
 		t.Fatalf("inline evidence repeats its line or function heading:\n%s", plain)
 	}
 	if m.showPatterns || m.qualityView || m.filePatternCount("sample.go") != 0 {
@@ -55,7 +56,7 @@ func TestQualityLocationsDistinguishFunctionChecksFromWriteSites(t *testing.T) {
 	}
 }
 
-func TestInlineQualityEvidenceStaysAtItsSourceLine(t *testing.T) {
+func TestUnknownEvidenceIsHiddenWithoutChangingRawReports(t *testing.T) {
 	m := qualityModel()
 	q := m.report.Files[0].Functions[0].Quality
 	for _, detail := range []string{"first", "first", "second", "third", "fourth", "FINAL_EVIDENCE"} {
@@ -63,15 +64,12 @@ func TestInlineQualityEvidenceStaysAtItsSourceLine(t *testing.T) {
 	}
 	q.Diagnostics[0].Effects = q.Effects
 	plain := ansi.Strip(strings.Join(m.sourceLines(150, 100, "Source"), "\n"))
-	start, end := strings.Index(plain, "12 │"), strings.Index(plain, "13 │")
-	if !containsAll(plain, "estimates, not confirmed", "two", "three") || strings.Contains(plain, "unknown: first") || start < 0 || end <= start {
-		t.Fatalf("inline evidence is lost or repeated:\n%s", plain)
+	if strings.Contains(plain+strings.Join(m.qualityBody(), "\n"), "FINAL_EVIDENCE") || strings.Contains(plain, "unknown:") {
+		t.Fatalf("unknown effects remain in the TUI:\n%s", plain)
 	}
-	if !strings.Contains(plain[start:end], "7 unresolved effect records") || strings.Count(plain[start:end], "╰─■ unknown:") != 1 {
-		t.Fatalf("unknown evidence repeats instead of showing a counted summary at its source line:\n%s", plain)
-	}
-	if len(q.Effects) != 7 || !strings.Contains(strings.Join(m.qualityBody(), "\n"), "FINAL_EVIDENCE") {
-		t.Fatal("compact inline notes discard the full evidence")
+	raw, err := json.Marshal(m.controlReport())
+	if err != nil || len(q.Effects) != 7 || !strings.Contains(string(raw), "FINAL_EVIDENCE") {
+		t.Fatal("hiding unknown effects changes the raw JSON evidence")
 	}
 }
 

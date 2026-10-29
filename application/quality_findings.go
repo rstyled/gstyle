@@ -73,7 +73,9 @@ func fileQualityMarkers(file domain.File) []PatternMarker {
 		if function.Quality == nil {
 			continue
 		}
-		for _, diagnostic := range function.Quality.Diagnostics {
+		visible := knownQuality(function.Quality)
+		function.Quality = &visible
+		for _, diagnostic := range visible.Diagnostics {
 			markers = append(markers, qualityDiagnosticMarkers(file.Path, function, diagnostic)...)
 		}
 	}
@@ -123,24 +125,12 @@ func (marker FindingMarker) qualityDetailMessages() []string {
 	messages := []string{
 		diagnostic.Message,
 		fmt.Sprintf("Reported: %s:%d", diagnostic.Path, diagnostic.Line),
-		qualityBudgetMessage(*diagnostic),
+		fmt.Sprintf("Actual: %d · limit: %d", diagnostic.Actual, diagnostic.Limit),
 	}
 	if marker.Scope != "" {
 		messages = append(messages, "Scope: "+marker.Scope)
 	}
-	if slices.ContainsFunc(diagnostic.Effects, func(effect quality.Effect) bool { return effect.Kind == quality.UnknownEffect }) {
-		messages = append(messages, "Unknown effects are estimates, not confirmed side effects.")
-	}
 	return messages
-}
-
-func qualityBudgetMessage(diagnostic quality.Diagnostic) string {
-	unknown := diagnostic.KindWeights[string(quality.UnknownEffect)]
-	if diagnostic.RuleID != "side_effect_density" || diagnostic.Statements <= 0 || unknown == 0 {
-		return fmt.Sprintf("Actual: %d · limit: %d", diagnostic.Actual, diagnostic.Limit)
-	}
-	known := 1000 * (diagnostic.Weight - unknown) / diagnostic.Statements
-	return fmt.Sprintf("Known contribution: %d · estimate: %d · limit: %d", known, diagnostic.Actual, diagnostic.Limit)
 }
 
 func distinctEvidenceLines(evidence []string) []string {

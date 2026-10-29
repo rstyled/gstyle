@@ -13,6 +13,7 @@ type findingIndex struct {
 	quality        map[string]findingFile
 	targets        []reviewTarget
 	qualityTargets []reviewTarget
+	qualityCount   int
 }
 
 func (m Model) indexFindings() Model {
@@ -25,6 +26,7 @@ func (m Model) indexFindings() Model {
 		quality:        m.indexFindingFiles(m.qualityMarkers),
 		targets:        m.collectFindingTargets(all),
 		qualityTargets: m.collectFindingTargets(m.qualityMarkers),
+		qualityCount:   qualityFindingCount(m.qualityMarkers),
 	}
 	return m
 }

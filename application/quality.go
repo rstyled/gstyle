@@ -72,12 +72,16 @@ func (m Model) qualityBodyRowCount() int {
 		return 2
 	}
 	// Six summary rows and two heading rows for each evidence section.
-	return 10 + len(q.Diagnostics) + len(q.Effects) + len(q.MutationEvents)
+	visible := knownQuality(q)
+	return 10 + len(visible.Diagnostics) + len(visible.Effects) + len(visible.MutationEvents)
 }
 
 func (m Model) qualityHeader() string {
 	if m.report.Quality == nil {
 		return ""
+	}
+	if m.report.Quality.Status == "unavailable" {
+		return " · quality unavailable"
 	}
 	if m.report.Quality.Status == "error" {
 		return " · quality failed"
@@ -85,7 +89,8 @@ func (m Model) qualityHeader() string {
 	if m.report.Quality.Report == nil {
 		return ""
 	}
-	return fmt.Sprintf(" · Q %d", len(m.report.Quality.Report.Diagnostics))
+	indexed := m.ensureFindingIndex()
+	return fmt.Sprintf(" · Q %d", indexed.findingLookup.qualityCount)
 }
 
 func (m Model) detailsViewName() string {
@@ -147,23 +152,20 @@ func (m Model) updateDetailsControl(command controlCommand) (Model, tea.Cmd) {
 }
 
 func functionQualityLines(q *domain.FunctionQuality) []string {
-	coverage := "No unknown effects under policy"
-	if !q.Complete {
-		coverage = "Incomplete: unknown effects remain"
-	}
+	visible := knownQuality(q)
 	return slices.Concat(
 		[]string{
-			fmt.Sprintf("Density %d milli · %d mutations", q.DensityMilli, q.Mutations),
-			fmt.Sprintf("%d targets · %d unclassified calls", q.MutatedTargets, q.UnclassifiedCalls),
-			muted.Render(coverage),
+			qualityDensityLabel(q, visible.Mutations),
+			fmt.Sprintf("%d known targets", visible.MutatedTargets),
+			muted.Render("Known effects only"),
 			muted.Render("Modeled effects; zero is not proof of purity"),
 			"",
-			amber.Render(fmt.Sprintf("Findings · %d", len(q.Diagnostics))),
+			amber.Render(fmt.Sprintf("Findings · %d", len(visible.Diagnostics))),
 		},
-		diagnosticMessages(q.Diagnostics),
-		[]string{"", blue.Render(fmt.Sprintf("Effects · %d", len(q.Effects)))},
-		effectLines(q.Effects),
-		mutationQualityLines(q.MutationEvents),
+		diagnosticMessages(visible.Diagnostics),
+		[]string{"", blue.Render(fmt.Sprintf("Effects · %d", len(visible.Effects)))},
+		effectLines(visible.Effects),
+		mutationQualityLines(visible.MutationEvents),
 	)
 }
 
@@ -195,7 +197,7 @@ func qualityBadge(function domain.Function) string {
 	if function.Quality == nil {
 		return ""
 	}
-	return amber.Render(fmt.Sprintf(" · Q %d", len(function.Quality.Diagnostics)))
+	return amber.Render(fmt.Sprintf(" · Q %d", len(knownDiagnostics(function.Quality))))
 }
 
 func mutationQualityLine(mutation quality.Mutation) string {

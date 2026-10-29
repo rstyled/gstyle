@@ -26,10 +26,13 @@ func TestQualityToggleShowsEvidenceAndPreservesSourceCursor(t *testing.T) {
 		t.Fatal("toggle loses source position")
 	}
 	view := ansi.Strip(strings.Join(m.qualityLines(100, 30), "\n"))
-	for _, want := range []string{"Density 1000", "mutation_per_target: 4 exceeds 3", "Incomplete", "L12 unknown: callback", "L11 state.count (external)"} {
+	for _, want := range []string{"4 known mutations", "mutation_per_target: 4 exceeds 3", "Known effects only", "L11 state.count (external)"} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("quality view missing %q: %s", want, view)
 		}
+	}
+	if strings.Contains(view, "unknown") || strings.Contains(view, "unclassified") || strings.Contains(view, "Incomplete") {
+		t.Fatalf("quality view still displays unknowns: %s", view)
 	}
 	m.height = 8
 	revision := m.revision
