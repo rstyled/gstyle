@@ -40,6 +40,10 @@ func (m Model) focusAdjacentReview(delta int) Model {
 
 func (m Model) reviewTargets() []reviewTarget {
 	targets := m.findingTargets()
+	if len(m.annotations) == 0 {
+		return targets
+	}
+	targets = slices.Clone(targets)
 	for _, target := range m.annotationTargets() {
 		targets = append(targets, reviewTarget{
 			fileIndex: target.fileIndex, functionIndex: target.functionIndex,
@@ -51,9 +55,17 @@ func (m Model) reviewTargets() []reviewTarget {
 }
 
 func (m Model) findingTargets() []reviewTarget {
+	m = m.ensureFindingIndex()
+	if !m.showPatterns {
+		return m.findingLookup.qualityTargets
+	}
+	return m.findingLookup.targets
+}
+
+func (m Model) collectFindingTargets(markers []PatternMarker) []reviewTarget {
 	var targets []reviewTarget
 	seen := make(map[[3]int]int)
-	for _, marker := range m.findingMarkers() {
+	for _, marker := range markers {
 		target, ok := m.findingTarget(marker)
 		if !ok {
 			continue
@@ -66,6 +78,7 @@ func (m Model) findingTargets() []reviewTarget {
 		seen[key] = len(targets)
 		targets = append(targets, target)
 	}
+	slices.SortStableFunc(targets, compareReviewTargets)
 	return targets
 }
 

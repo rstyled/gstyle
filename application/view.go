@@ -34,11 +34,12 @@ var (
 const scrollbarGutterWidth = 2
 
 func (m Model) View() tea.View {
+	indexed := m.ensureFindingIndex()
 	var content string
-	if m.width > 0 && m.width < wideMinimum {
-		content = m.narrowView()
+	if indexed.width > 0 && indexed.width < wideMinimum {
+		content = indexed.narrowView()
 	} else {
-		content = m.wideView()
+		content = indexed.wideView()
 	}
 
 	view := tea.NewView(content)
@@ -184,11 +185,12 @@ func (m Model) fileTable(width int, height int) []string {
 		return fitPaneLines(append(lines, muted.Render("No Go files")), width, height)
 	}
 
-	for index, file := range m.report.Files {
-		lines = append(lines, m.fileRow(file, tableWidth, index == m.fileIndex))
+	start, end := tableRowRange(len(m.report.Files), m.fileIndex, height)
+	for index := start; index < end; index++ {
+		lines = append(lines, m.fileRow(m.report.Files[index], tableWidth, index == m.fileIndex))
 	}
 
-	return tableWindow(lines, m.fileIndex, width, height)
+	return tableWindow(lines, start, width, height, len(m.report.Files))
 }
 
 func (m Model) fileRow(file domain.File, width int, selected bool) string {
@@ -242,11 +244,12 @@ func (m Model) functionTable(width int, height int) []string {
 		return fitPaneLines(append(lines, muted.Render("No functions")), width, height)
 	}
 
-	for index, function := range file.Functions {
-		lines = append(lines, m.functionRow(function, tableWidth, index == m.functionIndex))
+	start, end := tableRowRange(len(file.Functions), m.functionIndex, height)
+	for index := start; index < end; index++ {
+		lines = append(lines, m.functionRow(file.Functions[index], tableWidth, index == m.functionIndex))
 	}
 
-	return tableWindow(lines, m.functionIndex, width, height)
+	return tableWindow(lines, start, width, height, len(file.Functions))
 }
 
 func (m Model) functionRow(function domain.Function, width int, selected bool) string {
@@ -374,7 +377,7 @@ func (m Model) sourceDisplayWindow(lines []string, function domain.Function, wid
 	result := make([]string, 0, height)
 	annotations := m.visibleAnnotations()
 	path := m.selectedFilePath()
-	patterns := m.findingMarkers()
+	patterns := m.visibleFindingMarkers()
 	for index := min(m.sourceOffset, len(lines)); index < len(lines) && len(result) < height; index++ {
 		lineNumber := function.Line + index
 		rows := sourceRowsAtLine(function, lineNumber, lines[index], width, index == len(lines)-1, annotations)
@@ -827,19 +830,21 @@ func cognitiveBearingLine(diagnostics []domain.CognitiveDiagnostic, line int) bo
 	return false
 }
 
-func tableWindow(lines []string, selected int, width int, height int) []string {
-	if height == 0 || len(lines) <= height {
-		return fitPaneLines(lines, width, height)
+func tableWindow(lines []string, start int, width int, height int, total int) []string {
+	rendered := fitPaneLines(lines, width, height)
+	if height == 0 || total+2 <= height {
+		return rendered
 	}
+	return verticalScrollbar(rendered, 2, start, total, max(height-2, 0), width)
+}
 
-	data := lines[2:]
+func tableRowRange(count, selected, height int) (int, int) {
+	if height == 0 {
+		return 0, count
+	}
 	available := max(height-2, 0)
-	start := min(max(selected-available/2, 0), max(len(data)-available, 0))
-	end := min(start+available, len(data))
-	visible := append([]string{}, lines[:2]...)
-	visible = append(visible, data[start:end]...)
-
-	return verticalScrollbar(fitPaneLines(visible, width, height), 2, start, len(data), available, width)
+	start := min(max(selected-available/2, 0), max(count-available, 0))
+	return start, min(start+available, count)
 }
 
 func paneContentWidth(width int) int {

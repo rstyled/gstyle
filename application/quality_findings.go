@@ -14,6 +14,7 @@ type FindingMarker struct {
 	Path       string
 	Line       int
 	EndLine    int
+	Scope      string
 	Candidate  *patterns.Candidate
 	Diagnostic *quality.Diagnostic
 }
@@ -37,14 +38,13 @@ func (m Model) findingMarkers() []PatternMarker {
 }
 
 func (m Model) visibleFindingMarkers() []PatternMarker {
+	m = m.ensureFindingIndex()
 	path := m.selectedFilePath()
-	var markers []PatternMarker
-	for _, marker := range m.findingMarkers() {
-		if patternPathMatches(marker.Path, path) {
-			markers = append(markers, marker)
-		}
+	qualityMarkers := m.findingLookup.quality[path].markers
+	if !m.showPatterns {
+		return qualityMarkers
 	}
-	return markers
+	return slices.Concat(m.findingLookup.patterns[path].markers, qualityMarkers)
 }
 
 func qualityMarkersFromReport(report domain.Report) []PatternMarker {
@@ -62,24 +62,78 @@ func fileQualityMarkers(file domain.File) []PatternMarker {
 			continue
 		}
 		for _, diagnostic := range function.Quality.Diagnostics {
-			line := diagnostic.Line
-			if !functionHasSourceLine(function, line) {
-				line = function.Line
-			}
-			markers = append(markers, PatternMarker{
-				Kind: diagnostic.RuleID, Path: file.Path, Line: line, EndLine: line, Diagnostic: &diagnostic,
-			})
+			markers = append(markers, qualityFindingMarker(file.Path, function, diagnostic))
 		}
 	}
 	return markers
 }
 
-func qualityDetailMessages(diagnostic *quality.Diagnostic) []string {
+func qualityFindingMarker(path string, function domain.Function, diagnostic quality.Diagnostic) FindingMarker {
+	if diagnostic.Path == "" {
+		diagnostic.Path = path
+	}
+	line, scope := qualityMarkerLocation(path, function, diagnostic)
+	return FindingMarker{Kind: diagnostic.RuleID, Path: diagnostic.Path, Line: line, EndLine: line, Scope: scope, Diagnostic: &diagnostic}
+}
+
+func qualityMarkerLocation(path string, function domain.Function, diagnostic quality.Diagnostic) (int, string) {
+	if !patternPathMatches(path, diagnostic.Path) {
+		return diagnostic.Line, "recorded source location"
+	}
+	if line := qualityMutationLine(function, diagnostic.Mutations); diagnostic.RuleID == "mutation_per_target" && line > 0 {
+		return line, "mutation target"
+	}
+	if !functionHasSourceLine(function, diagnostic.Line) {
+		return function.Line, fmt.Sprintf("recorded L%d is outside the available function source", diagnostic.Line)
+	}
+	if diagnostic.Line == function.Line {
+		return function.Line, "whole function"
+	}
+	return diagnostic.Line, "source location"
+}
+
+func qualityMutationLine(function domain.Function, mutations []quality.Mutation) int {
+	end := function.Line + sourceLineCount(function.Source)
+	line := end
+	for _, mutation := range mutations {
+		if functionHasSourceLine(function, mutation.Line) {
+			line = min(line, mutation.Line)
+		}
+	}
+	if line == end {
+		return 0
+	}
+	return line
+}
+
+func (marker FindingMarker) qualityDetailMessages() []string {
+	diagnostic := marker.Diagnostic
 	messages := []string{
 		diagnostic.Message,
-		fmt.Sprintf("At: %s:%d", diagnostic.Path, diagnostic.Line),
+		fmt.Sprintf("Reported: %s:%d", diagnostic.Path, diagnostic.Line),
 		fmt.Sprintf("Actual: %d · limit: %d", diagnostic.Actual, diagnostic.Limit),
 	}
-	messages = append(messages, effectLines(diagnostic.Effects)...)
-	return append(messages, mutationQualityLines(diagnostic.Mutations)[2:]...)
+	if marker.Scope != "" {
+		messages = append(messages, "Scope: "+marker.Scope)
+	}
+	if slices.ContainsFunc(diagnostic.Effects, func(effect quality.Effect) bool { return effect.Kind == quality.UnknownEffect }) {
+		messages = append(messages, "Unknown effects are estimates, not confirmed side effects.")
+	}
+	evidence := slices.Concat(effectLines(diagnostic.Effects), mutationQualityLines(diagnostic.Mutations)[2:])
+	return append(messages, inlineQualityEvidence(evidence)...)
+}
+
+func inlineQualityEvidence(evidence []string) []string {
+	seen := make(map[string]bool)
+	var unique []string
+	for _, line := range evidence {
+		if !seen[line] {
+			seen[line] = true
+			unique = append(unique, line)
+		}
+	}
+	if len(unique) <= 3 {
+		return unique
+	}
+	return append(unique[:3:3], fmt.Sprintf("… %d more evidence rows · e shows full quality", len(unique)-3))
 }

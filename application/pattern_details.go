@@ -17,7 +17,7 @@ func (marker FindingMarker) key() FindingMarker {
 
 func (marker FindingMarker) detailMessages() []string {
 	if marker.Diagnostic != nil {
-		return qualityDetailMessages(marker.Diagnostic)
+		return marker.qualityDetailMessages()
 	}
 	candidate := marker.Candidate
 	if candidate == nil {

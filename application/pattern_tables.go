@@ -36,24 +36,19 @@ func (m Model) patternSourceBadge(function domain.Function) string {
 }
 
 func (m Model) filePatternCount(path string) int {
-	return m.patternFindingCount(func(marker PatternMarker) bool {
-		return patternPathMatches(marker.Path, path)
-	})
+	if !m.showPatterns {
+		return 0
+	}
+	return m.patternFile(path).count
 }
 
 func (m Model) functionPatternCount(path string, function domain.Function) int {
-	return m.patternFindingCount(func(marker PatternMarker) bool {
-		return patternPathMatches(marker.Path, path) && marker.overlaps(function)
-	})
-}
-
-func (m Model) patternFindingCount(keep func(PatternMarker) bool) int {
 	if !m.showPatterns {
 		return 0
 	}
 	seen := make(map[FindingMarker]bool)
-	for _, marker := range m.patternMarkers {
-		if keep(marker) {
+	for _, marker := range m.patternFile(path).markers {
+		if marker.overlaps(function) {
 			seen[marker.key()] = true
 		}
 	}

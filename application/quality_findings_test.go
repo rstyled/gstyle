@@ -23,8 +23,48 @@ func TestQualityGuardrailsAreInlineWithoutToggles(t *testing.T) {
 		t.Fatal("quality findings need a toggle or change the pattern count")
 	}
 	m = pressSourceKey(t, m, "]")
-	if m.activeFindingLine != 10 || m.qualityView || m.focus != detailsPane {
+	if m.activeFindingLine != 11 || m.qualityView || m.focus != detailsPane {
 		t.Fatal("brackets do not reveal inline quality")
+	}
+}
+
+func TestQualityLocationsDistinguishFunctionChecksFromWriteSites(t *testing.T) {
+	m := qualityModel()
+	function := m.report.Files[0].Functions[0]
+	for _, test := range []struct {
+		name       string
+		diagnostic quality.Diagnostic
+		line       int
+		scope      string
+	}{
+		{"write site", quality.Diagnostic{Location: quality.Location{Path: "sample.go", Line: 10}, RuleID: "mutation_per_target", Mutations: []quality.Mutation{{Line: 13}, {Line: 11}, {Line: 500}}}, 11, "mutation target"},
+		{"whole function", quality.Diagnostic{Location: quality.Location{Path: "sample.go", Line: 10}, RuleID: "side_effect_density", Effects: []quality.Effect{{Line: 12}}}, 10, "whole function"},
+		{"specific source", quality.Diagnostic{Location: quality.Location{Path: "sample.go", Line: 12}, RuleID: "nilerr"}, 12, "source location"},
+		{"missing source", quality.Diagnostic{Location: quality.Location{Path: "sample.go", Line: 500}, RuleID: "nilerr"}, 10, "outside the available function source"},
+		{"another file", quality.Diagnostic{Location: quality.Location{Path: "other.go", Line: 500}, RuleID: "mutation_per_target", Mutations: []quality.Mutation{{Line: 11}}}, 500, "recorded source location"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			marker := qualityFindingMarker("sample.go", function, test.diagnostic)
+			if marker.Line != test.line || !strings.Contains(marker.Scope, test.scope) || marker.Diagnostic.Line != test.diagnostic.Line || marker.Path != test.diagnostic.Path {
+				t.Fatalf("finding gets a false source location: %+v", marker)
+			}
+		})
+	}
+}
+
+func TestInlineQualityBoundsEvidenceAndKeepsFullDetails(t *testing.T) {
+	m := qualityModel()
+	q := m.report.Files[0].Functions[0].Quality
+	for _, detail := range []string{"first", "first", "second", "third", "fourth", "FINAL_EVIDENCE"} {
+		q.Effects = append(q.Effects, quality.Effect{Line: 12, Kind: quality.UnknownEffect, Detail: detail})
+	}
+	q.Diagnostics[0].Effects = q.Effects
+	plain := ansi.Strip(strings.Join(m.sourceLines(150, 40, "Source"), "\n"))
+	if !containsAll(plain, "estimates, not confirmed", "3 more evidence rows", "e shows full quality", "two", "three") || strings.Count(plain, "unknown: first") != 1 || strings.Contains(plain, "FINAL_EVIDENCE") {
+		t.Fatalf("inline evidence hides source or repeats the full report:\n%s", plain)
+	}
+	if len(q.Effects) != 7 || !strings.Contains(strings.Join(m.qualityBody(), "\n"), "FINAL_EVIDENCE") {
+		t.Fatal("compact inline notes discard the full evidence")
 	}
 }
 

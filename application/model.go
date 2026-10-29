@@ -58,6 +58,7 @@ type Model struct {
 	patternState
 	patternGeneration uint64
 	qualityMarkers    []PatternMarker
+	findingLookup     *findingIndex
 }
 
 func NewModel(analyzer Analyzer, paths []string) Model {
@@ -135,6 +136,7 @@ func (m Model) withReport(message reportMsg) Model {
 func (m Model) applyReport(report domain.Report) Model {
 	m.report = rankReport(report)
 	m.qualityMarkers = qualityMarkersFromReport(m.report)
+	m = m.indexFindings()
 	m.fileIndex, m.functionIndex = 0, 0
 	return m.reloadWorkspace()
 }

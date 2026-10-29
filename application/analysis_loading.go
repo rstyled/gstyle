@@ -19,7 +19,7 @@ func (m Model) finishAnalysis(message reportMsg) (Model, tea.Cmd) {
 func (m Model) resetPatternScan() Model {
 	m.patternGeneration++
 	m.patternState = patternState{}
-	return m
+	return m.indexFindings()
 }
 
 func (m Model) startPatternScan() (Model, tea.Cmd) {
@@ -34,7 +34,7 @@ func (m Model) withPatterns(message patternsMsg) Model {
 	}
 	m.patternState = patternState{patternMarkers: message.markers, patternsError: message.err}
 	m.revision++
-	return m
+	return m.indexFindings()
 }
 
 func (m Model) analysisLoadingLabel() string {

@@ -21,7 +21,7 @@ func mixedReviewModel() Model {
 		{Kind: "ccgraph_clone", Path: "a.go", Line: 3},
 		{Kind: "ccgraph_clone", Path: "/repo/b.go", Line: 31},
 	}
-	return m
+	return m.indexFindings()
 }
 
 func reviewSelection(m Model) string {
@@ -69,6 +69,7 @@ func TestPatternStopsDeduplicateLocationsWithoutSkippingSameLineNotes(t *testing
 		{Kind: "guard_clause", Path: "a.go", Line: 500},
 		{Kind: "guard_clause", Path: "gone.go", Line: 1},
 	}
+	m = m.indexFindings()
 	for _, want := range []string{"a.go:2", "n1", "a.go:2", "n1"} {
 		m = pressSourceKey(t, m, "]")
 		if got := reviewSelection(m); got != want {

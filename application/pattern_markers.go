@@ -105,8 +105,11 @@ func patternPathMatches(markerPath, filePath string) bool {
 	if markerPath == filePath {
 		return true
 	}
-	return strings.HasSuffix(markerPath, "/"+filePath) ||
-		strings.HasSuffix(filePath, "/"+markerPath)
+	return pathHasSuffix(markerPath, filePath) || pathHasSuffix(filePath, markerPath)
+}
+
+func pathHasSuffix(path, suffix string) bool {
+	return strings.HasSuffix(path, suffix) && strings.HasSuffix(strings.TrimSuffix(path, suffix), "/")
 }
 
 // patternMarkersAtLine returns markers covering path:line, deduplicated by kind.
