@@ -33,7 +33,11 @@ func (m Model) withPatterns(message patternsMsg) Model {
 		return m
 	}
 	m.patternState = patternState{patternMarkers: message.markers, patternsError: message.err}
+	m.findingLookup = message.findings
 	m.revision++
+	if m.findingLookup != nil {
+		return m
+	}
 	return m.indexFindings()
 }
 

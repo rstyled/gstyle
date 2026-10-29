@@ -7,7 +7,7 @@ import (
 
 func (marker FindingMarker) key() FindingMarker {
 	if marker.Diagnostic != nil {
-		return FindingMarker{Diagnostic: marker.Diagnostic}
+		return FindingMarker{Diagnostic: marker.Diagnostic, Line: marker.Line}
 	}
 	if marker.Candidate != nil {
 		return FindingMarker{Candidate: marker.Candidate}
@@ -16,6 +16,13 @@ func (marker FindingMarker) key() FindingMarker {
 }
 
 func (marker FindingMarker) detailMessages() []string {
+	if marker.Details != nil {
+		return marker.Details.messages
+	}
+	return marker.uncachedDetailMessages()
+}
+
+func (marker FindingMarker) uncachedDetailMessages() []string {
 	if marker.Diagnostic != nil {
 		return marker.qualityDetailMessages()
 	}

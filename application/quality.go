@@ -186,11 +186,7 @@ func effectLines(effects []quality.Effect) []string {
 func mutationQualityLines(mutations []quality.Mutation) []string {
 	lines := []string{"", blue.Render(fmt.Sprintf("Mutations · %d", len(mutations)))}
 	for _, mutation := range mutations {
-		target := mutation.Root
-		if mutation.FieldPath != "" {
-			target += "." + mutation.FieldPath
-		}
-		lines = append(lines, fmt.Sprintf("L%d %s (%s)", mutation.Line, target, mutation.Provenance))
+		lines = append(lines, mutationQualityLine(mutation))
 	}
 	return lines
 }
@@ -200,4 +196,12 @@ func qualityBadge(function domain.Function) string {
 		return ""
 	}
 	return amber.Render(fmt.Sprintf(" · Q %d", len(function.Quality.Diagnostics)))
+}
+
+func mutationQualityLine(mutation quality.Mutation) string {
+	target := mutation.Root
+	if mutation.FieldPath != "" {
+		target += "." + mutation.FieldPath
+	}
+	return fmt.Sprintf("L%d %s (%s)", mutation.Line, target, mutation.Provenance)
 }

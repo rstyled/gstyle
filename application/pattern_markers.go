@@ -23,6 +23,7 @@ type patternsMsg struct {
 	markers    []PatternMarker
 	err        error
 	generation uint64
+	findings   *findingIndex
 }
 
 // loadPatternsCmd runs pattern detection in the background so TUI startup
@@ -30,12 +31,16 @@ type patternsMsg struct {
 func (m Model) loadPatternsCmd() tea.Cmd {
 	paths := append([]string(nil), m.paths...)
 	generation := m.patternGeneration
+	load := func() (*patterns.PatternsReport, error) { return patterncheck.GetReport(context.Background(), paths) }
 	return func() tea.Msg {
-		report, err := patterncheck.GetReport(context.Background(), paths)
+		report, err := load()
 		if err != nil {
 			return patternsMsg{err: err, generation: generation}
 		}
-		return patternsMsg{markers: patternMarkersFromReport(report), generation: generation}
+		indexed := m
+		indexed.patternMarkers = patternMarkersFromReport(report)
+		indexed = indexed.indexFindings()
+		return patternsMsg{markers: indexed.patternMarkers, generation: generation, findings: indexed.findingLookup}
 	}
 }
 
@@ -84,13 +89,15 @@ func patternMarkersFromReport(report *patterns.PatternsReport) []PatternMarker {
 			Sites: c.Sites, CounterEvidence: c.CounterEvidence,
 		}
 		for _, s := range c.Sites {
-			out = append(out, PatternMarker{
+			marker := PatternMarker{
 				Kind:      kind,
 				Path:      s.Path,
 				Line:      s.Line,
 				EndLine:   s.EndLine,
 				Candidate: detail,
-			})
+			}
+			marker.Details = &findingDetails{messages: marker.detailMessages()}
+			out = append(out, marker)
 		}
 	}
 	slices.SortStableFunc(out, func(a, b PatternMarker) int {

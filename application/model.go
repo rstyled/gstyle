@@ -59,6 +59,7 @@ type Model struct {
 	patternGeneration uint64
 	qualityMarkers    []PatternMarker
 	findingLookup     *findingIndex
+	sourceRows        *sourceRowCounter
 }
 
 func NewModel(analyzer Analyzer, paths []string) Model {
@@ -94,6 +95,7 @@ func (m Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		m, command = m.updateInput(message)
 	}
 
+	m = m.ensureSourceRows()
 	if m.revision > previousRevision {
 		m = m.answerChangeWaiters()
 	}
@@ -201,7 +203,7 @@ func (m Model) updateGlobalKey(key string) (Model, tea.Cmd, bool) {
 
 func (m Model) togglePatternsKey() (Model, tea.Cmd, bool) {
 	m = m.togglePatterns()
-	if m.showPatterns && !m.patternsLoading && len(m.patternMarkers) == 0 {
+	if m.showPatterns && !m.refreshing && !m.patternsLoading && len(m.patternMarkers) == 0 {
 		next, command := m.startPatternScan()
 		return next, command, true
 	}

@@ -34,7 +34,7 @@ var (
 const scrollbarGutterWidth = 2
 
 func (m Model) View() tea.View {
-	indexed := m.ensureFindingIndex()
+	indexed := m.ensureFindingIndex().ensureSourceRows()
 	var content string
 	if indexed.width > 0 && indexed.width < wideMinimum {
 		content = indexed.narrowView()
@@ -318,7 +318,7 @@ func (m Model) sourceBody(lines []string, function domain.Function, width int, h
 	if height == 0 {
 		return rendered
 	}
-	counter := m.sourceRowCounter()
+	counter := m.sourceRowsAtWidth(paneContentWidth(width))
 	position := counter.count(0, m.sourceOffset-1) + m.findingRowsOffset(function.Line+m.sourceOffset)
 	contentLength := counter.count(0, len(code)-1)
 	return verticalScrollbar(rendered, contentStart, position, contentLength, available, width)
@@ -330,11 +330,11 @@ func (m Model) selectedSourceCodeLines(function domain.Function) []string {
 		return lines
 	}
 	annotations := m.visibleAnnotations()
-	path := m.selectedFilePath()
-	pmarks := m.visibleFindingMarkers()
 	for index := range lines {
 		lineNumber := function.Line + index
-		lines[index] = highlightPatternLine(lines[index], patternMarkersAtLine(pmarks, path, lineNumber))
+		if m.hasFindingAtLine(lineNumber) {
+			lines[index] = withBackground(lines[index], patternBackground)
+		}
 		lines[index] = m.highlightSourceLine(lineNumber, lines[index], annotations)
 	}
 	return lines
@@ -376,12 +376,11 @@ func (m Model) sourceDisplayWindow(lines []string, function domain.Function, wid
 
 	result := make([]string, 0, height)
 	annotations := m.visibleAnnotations()
-	path := m.selectedFilePath()
-	patterns := m.visibleFindingMarkers()
+	findings := m.sourceRowsAtWidth(width).findings
 	for index := min(m.sourceOffset, len(lines)); index < len(lines) && len(result) < height; index++ {
 		lineNumber := function.Line + index
 		rows := sourceRowsAtLine(function, lineNumber, lines[index], width, index == len(lines)-1, annotations)
-		rows = appendPatternRows(rows, patterns, path, lineNumber, width)
+		rows = append(rows, findings[lineNumber]...)
 		rows = rows[min(m.findingRowsOffset(lineNumber), len(rows)):]
 		remaining := height - len(result)
 		if len(rows) > remaining {

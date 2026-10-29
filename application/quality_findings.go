@@ -17,6 +17,11 @@ type FindingMarker struct {
 	Scope      string
 	Candidate  *patterns.Candidate
 	Diagnostic *quality.Diagnostic
+	Details    *findingDetails
+}
+
+type findingDetails struct {
+	messages []string
 }
 
 func (marker FindingMarker) label() string {
@@ -62,7 +67,7 @@ func fileQualityMarkers(file domain.File) []PatternMarker {
 			continue
 		}
 		for _, diagnostic := range function.Quality.Diagnostics {
-			markers = append(markers, qualityFindingMarker(file.Path, function, diagnostic))
+			markers = append(markers, qualityDiagnosticMarkers(file.Path, function, diagnostic)...)
 		}
 	}
 	return markers
@@ -119,11 +124,10 @@ func (marker FindingMarker) qualityDetailMessages() []string {
 	if slices.ContainsFunc(diagnostic.Effects, func(effect quality.Effect) bool { return effect.Kind == quality.UnknownEffect }) {
 		messages = append(messages, "Unknown effects are estimates, not confirmed side effects.")
 	}
-	evidence := slices.Concat(effectLines(diagnostic.Effects), mutationQualityLines(diagnostic.Mutations)[2:])
-	return append(messages, inlineQualityEvidence(evidence)...)
+	return messages
 }
 
-func inlineQualityEvidence(evidence []string) []string {
+func distinctEvidenceLines(evidence []string) []string {
 	seen := make(map[string]bool)
 	var unique []string
 	for _, line := range evidence {
@@ -132,8 +136,5 @@ func inlineQualityEvidence(evidence []string) []string {
 			unique = append(unique, line)
 		}
 	}
-	if len(unique) <= 3 {
-		return unique
-	}
-	return append(unique[:3:3], fmt.Sprintf("… %d more evidence rows · e shows full quality", len(unique)-3))
+	return unique
 }

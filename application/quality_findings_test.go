@@ -52,16 +52,22 @@ func TestQualityLocationsDistinguishFunctionChecksFromWriteSites(t *testing.T) {
 	}
 }
 
-func TestInlineQualityBoundsEvidenceAndKeepsFullDetails(t *testing.T) {
+func TestInlineQualityEvidenceStaysAtItsSourceLine(t *testing.T) {
 	m := qualityModel()
 	q := m.report.Files[0].Functions[0].Quality
 	for _, detail := range []string{"first", "first", "second", "third", "fourth", "FINAL_EVIDENCE"} {
 		q.Effects = append(q.Effects, quality.Effect{Line: 12, Kind: quality.UnknownEffect, Detail: detail})
 	}
 	q.Diagnostics[0].Effects = q.Effects
-	plain := ansi.Strip(strings.Join(m.sourceLines(150, 40, "Source"), "\n"))
-	if !containsAll(plain, "estimates, not confirmed", "3 more evidence rows", "e shows full quality", "two", "three") || strings.Count(plain, "unknown: first") != 1 || strings.Contains(plain, "FINAL_EVIDENCE") {
-		t.Fatalf("inline evidence hides source or repeats the full report:\n%s", plain)
+	plain := ansi.Strip(strings.Join(m.sourceLines(150, 100, "Source"), "\n"))
+	start, end := strings.Index(plain, "12 │"), strings.Index(plain, "13 │")
+	if !containsAll(plain, "estimates, not confirmed", "two", "three") || strings.Count(plain, "unknown: first") != 1 || start < 0 || end <= start {
+		t.Fatalf("inline evidence is lost or repeated:\n%s", plain)
+	}
+	for _, want := range []string{"callback", "first", "second", "third", "fourth", "FINAL_EVIDENCE"} {
+		if !strings.Contains(plain[start:end], "unknown: "+want) {
+			t.Fatalf("evidence %s does not appear below its source line:\n%s", want, plain)
+		}
 	}
 	if len(q.Effects) != 7 || !strings.Contains(strings.Join(m.qualityBody(), "\n"), "FINAL_EVIDENCE") {
 		t.Fatal("compact inline notes discard the full evidence")
@@ -78,7 +84,7 @@ func TestBracketsVisitQualityPatternsAndNotesTogether(t *testing.T) {
 	})
 	note, _ := m.newAnnotation(11, 11, "saved note")
 	m.annotations = []Annotation{note}
-	for _, want := range []string{"sample.go:10", note.ID, "sample.go:12", "sample.go:13", "sample.go:10"} {
+	for _, want := range []string{"sample.go:10", "sample.go:11", note.ID, "sample.go:12", "sample.go:13", "sample.go:10"} {
 		m = pressSourceKey(t, m, "]")
 		if got := reviewSelection(m); got != want {
 			t.Fatalf("got %s, want %s", got, want)
@@ -89,7 +95,7 @@ func TestBracketsVisitQualityPatternsAndNotesTogether(t *testing.T) {
 		t.Fatal("a quality finding acts as a saved annotation")
 	}
 	m = pressSourceKey(t, m, "p")
-	for _, want := range []string{note.ID, "sample.go:12", "sample.go:10"} {
+	for _, want := range []string{"sample.go:11", note.ID, "sample.go:12", "sample.go:10"} {
 		m = pressSourceKey(t, m, "]")
 		if got := reviewSelection(m); got != want {
 			t.Fatalf("with patterns hidden: got %s, want %s", got, want)
@@ -133,8 +139,11 @@ func TestTallQualityFindingIsScrollableWithoutEnablingPatterns(t *testing.T) {
 	m := qualityModel()
 	m.width, m.height = 90, 18
 	diagnostic := &m.report.Files[0].Functions[0].Quality.Diagnostics[0]
-	diagnostic.Message = strings.Repeat("guardrail evidence ", 35)
-	diagnostic.Effects = []quality.Effect{{Line: 12, Kind: quality.UnknownEffect, Detail: "FINAL_EVIDENCE"}}
+	diagnostic.Message = "side effects need review"
+	for _, detail := range []string{strings.Repeat("first evidence ", 35), "FINAL_EVIDENCE"} {
+		diagnostic.Effects = append(diagnostic.Effects, quality.Effect{Line: 12, Kind: quality.UnknownEffect, Detail: detail})
+	}
+	m = pressSourceKey(t, m, "]")
 	m = pressSourceKey(t, m, "]")
 	for range 200 {
 		if strings.Contains(ansi.Strip(m.View().Content), "FINAL_EVIDENCE") {
@@ -142,7 +151,7 @@ func TestTallQualityFindingIsScrollableWithoutEnablingPatterns(t *testing.T) {
 		}
 		m = pressSourceKey(t, m, "j")
 	}
-	if m.sourceLine() != 10 || m.findingDetailOffset == 0 || !strings.Contains(ansi.Strip(m.View().Content), "FINAL_EVIDENCE") {
+	if m.sourceLine() != 12 || m.findingDetailOffset == 0 || !strings.Contains(ansi.Strip(m.View().Content), "FINAL_EVIDENCE") {
 		t.Fatal("quality evidence is unreachable without a toggle")
 	}
 }

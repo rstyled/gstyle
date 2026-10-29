@@ -37,6 +37,38 @@ func TestStartupLoadsPatternsAndInlineQualityAutomatically(t *testing.T) {
 	}
 }
 
+func TestPatternVisibilityDoesNotStartASecondScanDuringInitialLoad(t *testing.T) {
+	m := NewModel(loadingAnalyzer{qualityModel().report}, nil)
+	generation := m.patternGeneration
+	for range 2 {
+		next, command, handled := m.updateGlobalKey("p")
+		m = next
+		if !handled || command != nil || m.patternsLoading || m.patternGeneration != generation {
+			t.Fatal("toggling visibility starts a concurrent analysis before the report is ready")
+		}
+	}
+}
+
+func TestPatternCompletionInstallsTheIndexPreparedByTheWorker(t *testing.T) {
+	m := NewModel(loadingAnalyzer{qualityModel().report}, []string{"../domain/report.go"})
+	loaded, command := m.Update(m.Init()())
+	m = loaded.(Model)
+	result := command().(patternsMsg)
+	if result.err != nil || result.findings == nil {
+		t.Fatalf("the worker does not prepare the index: %v", result.err)
+	}
+	m = m.withPatterns(result)
+	if m.findingLookup != result.findings {
+		t.Fatal("pattern completion rebuilds the index on the UI loop")
+	}
+	before := m.findingLookup
+	result.generation--
+	result.findings = &findingIndex{}
+	if m.withPatterns(result).findingLookup != before {
+		t.Fatal("a stale worker index replaces the current report")
+	}
+}
+
 func TestRefreshRejectsOldPatternResultsAndStartsANewScan(t *testing.T) {
 	m := NewModel(loadingAnalyzer{qualityModel().report}, nil)
 	loaded, _ := m.Update(m.Init()())

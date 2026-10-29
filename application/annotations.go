@@ -33,33 +33,6 @@ type AnnotationStore interface {
 	DeleteAnnotation(repository string, id string) error
 }
 
-// sourceRowCounter snapshots the selected source and wrapping width for one
-// measurement operation. It does not persist derived state on the model.
-type sourceRowCounter struct {
-	function        domain.Function
-	annotations     []Annotation
-	patterns        []PatternMarker
-	patternPath     string
-	width           int
-	lastSourceIndex int
-}
-
-func (c sourceRowCounter) count(start int, end int) int {
-	if end < start {
-		return 0
-	}
-
-	firstLine, lastLine := c.function.Line+start, c.function.Line+end
-	count := end - start + 1 + sourceDeletedRowCount(c.function.DiffLines, firstLine, lastLine) +
-		sourceAnnotationRowCount(c.annotations, firstLine, lastLine, c.width) +
-		sourcePatternRowCount(c.patterns, c.patternPath, firstLine, lastLine, c.width)
-	trailing := 0
-	if start <= c.lastSourceIndex && c.lastSourceIndex <= end {
-		trailing = sourceDeletedRowCount(c.function.DiffLines, c.function.EndLine+1, c.function.EndLine+1)
-	}
-	return count + trailing
-}
-
 type annotationTarget struct {
 	Annotation
 	fileIndex     int
@@ -107,6 +80,7 @@ func (m Model) keepSourceCursorVisible() Model {
 		m.sourceOffset = m.sourceCursor
 		return m
 	}
+	m = m.ensureSourceRows()
 	counter := m.sourceRowCounter()
 	rows := counter.count(m.sourceOffset, m.sourceCursor)
 	for m.sourceOffset < m.sourceCursor && rows > visible {
@@ -121,15 +95,8 @@ func (m Model) sourceDisplayRowCount(start int, end int) int {
 }
 
 func (m Model) sourceRowCounter() sourceRowCounter {
-	function, _ := m.selectedFunction()
-	return sourceRowCounter{
-		function:        function,
-		annotations:     m.visibleAnnotations(),
-		patterns:        m.visibleFindingMarkers(),
-		patternPath:     m.selectedFilePath(),
-		width:           paneContentWidth(m.sourcePaneWidth()),
-		lastSourceIndex: sourceLineCount(function.Source) - 1,
-	}
+	prepared := m.ensureSourceRows()
+	return *prepared.sourceRows
 }
 
 func (m Model) toggleVisualSelection() Model {
