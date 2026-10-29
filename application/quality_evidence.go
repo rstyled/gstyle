@@ -52,11 +52,29 @@ func groupedQualityEvidence(path string, function domain.Function, summary Findi
 
 func diagnosticEvidence(diagnostic quality.Diagnostic) []qualityEvidence {
 	var records []qualityEvidence
+	unknowns := make(map[int][]quality.Effect)
 	for _, effect := range diagnostic.Effects {
+		if effect.Kind == quality.UnknownEffect {
+			unknowns[effect.Line] = append(unknowns[effect.Line], effect)
+			continue
+		}
 		records = append(records, qualityEvidence{line: effect.Line, message: fmt.Sprintf("L%d %s: %s", effect.Line, effect.Kind, effect.Detail)})
+	}
+	for _, line := range slices.Sorted(maps.Keys(unknowns)) {
+		records = append(records, qualityEvidence{line: line, message: inlineUnknownEvidence(line, unknowns[line])})
 	}
 	for _, mutation := range diagnostic.Mutations {
 		records = append(records, qualityEvidence{line: mutation.Line, message: mutationQualityLine(mutation)})
 	}
 	return records
+}
+
+func inlineUnknownEvidence(line int, effects []quality.Effect) string {
+	if len(effects) == 1 {
+		return fmt.Sprintf("L%d unknown: %s", line, effects[0].Detail)
+	}
+	if effects[0].Site != 0 && !slices.ContainsFunc(effects, func(effect quality.Effect) bool { return effect != effects[0] }) {
+		return fmt.Sprintf("L%d unknown: %s (%d records; e shows full evidence)", line, effects[0].Detail, len(effects))
+	}
+	return fmt.Sprintf("L%d unknown: %d unresolved effect records; e shows full evidence", line, len(effects))
 }

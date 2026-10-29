@@ -64,13 +64,11 @@ func TestInlineQualityEvidenceStaysAtItsSourceLine(t *testing.T) {
 	q.Diagnostics[0].Effects = q.Effects
 	plain := ansi.Strip(strings.Join(m.sourceLines(150, 100, "Source"), "\n"))
 	start, end := strings.Index(plain, "12 │"), strings.Index(plain, "13 │")
-	if !containsAll(plain, "estimates, not confirmed", "two", "three") || strings.Count(plain, "unknown: first") != 1 || start < 0 || end <= start {
+	if !containsAll(plain, "estimates, not confirmed", "two", "three") || strings.Contains(plain, "unknown: first") || start < 0 || end <= start {
 		t.Fatalf("inline evidence is lost or repeated:\n%s", plain)
 	}
-	for _, want := range []string{"callback", "first", "second", "third", "fourth", "FINAL_EVIDENCE"} {
-		if !strings.Contains(plain[start:end], "unknown: "+want) {
-			t.Fatalf("evidence %s does not appear below its source line:\n%s", want, plain)
-		}
+	if !strings.Contains(plain[start:end], "7 unresolved effect records") || strings.Count(plain[start:end], "╰─■ unknown:") != 1 {
+		t.Fatalf("unknown evidence repeats instead of showing a counted summary at its source line:\n%s", plain)
 	}
 	if len(q.Effects) != 7 || !strings.Contains(strings.Join(m.qualityBody(), "\n"), "FINAL_EVIDENCE") {
 		t.Fatal("compact inline notes discard the full evidence")
@@ -144,7 +142,7 @@ func TestTallQualityFindingIsScrollableWithoutEnablingPatterns(t *testing.T) {
 	diagnostic := &m.report.Files[0].Functions[0].Quality.Diagnostics[0]
 	diagnostic.Message = "side effects need review"
 	for _, detail := range []string{strings.Repeat("first evidence ", 35), "FINAL_EVIDENCE"} {
-		diagnostic.Effects = append(diagnostic.Effects, quality.Effect{Line: 12, Kind: quality.UnknownEffect, Detail: detail})
+		diagnostic.Effects = append(diagnostic.Effects, quality.Effect{Line: 12, Kind: quality.IO, Detail: detail})
 	}
 	m = pressSourceKey(t, m, "]")
 	m = pressSourceKey(t, m, "]")

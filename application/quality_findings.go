@@ -123,7 +123,7 @@ func (marker FindingMarker) qualityDetailMessages() []string {
 	messages := []string{
 		diagnostic.Message,
 		fmt.Sprintf("Reported: %s:%d", diagnostic.Path, diagnostic.Line),
-		fmt.Sprintf("Actual: %d · limit: %d", diagnostic.Actual, diagnostic.Limit),
+		qualityBudgetMessage(*diagnostic),
 	}
 	if marker.Scope != "" {
 		messages = append(messages, "Scope: "+marker.Scope)
@@ -132,6 +132,15 @@ func (marker FindingMarker) qualityDetailMessages() []string {
 		messages = append(messages, "Unknown effects are estimates, not confirmed side effects.")
 	}
 	return messages
+}
+
+func qualityBudgetMessage(diagnostic quality.Diagnostic) string {
+	unknown := diagnostic.KindWeights[string(quality.UnknownEffect)]
+	if diagnostic.RuleID != "side_effect_density" || diagnostic.Statements <= 0 || unknown == 0 {
+		return fmt.Sprintf("Actual: %d · limit: %d", diagnostic.Actual, diagnostic.Limit)
+	}
+	known := 1000 * (diagnostic.Weight - unknown) / diagnostic.Statements
+	return fmt.Sprintf("Known contribution: %d · estimate: %d · limit: %d", known, diagnostic.Actual, diagnostic.Limit)
 }
 
 func distinctEvidenceLines(evidence []string) []string {
