@@ -106,3 +106,22 @@ func TestTallQualityFindingIsScrollableWithoutEnablingPatterns(t *testing.T) {
 		t.Fatal("quality evidence is unreachable without a toggle")
 	}
 }
+
+func TestVisualSelectionLeavesFindingScrolling(t *testing.T) {
+	m := qualityModel()
+	m.width, m.height = 90, 18
+	m.report.Files[0].Functions[0].Quality.Diagnostics[0].Message = strings.Repeat("guardrail evidence ", 35)
+	m = pressSourceKey(t, m, "]")
+	m = pressSourceKey(t, m, "j")
+	if m.findingDetailOffset == 0 {
+		t.Fatal("test does not scroll the finding")
+	}
+	m = pressSourceKey(t, m, "v")
+	m = pressSourceKey(t, m, "j")
+	if !m.visualSelectionActive || m.activeFindingLine != 0 || m.findingDetailOffset != 0 || m.sourceLine() != 11 {
+		t.Fatal("finding scrolling captures visual-selection movement")
+	}
+	if m.lineSelection.StartLine != 10 || m.lineSelection.EndLine != 11 {
+		t.Fatal("visual selection does not use the selected source lines")
+	}
+}

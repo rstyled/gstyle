@@ -148,6 +148,7 @@ func (m Model) toggleVisualSelection() Model {
 
 func (m Model) selectFromAnchor(anchor int) Model {
 	start, end := min(anchor, m.sourceLine()), max(anchor, m.sourceLine())
+	m.activeFindingLine, m.findingDetailOffset = 0, 0
 	m.lineSelection = &LineSelection{
 		AnchorLine: anchor,
 		StartLine:  start,
