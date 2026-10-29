@@ -12,11 +12,13 @@ import (
 
 	"github.com/rstyled/gstyle/adapters/gocyclo"
 	"github.com/rstyled/gstyle/adapters/goquality"
+	"github.com/rstyled/gstyle/adapters/joern"
 	"github.com/rstyled/gstyle/application"
 	"github.com/rstyled/gstyle/application/qualitycheck"
 )
 
 type options struct {
+	cpg                  bool
 	query                application.SearchQuery
 	config, format, tags string
 	tests                bool
@@ -26,6 +28,7 @@ func NewCommand() (*flag.FlagSet, func(context.Context, []string, io.Writer) err
 	opts := options{}
 	flags := flag.NewFlagSet("search", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
+	flags.BoolVar(&opts.cpg, "cpg", false, "read a Joern full GraphSON export instead of Go source")
 	flags.StringVar(&opts.query.Query, "query", "", "literal search in path, package, function, source, and finding text (case-insensitive)")
 	flags.StringVar(&opts.query.Path, "path", "", "literal path substring (case-insensitive)")
 	flags.StringVar(&opts.query.Rule, "rule", "", "exact quality rule ID; implies findings-only")
@@ -53,6 +56,13 @@ func (opts options) run(ctx context.Context, paths []string, output io.Writer) e
 	if err := opts.validate(); err != nil {
 		return err
 	}
+	if opts.cpg {
+		return opts.execute(ctx, joern.Analyzer{Context: ctx}, paths, output)
+	}
+	return opts.runGo(ctx, paths, output)
+}
+
+func (opts options) runGo(ctx context.Context, paths []string, output io.Writer) error {
 	config, err := qualitycheck.LoadConfig(opts.config)
 	if err != nil {
 		return err
@@ -68,6 +78,9 @@ func (opts options) run(ctx context.Context, paths []string, output io.Writer) e
 }
 
 func (opts options) validate() error {
+	if opts.invalidCPGOptions() {
+		return fmt.Errorf("--cpg does not support Go build tags or typed quality policies")
+	}
 	if err := opts.query.Validate(); err != nil {
 		return err
 	}
@@ -77,7 +90,11 @@ func (opts options) validate() error {
 	return nil
 }
 
-func (opts options) execute(ctx context.Context, analyzer goquality.ReportAnalyzer, paths []string, output io.Writer) error {
+func (opts options) invalidCPGOptions() bool {
+	return opts.cpg && (opts.tags != "" || opts.config != "")
+}
+
+func (opts options) execute(ctx context.Context, analyzer application.Analyzer, paths []string, output io.Writer) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -127,6 +144,9 @@ func resultText(result application.SearchResult) string {
 	footer := fmt.Sprintf("%d matching functions; offset %d; returned %d\n", result.Total, result.Offset, len(result.Matches))
 	if result.NextOffset != nil {
 		footer += fmt.Sprintf("next offset: %d\n", *result.NextOffset)
+	}
+	if result.Quality != nil && result.Quality.Status == "unavailable" {
+		footer += "quality unavailable: " + result.Quality.Error + "\n"
 	}
 	return strings.Join(append(lines, footer), "\n")
 }

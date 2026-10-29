@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/rstyled/gstyle/adapters/gocyclo"
 	"github.com/rstyled/gstyle/adapters/goquality"
+	"github.com/rstyled/gstyle/adapters/joern"
 	"github.com/rstyled/gstyle/adapters/sqlite"
 	"github.com/rstyled/gstyle/application"
 	"github.com/rstyled/gstyle/application/changerisk"
@@ -20,6 +22,7 @@ import (
 const defaultControlPort = 8197
 
 type runOptions struct {
+	cpg         bool
 	controlPort int
 	paths       []string
 	config      string
@@ -82,7 +85,10 @@ func runTUI(options runOptions, output io.Writer) (result error) {
 		return err
 	}
 
-	analyzer := goquality.ReportAnalyzer{Complexity: gocyclo.NewAnalyzer(), Config: config, Tests: true}
+	var analyzer application.Analyzer = goquality.ReportAnalyzer{Complexity: gocyclo.NewAnalyzer(), Config: config, Tests: true}
+	if options.cpg {
+		analyzer = joern.Analyzer{Context: context.Background()}
+	}
 	model := application.NewModel(analyzer, options.paths).
 		WithAnnotationStore(store).
 		WithControlPort(control.Port())
@@ -96,6 +102,7 @@ func runTUI(options runOptions, output io.Writer) (result error) {
 func runFlags(result *runOptions) *flag.FlagSet {
 	flags := flag.NewFlagSet("gstyle", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
+	flags.BoolVar(&result.cpg, "cpg", false, "read a Joern full GraphSON export instead of Go source")
 	flags.IntVar(&result.controlPort, "control-port", defaultControlPort, "localhost JSON-RPC port; 0 selects a free port")
 	flags.StringVar(&result.config, "config", "", "quality TOML policy")
 	flags.BoolVar(&result.skill, "skill", false, "print agent instructions")
@@ -113,6 +120,9 @@ func parseRunOptions(args []string) (runOptions, error) {
 	}
 
 	result.paths = flags.Args()
+	if result.cpg && result.config != "" {
+		return runOptions{}, errors.New("--cpg does not support typed quality policies")
+	}
 	return result, nil
 }
 

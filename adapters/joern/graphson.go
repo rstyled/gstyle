@@ -1,0 +1,204 @@
+// Package joern imports Joern's full GraphSON export without a JVM dependency.
+package joern
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strconv"
+
+	"github.com/rstyled/gstyle/domain/pdg"
+)
+
+type vertex struct {
+	ID       uint64
+	Label    string
+	Props    map[string]any
+	Parent   *vertex
+	Children []*vertex
+	Owner    *vertex
+	Out      map[string][]*vertex
+}
+
+type edge struct {
+	ID             uint64
+	Label          string
+	Source, Target *vertex
+	Variable       string
+}
+
+type document struct {
+	Nodes       []*vertex
+	Edges       []edge
+	Metadata    *vertex
+	Methods     []*vertex
+	MethodEdges map[*vertex][]edge
+	Files       map[string]*sourceFile
+	Sources     *pdg.SourceContext
+}
+
+type wireNode struct {
+	ID         json.RawMessage            `json:"id"`
+	Label      string                     `json:"label"`
+	Properties map[string]json.RawMessage `json:"properties"`
+}
+
+type wireEdge struct {
+	wireNode
+	Source json.RawMessage `json:"outV"`
+	Target json.RawMessage `json:"inV"`
+}
+
+type wireGraph struct {
+	Type  string `json:"@type"`
+	Value struct {
+		Vertices []wireNode `json:"vertices"`
+		Edges    []wireEdge `json:"edges"`
+	} `json:"@value"`
+}
+
+// Load reads one complete export. A directory resolves to export.json, the
+// filename produced by joern-export --repr=all --format=graphson.
+func Load(ctx context.Context, path string) (*Extraction, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if info.IsDir() {
+		path = filepath.Join(path, "export.json")
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	return Read(ctx, file)
+}
+
+// Read validates graph references before exposing any converted results.
+func Read(ctx context.Context, input io.Reader) (*Extraction, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	decoder := json.NewDecoder(input)
+	var wire wireGraph
+	if err := decoder.Decode(&wire); err != nil {
+		return nil, fmt.Errorf("read Joern GraphSON: %w", err)
+	}
+	if err := jsonEnd(decoder); err != nil {
+		return nil, err
+	}
+	if !completeGraph(wire) {
+		return nil, fmt.Errorf("require Joern --repr=all --format=graphson export")
+	}
+	doc, err := indexGraph(ctx, wire)
+	if err != nil {
+		return nil, err
+	}
+	return convert(ctx, doc)
+}
+
+func completeGraph(wire wireGraph) bool {
+	return wire.Type == "tinker:graph" && wire.Value.Vertices != nil && wire.Value.Edges != nil
+}
+
+func jsonEnd(decoder *json.Decoder) error {
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		return fmt.Errorf("Joern export must contain one complete JSON graph: %v", err)
+	}
+	return nil
+}
+
+func value(raw json.RawMessage) (any, error) {
+	var parsed any
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	if err := decoder.Decode(&parsed); err != nil {
+		return nil, err
+	}
+	return unwrap(parsed)
+}
+
+func unwrap(parsed any) (any, error) {
+	if wrapper, ok := parsed.(map[string]any); ok {
+		inner, exists := wrapper["@value"]
+		if !exists {
+			return nil, fmt.Errorf("GraphSON property has no @value")
+		}
+		return unwrap(inner)
+	}
+	if items, ok := parsed.([]any); ok {
+		for i, item := range items {
+			decoded, err := unwrap(item)
+			if err != nil {
+				return nil, err
+			}
+			items[i] = decoded
+		}
+	}
+	return parsed, nil
+}
+
+func identifier(raw json.RawMessage) (uint64, error) {
+	parsed, err := value(raw)
+	if err != nil {
+		return 0, err
+	}
+	number, ok := parsed.(json.Number)
+	if !ok {
+		return 0, fmt.Errorf("GraphSON ID must be an integer")
+	}
+	id, err := strconv.ParseUint(string(number), 10, 63)
+	if err != nil {
+		return 0, fmt.Errorf("invalid GraphSON ID: %w", err)
+	}
+	return id, nil
+}
+
+func properties(raw map[string]json.RawMessage) (map[string]any, error) {
+	result := make(map[string]any, len(raw))
+	for name, data := range raw {
+		decoded, err := value(data)
+		if err != nil {
+			return nil, fmt.Errorf("property %s: %w", name, err)
+		}
+		decoded, err = scalarProperty(name, decoded)
+		if err != nil {
+			return nil, err
+		}
+		result[name] = decoded
+	}
+	return result, validateProperties(result)
+}
+
+func scalarProperty(name string, decoded any) (any, error) {
+	if !scalarNames[name] {
+		return decoded, nil
+	}
+	items, ok := decoded.([]any)
+	if !ok {
+		return decoded, nil
+	}
+	if len(items) == 0 {
+		return nil, nil
+	}
+	if len(items) != 1 {
+		return nil, fmt.Errorf("%s has multiple scalar values", name)
+	}
+	return items[0], nil
+}
+
+var scalarNames = scalarPropertyNames()
+
+func scalarPropertyNames() map[string]bool {
+	result := map[string]bool{"IS_EXTERNAL": true, "IS_VARIADIC": true}
+	for _, name := range append(textProperties, numberProperties...) {
+		result[name] = true
+	}
+	return result
+}

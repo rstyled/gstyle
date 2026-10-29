@@ -31,7 +31,7 @@ type patternsMsg struct {
 func (m Model) loadPatternsCmd() tea.Cmd {
 	paths := append([]string(nil), m.paths...)
 	generation := m.patternGeneration
-	load := func() (*patterns.PatternsReport, error) { return patterncheck.GetReport(context.Background(), paths) }
+	load := func() (*patterns.PatternsReport, error) { return loadPatternReport(context.Background(), m.analyzer, paths) }
 	return func() tea.Msg {
 		report, err := load()
 		if err != nil {
@@ -42,6 +42,15 @@ func (m Model) loadPatternsCmd() tea.Cmd {
 		indexed = indexed.indexFindings()
 		return patternsMsg{markers: indexed.patternMarkers, generation: generation, findings: indexed.findingLookup}
 	}
+}
+
+func loadPatternReport(ctx context.Context, analyzer Analyzer, paths []string) (*patterns.PatternsReport, error) {
+	if frontend, ok := analyzer.(interface {
+		Patterns(context.Context, []string) (*patterns.PatternsReport, error)
+	}); ok {
+		return frontend.Patterns(ctx, paths)
+	}
+	return patterncheck.GetReport(ctx, paths)
 }
 
 // selectedFilePath returns the selected file's path, or "" when none.

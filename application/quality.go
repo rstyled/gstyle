@@ -43,6 +43,9 @@ func (m Model) qualityBody() []string {
 	if m.report.Quality == nil {
 		return []string{muted.Render("Quality not analyzed")}
 	}
+	if m.report.Quality.Status == "unavailable" {
+		return []string{muted.Render("Quality unavailable"), m.report.Quality.Error}
+	}
 	if m.report.Quality.Status == "error" {
 		return append([]string{danger.Render("Quality analysis failed")}, strings.Split(m.report.Quality.Error, "\n")...)
 	}

@@ -14,6 +14,7 @@ import (
 	"slices"
 
 	"github.com/rstyled/gstyle/adapters/gopatterns"
+	"github.com/rstyled/gstyle/adapters/joern"
 	"github.com/rstyled/gstyle/domain/patterns"
 )
 
@@ -36,6 +37,7 @@ analysis failure.
 const wlCachePath = ".gstyle/patterns-cache.json"
 
 type options struct {
+	cpg       bool
 	format    string
 	threshold uint
 	useCache  bool
@@ -43,6 +45,9 @@ type options struct {
 }
 
 func (opts options) validate() error {
+	if opts.invalidCPGOptions() {
+		return fmt.Errorf("--cpg does not support Go mining cache or threshold options")
+	}
 	if !slices.Contains([]string{"text", "json", "sarif", "pdg-json"}, opts.format) {
 		return fmt.Errorf("format must be text, json, sarif or pdg-json")
 	}
@@ -55,6 +60,10 @@ func (opts options) validate() error {
 	return nil
 }
 
+func (opts options) invalidCPGOptions() bool {
+	return opts.cpg && (opts.useCache || opts.threshold != 600)
+}
+
 // Run extracts PDGs for paths, mines them for abstraction candidates, and
 // writes the report, or exports native graphs when pdg-json is selected.
 // It returns nil on success regardless of how many (or
@@ -64,6 +73,9 @@ func Run(ctx context.Context, args []string, output io.Writer) error {
 	opts, err := parseOptions(args)
 	if err != nil {
 		return err
+	}
+	if opts.cpg {
+		return runCPG(ctx, opts, output)
 	}
 	if opts.format == "pdg-json" {
 		return exportPDGs(ctx, opts, output)
@@ -97,6 +109,9 @@ func GetReport(ctx context.Context, args []string) (*patterns.PatternsReport, er
 	opts, err := parseOptions(args)
 	if err != nil {
 		return nil, err
+	}
+	if opts.cpg {
+		return (joern.Analyzer{Context: ctx}).Patterns(ctx, opts.paths)
 	}
 	pdgs, err := gopatterns.Extract(ctx, "", opts.paths)
 	if err != nil {
@@ -154,6 +169,7 @@ func Flags() *flag.FlagSet { return flagsFor(&options{}) }
 func flagsFor(result *options) *flag.FlagSet {
 	flags := flag.NewFlagSet("patterns", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
+	flags.BoolVar(&result.cpg, "cpg", false, "read a Joern full GraphSON export instead of Go source")
 	flags.StringVar(&result.format, "format", "text", "output format")
 	flags.UintVar(&result.threshold, "threshold", 600, "minimum WL similarity (0-1000)")
 	flags.BoolVar(&result.useCache, "cache", false, "reuse WL refinements from .gstyle/patterns-cache.json")
