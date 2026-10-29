@@ -15,7 +15,7 @@ func TestQualityGuardrailsAreInlineWithoutToggles(t *testing.T) {
 	diagnostic.Effects = []quality.Effect{{Line: 12, Kind: quality.UnknownEffect, Detail: "callback"}}
 	diagnostic.Mutations = m.report.Files[0].Functions[0].Quality.MutationEvents
 	plain := ansi.Strip(strings.Join(m.sourceLines(100, 40, "Source"), "\n"))
-	for _, want := range []string{"╰─■ quality: mutation_per_target", "4 exceeds 3", "Actual: 4", "limit: 3", "state.count (external)"} {
+	for _, want := range []string{"╰─■ quality: mutation_per_target", "4 exceeds 3", "Actual: 4", "limit: 3", "mutation: state.count (external)"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("inline quality hides %q:\n%s", want, plain)
 		}

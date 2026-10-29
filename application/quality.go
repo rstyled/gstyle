@@ -205,5 +205,5 @@ func mutationQualityLine(mutation quality.Mutation) string {
 	if mutation.FieldPath != "" {
 		target += "." + mutation.FieldPath
 	}
-	return fmt.Sprintf("L%d %s (%s)", mutation.Line, target, mutation.Provenance)
+	return fmt.Sprintf("L%d mutation: %s (%s)", mutation.Line, target, mutation.Provenance)
 }
