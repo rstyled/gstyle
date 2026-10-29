@@ -47,16 +47,19 @@ type Model struct {
 	height        int
 	focus         pane
 	sourceWorkspace
-	fileIndex        int
-	functionIndex    int
-	qualityView      bool
-	annotations      []Annotation
-	nextAnnotationID int
-	annotationStore  AnnotationStore
-	annotationError  error
-	showPatterns     bool
-	patternMarkers   []PatternMarker
-	patternsLoading  bool
+	fileIndex         int
+	functionIndex     int
+	qualityView       bool
+	annotations       []Annotation
+	nextAnnotationID  int
+	annotationStore   AnnotationStore
+	annotationError   error
+	showPatterns      bool
+	patternMarkers    []PatternMarker
+	patternsLoading   bool
+	patternsError     error
+	patternGeneration uint64
+	qualityMarkers    []PatternMarker
 }
 
 func NewModel(analyzer Analyzer, paths []string) Model {
@@ -65,9 +68,10 @@ func NewModel(analyzer Analyzer, paths []string) Model {
 	}
 
 	return Model{
-		analyzer:   analyzer,
-		paths:      append([]string(nil), paths...),
-		refreshing: true,
+		analyzer:     analyzer,
+		paths:        append([]string(nil), paths...),
+		refreshing:   true,
+		showPatterns: true,
 	}
 }
 
@@ -80,10 +84,9 @@ func (m Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	var command tea.Cmd
 	switch message := message.(type) {
 	case reportMsg:
-		m = m.withReport(message)
+		m, command = m.finishAnalysis(message)
 	case patternsMsg:
-		m.patternMarkers = message.markers
-		m.patternsLoading = false
+		m = m.withPatterns(message)
 	case controlCommand:
 		m, command = m.updateControl(message)
 	case changeWaiterTimeoutMsg:
@@ -133,6 +136,7 @@ func (m Model) withReport(message reportMsg) Model {
 // applyReport swaps in a fresh analysis report and reloads annotations.
 func (m Model) applyReport(report domain.Report) Model {
 	m.report = rankReport(report)
+	m.qualityMarkers = qualityMarkersFromReport(m.report)
 	m.fileIndex, m.functionIndex = 0, 0
 	return m.reloadWorkspace()
 }
@@ -183,6 +187,7 @@ func (m Model) updateGlobalKey(key string) (Model, tea.Cmd, bool) {
 			return m, nil, true
 		}
 		m.refreshing = true
+		m = m.resetPatternScan()
 		m.revision++
 		return m, m.analyze(), true
 	case "p":
@@ -194,13 +199,11 @@ func (m Model) updateGlobalKey(key string) (Model, tea.Cmd, bool) {
 	}
 }
 
-// togglePatternsKey flips pattern visibility, lazily starting background
-// pattern detection on first enable.
 func (m Model) togglePatternsKey() (Model, tea.Cmd, bool) {
 	m = m.togglePatterns()
 	if m.showPatterns && !m.patternsLoading && len(m.patternMarkers) == 0 {
-		m.patternsLoading = true
-		return m, m.loadPatternsCmd(), true
+		next, command := m.startPatternScan()
+		return next, command, true
 	}
 	return m, nil, true
 }
@@ -224,9 +227,9 @@ func (m Model) updateFocusKey(key string) (Model, bool) {
 func (m Model) updateReviewNavigationKey(key string) (Model, bool) {
 	switch key {
 	case "[":
-		return m.focusAdjacentAnnotation(-1), true
+		return m.focusAdjacentReview(-1), true
 	case "]":
-		return m.focusAdjacentAnnotation(1), true
+		return m.focusAdjacentReview(1), true
 	case ",":
 		before := m
 		m = m.moveFile(-1)
@@ -286,7 +289,8 @@ func (m Model) advanceNavigationRevision(before Model) Model {
 	changed := m.fileIndex != before.fileIndex ||
 		m.functionIndex != before.functionIndex ||
 		m.sourceOffset != before.sourceOffset ||
-		m.sourceCursor != before.sourceCursor
+		m.sourceCursor != before.sourceCursor ||
+		m.findingDetailOffset != before.findingDetailOffset
 	if changed {
 		m.revision++
 	}

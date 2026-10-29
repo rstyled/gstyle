@@ -199,5 +199,5 @@ func qualityBadge(function domain.Function) string {
 	if function.Quality == nil {
 		return ""
 	}
-	return amber.Render(fmt.Sprintf(" · Q %d · e quality", len(function.Quality.Diagnostics)))
+	return amber.Render(fmt.Sprintf(" · Q %d", len(function.Quality.Diagnostics)))
 }

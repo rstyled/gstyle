@@ -141,15 +141,8 @@ func TestSourcePatternRows(t *testing.T) {
 	if len(rows) == 0 {
 		t.Fatal("expected rows")
 	}
-	// Kinds sorted: ccgraph_clone before guard_clause.
-	found := false
-	for _, r := range rows {
-		if containsAll(r, "ccgraph_clone", "guard_clause") {
-			found = true
-		}
-	}
-	if !found {
-		t.Fatalf("expected both kinds in rows: %v", rows)
+	if len(rows) != 2 || !containsAll(rows[0], "ccgraph_clone") || !containsAll(rows[1], "guard_clause") {
+		t.Fatalf("expected distinct sorted finding rows: %v", rows)
 	}
 }
 
@@ -171,9 +164,8 @@ func containsAll(s string, subs ...string) bool {
 
 func TestSourcePatternRowCount(t *testing.T) {
 	markers := patternMarkersFromReport(testPatternsReport())
-	// Lines 10-12: one marker row at line 10 (dedupe by kind per line).
-	if got := sourcePatternRowCount(markers, "a.go", 10, 12, 80); got != 1 {
-		t.Fatalf("expected 1 pattern row, got %d", got)
+	if got := sourcePatternRowCount(markers, "a.go", 10, 12, 80); got != 3 {
+		t.Fatalf("expected a header, observation, and related location, got %d rows", got)
 	}
 	// Wrong path: zero rows.
 	if got := sourcePatternRowCount(markers, "z.go", 10, 12, 80); got != 0 {

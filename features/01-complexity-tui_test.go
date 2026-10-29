@@ -434,7 +434,7 @@ func load(model application.Model, width int, height int) (application.Model, er
 	}
 
 	command := model.Init()
-	return settle(model, command)
+	return update(model, command())
 }
 
 func press(model application.Model, key string) (application.Model, error) {

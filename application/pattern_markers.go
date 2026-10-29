@@ -16,29 +16,26 @@ import (
 const patternBackground = "\x1b[48;2;66;54;20m"
 
 // PatternMarker is one visual marker for a pattern finding site.
-type PatternMarker struct {
-	Kind    string
-	Path    string
-	Line    int
-	EndLine int
-}
+type PatternMarker = FindingMarker
 
 // patternsMsg carries background pattern-detection results.
 type patternsMsg struct {
-	markers []PatternMarker
-	err     error
+	markers    []PatternMarker
+	err        error
+	generation uint64
 }
 
 // loadPatternsCmd runs pattern detection in the background so TUI startup
 // stays fast. Results arrive as patternsMsg.
 func (m Model) loadPatternsCmd() tea.Cmd {
 	paths := append([]string(nil), m.paths...)
+	generation := m.patternGeneration
 	return func() tea.Msg {
 		report, err := patterncheck.GetReport(context.Background(), paths)
 		if err != nil {
-			return patternsMsg{err: err}
+			return patternsMsg{err: err, generation: generation}
 		}
-		return patternsMsg{markers: patternMarkersFromReport(report)}
+		return patternsMsg{markers: patternMarkersFromReport(report), generation: generation}
 	}
 }
 
@@ -73,6 +70,11 @@ func (m Model) visiblePatternMarkers() []PatternMarker {
 // togglePatterns flips pattern highlight visibility.
 func (m Model) togglePatterns() Model {
 	m.showPatterns = !m.showPatterns
+	m.findingDetailOffset = 0
+	if len(patternMarkersStartingAt(m.findingMarkers(), m.selectedFilePath(), m.activeFindingLine)) == 0 {
+		m.activeFindingLine = 0
+	}
+	m.revision++
 	return m
 }
 
@@ -85,12 +87,17 @@ func patternMarkersFromReport(report *patterns.PatternsReport) []PatternMarker {
 	for i := range report.Candidates {
 		c := &report.Candidates[i]
 		kind := string(c.Kind)
+		detail := &patterns.Candidate{
+			Observation: c.Observation, Inference: c.Inference, PossibleRefactor: c.PossibleRefactor,
+			Sites: c.Sites, CounterEvidence: c.CounterEvidence,
+		}
 		for _, s := range c.Sites {
 			out = append(out, PatternMarker{
-				Kind:    kind,
-				Path:    s.Path,
-				Line:    s.Line,
-				EndLine: s.EndLine,
+				Kind:      kind,
+				Path:      s.Path,
+				Line:      s.Line,
+				EndLine:   s.EndLine,
+				Candidate: detail,
 			})
 		}
 	}
@@ -151,24 +158,21 @@ func highlightPatternLine(rendered string, markers []PatternMarker) string {
 	return withBackground(rendered, patternBackground)
 }
 
-// sourcePatternRows renders one row per distinct pattern kind at the line,
-// mirroring the user-annotation row style but with a distinct glyph.
 func sourcePatternRows(markers []PatternMarker, width int) []string {
 	if len(markers) == 0 {
 		return nil
 	}
-	kinds := make([]string, 0, len(markers))
-	seen := map[string]bool{}
-	for _, mk := range markers {
-		if !seen[mk.Kind] {
-			seen[mk.Kind] = true
-			kinds = append(kinds, mk.Kind)
+	markers = uniquePatternMarkers(markers)
+	sort.SliceStable(markers, func(i, j int) bool { return markers[i].Kind < markers[j].Kind })
+	prefix := muted.Render("      ╰─") + amber.Bold(true).Render("▲ ")
+	var rows []string
+	for _, marker := range markers {
+		rows = append(rows, patternMessageRows(findingLabel(marker), prefix, width)...)
+		for _, message := range patternDetailMessages(marker) {
+			rows = append(rows, patternMessageRows(message, "          ", width)...)
 		}
 	}
-	sort.Strings(kinds)
-	prefix := muted.Render("      ╰─") + amber.Bold(true).Render("▲ ")
-	message := "pattern: " + strings.Join(kinds, ", ")
-	return patternMessageRows(message, prefix, width)
+	return rows
 }
 
 // patternMessageRows wraps a pattern message like annotationMessageRows.
@@ -189,15 +193,13 @@ func patternMessageRows(message string, prefix string, width int) []string {
 // highlight covers the whole range.
 func patternMarkersStartingAt(markers []PatternMarker, path string, line int) []PatternMarker {
 	var out []PatternMarker
-	seen := map[string]bool{}
 	for _, mk := range markers {
-		if !patternPathMatches(mk.Path, path) || mk.Line != line || seen[mk.Kind] {
+		if !patternPathMatches(mk.Path, path) || mk.Line != line {
 			continue
 		}
-		seen[mk.Kind] = true
 		out = append(out, mk)
 	}
-	return out
+	return uniquePatternMarkers(out)
 }
 
 // sourcePatternRowCount counts display rows added by pattern markers, for

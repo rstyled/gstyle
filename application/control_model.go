@@ -296,6 +296,7 @@ func (m Model) refresh(command controlCommand) (Model, tea.Cmd) {
 	}
 
 	m.refreshing = true
+	m = m.resetPatternScan()
 	m.refreshReply = command.reply
 	m.revision++
 	return m, m.analyze()

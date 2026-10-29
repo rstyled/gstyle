@@ -209,10 +209,7 @@ func runModelCommand(t *testing.T, model application.Model, command tea.Cmd) app
 
 	message := command()
 	next, followup := model.Update(message)
-	if followup != nil {
-		t.Fatal("unexpected follow-up command")
-	}
-	return next.(application.Model)
+	return runModelCommand(t, next.(application.Model), followup)
 }
 
 func controlTestReport() domain.Report {

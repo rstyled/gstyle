@@ -14,6 +14,8 @@ type sourceWorkspace struct {
 	lineSelection         *LineSelection
 	visualSelectionActive bool
 	activeAnnotationID    string
+	activeFindingLine     int
+	findingDetailOffset   int
 	annotating            bool
 	annotationDraft       string
 }
@@ -23,6 +25,8 @@ func (w sourceWorkspace) clearSelection() sourceWorkspace {
 	w.lineSelection = nil
 	w.visualSelectionActive = false
 	w.activeAnnotationID = ""
+	w.activeFindingLine = 0
+	w.findingDetailOffset = 0
 	return w
 }
 
@@ -31,6 +35,8 @@ func (w sourceWorkspace) withSelection(selection *LineSelection) sourceWorkspace
 	w.lineSelection = selection
 	w.visualSelectionActive = false
 	w.activeAnnotationID = ""
+	w.activeFindingLine = 0
+	w.findingDetailOffset = 0
 	return w
 }
 
@@ -50,6 +56,14 @@ func (w sourceWorkspace) focusAnnotation(annotation Annotation, locate bool) sou
 	if locate {
 		w.sourceCursor = annotation.EndLine - annotation.FunctionLine
 	}
+	return w
+}
+
+func (w sourceWorkspace) focusFinding(line, base int) sourceWorkspace {
+	w = w.clearSelection()
+	w.sourceCursor = line - base
+	w.sourceOffset = w.sourceCursor
+	w.activeFindingLine = line
 	return w
 }
 

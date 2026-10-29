@@ -82,6 +82,9 @@ func (m Model) moveSourceCursor(delta int) Model {
 	if annotation, ok := m.unmatchedAnnotation(); ok {
 		return m.scrollSavedAnnotation(annotation, delta)
 	}
+	if next, scrolled := m.scrollFindingDetails(delta); scrolled {
+		return next
+	}
 	lineCount := m.selectedSourceLineCount()
 	if lineCount == 0 {
 		return m
@@ -93,6 +96,8 @@ func (m Model) moveSourceCursor(delta int) Model {
 		m = m.selectFromAnchor(m.lineSelection.AnchorLine)
 	}
 	m.activeAnnotationID = ""
+	m.activeFindingLine = 0
+	m.findingDetailOffset = 0
 	return m
 }
 
@@ -120,7 +125,7 @@ func (m Model) sourceRowCounter() sourceRowCounter {
 	return sourceRowCounter{
 		function:        function,
 		annotations:     m.visibleAnnotations(),
-		patterns:        m.visiblePatternMarkers(),
+		patterns:        m.visibleFindingMarkers(),
 		patternPath:     m.selectedFilePath(),
 		width:           paneContentWidth(m.sourcePaneWidth()),
 		lastSourceIndex: sourceLineCount(function.Source) - 1,
@@ -153,7 +158,7 @@ func (m Model) selectFromAnchor(anchor int) Model {
 }
 
 func (m Model) clearLineSelection() Model {
-	if m.lineSelection == nil && !m.visualSelectionActive && m.activeAnnotationID == "" {
+	if m.lineSelection == nil && !m.visualSelectionActive && m.activeAnnotationID == "" && m.activeFindingLine == 0 {
 		return m
 	}
 	m.sourceWorkspace = m.sourceWorkspace.clearSelection()
@@ -381,26 +386,6 @@ func (m Model) removeAnnotation(id string) (Model, error) {
 	return m, nil
 }
 
-func (m Model) focusAdjacentAnnotation(delta int) Model {
-	targets := m.annotationTargets()
-	if len(targets) == 0 {
-		return m
-	}
-
-	index := m.adjacentAnnotationTargetIndex(targets, delta)
-	target := targets[index]
-	annotation := target.Annotation
-	m.fileIndex = target.fileIndex
-	m.functionIndex = target.functionIndex
-	m = m.resetSourceWorkspace().showDetails()
-	m.sourceWorkspace = m.sourceWorkspace.focusAnnotation(annotation, target.functionIndex >= 0)
-	m.revision++
-	if target.functionIndex < 0 {
-		return m
-	}
-	return m.keepSourceCursorVisible()
-}
-
 func (m Model) annotationTargets() []annotationTarget {
 	targets := make([]annotationTarget, 0, len(m.annotations))
 	for _, annotation := range m.annotations {
@@ -427,62 +412,6 @@ func (m Model) annotationTarget(annotation Annotation) annotationTarget {
 		}
 	}
 	return target
-}
-
-func (m Model) adjacentAnnotationTargetIndex(targets []annotationTarget, delta int) int {
-	for index, target := range targets {
-		if target.ID == m.activeAnnotationID {
-			return (index + delta + len(targets)) % len(targets)
-		}
-	}
-	if delta > 0 {
-		return m.nextAnnotationTargetIndex(targets)
-	}
-	return m.previousAnnotationTargetIndex(targets)
-}
-
-func (m Model) nextAnnotationTargetIndex(targets []annotationTarget) int {
-	for index, target := range targets {
-		if m.annotationTargetAfterCursor(target) {
-			return index
-		}
-	}
-	return 0
-}
-
-func (m Model) previousAnnotationTargetIndex(targets []annotationTarget) int {
-	for index := len(targets) - 1; index >= 0; index-- {
-		if m.annotationTargetBeforeCursor(targets[index]) {
-			return index
-		}
-	}
-	return len(targets) - 1
-}
-
-func (m Model) annotationTargetAfterCursor(target annotationTarget) bool {
-	if target.fileIndex != m.fileIndex {
-		return target.fileIndex > m.fileIndex
-	}
-	if target.functionIndex < 0 {
-		return true
-	}
-	if target.functionIndex != m.functionIndex {
-		return target.functionIndex > m.functionIndex
-	}
-	return target.EndLine >= m.sourceLine()
-}
-
-func (m Model) annotationTargetBeforeCursor(target annotationTarget) bool {
-	if target.fileIndex != m.fileIndex {
-		return target.fileIndex < m.fileIndex
-	}
-	if target.functionIndex < 0 {
-		return true
-	}
-	if target.functionIndex != m.functionIndex {
-		return target.functionIndex < m.functionIndex
-	}
-	return target.StartLine <= m.sourceLine()
 }
 
 func sourceDeletedRowCount(lines []domain.DiffLine, start int, end int) int {
