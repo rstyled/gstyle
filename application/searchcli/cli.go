@@ -45,8 +45,21 @@ func NewCommand() (*flag.FlagSet, func(context.Context, []string, io.Writer) err
 		if !flags.Parsed() {
 			return errors.New("search flags must be parsed before execution")
 		}
+		if opts.cpg && hasGoTestFlag(flags) {
+			return errors.New("--tests applies to Go source, omit it with --cpg")
+		}
 		return opts.run(ctx, flags.Args(), output)
 	}
+}
+
+func hasGoTestFlag(flags *flag.FlagSet) bool {
+	found := false
+	flags.Visit(func(item *flag.Flag) {
+		if item.Name == "tests" {
+			found = true
+		}
+	})
+	return found
 }
 
 func (opts options) run(ctx context.Context, paths []string, output io.Writer) error {

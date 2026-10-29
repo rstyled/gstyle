@@ -68,7 +68,7 @@ func (n *vertex) number(name string) int {
 	if !ok {
 		return -1
 	}
-	integer, _ := text.Int64() // Validated at the input boundary.
+	integer, _ := text.Int64()
 	return int(integer)
 }
 
@@ -235,7 +235,22 @@ func validateOperands(node *vertex) error {
 	if logical(node) != "" && len(node.Children) != 2 {
 		return fmt.Errorf("logical operator %d requires two AST operands", node.ID)
 	}
-	return nil
+	return validateMethod(node)
+}
+
+func validateMethod(node *vertex) error {
+	if !sourceMethod(node) {
+		return nil
+	}
+	if node.text("NAME") == "" || node.text("FULL_NAME") == "" {
+		return fmt.Errorf("source METHOD %d requires NAME and FULL_NAME", node.ID)
+	}
+	for _, child := range node.Children {
+		if child.Label == "BLOCK" {
+			return nil
+		}
+	}
+	return fmt.Errorf("source METHOD %d has no AST body; require a full export", node.ID)
 }
 
 func (n *vertex) assignOwner() {

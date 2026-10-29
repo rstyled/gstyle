@@ -41,3 +41,8 @@ int caught(int x) { try { if (x) throw x; } catch (...) { return -1; } return x;
 int conditional(int x) { return x ? 1 : 0; }
 int looping(int x) { while (x > 0) { if (x == 2) break; --x; } return x; }
 int closure(int x) { auto fn = [x]() { if (x) return 1; return 0; }; return fn(); }
+
+int shadowed(int x) { int value = x; { int value = 1; value = 2; } return value; }
+int braced(int x) { if (x) return 1; else { if (x > 1) return 2; } return 0; }
+bool negated(bool a, bool b, bool c) { return a && !(b && c); }
+int predicate(int x) { if (x ? 1 : 0) return 1; return 0; }

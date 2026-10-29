@@ -40,14 +40,8 @@ func (m Model) qualityBody() []string {
 	if m.refreshing {
 		return []string{muted.Render("Scanning quality…")}
 	}
-	if m.report.Quality == nil {
-		return []string{muted.Render("Quality not analyzed")}
-	}
-	if m.report.Quality.Status == "unavailable" {
-		return []string{muted.Render("Quality unavailable"), m.report.Quality.Error}
-	}
-	if m.report.Quality.Status == "error" {
-		return append([]string{danger.Render("Quality analysis failed")}, strings.Split(m.report.Quality.Error, "\n")...)
+	if status := m.qualityStatusLines(); status != nil {
+		return status
 	}
 	function, ok := m.selectedFunction()
 	if !ok {
@@ -57,6 +51,19 @@ func (m Model) qualityBody() []string {
 		return []string{muted.Render("Quality unavailable for this function"), muted.Render("Inactive build, generated, or nested literal")}
 	}
 	return functionQualityLines(function.Quality)
+}
+
+func (m Model) qualityStatusLines() []string {
+	if m.report.Quality == nil {
+		return []string{muted.Render("Quality not analyzed")}
+	}
+	if m.report.Quality.Status == "unavailable" {
+		return []string{muted.Render("Quality unavailable"), m.report.Quality.Error}
+	}
+	if m.report.Quality.Status == "error" {
+		return append([]string{danger.Render("Quality analysis failed")}, strings.Split(m.report.Quality.Error, "\n")...)
+	}
+	return nil
 }
 
 func (m Model) qualityBodyRowCount() int {

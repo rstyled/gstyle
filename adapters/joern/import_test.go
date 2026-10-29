@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -41,7 +42,7 @@ func TestRealCPPExportComplexity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string][2]int{"straight": {1, 0}, "nested": {3, 3}, "alternatives": {3, 3}, "logical": {3, 1}, "mixed": {4, 3}, "selection": {3, 1}, "cycle": {2, 2}, "mutual_a": {2, 2}, "mutual_b": {2, 2}, "chain": {1, 0}, "caught": {3, 2}, "conditional": {2, 1}, "looping": {3, 3}, "<lambda>0": {2, 1}, "closure": {1, 0}}
+	want := map[string][2]int{"straight": {1, 0}, "nested": {3, 3}, "alternatives": {3, 3}, "logical": {3, 1}, "mixed": {4, 3}, "selection": {3, 1}, "cycle": {2, 2}, "mutual_a": {2, 2}, "mutual_b": {2, 2}, "chain": {1, 0}, "caught": {3, 2}, "conditional": {2, 1}, "looping": {3, 3}, "<lambda>0": {2, 1}, "closure": {1, 0}, "shadowed": {1, 0}, "braced": {3, 4}, "negated": {3, 2}, "predicate": {3, 2}}
 	if len(extraction.Functions) != len(want) {
 		t.Fatalf("got %d methods, want %d", len(extraction.Functions), len(want))
 	}
@@ -199,5 +200,112 @@ func TestSourceAbsentStaysUnavailable(t *testing.T) {
 				t.Fatal("absent source has invented byte span")
 			}
 		}
+	}
+}
+
+func TestExactVertexIDs(t *testing.T) {
+	for _, id := range []uint64{0, 9007199254740993} {
+		wire := fixtureWire(t)
+		old := uint64(0)
+		for i := range wire.Value.Vertices {
+			if wire.Value.Vertices[i].Label == "METHOD" {
+				old, _ = identifier(wire.Value.Vertices[i].ID)
+				wire.Value.Vertices[i].ID = json.RawMessage(fmt.Sprint(id))
+				break
+			}
+		}
+		for i := range wire.Value.Edges {
+			source, _ := identifier(wire.Value.Edges[i].Source)
+			target, _ := identifier(wire.Value.Edges[i].Target)
+			if source == old {
+				wire.Value.Edges[i].Source = json.RawMessage(fmt.Sprint(id))
+			}
+			if target == old {
+				wire.Value.Edges[i].Target = json.RawMessage(fmt.Sprint(id))
+			}
+		}
+		extraction, err := readWire(t, wire)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if extraction.Functions[0].Graph.Tables.Text(extraction.Functions[0].Graph.Function.ID) != fmt.Sprintf("joern:%d", id) {
+			t.Fatal("vertex ID is rounded or treated as absent")
+		}
+	}
+	if _, err := identifier(json.RawMessage(`{"@type":"g:Double","@value":1}`)); err == nil {
+		t.Fatal("floating ID wrapper accepted")
+	}
+}
+
+func TestRejectASTCycleAndMissingOperand(t *testing.T) {
+	wire := fixtureWire(t)
+	first := wireNode{ID: json.RawMessage(`9223372036854775800`), Label: "BLOCK"}
+	second := wireNode{ID: json.RawMessage(`9223372036854775801`), Label: "BLOCK"}
+	wire.Value.Vertices = append(wire.Value.Vertices, first, second)
+	wire.Value.Edges = append(wire.Value.Edges,
+		wireEdge{wireNode: wireNode{ID: json.RawMessage(`9223372036854775802`), Label: "AST"}, Source: first.ID, Target: second.ID},
+		wireEdge{wireNode: wireNode{ID: json.RawMessage(`9223372036854775803`), Label: "AST"}, Source: second.ID, Target: first.ID})
+	if _, err := readWire(t, wire); err == nil || !strings.Contains(err.Error(), "cycle") {
+		t.Fatalf("AST cycle: %v", err)
+	}
+	wire = fixtureWire(t)
+	var logicalID uint64
+	for _, node := range wire.Value.Vertices {
+		props, err := properties(node.Properties)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if props["NAME"] == "<operator>.logicalAnd" {
+			logicalID, _ = identifier(node.ID)
+			break
+		}
+	}
+	for i, link := range wire.Value.Edges {
+		source, _ := identifier(link.Source)
+		if source == logicalID && link.Label == "AST" {
+			wire.Value.Edges = append(wire.Value.Edges[:i], wire.Value.Edges[i+1:]...)
+			break
+		}
+	}
+	if _, err := readWire(t, wire); err == nil {
+		t.Fatal("logical operator without two operands accepted")
+	}
+}
+
+func TestShadowBindingsAndOperandDirection(t *testing.T) {
+	extraction, err := Load(context.Background(), fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var returnOperand bool
+	for _, fn := range extraction.Functions {
+		g := fn.Graph
+		if g.Tables.Text(g.Function.Name.Value) == "shadowed" {
+			var identities []pdg.Text
+			for _, symbol := range g.Symbols {
+				if g.Tables.Text(symbol.Name.Value) == "value" {
+					identities = append(identities, symbol.ID)
+				}
+			}
+			if len(identities) != 2 || identities[0] == identities[1] {
+				t.Fatal("shadowed bindings are merged by spelling")
+			}
+		}
+		for _, link := range g.Edges {
+			if g.Tables.Text(link.Subkind) != "value-operand" {
+				continue
+			}
+			source, target := g.Nodes[link.Source-1], g.Nodes[link.Target-1]
+			if source.Category == pdg.Read && target.Category == pdg.Return {
+				returnOperand = true
+			}
+			attrs := g.NodeAttributes(target)
+			if g.Tables.Text(attrs.Operator.Value) == "<operator>.assignment" && link.Position == 2 {
+				t.Fatal("assignment destination is read as a value")
+			}
+		}
+	}
+	if !returnOperand {
+		t.Fatal("return does not consume its expression")
 	}
 }

@@ -52,7 +52,6 @@ func (p *projection) bindingAccess(node *vertex) {
 	if symbol := p.referredSymbol(target); symbol != 0 {
 		p.definition(node, symbol)
 		p.attrs[p.refs[node]-1].Writes = []pdg.Access{{Symbol: symbol}}
-		// Compound assignments consume the previous target value too.
 		if node.text("NAME") == "<operator>.assignment" {
 			p.attrs[p.refs[target]-1].Reads = nil
 		}

@@ -1,7 +1,5 @@
 package joern
 
-// Tarjan components score each member of a resolved recursion cycle once.
-// Same-spelled calls without a CALL edge do not establish recursion.
 type components struct {
 	next       int
 	index, low map[*vertex]int

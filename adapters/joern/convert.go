@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -84,6 +85,7 @@ func (p *projection) convert(nodes []*vertex) (*pdg.Graph, error) {
 		p.node(node)
 	}
 	p.bindings(nodes)
+	p.sortInputs()
 	for _, node := range nodes {
 		p.operands(node)
 	}
@@ -98,6 +100,19 @@ func (p *projection) convert(nodes []*vertex) (*pdg.Graph, error) {
 	return p.graph, nil
 }
 
+func (p *projection) sortInputs() {
+	parameters := map[*vertex]pdg.Parameter{}
+	for i, node := range p.inputs {
+		parameters[node] = p.graph.Function.Inputs[i]
+	}
+	slices.SortFunc(p.inputs, func(a, b *vertex) int { return a.number("INDEX") - b.number("INDEX") })
+	for i, node := range p.inputs {
+		parameter := parameters[node]
+		parameter.Position = uint32(i)
+		p.graph.Function.Inputs[i] = parameter
+	}
+}
+
 func (p *projection) header() {
 	b, g := p.pool, p.graph
 	g.Profile = b.Policy(Profile, "1")
@@ -106,11 +121,12 @@ func (p *projection) header() {
 	g.Function = pdg.Function{ID: b.Text("joern:" + strconv.FormatUint(p.method.ID, 10)), Name: b.Known(p.method.text("NAME")), QualifiedName: b.Known(p.method.text("FULL_NAME")), Span: pdg.Span{Source: 1}, Interface: b.Evidence(pdg.Approximated, "imported method interface"), ReferenceCount: pdg.CountFact{Status: pdg.Unknown, Reason: b.Text("reference-count policy not evaluated")}}
 	p.source()
 	p.extension("gstyle.joern:method", p.method.Props)
+	p.extension("gstyle.joern:metadata", p.doc.Metadata.Props)
 	p.extension("gstyle.joern:overlays", p.doc.Metadata.Props["OVERLAYS"])
 }
 
 func (p *projection) extension(name string, value any) {
-	data, _ := json.Marshal(value) // Values are validated GraphSON primitives.
+	data, _ := json.Marshal(value)
 	p.graph.Extensions = append(p.graph.Extensions, pdg.Extension{Name: p.pool.Text(name), Value: p.pool.Text(string(data))})
 }
 
@@ -195,8 +211,6 @@ func (p *projection) parameter(node *vertex) {
 	p.inputs = append(p.inputs, node)
 }
 
-// Syntax operands run from the value expression to its consumer. AST and
-// ARGUMENT edges themselves remain containment, never reaching definitions.
 func (p *projection) operands(node *vertex) {
 	if node.Label != "CALL" && node.Label != "RETURN" {
 		return
@@ -205,7 +219,7 @@ func (p *projection) operands(node *vertex) {
 		if !valueOperand(node, operand) {
 			continue
 		}
-		p.addEdge(dependency{Source: operand, Target: node, Kind: pdg.Data, Subkind: "value-operand", Position: max(0, operand.number("ARGUMENT_INDEX")), ID: "operand:" + strconv.FormatUint(operand.ID, 10) + ":" + strconv.FormatUint(node.ID, 10)})
+		p.addEdge(dependency{Source: operand, Target: node, Kind: pdg.Data, Subkind: "value-operand", Position: operand.number("ARGUMENT_INDEX"), ID: "operand:" + strconv.FormatUint(operand.ID, 10) + ":" + strconv.FormatUint(node.ID, 10)})
 	}
 }
 
@@ -274,6 +288,24 @@ func (p *projection) capabilities() {
 		if name == "node_extraction" || name == "parameters" || name == "returns" {
 			status = pdg.Approximated
 		}
+		if p.hasOverlay(capabilityOverlays[name]) {
+			status = pdg.Approximated
+		}
 		p.graph.Capabilities = append(p.graph.Capabilities, pdg.NamedCapability{Name: p.pool.Text(name), Evidence: p.pool.Evidence(status, "CPG import preserves producer facts; gstyle source conformance is not established")})
 	}
+}
+
+var capabilityOverlays = map[string]string{"scalar_reaching_definitions": "dataflowOss", "control_dependencies": "controlflow", "calls": "callgraph"}
+
+func (p *projection) hasOverlay(name string) bool {
+	if name == "" {
+		return false
+	}
+	items, _ := p.doc.Metadata.Props["OVERLAYS"].([]any)
+	for _, item := range items {
+		if item == name {
+			return true
+		}
+	}
+	return false
 }

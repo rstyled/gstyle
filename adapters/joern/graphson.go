@@ -1,4 +1,3 @@
-// Package joern imports Joern's full GraphSON export without a JVM dependency.
 package joern
 
 import (
@@ -61,8 +60,6 @@ type wireGraph struct {
 	} `json:"@value"`
 }
 
-// Load reads one complete export. A directory resolves to export.json, the
-// filename produced by joern-export --repr=all --format=graphson.
 func Load(ctx context.Context, path string) (*Extraction, error) {
 	info, err := os.Stat(path)
 	if err != nil {
@@ -79,7 +76,6 @@ func Load(ctx context.Context, path string) (*Extraction, error) {
 	return Read(ctx, file)
 }
 
-// Read validates graph references before exposing any converted results.
 func Read(ctx context.Context, input io.Reader) (*Extraction, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -145,6 +141,9 @@ func unwrap(parsed any) (any, error) {
 }
 
 func identifier(raw json.RawMessage) (uint64, error) {
+	if err := identifierType(raw); err != nil {
+		return 0, err
+	}
 	parsed, err := value(raw)
 	if err != nil {
 		return 0, err
@@ -158,6 +157,23 @@ func identifier(raw json.RawMessage) (uint64, error) {
 		return 0, fmt.Errorf("invalid GraphSON ID: %w", err)
 	}
 	return id, nil
+}
+
+func identifierType(raw json.RawMessage) error {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || trimmed[0] != '{' {
+		return nil
+	}
+	var typed struct {
+		Type string `json:"@type"`
+	}
+	if err := json.Unmarshal(trimmed, &typed); err != nil {
+		return err
+	}
+	if typed.Type != "g:Int64" {
+		return fmt.Errorf("GraphSON ID requires g:Int64, got %q", typed.Type)
+	}
+	return nil
 }
 
 func properties(raw map[string]json.RawMessage) (map[string]any, error) {

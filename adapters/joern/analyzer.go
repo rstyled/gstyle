@@ -9,7 +9,7 @@ import (
 	"github.com/rstyled/gstyle/domain/pdg"
 )
 
-const importScope = "Joern CPG import; method-local source complexity, resolved recursion cycles, advisory dependencies; typed mutation/effect checks and source fixes are unavailable"
+const importScope = "gstyle.joern.complexity/1: method-local source complexity and resolved recursion cycles; advisory CPG dependencies; typed mutation/effect checks and source fixes are unavailable"
 
 type Analyzer struct{ Context context.Context }
 
@@ -21,7 +21,11 @@ func Extract(ctx context.Context, paths []string) (*Extraction, error) {
 }
 
 func (a Analyzer) Analyze(paths []string) (domain.Report, error) {
-	extracted, err := Extract(a.Context, paths)
+	ctx := a.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	extracted, err := Extract(ctx, paths)
 	if err != nil {
 		return domain.Report{}, err
 	}

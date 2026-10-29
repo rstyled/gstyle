@@ -41,6 +41,8 @@ Change status and severity are separate: measured changes remain visible without
 
 ## Inspect
 
+Use ` + "`--cpg`" + ` with a Joern full GraphSON export file or export directory to inspect imported C/C++ methods. It works with the TUI, search, and patterns, including ` + "`gstyle patterns --cpg --format pdg-json cpg-export`" + `. Complexity follows the gstyle.joern.complexity/1 method-local AST policy. Imported dependency evidence is partial; typed quality checks and source fixes are unavailable. Generate the input with Joern's C/C++ frontend and ` + "`joern-export --repr=all --format=graphson`" + `. Include file content for source snapshots. Go tags, typed quality policies and mining cache/threshold overrides do not apply. See docs/joern.md for the policy and verified Joern version.
+
 Run ` + "`gstyle .`" + ` for the current repository or ` + "`gstyle [paths...]`" + ` for selected Go files and directories.
 
 The treemap combines both scores: area shows cyclomatic complexity, and color shows cognitive complexity from green to red. Files contain function tiles. Click a tile to select its source; the white outline marks the selected function. The map needs at least 100 columns and 30 rows.

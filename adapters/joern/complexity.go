@@ -6,9 +6,6 @@ import (
 	"github.com/rstyled/gstyle/domain"
 )
 
-// The v1 scoring policy uses source control structures, not the normalized PDG.
-// Nested METHOD bodies are separate units. Preprocessor branches absent from
-// the CPG cannot contribute, and the result is not a Sonar C++ parity claim.
 type scoreFrame struct {
 	node   *vertex
 	depth  int
@@ -100,8 +97,6 @@ func predicateDepth(node *vertex, depth int, frames []scoreFrame) {
 	}
 }
 
-// Joern's IF children have condition, then and optional else positions. The
-// CONDITION edge identifies the predicate; an else-if can have a block wrapper.
 func (s *scorer) ifAlternatives(node *vertex, depth int, frames []scoreFrame) {
 	if len(node.Children) < 3 {
 		return
@@ -158,8 +153,6 @@ func (s *scorer) expression(frame scoreFrame) []scoreFrame {
 	return childFrames(node, frame.depth)
 }
 
-// Flatten only logical subtrees in source order. Calls and negation delimit a
-// sequence; their own logical children are scored when the normal walk reaches them.
 func (s *scorer) logicalSequence(root *vertex) {
 	type item struct {
 		node *vertex

@@ -26,6 +26,7 @@ inverted conditionals that want to be guard clauses.
 Similarity, size and usage statistics alone do not produce findings.
 Informational only: always exits 0, never a quality gate.
   --format FORMAT   text (default), json report, sarif, or pdg-json graph export
+  --cpg             read one Joern full GraphSON export instead of Go source
   --threshold N     minimum WL similarity (0-1000) for clustering [default 600]
   --cache           reuse WL refinements from .gstyle/patterns-cache.json,
                     speeding up repeat runs on large repos

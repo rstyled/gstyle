@@ -2,8 +2,9 @@ package joern
 
 import (
 	"fmt"
-	"github.com/rstyled/gstyle/domain/pdg"
 	"strings"
+
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 type sourceFile struct {
@@ -24,7 +25,6 @@ func newSourceFile(content string) *sourceFile {
 	return file
 }
 
-// Source bytes come only from the export, never paths on the local filesystem.
 func (p *projection) source() {
 	p.file = p.doc.Files[p.path()]
 	if p.file == nil || p.file.content == "" {
@@ -43,10 +43,15 @@ func (p *projection) source() {
 	p.graph.Sources[0].ContentIdentity = p.pool.Known(fmt.Sprintf("sha256:%x", snapshot.Identity))
 	if span, ok := p.span(p.method); ok {
 		p.graph.Function.Span = span
+	} else {
+		p.extension("gstyle.joern:source-span", "method byte range is unavailable; CPG source coordinates are preserved")
 	}
 }
 
 func (p *projection) span(node *vertex) (pdg.Span, bool) {
+	if !p.sameSource(node) {
+		return pdg.Span{}, false
+	}
 	if span, ok := p.offsetSpan(node); ok {
 		return span, true
 	}
@@ -58,12 +63,19 @@ func (p *projection) span(node *vertex) (pdg.Span, bool) {
 	return pdg.Span{Source: 1, Start: uint32(start), End: uint32(start + len(code))}, true
 }
 
+func (p *projection) sameSource(node *vertex) bool {
+	return node.text("FILENAME") == "" || node.text("FILENAME") == p.path()
+}
+
 func (p *projection) offsetSpan(node *vertex) (pdg.Span, bool) {
 	if p.file == nil {
 		return pdg.Span{}, false
 	}
 	start, end := node.number("OFFSET"), node.number("OFFSET_END")
 	if start < 0 || end < start || end > len(p.code) {
+		return pdg.Span{}, false
+	}
+	if p.code[start:end] != node.text("CODE") {
 		return pdg.Span{}, false
 	}
 	return pdg.Span{Source: 1, Start: uint32(start), End: uint32(end)}, true
@@ -92,16 +104,7 @@ func methodSource(method *vertex, file *sourceFile) string {
 	if source, ok := methodOffsets(method, file); ok {
 		return source
 	}
-	line, end := method.number("LINE_NUMBER"), method.number("LINE_NUMBER_END")
-	start, ok := file.position(line, 1)
-	if !ok || end < line {
-		return method.text("CODE")
-	}
-	finish, ok := file.position(end+1, 1)
-	if !ok {
-		finish = len(file.content)
-	}
-	return strings.TrimSuffix(file.content[start:finish], "\n")
+	return method.text("CODE")
 }
 
 func methodOffsets(method *vertex, file *sourceFile) (string, bool) {
@@ -110,6 +113,9 @@ func methodOffsets(method *vertex, file *sourceFile) (string, bool) {
 	}
 	start, end := method.number("OFFSET"), method.number("OFFSET_END")
 	if start < 0 || end < start || end > len(file.content) {
+		return "", false
+	}
+	if file.content[start:end] != method.text("CODE") {
 		return "", false
 	}
 	return file.content[start:end], true

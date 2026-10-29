@@ -33,6 +33,18 @@ Quality and pattern analysis use Go type information. Fix package or type errors
 before relying on their results. A finding is a reason to inspect the code, not
 an instruction to rewrite it.
 
+Use a [Joern CPG export](docs/joern.md) to inspect C/C++ complexity and imported
+dependencies through the same UI and reports:
+
+```sh
+gstyle --cpg cpg-export
+gstyle search --cpg --format text cpg-export
+gstyle patterns --cpg --format pdg-json cpg-export > pdg.json
+```
+
+CPG input has its own source-complexity policy and partial dependency evidence.
+Typed quality checks and automatic source fixes remain unavailable for imports.
+
 ## Explore in the terminal
 
 The treemap groups functions by file. Tile area shows cyclomatic complexity;

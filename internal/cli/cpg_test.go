@@ -54,6 +54,7 @@ func TestCPGDirectoryAndInvalidOptions(t *testing.T) {
 	}
 	for _, args := range [][]string{
 		{"search", "--cpg", "--tags", "test", dir},
+		{"search", "--cpg", "--tests=false", dir},
 		{"search", "--cpg", "--config", "missing", dir},
 		{"search", "--cpg", dir, dir},
 		{"patterns", "--cpg", "--cache", dir},
