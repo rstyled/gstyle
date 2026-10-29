@@ -58,7 +58,7 @@ func TestPATColumnsDistinguishHiddenLoadingAndZero(t *testing.T) {
 		show, loading bool
 		want          string
 	}{{false, false, "-"}, {true, true, "…"}, {true, false, "0"}} {
-		m := Model{showPatterns: tc.show, patternsLoading: tc.loading}
+		m := Model{showPatterns: tc.show, patternState: patternState{patternsLoading: tc.loading}}
 		if got := strings.TrimSpace(ansi.Strip(m.patternCountCell(0))); got != tc.want {
 			t.Fatalf("show=%t loading=%t: got %q, want %q", tc.show, tc.loading, got, tc.want)
 		}

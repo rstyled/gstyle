@@ -22,12 +22,7 @@ type sourceWorkspace struct {
 
 // clearSelection drops any active line selection.
 func (w sourceWorkspace) clearSelection() sourceWorkspace {
-	w.lineSelection = nil
-	w.visualSelectionActive = false
-	w.activeAnnotationID = ""
-	w.activeFindingLine = 0
-	w.findingDetailOffset = 0
-	return w
+	return w.withSelection(nil)
 }
 
 // withSelection replaces the line selection, clearing visual-select state.

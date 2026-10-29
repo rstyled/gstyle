@@ -3,44 +3,19 @@ package application
 import (
 	"fmt"
 	"strings"
-
-	"github.com/rstyled/gstyle/domain/patterns"
-	"github.com/rstyled/gstyle/domain/quality"
 )
 
-type patternFindingKey struct {
-	candidate  *patterns.Candidate
-	diagnostic *quality.Diagnostic
-	kind       string
-	path       string
-	line       int
-	endLine    int
-}
-
-func patternKey(marker PatternMarker) patternFindingKey {
+func (marker FindingMarker) key() FindingMarker {
 	if marker.Diagnostic != nil {
-		return patternFindingKey{diagnostic: marker.Diagnostic}
+		return FindingMarker{Diagnostic: marker.Diagnostic}
 	}
 	if marker.Candidate != nil {
-		return patternFindingKey{candidate: marker.Candidate}
+		return FindingMarker{Candidate: marker.Candidate}
 	}
-	return patternFindingKey{kind: marker.Kind, path: marker.Path, line: marker.Line, endLine: marker.EndLine}
+	return marker
 }
 
-func uniquePatternMarkers(markers []PatternMarker) []PatternMarker {
-	var unique []PatternMarker
-	seen := make(map[patternFindingKey]bool)
-	for _, marker := range markers {
-		key := patternKey(marker)
-		if !seen[key] {
-			seen[key] = true
-			unique = append(unique, marker)
-		}
-	}
-	return unique
-}
-
-func patternDetailMessages(marker PatternMarker) []string {
+func (marker FindingMarker) detailMessages() []string {
 	if marker.Diagnostic != nil {
 		return qualityDetailMessages(marker.Diagnostic)
 	}
@@ -58,14 +33,14 @@ func patternDetailMessages(marker PatternMarker) []string {
 			messages = append(messages, field[0]+": "+value)
 		}
 	}
-	messages = append(messages, patternRelatedMessages(marker)...)
+	messages = append(messages, marker.relatedMessages()...)
 	for _, evidence := range candidate.CounterEvidence {
 		messages = append(messages, "Caution: "+evidence)
 	}
 	return messages
 }
 
-func patternRelatedMessages(marker PatternMarker) []string {
+func (marker FindingMarker) relatedMessages() []string {
 	var messages []string
 	seen := make(map[string]bool)
 	for _, site := range marker.Candidate.Sites {
@@ -101,4 +76,17 @@ func (m Model) findingRowsOffset(line int) int {
 		return 0
 	}
 	return m.findingDetailOffset
+}
+
+func uniquePatternMarkers(markers []PatternMarker) []PatternMarker {
+	var unique []PatternMarker
+	seen := make(map[FindingMarker]bool)
+	for _, marker := range markers {
+		key := marker.key()
+		if !seen[key] {
+			seen[key] = true
+			unique = append(unique, marker)
+		}
+	}
+	return unique
 }

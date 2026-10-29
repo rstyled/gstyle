@@ -2,6 +2,12 @@ package application
 
 import tea "charm.land/bubbletea/v2"
 
+type patternState struct {
+	patternMarkers  []PatternMarker
+	patternsLoading bool
+	patternsError   error
+}
+
 func (m Model) finishAnalysis(message reportMsg) (Model, tea.Cmd) {
 	m = m.withReport(message)
 	if message.err != nil {
@@ -12,9 +18,7 @@ func (m Model) finishAnalysis(message reportMsg) (Model, tea.Cmd) {
 
 func (m Model) resetPatternScan() Model {
 	m.patternGeneration++
-	m.patternsLoading = false
-	m.patternsError = nil
-	m.patternMarkers = nil
+	m.patternState = patternState{}
 	return m
 }
 
@@ -28,9 +32,7 @@ func (m Model) withPatterns(message patternsMsg) Model {
 	if message.generation != m.patternGeneration {
 		return m
 	}
-	m.patternMarkers = message.markers
-	m.patternsLoading = false
-	m.patternsError = message.err
+	m.patternState = patternState{patternMarkers: message.markers, patternsError: message.err}
 	m.revision++
 	return m
 }

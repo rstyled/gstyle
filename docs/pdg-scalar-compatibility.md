@@ -42,6 +42,13 @@ zero-initialized definition identity. There are no initializer expressions to
 order. Multiple initializer expressions, parallel assignments and multiple
 results retain the existing admission limits.
 
+Local non-generic type aliases to integer and Boolean types are admitted when
+the rest of the function meets this profile. Alias declarations add no runtime
+operation or dependency. Typed variable bindings retain their resolved source
+type, including grouped aliases, alias chains and lexical shadowing. Distinct
+local type definitions and aliases to other kinds remain outside this admission
+boundary. Source inventory and CFG validation reject invented alias operations.
+
 Routine extraction now checks eligible scalar graphs with the same independent
 verifiers used by native matching. Certification runs on the final graph after
 package exit refinement. It requires a known source snapshot and target width,

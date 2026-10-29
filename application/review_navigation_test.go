@@ -122,7 +122,7 @@ func TestPatternNavigationUsesInnermostAvailableSourceAndKeepsCursorVisible(t *t
 }
 
 func TestBracketKeysWithNoReviewTargetsDoNothing(t *testing.T) {
-	m := Model{showPatterns: true, patternMarkers: []PatternMarker{{Path: "missing.go", Line: 1}}}
+	m := Model{showPatterns: true, patternState: patternState{patternMarkers: []PatternMarker{{Path: "missing.go", Line: 1}}}}
 	for _, key := range []string{"[", "]"} {
 		m = pressSourceKey(t, m, key)
 		if m.revision != 0 || m.focus != filesPane {

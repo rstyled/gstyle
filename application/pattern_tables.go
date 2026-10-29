@@ -43,25 +43,25 @@ func (m Model) filePatternCount(path string) int {
 
 func (m Model) functionPatternCount(path string, function domain.Function) int {
 	return m.patternFindingCount(func(marker PatternMarker) bool {
-		return patternPathMatches(marker.Path, path) && patternOverlapsFunction(marker, function)
+		return patternPathMatches(marker.Path, path) && marker.overlaps(function)
 	})
-}
-
-func patternOverlapsFunction(marker PatternMarker, function domain.Function) bool {
-	end := max(marker.Line, marker.EndLine)
-	last := max(function.Line, function.EndLine, function.Line+sourceLineCount(function.Source)-1)
-	return marker.Line <= last && end >= function.Line
 }
 
 func (m Model) patternFindingCount(keep func(PatternMarker) bool) int {
 	if !m.showPatterns {
 		return 0
 	}
-	seen := make(map[patternFindingKey]bool)
+	seen := make(map[FindingMarker]bool)
 	for _, marker := range m.patternMarkers {
 		if keep(marker) {
-			seen[patternKey(marker)] = true
+			seen[marker.key()] = true
 		}
 	}
 	return len(seen)
+}
+
+func (marker FindingMarker) overlaps(function domain.Function) bool {
+	end := max(marker.Line, marker.EndLine)
+	last := max(function.Line, function.EndLine, function.Line+sourceLineCount(function.Source)-1)
+	return marker.Line <= last && end >= function.Line
 }

@@ -18,6 +18,35 @@ type FindingMarker struct {
 	Diagnostic *quality.Diagnostic
 }
 
+func (marker FindingMarker) label() string {
+	if marker.Diagnostic != nil {
+		return "quality: " + marker.Kind
+	}
+	return "pattern: " + marker.Kind
+}
+
+func (m Model) findingMarkers() []PatternMarker {
+	qualityMarkers := m.qualityMarkers
+	if qualityMarkers == nil {
+		qualityMarkers = qualityMarkersFromReport(m.report)
+	}
+	if !m.showPatterns {
+		return qualityMarkers
+	}
+	return slices.Concat(m.patternMarkers, qualityMarkers)
+}
+
+func (m Model) visibleFindingMarkers() []PatternMarker {
+	path := m.selectedFilePath()
+	var markers []PatternMarker
+	for _, marker := range m.findingMarkers() {
+		if patternPathMatches(marker.Path, path) {
+			markers = append(markers, marker)
+		}
+	}
+	return markers
+}
+
 func qualityMarkersFromReport(report domain.Report) []PatternMarker {
 	markers := make([]PatternMarker, 0)
 	for _, file := range report.Files {
@@ -43,35 +72,6 @@ func fileQualityMarkers(file domain.File) []PatternMarker {
 		}
 	}
 	return markers
-}
-
-func (m Model) findingMarkers() []PatternMarker {
-	qualityMarkers := m.qualityMarkers
-	if qualityMarkers == nil {
-		qualityMarkers = qualityMarkersFromReport(m.report)
-	}
-	if !m.showPatterns {
-		return qualityMarkers
-	}
-	return slices.Concat(m.patternMarkers, qualityMarkers)
-}
-
-func (m Model) visibleFindingMarkers() []PatternMarker {
-	path := m.selectedFilePath()
-	var markers []PatternMarker
-	for _, marker := range m.findingMarkers() {
-		if patternPathMatches(marker.Path, path) {
-			markers = append(markers, marker)
-		}
-	}
-	return markers
-}
-
-func findingLabel(marker PatternMarker) string {
-	if marker.Diagnostic != nil {
-		return "quality: " + marker.Kind
-	}
-	return "pattern: " + marker.Kind
 }
 
 func qualityDetailMessages(diagnostic *quality.Diagnostic) []string {

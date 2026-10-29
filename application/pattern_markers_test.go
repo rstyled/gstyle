@@ -198,7 +198,7 @@ func TestPToggleKeybinding(t *testing.T) {
 }
 
 func TestPatternsMsgUpdate(t *testing.T) {
-	m := Model{patternsLoading: true}
+	m := Model{patternState: patternState{patternsLoading: true}}
 	markers := []PatternMarker{{Kind: "guard_clause", Path: "a.go", Line: 1}}
 	updated, _ := m.Update(patternsMsg{markers: markers})
 	nm := updated.(Model)

@@ -45,7 +45,7 @@ func (b *irBuilder) scalarSourceBinding(node ast.Node) bool {
 
 func (b *irBuilder) scalarSourceType(node ast.Node) bool {
 	if declaration, ok := node.(*ast.GenDecl); ok {
-		return declaration.Tok == token.VAR
+		return b.scalarDeclarationSource(declaration)
 	}
 	expression, ok := node.(ast.Expr)
 	if !ok {
@@ -56,6 +56,34 @@ func (b *irBuilder) scalarSourceType(node ast.Node) bool {
 		return true
 	}
 	basic, ok := value.Type.Underlying().(*types.Basic)
+	return ok && basic.Info()&(types.IsInteger|types.IsBoolean) != 0
+}
+
+func (b *irBuilder) scalarDeclarationSource(declaration *ast.GenDecl) bool {
+	if declaration.Tok == token.VAR {
+		return true
+	}
+	if declaration.Tok != token.TYPE {
+		return false
+	}
+	for _, spec := range declaration.Specs {
+		if !b.scalarAliasSource(spec) {
+			return false
+		}
+	}
+	return true
+}
+
+func (b *irBuilder) scalarAliasSource(spec ast.Spec) bool {
+	alias, ok := spec.(*ast.TypeSpec)
+	if !ok || !alias.Assign.IsValid() || alias.TypeParams != nil {
+		return false
+	}
+	typ := b.info.TypeOf(alias.Type)
+	if typ == nil {
+		return false
+	}
+	basic, ok := typ.Underlying().(*types.Basic)
 	return ok && basic.Info()&(types.IsInteger|types.IsBoolean) != 0
 }
 

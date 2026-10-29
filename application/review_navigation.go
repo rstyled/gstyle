@@ -1,8 +1,9 @@
 package application
 
 import (
+	"cmp"
 	"fmt"
-	"sort"
+	"slices"
 
 	"github.com/rstyled/gstyle/domain"
 )
@@ -45,21 +46,8 @@ func (m Model) reviewTargets() []reviewTarget {
 			startLine: target.StartLine, endLine: target.EndLine, annotation: &target.Annotation,
 		})
 	}
-	sort.SliceStable(targets, func(i, j int) bool { return reviewTargetBefore(targets[i], targets[j]) })
+	slices.SortStableFunc(targets, compareReviewTargets)
 	return targets
-}
-
-func reviewTargetBefore(left, right reviewTarget) bool {
-	if left.fileIndex != right.fileIndex {
-		return left.fileIndex < right.fileIndex
-	}
-	if left.functionIndex != right.functionIndex {
-		return left.functionIndex < right.functionIndex
-	}
-	if left.startLine != right.startLine {
-		return left.startLine < right.startLine
-	}
-	return left.endLine < right.endLine
 }
 
 func (m Model) findingTargets() []reviewTarget {
@@ -95,23 +83,6 @@ func (m Model) findingTarget(marker PatternMarker) (reviewTarget, bool) {
 	return reviewTarget{}, false
 }
 
-func patternFunctionIndex(functions []domain.Function, line int) int {
-	index := -1
-	for i, function := range functions {
-		if !functionHasSourceLine(function, line) {
-			continue
-		}
-		if index < 0 || function.Line > functions[index].Line {
-			index = i
-		}
-	}
-	return index
-}
-
-func functionHasSourceLine(function domain.Function, line int) bool {
-	return function.Line <= line && line < function.Line+sourceLineCount(function.Source)
-}
-
 func (m Model) activeReviewIndex(targets []reviewTarget) int {
 	for i, target := range targets {
 		if m.reviewTargetActive(target) {
@@ -132,52 +103,30 @@ func (m Model) adjacentReviewIndex(targets []reviewTarget, delta int) int {
 	if index := m.activeReviewIndex(targets); index >= 0 {
 		return (index + delta + len(targets)) % len(targets)
 	}
+	start, stop := 0, len(targets)
+	if delta < 0 {
+		start, stop = len(targets)-1, -1
+	}
+	for i := start; i != stop; i += delta {
+		if m.reviewTargetAtCursor(targets[i], delta) {
+			return i
+		}
+	}
+	return start
+}
+
+func (m Model) reviewTargetAtCursor(target reviewTarget, delta int) bool {
+	if target.fileIndex != m.fileIndex {
+		return cmp.Compare(target.fileIndex, m.fileIndex)*delta > 0
+	}
+	if target.functionIndex < 0 {
+		return true
+	}
+	if target.functionIndex != m.functionIndex {
+		return cmp.Compare(target.functionIndex, m.functionIndex)*delta > 0
+	}
 	if delta > 0 {
-		return m.nextReviewIndex(targets)
-	}
-	return m.previousReviewIndex(targets)
-}
-
-func (m Model) nextReviewIndex(targets []reviewTarget) int {
-	for i, target := range targets {
-		if m.reviewTargetAfterCursor(target) {
-			return i
-		}
-	}
-	return 0
-}
-
-func (m Model) previousReviewIndex(targets []reviewTarget) int {
-	for i := len(targets) - 1; i >= 0; i-- {
-		if m.reviewTargetBeforeCursor(targets[i]) {
-			return i
-		}
-	}
-	return len(targets) - 1
-}
-
-func (m Model) reviewTargetAfterCursor(target reviewTarget) bool {
-	if target.fileIndex != m.fileIndex {
-		return target.fileIndex > m.fileIndex
-	}
-	if target.functionIndex < 0 {
-		return true
-	}
-	if target.functionIndex != m.functionIndex {
-		return target.functionIndex > m.functionIndex
-	}
-	return target.endLine >= m.sourceLine()
-}
-
-func (m Model) reviewTargetBeforeCursor(target reviewTarget) bool {
-	if target.fileIndex != m.fileIndex {
-		return target.fileIndex < m.fileIndex
-	}
-	if target.functionIndex < 0 {
-		return true
-	}
-	if target.functionIndex != m.functionIndex {
-		return target.functionIndex < m.functionIndex
+		return target.endLine >= m.sourceLine()
 	}
 	return target.startLine <= m.sourceLine()
 }
@@ -195,4 +144,30 @@ func (m Model) reviewNavigationLabel() string {
 		label += fmt.Sprintf("; %d unmatched", unmatched)
 	}
 	return label + ")"
+}
+
+func patternFunctionIndex(functions []domain.Function, line int) int {
+	index := -1
+	for i, function := range functions {
+		if !functionHasSourceLine(function, line) {
+			continue
+		}
+		if index < 0 || function.Line > functions[index].Line {
+			index = i
+		}
+	}
+	return index
+}
+
+func functionHasSourceLine(function domain.Function, line int) bool {
+	return function.Line <= line && line < function.Line+sourceLineCount(function.Source)
+}
+
+func compareReviewTargets(left, right reviewTarget) int {
+	return cmp.Or(
+		cmp.Compare(left.fileIndex, right.fileIndex),
+		cmp.Compare(left.functionIndex, right.functionIndex),
+		cmp.Compare(left.startLine, right.startLine),
+		cmp.Compare(left.endLine, right.endLine),
+	)
 }

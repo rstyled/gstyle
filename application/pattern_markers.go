@@ -1,12 +1,12 @@
 package application
 
 import (
+	"cmp"
 	"context"
-	"sort"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 	"github.com/rstyled/gstyle/application/patterncheck"
 	"github.com/rstyled/gstyle/domain/patterns"
 )
@@ -48,25 +48,6 @@ func (m Model) selectedFilePath() string {
 	return file.Path
 }
 
-// visiblePatternMarkers returns markers for the selected file, or nil when
-// pattern highlights are toggled off.
-func (m Model) visiblePatternMarkers() []PatternMarker {
-	if !m.showPatterns || len(m.patternMarkers) == 0 {
-		return nil
-	}
-	path := m.selectedFilePath()
-	if path == "" {
-		return nil
-	}
-	var out []PatternMarker
-	for _, mk := range m.patternMarkers {
-		if patternPathMatches(mk.Path, path) {
-			out = append(out, mk)
-		}
-	}
-	return out
-}
-
 // togglePatterns flips pattern highlight visibility.
 func (m Model) togglePatterns() Model {
 	m.showPatterns = !m.showPatterns
@@ -76,6 +57,17 @@ func (m Model) togglePatterns() Model {
 	}
 	m.revision++
 	return m
+}
+
+func (mk FindingMarker) covers(path string, line int) bool {
+	if !patternPathMatches(mk.Path, path) {
+		return false
+	}
+	end := mk.EndLine
+	if end <= 0 {
+		end = mk.Line
+	}
+	return mk.Line <= line && line <= end
 }
 
 // patternMarkersFromReport converts pattern candidates' sites into markers.
@@ -101,14 +93,8 @@ func patternMarkersFromReport(report *patterns.PatternsReport) []PatternMarker {
 			})
 		}
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Path != out[j].Path {
-			return out[i].Path < out[j].Path
-		}
-		if out[i].Line != out[j].Line {
-			return out[i].Line < out[j].Line
-		}
-		return out[i].Kind < out[j].Kind
+	slices.SortStableFunc(out, func(a, b PatternMarker) int {
+		return cmp.Or(cmp.Compare(a.Path, b.Path), cmp.Compare(a.Line, b.Line), cmp.Compare(a.Kind, b.Kind))
 	})
 	return out
 }
@@ -128,24 +114,12 @@ func patternMarkersAtLine(markers []PatternMarker, path string, line int) []Patt
 	var out []PatternMarker
 	seen := map[string]bool{}
 	for _, mk := range markers {
-		if patternMarkerCovers(mk, path, line) && !seen[mk.Kind] {
+		if mk.covers(path, line) && !seen[mk.Kind] {
 			seen[mk.Kind] = true
 			out = append(out, mk)
 		}
 	}
 	return out
-}
-
-// patternMarkerCovers reports whether the marker's range includes the line.
-func patternMarkerCovers(mk PatternMarker, path string, line int) bool {
-	if !patternPathMatches(mk.Path, path) {
-		return false
-	}
-	end := mk.EndLine
-	if end <= 0 {
-		end = mk.Line
-	}
-	return mk.Line <= line && line <= end
 }
 
 // highlightPatternLine applies the pattern background to a rendered line when
@@ -163,27 +137,14 @@ func sourcePatternRows(markers []PatternMarker, width int) []string {
 		return nil
 	}
 	markers = uniquePatternMarkers(markers)
-	sort.SliceStable(markers, func(i, j int) bool { return markers[i].Kind < markers[j].Kind })
+	slices.SortStableFunc(markers, func(a, b PatternMarker) int { return cmp.Compare(a.Kind, b.Kind) })
 	prefix := muted.Render("      ╰─") + amber.Bold(true).Render("▲ ")
 	var rows []string
 	for _, marker := range markers {
-		rows = append(rows, patternMessageRows(findingLabel(marker), prefix, width)...)
-		for _, message := range patternDetailMessages(marker) {
-			rows = append(rows, patternMessageRows(message, "          ", width)...)
+		rows = append(rows, annotationMessageRows(marker.label(), prefix, width)...)
+		for _, message := range marker.detailMessages() {
+			rows = append(rows, annotationMessageRows(message, "          ", width)...)
 		}
-	}
-	return rows
-}
-
-// patternMessageRows wraps a pattern message like annotationMessageRows.
-func patternMessageRows(message string, prefix string, width int) []string {
-	prefixWidth := ansi.StringWidth(prefix)
-	indent := strings.Repeat(" ", prefixWidth)
-	messageWidth := max(width-prefixWidth, 1)
-	rows := strings.Split(ansi.Wrap(message, messageWidth, ""), "\n")
-	for index, row := range rows {
-		rows[index] = prefix + amber.Render(row)
-		prefix = indent
 	}
 	return rows
 }

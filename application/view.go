@@ -374,7 +374,7 @@ func (m Model) sourceDisplayWindow(lines []string, function domain.Function, wid
 	result := make([]string, 0, height)
 	annotations := m.visibleAnnotations()
 	path := m.selectedFilePath()
-	patterns := m.patternMarkersForDisplay()
+	patterns := m.findingMarkers()
 	for index := min(m.sourceOffset, len(lines)); index < len(lines) && len(result) < height; index++ {
 		lineNumber := function.Line + index
 		rows := sourceRowsAtLine(function, lineNumber, lines[index], width, index == len(lines)-1, annotations)
@@ -387,10 +387,6 @@ func (m Model) sourceDisplayWindow(lines []string, function domain.Function, wid
 		result = append(result, rows...)
 	}
 	return result
-}
-
-func (m Model) patternMarkersForDisplay() []PatternMarker {
-	return m.findingMarkers()
 }
 
 func (m Model) highlightSourceLine(line int, rendered string, annotations []Annotation) string {

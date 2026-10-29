@@ -47,17 +47,15 @@ type Model struct {
 	height        int
 	focus         pane
 	sourceWorkspace
-	fileIndex         int
-	functionIndex     int
-	qualityView       bool
-	annotations       []Annotation
-	nextAnnotationID  int
-	annotationStore   AnnotationStore
-	annotationError   error
-	showPatterns      bool
-	patternMarkers    []PatternMarker
-	patternsLoading   bool
-	patternsError     error
+	fileIndex        int
+	functionIndex    int
+	qualityView      bool
+	annotations      []Annotation
+	nextAnnotationID int
+	annotationStore  AnnotationStore
+	annotationError  error
+	showPatterns     bool
+	patternState
 	patternGeneration uint64
 	qualityMarkers    []PatternMarker
 }
