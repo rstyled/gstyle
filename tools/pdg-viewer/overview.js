@@ -57,8 +57,8 @@ function overviewRasters(graph, layout, paths) {
   const left = rgb(a), right = rgb(b);
   return `rgb(${left.map((v, i) => Math.round(v * weight + right[i] * (1 - weight))).join(',')})`;
  };
- for (const layer of LAYERS) {
-  const path = new Path2D(), tile = colors.getPropertyValue('--' + layer), raised = colors.getPropertyValue('--raised'), line = colors.getPropertyValue('--line');
+ for (const layer of new Set(graph.nodes.map(n=>n.layer))) {
+  const path = new Path2D(), tile = colors.getPropertyValue('--' + layer) || colors.getPropertyValue('--root'), raised = colors.getPropertyValue('--raised'), line = colors.getPropertyValue('--line');
   for (const n of graph.nodes) if (n.layer === layer) {
    const p = layout.positions.get(n.id); path.rect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
   }
@@ -81,13 +81,13 @@ function drawOverview(key, graph, layout, spec) {
  const emphasis=document.createElement('canvas');emphasis.className='overview-scene overview-emphasis';emphasis.setAttribute('aria-hidden','true');stage.insertBefore(emphasis,canvas);
  const focusContext=emphasis.getContext('2d');
  let pose=null,dirty=true,focusDirty=true,focusPose=null;
- const color = name => root.getPropertyValue('--' + name).trim();
+ const color = name => root.getPropertyValue('--' + name).trim() || root.getPropertyValue('--root').trim();
  const mix = (a, b, ratio) => {
   const rgb = hex => hex.replace('#','').match(/../g).map(s => parseInt(s,16));
   const left=rgb(a), right=rgb(b);
   return `rgb(${left.map((v,i)=>Math.round(v*ratio+right[i]*(1-ratio))).join(',')})`;
  };
- const palette = new Map(LAYERS.map(layer => [layer, {tile:color(layer),fill:mix(color(layer),color('raised'),.38),line:mix(color(layer),color('line'),.7)}]));
+ const palette = new Map([...new Set(graph.nodes.map(n=>n.layer))].map(layer => [layer, {tile:color(layer),fill:mix(color(layer),color('raised'),.38),line:mix(color(layer),color('line'),.7)}]));
  const images = raster.images ||= Object.fromEntries(['calls','tiles'].map(name => {const img = new Image();img.src=raster[name];return [name,img];}));
  for (const img of Object.values(images)) img.onload = () => {dirty=true;if(scene.isConnected)applyCamera();};
  const strokes = layout.overviewStrokes ||= paths.map(path=>new Path2D(path));
@@ -171,7 +171,7 @@ function drawOverview(key, graph, layout, spec) {
   ctx.font=`500 ${12/cam.k}px `+root.getPropertyValue('--sans');ctx.fillStyle=color('ink-2');
   for(const p of frames){const chars=Math.max(3,Math.floor((p.w-32)*cam.k/7));ctx.fillText(clip(p.label+' · '+p.count.toLocaleString(),chars),p.x+16,p.y+60);}
   ctx.font=`600 ${14/cam.k}px `+root.getPropertyValue('--sans');
-  for(const s of layout.sections){ctx.fillStyle=color(s.layer);ctx.fillText(s.layer,s.x,s.y+10);}
+  for(const s of layout.sections){ctx.fillStyle=color(s.layer);const chars=Math.max(3,Math.floor((s.w+100)*cam.k/8));ctx.fillText(clip(s.layer,chars),s.x,s.y+10);}
   pose={x:cam.x,y:cam.y,k:cam.k,width,height,dpr,pad,calls:state.allCalls,moving};dirty=false;
  };
  const highlight = (id,chosen) => {

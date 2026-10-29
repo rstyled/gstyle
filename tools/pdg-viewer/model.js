@@ -1,12 +1,24 @@
 // Domain layers come from the first path segment below the module root.
 const LAYERS = ['domain', 'application', 'adapters', 'internal', 'cmd', 'tools', 'root'];
-function layerOf(pkg, module) {
+function layerOf(pkg, module, layers = LAYERS) {
  const head = pkg === module ? '' : pkg.slice(module.length + 1).split('/')[0];
- return LAYERS.includes(head) ? head : 'root';
+ return layers.includes(head) ? head : 'root';
 }
 const shortPackage = (pkg, module) => pkg === module ? module.split('/').at(-1) : pkg.slice(module.length + 1);
 
+function indexLayers(index) {
+ const layers = index.layers || LAYERS;
+ if(!Array.isArray(layers) || !layers.includes('root') || new Set(layers).size !== layers.length || layers.some(l=>typeof l!=='string'||!/^[a-z][a-z0-9-]*$/.test(l)))throw new Error('Index layers must be unique CSS-safe names and include root');
+ if(!index.layer_columns)return layers;
+ const columns=index.layer_columns;
+ if(!Array.isArray(columns)||columns.some(c=>!Array.isArray(c)||!c.length))throw new Error('Index layer columns must be nonempty arrays');
+ const placed=columns.flat();
+ if(placed.length!==layers.length||new Set(placed).size!==placed.length||layers.some(l=>!placed.includes(l)))throw new Error('Index columns must place every layer exactly once');
+ return layers;
+}
+
 function indexModel(index) {
+ const layers=indexLayers(index), columns=index.layer_columns || (index.layers ? layers.map(l=>[l]) : undefined);
  const symbols = new Map(index.symbols.map(s => [s.id, s])), byPackage = new Map(index.packages.map(p => [p.id, []])), callers = new Map();
  for (const s of index.symbols) {
   if (!byPackage.has(s.package)) byPackage.set(s.package, []);
@@ -18,7 +30,7 @@ function indexModel(index) {
   }
  }
  for (const list of byPackage.values()) list.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
- return {index, module: index.module, symbols, byPackage, callers, packages: new Map(index.packages.map(p => [p.id, p]))};
+ return {index, module: index.module, layers, columns, symbols, byPackage, callers, packages: new Map(index.packages.map(p => [p.id, p]))};
 }
 
 // Packages and their repository-internal imports, weighted by resolved calls.
@@ -28,8 +40,8 @@ function packageGraph(model) {
   const target = model.symbols.get(c.target);
   if (target && target.package !== s.package) { const key = s.package + '\n' + target.package; calls.set(key, (calls.get(key) || 0) + 1); }
  }
- const nodes = model.index.packages.map(p => ({id: p.id, kind: 'package', label: shortPackage(p.id, model.module), layer: layerOf(p.id, model.module), functions: model.byPackage.get(p.id)?.length || 0, lines: p.lines}))
-  .sort((a, b) => LAYERS.indexOf(a.layer) - LAYERS.indexOf(b.layer) || a.id.localeCompare(b.id));
+ const nodes = model.index.packages.map(p => ({id: p.id, kind: 'package', label: shortPackage(p.id, model.module), layer: layerOf(p.id, model.module, model.layers), functions: model.byPackage.get(p.id)?.length || 0, lines: p.lines}))
+  .sort((a, b) => model.layers.indexOf(a.layer) - model.layers.indexOf(b.layer) || a.id.localeCompare(b.id));
  const edges = model.index.packages.flatMap(p => p.imports.filter(id => model.packages.has(id)).map(id => ({source: p.id, target: id, count: calls.get(p.id + '\n' + id) || 0})));
  return {nodes, edges};
 }
@@ -37,7 +49,7 @@ function packageGraph(model) {
 // Every indexed function has its own node, including disconnected declarations.
 // Only resolved internal calls create edges; repeated call sites retain a count.
 function repositoryGraph(model) {
- const nodes = model.index.symbols.map(s => ({id: s.id, label: s.name, kind: 'function', package: s.package, layer: layerOf(s.package, model.module), symbol: s}));
+ const nodes = model.index.symbols.map(s => ({id: s.id, label: s.name, kind: 'function', package: s.package, layer: layerOf(s.package, model.module, model.layers), symbol: s}));
  const edges = new Map();
  for (const s of model.index.symbols) for (const c of s.calls) {
   if (!model.symbols.has(c.target)) continue;
@@ -54,7 +66,7 @@ function callGraph(model, pkg) {
  const own = model.byPackage.get(pkg) || [], ownIDs = new Set(own.map(s => s.id)), stubs = new Map(), edges = new Map();
  const stub = (side, other) => {
   const id = side + ':' + other;
-  if (!stubs.has(id)) stubs.set(id, {id, kind: side === 'in' ? 'caller-package' : 'callee-package', package: other, label: shortPackage(other, model.module), layer: layerOf(other, model.module)});
+  if (!stubs.has(id)) stubs.set(id, {id, kind: side === 'in' ? 'caller-package' : 'callee-package', package: other, label: shortPackage(other, model.module), layer: layerOf(other, model.module, model.layers)});
   return id;
  };
  const link = (source, target, count = 1) => { const key = source + '\n' + target; const e = edges.get(key); if (e) e.count += count; else edges.set(key, {source, target, count}); };
@@ -68,7 +80,7 @@ function callGraph(model, pkg) {
    if (from.package !== pkg) link(stub('in', from.package), s.id, count);
   }
  }
- const nodes = own.map(s => ({id: s.id, kind: 'function', label: s.name, symbol: s, layer: layerOf(pkg, model.module)}));
+ const nodes = own.map(s => ({id: s.id, kind: 'function', label: s.name, symbol: s, layer: layerOf(pkg, model.module, model.layers)}));
  return {nodes: [...[...stubs.values()].filter(n => n.kind === 'caller-package'), ...nodes, ...[...stubs.values()].filter(n => n.kind === 'callee-package')], edges: [...edges.values()]};
 }
 

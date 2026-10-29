@@ -4,8 +4,8 @@
 // Nodes without edges pack into a tray below. Ranks describe layout, not time.
 // The repository map gives each architectural layer a stable section. Import
 // links do not move packages when selection changes.
-function packageLayout(nodes, edges) {
- const columns = [['cmd', 'internal', 'tools', 'root'], ['application'], ['adapters'], ['domain']];
+const LAYER_COLUMNS = [['cmd', 'internal', 'tools', 'root'], ['application'], ['adapters'], ['domain']];
+function packageLayout(nodes, edges, columns = LAYER_COLUMNS) {
  const positions = new Map(), sections = [];
  let column = 0, height = 0;
  for (const layers of columns) {
@@ -51,8 +51,7 @@ function dependenceLayout(nodes, edges, size) {
 
 // Expand package groups into individual function tiles. Architectural columns
 // stay stable regardless of calls, selection, search, or disconnected nodes.
-function repositoryLayout(nodes, edges, packages) {
- const columns = [['cmd', 'internal', 'tools', 'root'], ['application'], ['adapters'], ['domain']];
+function repositoryLayout(nodes, edges, packages, columns = LAYER_COLUMNS) {
  const byPackage = new Map(packages.map(p => [p.id, []]));
  for (const n of nodes) byPackage.get(n.package).push(n);
  const positions = new Map(), frames = [], sections = [];

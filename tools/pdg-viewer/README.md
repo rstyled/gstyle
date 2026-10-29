@@ -74,6 +74,29 @@ Restart the server after code changes. The server binds only localhost, confines
 source reads to the selected root, and serves only indexed function IDs. The Go
 toolchain must be able to load the selected module and its dependencies.
 
+## Imported frontend indexes
+
+`-repo` builds a Go index. A C++/Joern backend can serve the same atlas through
+`/api/index`, `/api/source?id=...`, and `/api/pdg?id=...`. The frontend retains
+every indexed method, including declarations and methods with no resolved calls.
+
+An imported index can supply `language: "cpp"`, `group_label`, `layers`,
+`layer_columns`, and hex `layer_colors` to group functions by the source tree's
+components. Layer names use lowercase CSS-safe identifiers and include `root`
+for other paths. Columns place each layer exactly once; omitted custom columns
+use one column per layer. `relationships: "calls"` labels component links as calls. The optional
+`scope_note`, `call_resolution_note`, and `analysis_limits` describe the import's
+coverage without Go build claims. Symbol `qualified_name` participates in search;
+`source_note` records method source limits. Call targets must name exact indexed
+IDs. Preserve repeated sites; retain unresolved calls without guessed targets.
+
+The PDG endpoint returns a one-document array with its recorded extraction
+limits and embedded source snapshot. If the method's byte range is unverified,
+a viewer response may include `display_source` with `content`, `line`, and
+`reason`; the source panel displays that evidence without inferred node mapping.
+Large imports load these per-function documents on demand, while all function
+tiles remain on the repository map.
+
 ## Standalone exports
 
 ```sh

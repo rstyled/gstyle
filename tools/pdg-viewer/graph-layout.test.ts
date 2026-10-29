@@ -79,3 +79,17 @@ test('repository layout retains all functions in disjoint package frames with st
   expect(a.x+a.w<=b.x || b.x+b.w<=a.x || a.y+a.h<=b.y || b.y+b.h<=a.y).toBe(true);
  }
 });
+
+test('custom C++ columns place all 7041 imported methods and preserve call endpoints',()=>{
+ const api=new Function(readFileSync(new URL('./graph-layout.js',import.meta.url),'utf8')+';return {repositoryLayout,packageLayout}')();
+ const columns=[['engine','root'],['engine-mod'],['engine-lib'],['engine-core']];
+ const packages=columns.flat().map(layer=>({id:layer,label:layer,layer}));
+ const nodes=Array.from({length:7041},(_,i)=>({id:String(i),package:packages[i%packages.length].id,symbol:{file:'source.cpp',start:i}}));
+ const edges=[{source:'0',target:'7040'},{source:'7040',target:'3'}];
+ const result=api.repositoryLayout(nodes,edges,packages,columns);
+ expect(result.positions.size).toBe(7041);
+ expect(result.frames.reduce((sum:number,f:any)=>sum+f.count,0)).toBe(7041);
+ expect(result.sections.map((s:any)=>s.layer)).toEqual(columns.flat());
+ edges.forEach((edge,i)=>{const a=result.positions.get(edge.source),b=result.positions.get(edge.target),route=result.routes[i];expect(route[0].y).toBe(a.y);expect(route.at(-1).y).toBe(b.y);});
+ expect(api.packageLayout(packages,edges.map(()=>({source:'engine-lib',target:'engine-core'})),columns).positions.size).toBe(packages.length);
+});

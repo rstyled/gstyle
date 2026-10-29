@@ -58,3 +58,25 @@ test('repository graph contains every function and exact cross-package endpoints
  expect(graph.edges).toEqual([{source:'a',target:'b',count:2},{source:'a',target:'a',count:1},{source:'b',target:'a',count:1}]);
  expect(graph.nodes.every((n: any)=>n.kind==='function')).toBe(true);
 });
+
+test('imported C++ components keep declarations and unresolved calls without guessing links', () => {
+ const layers=['engine-core','engine-lib','root'];
+ const model=m.indexModel({module:'rocketride',layers,packages:[pkg('rocketride/engine-core/apLib'),pkg('rocketride/engine-lib/engLib')],symbols:[
+  {...symbol('core','rocketride/engine-core/apLib'),call_resolution:'imported'},
+  {...symbol('use','rocketride/engine-lib/engLib',['core','core']),calls:[{target:'core'},{target:'core'},{kind:'dynamic',spelling:'callback'}]},
+  symbol('declaration','rocketride/engine-lib/engLib'),
+ ]});
+ const graph=m.repositoryGraph(model);
+ expect(graph.nodes.map((n:any)=>n.id)).toEqual(['core','use','declaration']);
+ expect(graph.nodes.map((n:any)=>n.layer)).toEqual(['engine-core','engine-lib','engine-lib']);
+ expect(graph.edges).toEqual([{source:'use',target:'core',count:2}]);
+ expect(m.packageGraph(model).nodes.map((n:any)=>n.layer)).toEqual(['engine-core','engine-lib']);
+});
+
+
+test('imported layer configuration cannot hide a layer or inject a CSS name',()=>{
+ const index={module:'repo',layers:['engine-core','root'],packages:[],symbols:[]};
+ expect(m.indexModel(index).columns).toEqual([['engine-core'],['root']]);
+ expect(()=>m.indexModel({...index,layer_columns:[['engine-core']]})).toThrow('every layer exactly once');
+ expect(()=>m.indexModel({...index,layers:['root','bad; color:red']})).toThrow('CSS-safe');
+});

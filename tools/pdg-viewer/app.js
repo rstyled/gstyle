@@ -252,17 +252,17 @@ const textWidth = (text, size, mono) => text.length * size * (mono ? .61 : .56);
 const layerVar = layer => `var(--${layer})`;
 
 function showRepo(route) {
- const model = state.model, graph = packageGraph(model);
+ const model = state.model, graph = packageGraph(model), relation = model.index.relationships === 'calls' ? 'calls' : 'imports';
  if (route.pkg && !model.packages.has(route.pkg)) return notFound('This package is not in the index.');
  const entry = new Set(model.index.symbols.filter(s => s.role === 'entrypoint').map(s => s.package));
  const view = drawGraph('repo', graph, {
-  layout: packageLayout,
+  layout: (nodes,edges)=>packageLayout(nodes,edges,model.columns),
   size: n => ({w: clamp(48 + textWidth(n.label, 13), 150, 320), h: 52}),
   nodeClass: n => 'package' + (entry.has(n.id) ? ' entry' : ''),
   node: n => `<circle class="badge" cx="15" cy="16" r="3" style="fill:${layerVar(n.layer)}"/><text class="name" x="26" y="20">${esc(clip(n.label.replace(new RegExp('^' + n.layer + '/'), ''), 22))}</text><text class="meta" x="26" y="36">${plural(n.functions, 'function')}${entry.has(n.id) ? ' · entrypoint' : ''}</text>`,
   edgeWidth: e => 1 + Math.min(2.4, Math.log2(1 + e.count) * .35),
-  edgeLabel: e => e.count ? plural(e.count, 'call') : 'imports',
-  trayLabel: 'No imports to or from other packages in this repository',
+  edgeLabel: e => e.count ? plural(e.count, 'call') : relation,
+  trayLabel: `No recorded ${relation} between these groups`,
  });
  Object.assign(view, {
   related: id => neighbors(graph, id), edgeOn: touches,
@@ -272,15 +272,15 @@ function showRepo(route) {
  setView(view, route.pkg);
  canvas.classList.add('package-map');
  canvas.classList.toggle('all-imports', state.imports);
- legend('<span>Select to trace imports</span><span>Double-click to open calls</span>');
- toolbar(`<div class="view-label">Package map <span>${graph.nodes.length}</span></div>${repositorySwitcher(false)}<div class="seg"><button id="all-imports" aria-pressed="${state.imports}">All imports</button></div>`);
+ legend(`<span>Select to trace ${relation}</span><span>Double-click to open calls</span>`);
+ toolbar(`<div class="view-label">${esc(model.index.group_label || 'Packages')} <span>${graph.nodes.length}</span></div>${repositorySwitcher(false)}<div class="seg"><button id="all-imports" aria-pressed="${state.imports}">All ${relation}</button></div>`);
  $('#all-imports').onclick = () => { state.imports = !state.imports; canvas.classList.toggle('all-imports', state.imports); $('#all-imports').setAttribute('aria-pressed', state.imports); };
  crumbs([[model.module, null]]);
  inspector(route.pkg ? packagePanel(route.pkg, true) : repoPanel(graph));
 }
 
 function repositorySwitcher(all) {
- return `<div class="seg"><a href="${href.repo()}" ${all ? '' : 'aria-current="page"'}>Packages</a><a href="${href.all()}" ${all ? 'aria-current="page"' : ''}>All functions</a></div>`;
+ return `<div class="seg"><a href="${href.repo()}" ${all ? '' : 'aria-current="page"'}>${esc(state.model.index.group_label || 'Packages')}</a><a href="${href.all()}" ${all ? 'aria-current="page"' : ''}>All functions</a></div>`;
 }
 
 function showAll(route) {
@@ -291,7 +291,7 @@ function showAll(route) {
  if (route.pkg && !model.packages.has(route.pkg)) return notFound('This package is not in the index.');
  const view = state.view?.key === 'all' ? state.view : drawGraph('all', graph, {
   overview: true,
-  layout: (nodes, edges) => repositoryLayout(nodes, edges, packages),
+  layout: (nodes, edges) => repositoryLayout(nodes, edges, packages, model.columns),
   title: n => `${n.label} · ${n.symbol.file}:${n.symbol.line}`,
  });
  Object.assign(view, {
@@ -383,7 +383,7 @@ async function showPDG(route) {
   rankGap: 90,
   radius: (n, p) => n.kind === 'param' || n.kind === 'result' ? p.h / 2 : 7,
   nodeClass: n => [n.category, n.kind].join(' '),
-  node: n => `<text class="kind" x="14" y="17">${n.line ? 'L' + n.line + ' · ' : ''}${esc(n.kind)}</text><text class="code" x="14" y="34">${esc(clip(n.code, 54))}</text>`,
+  node: (n,p) => `<text class="kind" x="14" y="17">${esc(clip((n.line ? 'L' + n.line + ' · ' : '') + n.kind, Math.floor((p.w-28)/6.5)))}</text><text class="code" x="14" y="34">${esc(clip(n.code, 54))}</text>`,
   edgeKind: e => e.kind,
   edgeLabel: e => e.symbols.join(', '),
   trayLabel: 'No dependencies recorded for these operations',
@@ -466,27 +466,28 @@ function crumbs(parts) {
 // ── inspector panels ───────────────────────────────────────────────────────
 function repoPanel(graph) {
  const all = state.route.view === 'all';
- const {index, module} = state.model, layers = LAYERS.filter(l => graph.nodes.some(n => n.layer === l));
+ const {index, module} = state.model, layers = state.model.layers.filter(l => graph.nodes.some(n => n.layer === l));
  const typed = index.symbols.filter(s => s.call_resolution === 'typed').length;
- const resolution = `${typed.toLocaleString()} / ${index.symbols.length.toLocaleString()} functions type-checked. Other calls are unavailable.`;
+ const resolution = index.call_resolution_note || `${typed.toLocaleString()} / ${index.symbols.length.toLocaleString()} functions type-checked. Other calls are unavailable.`;
+ const scope = index.scope_note || 'Production Go only. Excludes tests, testdata, dist, nested modules, vendor, and dependencies.';
  return `<section><h2 class="sans">${esc(base(module))}</h2><div class="sub mono">${esc(module)}</div>
-  <dl class="facts"><dt>Packages</dt><dd>${index.packages.length}</dd><dt>Functions</dt><dd>${index.symbols.length.toLocaleString()}</dd><dt>Go files</dt><dd>${index.packages.reduce((n, p) => n + p.files, 0)}</dd><dt>Lines</dt><dd>${index.lines.toLocaleString()}</dd><dt>Calls</dt><dd>${resolution}</dd></dl><p class="note">Production Go only. Excludes tests, testdata, dist, nested modules, vendor, and dependencies. ${all ? 'Each tile is a function; frames group packages. Zoom to read names.' : 'Each box is a package; open it to see the functions inside.'}</p></section>
-  <section><h3>Layers</h3><div class="list">${layers.map(l => { const pk = graph.nodes.filter(n => n.layer === l); return `<div class="link"><i class="dot" style="--c:${layerVar(l)}"></i><span>${l}</span><small>${plural(pk.length, 'package')} · ${pk.reduce((s, n) => s + n.functions, 0).toLocaleString()} fn</small></div>`; }).join('')}</div>
-  <p class="note">${all ? 'Search or select a function to trace its calls. Every function stays on the map.' : 'Select a package to trace its imports. Open it to explore function calls.'}</p></section>
-  <section><h3>Indexed checkout</h3><div class="sub mono">${esc(index.root)}</div></section>
-  <section><h3>Read the map</h3><p class="note">Columns group packages by their path. Position does not imply execution order.</p><p class="note">Call graphs show static links. Interface dispatch, function values, tests, and callers in other modules can add calls. A missing link is not an unused-code finding.</p></section>`;
+  <dl class="facts"><dt>${esc(index.group_label || 'Packages')}</dt><dd>${index.packages.length}</dd><dt>Functions</dt><dd>${index.symbols.length.toLocaleString()}</dd><dt>${index.language === 'cpp' ? 'C++ files' : 'Go files'}</dt><dd>${index.packages.reduce((n, p) => n + p.files, 0)}</dd><dt>Lines</dt><dd>${index.lines.toLocaleString()}</dd><dt>Calls</dt><dd>${esc(resolution)}</dd></dl><p class="note">${esc(scope)} ${all ? 'Each tile is a function; frames group its component or package. Zoom to read names.' : 'Each box is a component or package; open it to see its functions.'}</p></section>
+  <section><h3>Layers</h3><div class="list">${layers.map(l => { const pk = graph.nodes.filter(n => n.layer === l); return `<div class="link"><i class="dot" style="--c:${layerVar(l)}"></i><span>${l}</span><small>${plural(pk.length, index.language === 'cpp' ? 'component' : 'package')} · ${pk.reduce((s, n) => s + n.functions, 0).toLocaleString()} fn</small></div>`; }).join('')}</div>
+  <p class="note">${all ? 'Search or select a function to trace its calls. Every function stays on the map.' : 'Select a group to trace its recorded links. Open it to explore function calls.'}</p></section>
+  <section><h3>${index.language === 'cpp' ? 'Imported snapshot root' : 'Indexed checkout'}</h3><div class="sub mono">${esc(index.root)}</div></section>
+  <section><h3>Read the map</h3><p class="note">Columns group components or packages by their path. Position does not imply execution order.</p><p class="note">Call graphs show static links. Dynamic dispatch, function pointers, tests, and external callers can add calls. A missing link is not an unused-code finding.</p>${index.analysis_limits ? `<details style="margin-top:12px"><summary>Import scope and limits</summary><p class="note">${esc(index.analysis_limits)}</p></details>` : ''}</section>`;
 }
 function packagePanel(id, fromRepo) {
  const model = state.model, p = model.packages.get(id), functions = model.byPackage.get(id) || [];
  const internal = p.imports.filter(i => model.packages.has(i)), external = p.imports.filter(i => !model.packages.has(i));
- const importers = model.index.packages.filter(q => q.imports.includes(id));
- const pkgLink = q => `<a class="link" href="${href.pkg(q)}"><i class="dot" style="--c:${layerVar(layerOf(q, model.module))}"></i><code>${esc(shortPackage(q, model.module))}</code></a>`;
+ const importers = model.index.packages.filter(q => q.imports.includes(id)), calls = model.index.relationships === 'calls';
+ const pkgLink = q => `<a class="link" href="${href.pkg(q)}"><i class="dot" style="--c:${layerVar(layerOf(q, model.module, model.layers))}"></i><code>${esc(shortPackage(q, model.module))}</code></a>`;
  return `<section><h2 class="sans">${esc(shortPackage(id, model.module))}</h2><div class="sub mono">${esc(id)}</div>
-  <dl class="facts"><dt>Layer</dt><dd><i class="dot" style="--c:${layerVar(layerOf(id, model.module))};display:inline-block;margin-right:6px"></i>${layerOf(id, model.module)}</dd><dt>Files</dt><dd>${p.files}</dd><dt>Lines</dt><dd>${p.lines.toLocaleString()}</dd><dt>Functions</dt><dd>${functions.length}</dd></dl>
+  <dl class="facts"><dt>Layer</dt><dd><i class="dot" style="--c:${layerVar(layerOf(id, model.module, model.layers))};display:inline-block;margin-right:6px"></i>${layerOf(id, model.module, model.layers)}</dd><dt>Files</dt><dd>${p.files}</dd><dt>Lines</dt><dd>${p.lines.toLocaleString()}</dd><dt>Functions</dt><dd>${functions.length}</dd></dl>
   ${fromRepo ? `<div class="actions"><a class="primary" href="${href.pkg(id)}">Open call graph</a></div>` : ''}</section>
-  <section><h3>Imports <span>${internal.length}</span></h3><div class="list">${internal.map(pkgLink).join('') || '<span class="empty">No packages from this repository.</span>'}</div>
+  <section><h3>${calls ? 'Calls into' : 'Imports'} <span>${internal.length}</span></h3><div class="list">${internal.map(pkgLink).join('') || '<span class="empty">No packages from this repository.</span>'}</div>
   ${external.length ? `<p class="note">Also: ${external.map(esc).join(', ')}</p>` : ''}</section>
-  <section><h3>Imported by <span>${importers.length}</span></h3><div class="list">${importers.map(q => pkgLink(q.id)).join('') || '<span class="empty">No package in this repository imports it.</span>'}</div></section>
+  <section><h3>${calls ? 'Called from' : 'Imported by'} <span>${importers.length}</span></h3><div class="list">${importers.map(q => pkgLink(q.id)).join('') || '<span class="empty">No incoming links recorded from other groups.</span>'}</div></section>
   ${fromRepo ? '' : `<section><h3>Functions <span>${functions.length}</span></h3><div class="list">${functions.map(s => `<a class="link" href="${href.pkg(id, s.id)}"><code>${esc(s.name)}</code><small>${esc(fileLine(s))}</small></a>`).join('')}</div></section>`}`;
 }
 function functionPanel(s) {
@@ -501,13 +502,14 @@ function functionPanel(s) {
  const source = state.sources.get(s.id);
  if (source === undefined) loadSource(s);
  return `<section><h2>${esc(s.name)}</h2><div class="sub mono">${esc(s.file)}:${s.line}–${s.end_line}</div>
-  ${s.call_resolution !== 'typed' ? '<p class="note">Calls unavailable: this declaration is outside the active build or its package has type errors.</p>' : ''}
+  ${s.qualified_name ? `<div class="sub mono">${esc(s.qualified_name)}</div>` : ''}
+  ${s.call_resolution === 'imported' ? `<p class="note">${esc(model.index.call_resolution_note)} ${esc(s.source_note || '')}</p>` : s.call_resolution !== 'typed' ? '<p class="note">Calls unavailable: this declaration is outside the active build or its package has type errors.</p>' : ''}
   <div class="actions"><a class="primary" href="${href.pdg(s.id)}">Dependence graph</a></div></section>
-  <section id="source">${source === undefined ? '<p class="empty">Loading source…</p>' : source == null ? '<p class="empty">Source is unavailable. Restart the atlas after changing files.</p>' : functionSource(s)}</section>
-  <section><h3>Called by <span>${callers.length}</span></h3><div class="list">${callers.map(([t, n]) => fnLink(t, n)).join('') || `<span class="empty">${s.role ? 'Started by the Go runtime.' : 'No calls found in this repository. It may be called through an interface, by tests, or by another module.'}</span>`}</div></section>
-  <section><h3>Calls <span>${calls.size}</span></h3><div class="list">${[...calls].map(([id, n]) => fnLink(model.symbols.get(id), n)).join('') || '<span class="empty">No functions from this repository.</span>'}</div>
+  <section id="source">${source === undefined ? '<p class="empty">Loading source…</p>' : source == null ? '<p class="empty">Source is unavailable in this snapshot.</p>' : functionSource(s)}</section>
+  <section><h3>Called by <span>${callers.length}</span></h3><div class="list">${callers.map(([t, n]) => fnLink(t, n)).join('') || `<span class="empty">${s.role ? 'Started by the Go runtime.' : 'No resolved callers recorded. Dynamic dispatch, tests, or external callers can add links.'}</span>`}</div></section>
+  <section><h3>Calls <span>${calls.size}</span></h3><div class="list">${[...calls].map(([id, n]) => fnLink(model.symbols.get(id), n)).join('') || '<span class="empty">No resolved internal calls recorded.</span>'}</div>
   ${external.size ? `<h3 style="margin-top:16px">Outside this repository</h3><div class="chips">${[...external].map(([pkg, names]) => `<span class="chip"><b>${esc(base(pkg))}</b> ${esc([...names].join(', '))}</span>`).join('')}</div>` : ''}
-  ${dynamic.size ? `<h3 style="margin-top:16px">Dynamic <span>interface or function value</span></h3><div class="chips">${[...dynamic].map(d => `<span class="chip">${esc(clip(d, 48))}</span>`).join('')}</div>` : ''}</section>`;
+  ${dynamic.size ? `<h3 style="margin-top:16px">Unresolved calls</h3><div class="chips">${[...dynamic].map(d => `<span class="chip">${esc(clip(d, 48))}</span>`).join('')}</div>` : ''}</section>`;
 }
 async function loadSource(s) {
  try {
@@ -515,7 +517,7 @@ async function loadSource(s) {
   state.sources.set(s.id, response.ok ? (await response.json()).content : null);
  } catch { state.sources.set(s.id, null); }
  const box = $('#source');
- if (box && state.route.fn === s.id) box.innerHTML = state.sources.get(s.id) == null ? '<p class="empty">Source changed on disk since indexing. Restart the atlas to refresh it.</p>' : functionSource(s);
+ if (box && state.route.fn === s.id) box.innerHTML = state.sources.get(s.id) == null ? '<p class="empty">Source is unavailable or differs from the indexed snapshot.</p>' : functionSource(s);
 }
 function functionSource(s) {
  if(!state.sourceBlocks.has(s.id))state.sourceBlocks.set(s.id,sourceBlock(state.sources.get(s.id),s.line));
@@ -528,7 +530,7 @@ function pdgPanel(doc, graph, selected) {
  const src = doc.sources?.find(s => s.id === doc.function?.source_span?.source_id) || doc.sources?.[0];
  const node = graph.nodes.find(n => n.id === selected);
  let source = '<p class="empty">Source text is not included. Export with <code>-source-root</code> to read code here.</p>';
- if (typeof src?.content === 'string') {
+ if (typeof src?.content === 'string' && !doc.display_source) {
   const text = sourceText(src.content), span = doc.function?.source_span || {start: 0, end: text.bytes.length};
   const first = text.line(span.start), last = text.line(Math.max(span.start, span.end - 1));
   const marks = new Map(), related = node ? trace(graph.edges, node.id, state.pdg.mode, state.pdg.kinds) : new Set();
@@ -536,6 +538,7 @@ function pdgPanel(doc, graph, selected) {
   if (node?.span) { const end = node.category === 'control' ? headerEnd(text, node.span.start, node.span.end) : node.span.end; for (let l = node.line; l <= text.line(Math.max(node.span.start, end - 1)); l++) marks.set(l, (marks.get(l) || '') + ' sel'); }
   source = sourceBlock(text.slice(text.starts[first - 1], text.starts[last] ?? text.bytes.length).replace(/\n$/, ''), first, marks);
  }
+ if(doc.display_source)source=`<p class="note">${esc(doc.display_source.reason)}</p>`+sourceBlock(doc.display_source.content,doc.display_source.line);
  const symbol = state.model?.symbols.get(state.route.fn);
  return `<section><h2>${esc(pdgName(doc))}</h2><div class="sub mono">${esc(src?.path || '')}</div>
   <dl class="facts"><dt>Operations</dt><dd>${doc.nodes.length} · shown as ${plural(graph.nodes.length, state.pdg.detail === 'statements' ? 'statement' : 'expression')}</dd><dt>Dependencies</dt><dd>${graph.edges.length} shown · ${doc.edges.length} recorded</dd></dl><p class="note">Dependencies are approximate. Missing links do not prove independence. Open the extraction limits below for details.</p>
@@ -635,18 +638,18 @@ function renderTree() {
  }
  treeKey = key;treeVirtual=null;
 
- const pkgRow = p => `<a class="row${p.id === current ? ' on' : ''}" href="${route.view === 'all' ? href.all(null, p.id) : href.pkg(p.id)}"><i class="dot" style="--c:${layerVar(layerOf(p.id, model.module))}"></i><span class="name">${mark(shortPackage(p.id, model.module), query)}</span><span class="count">${model.byPackage.get(p.id)?.length || 0}</span></a>`;
+ const pkgRow = p => `<a class="row${p.id === current ? ' on' : ''}" href="${route.view === 'all' ? href.all(null, p.id) : href.pkg(p.id)}"><i class="dot" style="--c:${layerVar(layerOf(p.id, model.module, model.layers))}"></i><span class="name">${mark(shortPackage(p.id, model.module), query)}</span><span class="count">${model.byPackage.get(p.id)?.length || 0}</span></a>`;
  const fnRow = (s, extra = '') => `<a class="row fn${s.id === state.route.fn ? ' on' : ''}" href="${route.view === 'all' ? href.all(s.id) : href.pkg(s.package, s.id)}" data-function="${encodeURIComponent(s.id)}"><span class="name">${mark(s.name, query)}</span><span class="count">${extra}</span></a>`;
  if (query) {
   const packages = model.index.packages.filter(p => shortPackage(p.id, model.module).toLowerCase().includes(query));
-  const functions = model.index.symbols.filter(s => `${s.name} ${s.file}`.toLowerCase().includes(query));
-  $('#tree').innerHTML = (packages.length ? `<div class="group">Packages</div>${packages.slice(0, 40).map(pkgRow).join('')}` : '')
+  const functions = model.index.symbols.filter(s => `${s.name} ${s.qualified_name || ''} ${s.file}`.toLowerCase().includes(query));
+  $('#tree').innerHTML = (packages.length ? `<div class="group">${esc(model.index.group_label || 'Packages')}</div>${packages.slice(0, 40).map(pkgRow).join('')}` : '')
    + (functions.length ? `<div class="group">Functions <span style="margin-left:auto">${functions.length}</span></div>${functions.slice(0, 120).map(s => fnRow(s, esc(base(shortPackage(s.package, model.module))))).join('')}` : '')
    + (packages.length + functions.length ? '' : `<p class="hint">Nothing matches “${esc(query)}”.</p>`);
   return;
  }
- $('#tree').innerHTML = LAYERS.map(layer => {
-  const packages = model.index.packages.filter(p => layerOf(p.id, model.module) === layer);
+ $('#tree').innerHTML = model.layers.map(layer => {
+  const packages = model.index.packages.filter(p => layerOf(p.id, model.module, model.layers) === layer);
   if (!packages.length) return '';
   return `<div class="group"><i class="dot" style="--c:${layerVar(layer)}"></i>${layer}</div>` + packages.map(p => pkgRow(p) + (p.id === current ? functionRows(model.byPackage.get(p.id) || [], fnRow) : '')).join('');
  }).join('');
@@ -698,9 +701,12 @@ addEventListener('hashchange', route);
  try {
   const response = await fetch('/api/index', {cache:'no-store'});
   if (!response.ok) throw new Error(await response.text());
-  state.model = indexModel(await response.json());
-  const {index} = state.model;
-  $('#stats').textContent = `${index.packages.length} packages · ${index.symbols.length.toLocaleString()} functions · ${index.lines.toLocaleString()} lines`;
+  const index = await response.json();
+  if(index.language === 'cpp')KINDS.control = 'control dependency';
+  for(const [layer,color] of Object.entries(index.layer_colors || {}))if(/^[a-z][a-z0-9-]*$/.test(layer)&&/^#[0-9a-f]{6}$/i.test(color))document.documentElement.style.setProperty('--'+layer,color);
+  state.model = indexModel(index);
+  const {index: loaded} = state.model;
+  $('#stats').textContent = `${loaded.packages.length} ${(loaded.group_label || 'packages').toLowerCase()} · ${loaded.symbols.length.toLocaleString()} functions · ${loaded.lines.toLocaleString()} lines`;
   route();
  } catch (error) { overlay(`<div class="notice"><h3>The repository index did not load</h3><p>${esc(error.message)}</p></div>`); }
 })();
