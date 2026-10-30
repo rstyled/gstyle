@@ -30,10 +30,19 @@ func TestStartupLoadsPatternsAndInlineQualityAutomatically(t *testing.T) {
 	if !strings.Contains(ansi.Strip(strings.Join(m.sourceLines(100, 40, "Source"), "\n")), "quality: mutation_per_target") {
 		t.Fatal("quality findings wait for pattern loading or a toggle")
 	}
-	loaded, followup := m.Update(command())
+	result := command().(patternsMsg)
+	if result.err != nil || result.findings == nil {
+		t.Fatalf("the worker does not prepare the index: %v", result.err)
+	}
+	loaded, followup := m.Update(result)
 	m = loaded.(Model)
-	if followup != nil || m.patternsLoading || m.patternsError != nil || m.analysisLoadingLabel() != "" {
-		t.Fatalf("automatic pattern loading does not finish: %v", m.patternsError)
+	if followup != nil || m.patternsLoading || m.patternsError != nil || m.analysisLoadingLabel() != "" || m.findingLookup != result.findings {
+		t.Fatalf("automatic pattern loading does not finish with its prepared index: %v", m.patternsError)
+	}
+	result.generation--
+	result.findings = &findingIndex{}
+	if m.withPatterns(result).findingLookup != m.findingLookup {
+		t.Fatal("a stale worker index replaces the current report")
 	}
 }
 
@@ -46,26 +55,6 @@ func TestPatternVisibilityDoesNotStartASecondScanDuringInitialLoad(t *testing.T)
 		if !handled || command != nil || m.patternsLoading || m.patternGeneration != generation {
 			t.Fatal("toggling visibility starts a concurrent analysis before the report is ready")
 		}
-	}
-}
-
-func TestPatternCompletionInstallsTheIndexPreparedByTheWorker(t *testing.T) {
-	m := NewModel(loadingAnalyzer{qualityModel().report}, []string{"../domain/report.go"})
-	loaded, command := m.Update(m.Init()())
-	m = loaded.(Model)
-	result := command().(patternsMsg)
-	if result.err != nil || result.findings == nil {
-		t.Fatalf("the worker does not prepare the index: %v", result.err)
-	}
-	m = m.withPatterns(result)
-	if m.findingLookup != result.findings {
-		t.Fatal("pattern completion rebuilds the index on the UI loop")
-	}
-	before := m.findingLookup
-	result.generation--
-	result.findings = &findingIndex{}
-	if m.withPatterns(result).findingLookup != before {
-		t.Fatal("a stale worker index replaces the current report")
 	}
 }
 

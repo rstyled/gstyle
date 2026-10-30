@@ -55,11 +55,7 @@ func (w sourceWorkspace) focusAnnotation(annotation Annotation, locate bool) sou
 }
 
 func (w sourceWorkspace) focusFinding(line, base int) sourceWorkspace {
-	w = w.clearSelection()
-	w.sourceCursor = line - base
-	w.sourceOffset = w.sourceCursor
-	w.activeFindingLine = line
-	return w
+	return sourceWorkspace{sourceCursor: line - base, sourceOffset: line - base, activeFindingLine: line}
 }
 
 // stopAnnotating leaves annotation composition mode, keeping the draft.

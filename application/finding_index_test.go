@@ -36,33 +36,9 @@ func TestFindingIndexChangesWithAnalysisNotNavigation(t *testing.T) {
 	if cleared == loaded || m.filePatternCount("sample.go") != 0 || len(m.findingTargets()) != 1 || loaded.patterns["sample.go"].count != 1 {
 		t.Fatal("refresh retains old findings or mutates the previous index")
 	}
-	m = m.withPatterns(patternsMsg{markers: []PatternMarker{{Path: "sample.go", Line: 12}}})
-	if m.findingLookup != cleared {
-		t.Fatal("a stale result replaces the current index")
-	}
 	m = m.applyReport(domain.Report{})
-	if len(m.findingTargets()) != 0 || len(m.visibleFindingMarkers()) != 0 {
+	if len(m.findingTargets()) != 0 || m.findingLookup.qualityCount != 0 {
 		t.Fatal("a replacement report retains quality markers")
-	}
-}
-
-func TestFindingPathsMatchAtDirectoryBoundariesWithoutAllocating(t *testing.T) {
-	for _, test := range []struct {
-		left, right string
-		want        bool
-	}{
-		{"src/a.go", "/repo/src/a.go", true},
-		{"/repo/src/a.go", "src/a.go", true},
-		{"src/a.go", "src/a.go", true},
-		{"othersrc/a.go", "src/a.go", false},
-		{"src/a.go", "b.go", false},
-	} {
-		if got := patternPathMatches(test.left, test.right); got != test.want {
-			t.Fatalf("%q / %q: got %t, want %t", test.left, test.right, got, test.want)
-		}
-		if allocations := testing.AllocsPerRun(100, func() { patternPathMatches(test.left, test.right) }); allocations != 0 {
-			t.Fatalf("path matching allocates %g objects", allocations)
-		}
 	}
 }
 

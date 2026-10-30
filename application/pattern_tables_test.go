@@ -15,6 +15,7 @@ func patternTableModel() Model {
 	m.report.Files[0].Functions = append(m.report.Files[0].Functions, domain.Function{
 		Name: "second", Line: 30, EndLine: 32, Source: "func second() {\n    return\n}",
 	})
+	m.report.Files = append(m.report.Files, domain.File{Path: "other.go"})
 	m.showPatterns = true
 	m.patternMarkers = patternMarkersFromReport(&patterns.PatternsReport{Candidates: []patterns.Candidate{
 		{Kind: patterns.CCGraphClone, Sites: []patterns.Site{{Path: "/repo/inspect.go", Line: 11}, {Path: "/repo/inspect.go", Line: 15}, {Path: "other.go", Line: 31}}},

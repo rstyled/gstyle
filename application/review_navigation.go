@@ -97,12 +97,7 @@ func (m Model) findingTarget(marker PatternMarker) (reviewTarget, bool) {
 }
 
 func (m Model) activeReviewIndex(targets []reviewTarget) int {
-	for i, target := range targets {
-		if m.reviewTargetActive(target) {
-			return i
-		}
-	}
-	return -1
+	return slices.IndexFunc(targets, m.reviewTargetActive)
 }
 
 func (m Model) reviewTargetActive(target reviewTarget) bool {

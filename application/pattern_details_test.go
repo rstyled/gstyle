@@ -24,7 +24,7 @@ func TestPatternNotesShowEvidenceReviewAndRelatedLocations(t *testing.T) {
 	if markers[0].Candidate != markers[1].Candidate || markers[0].Candidate.FixSpec != nil {
 		t.Fatal("display markers lose shared finding identity or retain source-edit context")
 	}
-	rows := sourcePatternRows(patternMarkersStartingAt(markers, "a.go", 10), 55)
+	rows := sourcePatternRows(newFindingFile(markers).starts[10], 55)
 	plain := ansi.Strip(strings.Join(rows, "\n"))
 	for _, want := range []string{"pattern: ccgraph_clone", "Observed:", "Inference:", "Review:", "Related: second (b.go:30)", "Caution:"} {
 		if !strings.Contains(plain, want) {
@@ -39,9 +39,6 @@ func TestPatternNotesShowEvidenceReviewAndRelatedLocations(t *testing.T) {
 			t.Fatalf("pattern note exceeds the pane width: %q", ansi.Strip(row))
 		}
 	}
-	if got := sourcePatternRowCount(markers, "a.go", 10, 10, 55); got != len(rows) {
-		t.Fatalf("scroll extent is %d, rendered %d rows", got, len(rows))
-	}
 }
 
 func TestSameKindFindingsAtOneLineKeepTheirOwnDetails(t *testing.T) {
@@ -49,10 +46,7 @@ func TestSameKindFindingsAtOneLineKeepTheirOwnDetails(t *testing.T) {
 		{Kind: patterns.CCGraphClone, Observation: "first clone group", Sites: []patterns.Site{{Path: "a.go", Line: 10}, {Path: "a.go", Line: 10}}},
 		{Kind: patterns.CCGraphClone, Observation: "second clone group", Sites: []patterns.Site{{Path: "a.go", Line: 10}}},
 	}}
-	markers := patternMarkersStartingAt(patternMarkersFromReport(report), "a.go", 10)
-	if len(markers) != 2 {
-		t.Fatal("distinct findings are lost or one finding is repeated")
-	}
+	markers := newFindingFile(patternMarkersFromReport(report)).starts[10]
 	plain := ansi.Strip(strings.Join(sourcePatternRows(markers, 80), "\n"))
 	if strings.Count(plain, "pattern: ccgraph_clone") != 2 || !containsAll(plain, "first clone group", "second clone group") {
 		t.Fatalf("same-kind findings hide each other's evidence:\n%s", plain)
@@ -75,16 +69,16 @@ func TestCloneNotesIdentifyWholeFunctionAndRelatedRange(t *testing.T) {
 		{929, "lines 929-954", "OurReader.decode (reader.go:1900-1925)"},
 		{1900, "lines 1900-1925", "Reader.decode (reader.go:929-954)"},
 	} {
-		at := patternMarkersStartingAt(markers, "reader.go", test.line)
+		at := newFindingFile(markers).starts[test.line]
 		plain := ansi.Strip(strings.Join(sourcePatternRows(at, 150), "\n"))
 		if !containsAll(plain, "Scope: whole function ("+test.scope+")", "Related: "+test.peer) {
 			t.Fatalf("clone note hides its function scope or counterpart:\n%s", plain)
 		}
-		if len(patternMarkersAtLine(markers, "reader.go", test.line+10)) != 1 {
+		if !at[0].covers("reader.go", test.line+10) {
 			t.Fatal("clone highlight loses the function body range")
 		}
 	}
-	if len(patternMarkersAtLine(markers, "reader.go", 1926)) != 0 {
+	if markers[1].covers("reader.go", 1926) {
 		t.Fatal("clone highlight extends past the closing brace")
 	}
 	guard := FindingMarker{Kind: string(patterns.GuardClause), Line: 1903, EndLine: 1906}

@@ -57,7 +57,7 @@ func (m Model) selectedFilePath() string {
 func (m Model) togglePatterns() Model {
 	m.showPatterns = !m.showPatterns
 	m.findingDetailOffset = 0
-	if len(patternMarkersStartingAt(m.findingMarkers(), m.selectedFilePath(), m.activeFindingLine)) == 0 {
+	if len(m.findingsStartingAt(m.activeFindingLine)) == 0 {
 		m.activeFindingLine = 0
 	}
 	m.revision++
@@ -119,29 +119,6 @@ func pathHasSuffix(path, suffix string) bool {
 	return strings.HasSuffix(path, suffix) && strings.HasSuffix(strings.TrimSuffix(path, suffix), "/")
 }
 
-// patternMarkersAtLine returns markers covering path:line, deduplicated by kind.
-func patternMarkersAtLine(markers []PatternMarker, path string, line int) []PatternMarker {
-	var out []PatternMarker
-	seen := map[string]bool{}
-	for _, mk := range markers {
-		if mk.covers(path, line) && !seen[mk.Kind] {
-			seen[mk.Kind] = true
-			out = append(out, mk)
-		}
-	}
-	return out
-}
-
-// highlightPatternLine applies the pattern background to a rendered line when
-// markers cover the line. Annotation and selection highlights are applied
-// afterwards and take precedence.
-func highlightPatternLine(rendered string, markers []PatternMarker) string {
-	if len(markers) == 0 {
-		return rendered
-	}
-	return withBackground(rendered, patternBackground)
-}
-
 func sourcePatternRows(markers []PatternMarker, width int) []string {
 	if len(markers) == 0 {
 		return nil
@@ -160,28 +137,4 @@ func sourcePatternRows(markers []PatternMarker, width int) []string {
 		}
 	}
 	return rows
-}
-
-// patternMarkersStartingAt returns markers whose range starts at the line.
-// Used for the label row, which shows once per finding, while the background
-// highlight covers the whole range.
-func patternMarkersStartingAt(markers []PatternMarker, path string, line int) []PatternMarker {
-	var out []PatternMarker
-	for _, mk := range markers {
-		if !patternPathMatches(mk.Path, path) || mk.Line != line {
-			continue
-		}
-		out = append(out, mk)
-	}
-	return uniquePatternMarkers(out)
-}
-
-// sourcePatternRowCount counts display rows added by pattern markers, for
-// scroll math. Mirrors sourceAnnotationRowCount.
-func sourcePatternRowCount(markers []PatternMarker, path string, start int, end int, width int) int {
-	count := 0
-	for line := start; line <= end; line++ {
-		count += len(sourcePatternRows(patternMarkersStartingAt(markers, path, line), width))
-	}
-	return count
 }

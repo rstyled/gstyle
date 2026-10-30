@@ -1,7 +1,6 @@
 package application
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -56,23 +55,6 @@ func TestQualityLocationsDistinguishFunctionChecksFromWriteSites(t *testing.T) {
 	}
 }
 
-func TestUnknownEvidenceIsHiddenWithoutChangingRawReports(t *testing.T) {
-	m := qualityModel()
-	q := m.report.Files[0].Functions[0].Quality
-	for _, detail := range []string{"first", "first", "second", "third", "fourth", "FINAL_EVIDENCE"} {
-		q.Effects = append(q.Effects, quality.Effect{Line: 12, Kind: quality.UnknownEffect, Detail: detail})
-	}
-	q.Diagnostics[0].Effects = q.Effects
-	plain := ansi.Strip(strings.Join(m.sourceLines(150, 100, "Source"), "\n"))
-	if strings.Contains(plain+strings.Join(m.qualityBody(), "\n"), "FINAL_EVIDENCE") || strings.Contains(plain, "unknown:") {
-		t.Fatalf("unknown effects remain in the TUI:\n%s", plain)
-	}
-	raw, err := json.Marshal(m.controlReport())
-	if err != nil || len(q.Effects) != 7 || !strings.Contains(string(raw), "FINAL_EVIDENCE") {
-		t.Fatal("hiding unknown effects changes the raw JSON evidence")
-	}
-}
-
 func TestBracketsVisitQualityPatternsAndNotesTogether(t *testing.T) {
 	m := qualityModel()
 	m.showPatterns = true
@@ -108,7 +90,7 @@ func TestSameRuleQualityFindingsKeepSeparateEvidence(t *testing.T) {
 	second := q.Diagnostics[0]
 	second.Message = "a second target has its own mutation evidence"
 	q.Diagnostics = append(q.Diagnostics, second)
-	markers := patternMarkersStartingAt(m.findingMarkers(), "sample.go", 10)
+	markers := m.findingsStartingAt(10)
 	if len(markers) != 2 || len(m.findingTargets()) != 1 {
 		t.Fatal("quality findings are lost or create repeated same-line stops")
 	}

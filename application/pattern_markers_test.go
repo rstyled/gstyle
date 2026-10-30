@@ -1,6 +1,7 @@
 package application
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -66,39 +67,18 @@ func TestPatternPathMatches(t *testing.T) {
 		{"pkg/a.go", "a.go", true},
 		{"a.go", "pkg/a.go", true},
 		{"a.go", "b.go", false},
+		{"src/a.go", "/repo/src/a.go", true},
+		{"/repo/src/a.go", "src/a.go", true},
+		{"othersrc/a.go", "src/a.go", false},
 		{"aa.go", "a.go", false},
 	}
 	for _, c := range cases {
 		if got := patternPathMatches(c.a, c.b); got != c.want {
 			t.Errorf("patternPathMatches(%q, %q) = %v, want %v", c.a, c.b, got, c.want)
 		}
-	}
-}
-
-func TestPatternMarkersAtLine(t *testing.T) {
-	markers := patternMarkersFromReport(testPatternsReport())
-	// Line 11 is inside the 10-12 range.
-	got := patternMarkersAtLine(markers, "a.go", 11)
-	if len(got) != 1 || got[0].Kind != "guard_clause" {
-		t.Fatalf("expected guard_clause at line 11, got %+v", got)
-	}
-	// Line 30 has no EndLine; matches exactly.
-	got = patternMarkersAtLine(markers, "a.go", 30)
-	if len(got) != 1 {
-		t.Fatalf("expected 1 marker at line 30, got %+v", got)
-	}
-	// No markers on other files.
-	if got := patternMarkersAtLine(markers, "c.go", 10); len(got) != 0 {
-		t.Fatalf("expected no markers, got %+v", got)
-	}
-	// Dedupes by kind.
-	dupes := []PatternMarker{
-		{Kind: "guard_clause", Path: "a.go", Line: 10},
-		{Kind: "guard_clause", Path: "a.go", Line: 10},
-		{Kind: "typednil", Path: "a.go", Line: 10},
-	}
-	if got := patternMarkersAtLine(dupes, "a.go", 10); len(got) != 2 {
-		t.Fatalf("expected 2 deduped markers, got %+v", got)
+		if allocations := testing.AllocsPerRun(100, func() { patternPathMatches(c.a, c.b) }); allocations != 0 {
+			t.Fatalf("path matching allocates %g objects", allocations)
+		}
 	}
 }
 
@@ -114,18 +94,6 @@ func TestTogglePatterns(t *testing.T) {
 	m = m.togglePatterns()
 	if m.showPatterns {
 		t.Fatal("expected showPatterns false after second toggle")
-	}
-}
-
-func TestHighlightPatternLine(t *testing.T) {
-	rendered := "some code"
-	if got := highlightPatternLine(rendered, nil); got != rendered {
-		t.Fatal("expected unchanged with no markers")
-	}
-	markers := []PatternMarker{{Kind: "guard_clause", Path: "a.go", Line: 1}}
-	got := highlightPatternLine(rendered, markers)
-	if got == rendered || len(got) <= len(rendered) {
-		t.Fatal("expected background-wrapped output")
 	}
 }
 
@@ -148,29 +116,11 @@ func TestSourcePatternRows(t *testing.T) {
 
 func containsAll(s string, subs ...string) bool {
 	for _, sub := range subs {
-		found := false
-		for i := 0; i+len(sub) <= len(s); i++ {
-			if s[i:i+len(sub)] == sub {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !strings.Contains(s, sub) {
 			return false
 		}
 	}
 	return true
-}
-
-func TestSourcePatternRowCount(t *testing.T) {
-	markers := patternMarkersFromReport(testPatternsReport())
-	if got := sourcePatternRowCount(markers, "a.go", 10, 12, 80); got != 3 {
-		t.Fatalf("expected a header, observation, and related location, got %d rows", got)
-	}
-	// Wrong path: zero rows.
-	if got := sourcePatternRowCount(markers, "z.go", 10, 12, 80); got != 0 {
-		t.Fatalf("expected 0 pattern rows, got %d", got)
-	}
 }
 
 func TestPToggleKeybinding(t *testing.T) {

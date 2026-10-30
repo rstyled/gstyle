@@ -190,7 +190,7 @@ func (m Model) fileTable(width int, height int) []string {
 		lines = append(lines, m.fileRow(m.report.Files[index], tableWidth, index == m.fileIndex))
 	}
 
-	return tableWindow(lines, start, width, height, len(m.report.Files))
+	return tableWindow(fitPaneLines(lines, width, height), start, width, len(m.report.Files))
 }
 
 func (m Model) fileRow(file domain.File, width int, selected bool) string {
@@ -249,7 +249,7 @@ func (m Model) functionTable(width int, height int) []string {
 		lines = append(lines, m.functionRow(file.Functions[index], tableWidth, index == m.functionIndex))
 	}
 
-	return tableWindow(lines, start, width, height, len(file.Functions))
+	return tableWindow(fitPaneLines(lines, width, height), start, width, len(file.Functions))
 }
 
 func (m Model) functionRow(function domain.Function, width int, selected bool) string {
@@ -596,14 +596,6 @@ func normalizedSourceText(source string) string {
 	return strings.ReplaceAll(source, "\t", "    ")
 }
 
-// appendPatternRows appends the pattern label row for the line, if any.
-func appendPatternRows(rows []string, markers []PatternMarker, path string, line int, width int) []string {
-	if len(markers) == 0 {
-		return rows
-	}
-	return append(rows, sourcePatternRows(patternMarkersStartingAt(markers, path, line), width)...)
-}
-
 func sourceRowsAtLine(
 	function domain.Function,
 	lineNumber int,
@@ -829,12 +821,8 @@ func cognitiveBearingLine(diagnostics []domain.CognitiveDiagnostic, line int) bo
 	return false
 }
 
-func tableWindow(lines []string, start int, width int, height int, total int) []string {
-	rendered := fitPaneLines(lines, width, height)
-	if height == 0 || total+2 <= height {
-		return rendered
-	}
-	return verticalScrollbar(rendered, 2, start, total, max(height-2, 0), width)
+func tableWindow(lines []string, start int, width int, total int) []string {
+	return verticalScrollbar(lines, 2, start, total, max(len(lines)-2, 0), width)
 }
 
 func tableRowRange(count, selected, height int) (int, int) {

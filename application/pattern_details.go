@@ -9,7 +9,7 @@ import (
 
 func (marker FindingMarker) key() FindingMarker {
 	if marker.Diagnostic != nil {
-		return FindingMarker{Diagnostic: marker.Diagnostic, Line: marker.Line}
+		return FindingMarker{Diagnostic: marker.Diagnostic}
 	}
 	if marker.Candidate != nil {
 		return FindingMarker{Candidate: marker.Candidate}

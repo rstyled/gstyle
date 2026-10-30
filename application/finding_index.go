@@ -26,7 +26,7 @@ func (m Model) indexFindings() Model {
 		quality:        m.indexFindingFiles(m.qualityMarkers),
 		targets:        m.collectFindingTargets(all),
 		qualityTargets: m.collectFindingTargets(m.qualityMarkers),
-		qualityCount:   qualityFindingCount(m.qualityMarkers),
+		qualityCount:   len(uniquePatternMarkers(m.qualityMarkers)),
 	}
 	return m
 }
@@ -39,14 +39,7 @@ func (m Model) ensureFindingIndex() Model {
 }
 
 func (m Model) indexFindingFiles(markers []PatternMarker) map[string]findingFile {
-	paths := make(map[string][]PatternMarker)
-	for _, marker := range markers {
-		paths[marker.Path] = append(paths[marker.Path], marker)
-	}
-	files := make(map[string]findingFile, len(paths))
-	for path, group := range paths {
-		files[path] = newFindingFile(group)
-	}
+	files := make(map[string]findingFile, len(m.report.Files))
 	for _, file := range m.report.Files {
 		var matching []PatternMarker
 		for _, marker := range markers {

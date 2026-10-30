@@ -52,10 +52,10 @@ func groupedQualityEvidence(path string, function domain.Function, summary Findi
 
 func diagnosticEvidence(diagnostic quality.Diagnostic) []qualityEvidence {
 	var records []qualityEvidence
-	for _, effect := range knownEffects(diagnostic.Effects) {
+	for _, effect := range diagnostic.Effects {
 		records = append(records, qualityEvidence{line: effect.Line, message: fmt.Sprintf("L%d %s: %s", effect.Line, effect.Kind, effect.Detail)})
 	}
-	for _, mutation := range knownMutations(diagnostic.Mutations) {
+	for _, mutation := range diagnostic.Mutations {
 		records = append(records, qualityEvidence{line: mutation.Line, message: mutationQualityLine(mutation)})
 	}
 	return records

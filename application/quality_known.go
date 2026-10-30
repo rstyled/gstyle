@@ -130,13 +130,3 @@ func qualityDensityLabel(q *domain.FunctionQuality, mutations int) string {
 	}
 	return fmt.Sprintf("%d known mutations", mutations)
 }
-
-func qualityFindingCount(markers []PatternMarker) int {
-	seen := make(map[*quality.Diagnostic]bool)
-	for _, marker := range markers {
-		if marker.Diagnostic != nil {
-			seen[marker.Diagnostic] = true
-		}
-	}
-	return len(seen)
-}

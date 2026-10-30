@@ -2,7 +2,6 @@ package application
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/rstyled/gstyle/domain"
 	"github.com/rstyled/gstyle/domain/patterns"
@@ -36,27 +35,6 @@ func (marker FindingMarker) label() string {
 		return "quality: " + marker.Kind
 	}
 	return "pattern: " + marker.Kind
-}
-
-func (m Model) findingMarkers() []PatternMarker {
-	qualityMarkers := m.qualityMarkers
-	if qualityMarkers == nil {
-		qualityMarkers = qualityMarkersFromReport(m.report)
-	}
-	if !m.showPatterns {
-		return qualityMarkers
-	}
-	return slices.Concat(m.patternMarkers, qualityMarkers)
-}
-
-func (m Model) visibleFindingMarkers() []PatternMarker {
-	m = m.ensureFindingIndex()
-	path := m.selectedFilePath()
-	qualityMarkers := m.findingLookup.quality[path].markers
-	if !m.showPatterns {
-		return qualityMarkers
-	}
-	return slices.Concat(m.findingLookup.patterns[path].markers, qualityMarkers)
 }
 
 func qualityMarkersFromReport(report domain.Report) []PatternMarker {
