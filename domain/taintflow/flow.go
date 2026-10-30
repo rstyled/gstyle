@@ -6,24 +6,49 @@ import (
 	"maps"
 )
 
-func (q *query) analyze(solver *summarySolver) summary {
-	result := emptySummary()
-	inputs := map[pdg.Ref]state{q.flow.Entry: q.initial()}
-	e := evaluation{query: q, solver: solver, catalog: solver.queries, summaries: solver.summaries, result: &result, exits: map[pdg.Ref]state{}}
-	e.solveBody(inputs)
-	summarizeWrites(&result, e.exits)
-	return result
-}
-
 type bodyWorklist struct {
 	queue   []pdg.Ref
 	pending map[pdg.Ref]bool
 	inputs  map[pdg.Ref]state
 }
 
+func (work *bodyWorklist) enqueue(target pdg.Ref, next state) {
+	if !mergeInput(work.inputs, target, next) || work.pending[target] {
+		return
+	}
+	work.pending[target] = true
+	work.queue = append(work.queue, target)
+}
+
+func (q *query) analyze(solver *summarySolver) summary {
+	result := emptySummary()
+	initial := q.initial()
+	initial.work = solver.work
+	inputs := map[pdg.Ref]state{q.flow.Entry: initial}
+	e := evaluation{query: q, solver: solver, catalog: solver.queries, summaries: solver.summaries, result: &result, exits: map[pdg.Ref]state{}}
+	e.solveBody(inputs)
+	summarizeWrites(&result, e.exits)
+	return result
+}
+
+func (q *query) indexLiveNodes() {
+	blocks := map[pdg.Ref]int{}
+	for index, block := range q.flow.Blocks {
+		for _, ref := range block.Operations {
+			blocks[ref] = index + 1
+		}
+	}
+	q.live = map[pdg.Ref]bool{}
+	for _, edge := range q.graph.Edges {
+		if crossBlockValue(edge, blocks) {
+			q.live[edge.Source] = true
+		}
+	}
+}
+
 func (e *evaluation) solveBody(inputs map[pdg.Ref]state) {
 	work := bodyWorklist{queue: []pdg.Ref{e.query.flow.Entry}, pending: map[pdg.Ref]bool{e.query.flow.Entry: true}, inputs: inputs}
-	for cursor := 0; cursor < len(work.queue); cursor++ {
+	for cursor := 0; cursor < len(work.queue) && e.solver.work.available(); cursor++ {
 		ref := work.queue[cursor]
 		delete(work.pending, ref)
 		e.state = cloneState(inputs[ref])
@@ -40,40 +65,7 @@ func (e *evaluation) solveBody(inputs map[pdg.Ref]state) {
 		}
 	}
 }
-func (work *bodyWorklist) enqueue(target pdg.Ref, next state) {
-	if !mergeInput(work.inputs, target, next) || work.pending[target] {
-		return
-	}
-	work.pending[target] = true
-	work.queue = append(work.queue, target)
-}
-func mergeInput(inputs map[pdg.Ref]state, target pdg.Ref, next state) bool {
-	old, reached := inputs[target]
-	if !reached {
-		inputs[target] = next
-		return true
-	}
-	joined := joinState(old, next)
-	if stateEqual(old, joined) {
-		return false
-	}
-	inputs[target] = joined
-	return true
-}
-func (q *query) indexLiveNodes() {
-	blocks := map[pdg.Ref]int{}
-	for index, block := range q.flow.Blocks {
-		for _, ref := range block.Operations {
-			blocks[ref] = index + 1
-		}
-	}
-	q.live = map[pdg.Ref]bool{}
-	for _, edge := range q.graph.Edges {
-		if crossBlockValue(edge, blocks) {
-			q.live[edge.Source] = true
-		}
-	}
-}
+
 func (e *evaluation) retainLiveNodes() {
 	kept := map[slot]value{}
 	for key, item := range e.state.Nodes {
@@ -83,39 +75,7 @@ func (e *evaluation) retainLiveNodes() {
 	}
 	e.state.Nodes = kept
 }
-func joinState(left, right state) state {
-	result := cloneState(left)
-	maps.Copy(result.Repeated, right.Repeated)
-	for key, item := range right.Bindings {
-		result.Bindings[key] = joinValue(result.Bindings[key], item)
-	}
-	for key, item := range right.Nodes {
-		result.Nodes[key] = joinValue(result.Nodes[key], item)
-	}
-	for key, item := range left.Memory {
-		if _, found := right.Memory[key]; found {
-			continue
-		}
-		result.Memory[key] = joinValue(item, readCell(right, key))
-	}
-	for key, item := range right.Memory {
-		result.Memory[key] = joinValue(item, readCell(left, key))
-	}
-	return result
-}
-func readCell(store state, key cell) value {
-	if item, known := store.Memory[key]; known {
-		return wildcardWrites(store, key, item)
-	}
-	item := emptyValue()
-	nested := key.Object
-	nested.Fields = appendFields(nested.Fields, key.Fields)
-	item.Objects[nested] = true
-	if key.Object.Input != 0 {
-		item.Data[atom{Input: key.Object.Input, Fields: appendFields(key.Object.Fields, key.Fields)}] = true
-	}
-	return wildcardWrites(store, key, item)
-}
+
 func (e *evaluation) operation(ref pdg.Ref) {
 	node := e.query.graph.Nodes[ref-1]
 	switch node.Category {
@@ -129,14 +89,78 @@ func (e *evaluation) operation(ref pdg.Ref) {
 		e.store(slot{Node: ref}, e.expression(ref))
 	}
 }
+
 func (e *evaluation) returned(ref pdg.Ref) {
 	for index := range e.query.graph.Function.Outputs {
 		position := pdg.Position(index + 1)
 		item := e.input(ref, position)
 		e.result.Results[position] = joinValue(e.result.Results[position], item)
 	}
-	e.exits[ref] = state{Memory: maps.Clone(e.state.Memory), Repeated: maps.Clone(e.state.Repeated)}
+	e.exits[ref] = state{work: e.state.work, Memory: maps.Clone(e.state.Memory), Repeated: maps.Clone(e.state.Repeated)}
 }
+
+func mergeInput(inputs map[pdg.Ref]state, target pdg.Ref, next state) bool {
+	old, reached := inputs[target]
+	if !reached {
+		inputs[target] = next
+		return true
+	}
+	joined := joinState(old, next)
+	if stateEqual(old, joined) {
+		return false
+	}
+	inputs[target] = joined
+	return true
+}
+
+func joinState(left, right state) state {
+	result := cloneState(left)
+	unions := valueUnions{}
+	left.unions, right.unions = unions, unions
+	maps.Copy(result.Repeated, right.Repeated)
+	for key, item := range right.Bindings {
+		result.Bindings[key] = left.joinValues(result.Bindings[key], item)
+	}
+	for key, item := range right.Nodes {
+		result.Nodes[key] = left.joinValues(result.Nodes[key], item)
+	}
+	for key, item := range left.Memory {
+		if _, found := right.Memory[key]; found {
+			continue
+		}
+		result.Memory[key] = left.joinValues(item, readCell(right, key))
+	}
+	for key, item := range right.Memory {
+		result.Memory[key] = left.joinValues(item, readCell(left, key))
+	}
+	return result
+}
+
+func readCell(store state, key cell) value {
+	if item, found := store.reads[key]; found {
+		return item
+	}
+	item := readMemoryCell(store, key)
+	if store.reads != nil {
+		store.reads[key] = item
+	}
+	return item
+}
+
+func readMemoryCell(store state, key cell) value {
+	if item, known := store.Memory[key]; known {
+		return wildcardWrites(store, key, item)
+	}
+	item := emptyValue()
+	nested := key.Object
+	nested.Fields = appendFields(nested.Fields, key.Fields)
+	item.Objects[nested] = true
+	if key.Object.Input != 0 {
+		item.Data[atom{Input: key.Object.Input, Fields: appendFields(key.Object.Fields, key.Fields)}] = true
+	}
+	return wildcardWrites(store, key, item)
+}
+
 func summarizeWrites(result *summary, exits map[pdg.Ref]state) {
 	var joined state
 	first := true
@@ -153,6 +177,7 @@ func summarizeWrites(result *summary, exits map[pdg.Ref]state) {
 		result.Writes[key] = item
 	}
 }
+
 func compareFinding(left, right Finding) int {
 	if order := cmp.Compare(left.Sink.Function, right.Sink.Function); order != 0 {
 		return order

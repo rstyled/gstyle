@@ -36,6 +36,9 @@ func TestStateJoinMatchesOriginal(t *testing.T) {
 			if !stateEqual(left, leftBefore) || !stateEqual(right, rightBefore) {
 				t.Fatalf("left=%d right=%d: state join changes its inputs", leftIndex, rightIndex)
 			}
+			if got.reads != nil || got.unions != nil || left.unions != nil || right.unions != nil {
+				t.Fatal("a state join retains its temporary caches")
+			}
 		}
 	}
 }
@@ -114,6 +117,35 @@ func BenchmarkStateJoinOverlap(b *testing.B) {
 		name string
 		join func(state, state) state
 	}{{"original", originalStateJoin}, {"overlap", joinState}} {
+		b.Run(method.name, func(b *testing.B) {
+			b.ReportAllocs()
+			for b.Loop() {
+				if len(method.join(left, right).Memory) != len(left.Memory) {
+					b.Fatal("state join loses stored cells")
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkStateJoinSharedWildcards(b *testing.B) {
+	left, right := emptyState(), emptyState()
+	base, overlay, incoming := emptyValue(), emptyValue(), emptyValue()
+	for index := range 128 {
+		for offset, item := range []value{base, overlay, incoming} {
+			item.Data[atom{Input: index + 1 + offset*128}] = true
+			item.Objects[object{Input: index + 1 + offset*128}] = true
+		}
+	}
+	for index := range 512 {
+		key := cell{Object: object{Input: index/16 + 1}, Fields: fmt.Sprint(index % 16)}
+		left.Memory[key], right.Memory[key] = base, incoming
+		left.Memory[cellKey(key.Object, "*")] = overlay
+	}
+	for _, method := range []struct {
+		name string
+		join func(state, state) state
+	}{{"original", originalStateJoin}, {"cached", joinState}} {
 		b.Run(method.name, func(b *testing.B) {
 			b.ReportAllocs()
 			for b.Loop() {

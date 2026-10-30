@@ -79,6 +79,13 @@ typed-nil checks, unchecked type assertions, swallowed errors, Go slice/index
 checks, and the current Go API taint and resource models. Their graph engines
 can be shared; their API and cleanup assumptions belong to the Go provider.
 
+Taint summary analysis has a work limit of 100 million value elements across
+the catalog. Each union counts its input dependencies, objects, and callable
+targets; substitutions also count copied elements. If this limit is exceeded,
+the report marks taint coverage as unknown and names the function where it
+stops. It discards unfinished taint findings and continues the other analyses.
+Unknown coverage does not establish that the source has no taint flows.
+
 Go extraction remains in `adapters/gopatterns`. Existing `Run` and `RunMining`
 entry points retain their Go behavior. Detection and fix ordering remain the
 same. Size measurements and statistical similarities retain their existing

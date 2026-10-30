@@ -27,59 +27,7 @@ type query struct {
 	addresses       map[pdg.Ref]map[pdg.Position]pdg.Ref
 	live            map[pdg.Ref]bool
 }
-type evaluation struct {
-	solver        *summarySolver
-	arguments     map[pdg.Position]value
-	argumentPaths map[argumentPath]value
-	query         *query
-	catalog       map[string]*query
-	summaries     map[string]summary
-	state         state
-	result        *summary
-	exits         map[pdg.Ref]state
-}
 
-// Analyze solves symbolic parameter/result/field summaries to a fixed point.
-// Unknown external calls preserve argument taint. No summary proves a path
-// feasible, validates an allowlist, or establishes that an unreported path is safe.
-func Analyze(graphs map[string]*pdg.Graph, models Models) ([]Finding, error) {
-	queries, err := prepare(graphs, models)
-	if err != nil {
-		return nil, err
-	}
-	if err := linkEnvironments(queries); err != nil {
-		return nil, err
-	}
-	if !hasEndpoints(queries) {
-		return nil, nil
-	}
-	if err := proveMemory(queries); err != nil {
-		return nil, err
-	}
-	summaries := map[string]summary{}
-	for name := range queries {
-		summaries[name] = emptySummary()
-	}
-	solveSummaries(queries, summaries)
-	return findings(summaries), nil
-}
-func prepare(graphs map[string]*pdg.Graph, models Models) (map[string]*query, error) {
-	result := map[string]*query{}
-	for name, graph := range graphs {
-		q, err := newQuery(graph, models)
-		if err != nil {
-			return nil, fmt.Errorf("taint %s: %w", name, err)
-		}
-		if q == nil {
-			continue
-		}
-		if q.name == "" || name != q.name {
-			return nil, fmt.Errorf("taint function identity does not match catalog key %q", name)
-		}
-		result[name] = q
-	}
-	return result, nil
-}
 func newQuery(graph *pdg.Graph, models Models) (*query, error) {
 	prepared, err := callflow.NewQueries(graph)
 	paths := prepared.Bindings
@@ -100,6 +48,7 @@ func newQuery(graph *pdg.Graph, models Models) (*query, error) {
 	q.indexLiveNodes()
 	return q, nil
 }
+
 func (q *query) indexAddress(edge pdg.Edge) {
 	if edge.Kind != pdg.Data || q.graph.Tables.Text(edge.Subkind) != "write-address" {
 		return
@@ -109,6 +58,7 @@ func (q *query) indexAddress(edge pdg.Edge) {
 	}
 	q.addresses[edge.Target][edge.Position] = edge.Source
 }
+
 func (q *query) initial() state {
 	result := emptyState()
 	for symbol, index := range q.inputs {
@@ -127,6 +77,75 @@ func (q *query) initial() state {
 	}
 	return result
 }
+
+func (q *query) indexInputs() {
+	for index, input := range q.graph.Function.Inputs {
+		if input.Symbol != 0 {
+			q.inputs[input.Symbol] = index + 1
+		}
+	}
+	q.indexCells()
+}
+
+type evaluation struct {
+	solver        *summarySolver
+	arguments     map[pdg.Position]value
+	argumentPaths map[argumentPath]value
+	substitutions map[valueKey]substitution
+	query         *query
+	catalog       map[string]*query
+	summaries     map[string]summary
+	state         state
+	result        *summary
+	exits         map[pdg.Ref]state
+}
+
+// Analyze solves symbolic parameter/result/field summaries to a fixed point.
+// Unknown external calls preserve argument taint. No summary proves a path
+// feasible, validates an allowlist, or establishes that an unreported path is safe.
+func Analyze(graphs map[string]*pdg.Graph, models Models) ([]Finding, error) {
+	return analyze(graphs, models, summaryWorkLimit)
+}
+
+func analyze(graphs map[string]*pdg.Graph, models Models, workLimit int) ([]Finding, error) {
+	queries, err := prepare(graphs, models)
+	if err != nil {
+		return nil, err
+	}
+	if err := linkEnvironments(queries); err != nil {
+		return nil, err
+	}
+	if !hasEndpoints(queries) {
+		return nil, nil
+	}
+	if err := proveMemory(queries); err != nil {
+		return nil, err
+	}
+	summaries, err := solveSummaries(queries, workLimit)
+	if err != nil {
+		return nil, err
+	}
+	return findings(summaries), nil
+}
+
+func prepare(graphs map[string]*pdg.Graph, models Models) (map[string]*query, error) {
+	result := map[string]*query{}
+	for name, graph := range graphs {
+		q, err := newQuery(graph, models)
+		if err != nil {
+			return nil, fmt.Errorf("taint %s: %w", name, err)
+		}
+		if q == nil {
+			continue
+		}
+		if q.name == "" || name != q.name {
+			return nil, fmt.Errorf("taint function identity does not match catalog key %q", name)
+		}
+		result[name] = q
+	}
+	return result, nil
+}
+
 func findings(summaries map[string]summary) []Finding {
 	seen := map[Finding]bool{}
 	for _, item := range summaries {
@@ -139,6 +158,7 @@ func findings(summaries map[string]summary) []Finding {
 	slices.SortFunc(result, compareFinding)
 	return result
 }
+
 func collectFindings(item summary, seen map[Finding]bool) {
 	for sink, deps := range item.Sinks {
 		for dep := range deps {
@@ -147,13 +167,4 @@ func collectFindings(item summary, seen map[Finding]bool) {
 			}
 		}
 	}
-}
-
-func (q *query) indexInputs() {
-	for index, input := range q.graph.Function.Inputs {
-		if input.Symbol != 0 {
-			q.inputs[input.Symbol] = index + 1
-		}
-	}
-	q.indexCells()
 }

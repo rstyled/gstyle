@@ -38,7 +38,7 @@ func TestCallbackEffectProjectsOnlyToCapturedCells(t *testing.T) {
 		actual.Objects[root] = true
 		e := evaluation{state: state, arguments: map[pdg.Position]value{1: actual}}
 		projected := map[cell]value{}
-		e.projectWrite(0, cell{Object: object{Input: 1}, Fields: callbackEffect}, emptyValue(), projected)
+		e.projectWrite(0, cell{Object: object{Input: 1}, Fields: callbackEffect}, emptyValue(), writeProjection{values: projected, weak: map[cell]bool{}})
 		switch root {
 		case environment:
 			if _, ok := projected[cellKey(captured, "*")]; !ok || len(projected) != 1 {

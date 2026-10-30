@@ -148,8 +148,8 @@ func TestLocalCallPathCacheMatchesUncachedProjection(t *testing.T) {
 				cached.localCall(3, callee, s)
 				uncached.uncachedLocalCall(3, other, original)
 				compareProjection(t, &cached, &uncached)
-				if cached.argumentPaths != nil {
-					t.Fatal("path cache survives local call")
+				if cached.argumentPaths != nil || cached.substitutions != nil {
+					t.Fatal("substitution caches survive local call")
 				}
 				if !summaryEqual(s, original) || !maps.EqualFunc(cached.arguments, uncached.arguments, valueEqual) {
 					t.Fatal("projection changes arguments or callee summary")
@@ -247,7 +247,7 @@ func TestKnownTargetPathCachesMatchUncachedAlternatives(t *testing.T) {
 				cached.invokeKnown(3, callee)
 				uncached.uncachedInvokeKnown(3, callee)
 				compareProjection(t, &cached, &uncached)
-				if cached.arguments != nil || cached.argumentPaths != nil {
+				if cached.arguments != nil || cached.argumentPaths != nil || cached.substitutions != nil {
 					t.Fatal("known target retains its argument context")
 				}
 				if name == "variadic" && !cached.state.Nodes[slot{Node: 3, Result: 1}].Data[atom{Source: Site{Function: "second operand", Node: 1}}] {

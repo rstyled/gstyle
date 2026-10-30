@@ -8,18 +8,25 @@ import (
 	"strings"
 )
 
-func fieldKey(fields []uint32) string {
-	parts := make([]string, len(fields))
-	for index, field := range fields {
-		parts[index] = strconv.FormatUint(uint64(field), 10)
-	}
-	return strings.Join(parts, "/")
+type writeProjection struct {
+	values map[cell]value
+	weak   map[cell]bool
 }
-func (e *evaluation) substitute(item value, call pdg.Ref) value {
+
+func (projected writeProjection) preserveOriginal(store state) {
+	for target := range projected.weak {
+		projected.values[target] = store.joinValues(readCell(store, target), projected.values[target])
+	}
+}
+
+func (e *evaluation) expandSubstitution(item value, call pdg.Ref) value {
 	result := emptyValue()
 	result.Functions, result.Opaque, result.Nil = item.Functions, item.Opaque, item.Nil
 	for dep := range item.Data {
 		translated := e.substituteAtom(dep, call)
+		if !e.state.work.spend(valueSize(translated) + 1) {
+			return value{}
+		}
 		if dep.SafeFor != "" {
 			translated = encodeValue(translated, dep.SafeFor)
 		}
@@ -30,24 +37,36 @@ func (e *evaluation) substitute(item value, call pdg.Ref) value {
 	}
 	return result
 }
+
 func (e *evaluation) substituteAtom(dep atom, call pdg.Ref) value {
 	if dep.Input == 0 {
 		return value{Data: dependencies{dep: true}, Objects: map[object]bool{}}
 	}
 	return e.argumentPathValue(call, dep.Input, dep.Fields)
 }
+
 func (e *evaluation) substituteObject(target map[object]bool, root object, call pdg.Ref) {
+	if !e.state.work.spend(1) {
+		return
+	}
 	if root.Input == 0 {
 		root = e.rebaseObject(root, call)
 		target[root] = true
 		return
 	}
-	for item := range e.argumentPathValue(call, root.Input, root.Fields).Objects {
+	objects := e.argumentPathValue(call, root.Input, root.Fields).Objects
+	if !e.state.work.spend(len(objects)) {
+		return
+	}
+	for item := range objects {
 		target[item] = true
 	}
 }
+
 func (e *evaluation) callWrites(call pdg.Ref, summary summary) {
-	projected := map[cell]value{}
+	projected := writeProjection{values: map[cell]value{}, weak: map[cell]bool{}}
+	e.state.reads = map[cell]value{}
+	e.state.unions = valueUnions{}
 	for root := range summary.Repeated {
 		targets := map[object]bool{}
 		e.substituteObject(targets, root, call)
@@ -58,26 +77,30 @@ func (e *evaluation) callWrites(call pdg.Ref, summary summary) {
 	for key, item := range summary.Writes {
 		e.projectWrite(call, key, item, projected)
 	}
-	for key, item := range projected {
+	projected.preserveOriginal(e.state)
+	e.state.reads = nil
+	e.state.unions = nil
+	for key, item := range projected.values {
 		e.state.Memory[key] = item
 	}
 }
-func (e *evaluation) projectWrite(call pdg.Ref, key cell, item value, projected map[cell]value) {
+
+func (e *evaluation) projectWrite(call pdg.Ref, key cell, item value, projected writeProjection) {
 	targets := e.projectTargets(call, key)
 	translated := e.substitute(item, call)
 	for _, target := range targets {
 		if key.Object.Input == 0 {
-			if _, found := projected[target]; found {
+			if _, found := projected.values[target]; found {
 				e.state.Repeated[target.Object] = true
 			}
 		}
-		next := translated
 		if e.weakTarget(key, target, targets) {
-			next = joinValue(readCell(e.state, target), next)
+			projected.weak[target] = true
 		}
-		projected[target] = joinValue(projected[target], next)
+		projected.values[target] = e.state.joinValues(projected.values[target], translated)
 	}
 }
+
 func (e *evaluation) projectTargets(call pdg.Ref, key cell) []cell {
 	if key.Object.Input == 0 {
 		return []cell{{Object: e.rebaseObject(key.Object, call), Fields: key.Fields}}
@@ -93,6 +116,7 @@ func (e *evaluation) projectTargets(call pdg.Ref, key cell) []cell {
 	}
 	return pathTargets(e.state, actual, fields)
 }
+
 func (e *evaluation) weakTarget(original, target cell, targets []cell) bool {
 	if original.Object.Input == 0 {
 		if _, found := e.state.Memory[target]; found {
@@ -101,6 +125,7 @@ func (e *evaluation) weakTarget(original, target cell, targets []cell) bool {
 	}
 	return len(targets) != 1 || e.state.Repeated[target.Object] || strings.Contains(target.Fields, "*")
 }
+
 func (e *evaluation) rebaseObject(root object, call pdg.Ref) object {
 	if root.Input != 0 {
 		return root
@@ -116,11 +141,6 @@ func (e *evaluation) rebaseObject(root object, call pdg.Ref) object {
 	}
 	return root
 }
-func cellKey(root object, fields string) cell {
-	fields = appendFields(root.Fields, fields)
-	root.Fields = ""
-	return cell{Object: root, Fields: fields}
-}
 
 func (e *evaluation) wildcardTargets(base value, fields string) []cell {
 	base = pathValue(e.state, base, wildcardPrefix(fields))
@@ -130,4 +150,18 @@ func (e *evaluation) wildcardTargets(base value, fields string) []cell {
 		result = append(result, cellKey(root, "*"))
 	}
 	return result
+}
+
+func fieldKey(fields []uint32) string {
+	parts := make([]string, len(fields))
+	for index, field := range fields {
+		parts[index] = strconv.FormatUint(uint64(field), 10)
+	}
+	return strings.Join(parts, "/")
+}
+
+func cellKey(root object, fields string) cell {
+	fields = appendFields(root.Fields, fields)
+	root.Fields = ""
+	return cell{Object: root, Fields: fields}
 }

@@ -83,6 +83,9 @@ type summary struct {
 	Sinks    map[sinkKey]dependencies
 }
 type state struct {
+	work     *analysisWork
+	reads    map[cell]value
+	unions   valueUnions
 	Repeated map[object]bool
 	Bindings map[pdg.Ref]value
 	Memory   map[cell]value
@@ -118,6 +121,7 @@ func joinValue(to, from value) value {
 }
 func cloneState(old state) state {
 	result := emptyState()
+	result.work = old.work
 	maps.Copy(result.Repeated, old.Repeated)
 	maps.Copy(result.Bindings, old.Bindings)
 	maps.Copy(result.Memory, old.Memory)

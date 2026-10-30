@@ -40,7 +40,9 @@ func TestProjectedWritesAgainstConcreteAllocationFamily(t *testing.T) {
 					write.Data[source] = true
 				}
 				projected := map[cell]value{}
-				e.projectWrite(0, cell{Object: object{Input: 1}, Fields: "value"}, write, projected)
+				projection := writeProjection{values: projected, weak: map[cell]bool{}}
+				e.projectWrite(0, cell{Object: object{Input: 1}, Fields: "value"}, write, projection)
+				projection.preserveOriginal(e.state)
 				if got := projected[target].Data[source]; got != want {
 					t.Fatalf("size=%d initial=%b incoming=%v got=%v want=%v", size, mask, incoming, got, want)
 				}

@@ -77,7 +77,7 @@ func joinWildcard(store state, key cell, fields string, item value) value {
 	if !found {
 		return item
 	}
-	return joinValue(item, stored)
+	return store.joinValues(item, stored)
 }
 
 func wildcardField(fields string) bool { return fields == "*" || strings.HasSuffix(fields, "/*") }

@@ -29,6 +29,7 @@ func (e *evaluation) sourceCall(ref pdg.Ref) {
 }
 func (e *evaluation) localCall(ref pdg.Ref, callee *query, summary summary) {
 	e.argumentPaths = map[argumentPath]value{}
+	e.substitutions = map[valueKey]substitution{}
 	for index := range callee.graph.Function.Outputs {
 		position := pdg.Position(index + 1)
 		e.store(slot{Node: ref, Result: position}, e.substitute(summary.Results[position], ref))
@@ -39,6 +40,7 @@ func (e *evaluation) localCall(ref pdg.Ref, callee *query, summary summary) {
 	}
 	e.callWrites(ref, summary)
 	e.argumentPaths = nil
+	e.substitutions = nil
 }
 func (e *evaluation) inheritedSink(call pdg.Ref, sink sinkKey, deps dependencies) {
 	translated := e.substitute(value{Data: deps}, call)
