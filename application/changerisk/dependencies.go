@@ -120,7 +120,7 @@ func moduleIdentity(value module) string {
 }
 
 func appendPackageDependencies(ctx context.Context, dir string, items []string) ([]string, error) {
-	data, err := command(ctx, dir, "go", "list", "-mod=readonly", "-deps", "-test", "-json", "./...")
+	data, err := command(ctx, dir, "go", "list", "-buildvcs=false", "-mod=readonly", "-deps", "-test", "-json", "./...")
 	if err != nil {
 		return nil, err
 	}
