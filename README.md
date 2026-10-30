@@ -29,21 +29,34 @@ gstyle ./domain ./adapters
 gstyle check ./domain/service.go
 ```
 
-Quality and pattern analysis use Go type information. Fix package or type errors
+For Go source, quality and pattern analysis use Go type information. Fix package or type errors
 before relying on their results. A finding is a reason to inspect the code, not
 an instruction to rewrite it.
 
-Use a [Joern CPG export](docs/joern.md) to inspect C/C++ complexity and imported
+Use a [C++ CPG export](docs/cpp.md) to inspect C/C++ complexity and imported
 dependencies through the same UI and reports:
 
 ```sh
 gstyle --cpg cpg-export
 gstyle search --cpg --format text cpg-export
+gstyle check --cpg --format json cpg-export
 gstyle patterns --cpg --format pdg-json cpg-export > pdg.json
 ```
 
-CPG input has its own source-complexity policy and partial dependency evidence.
-Typed quality checks and automatic source fixes remain unavailable for imports.
+CPG input supplies complexity, mutation, side-effect, function-size, parameter,
+and domain facts to the shared analyzers. Its 27 pattern analyses include
+structural mining, clones, dependency slices, repeated predicates, parameter
+groups, domain design, and empty catches. Opaque calls receive conservative
+effect results. Pattern coverage uses the verified import's `imported_graph`
+scope. Dependency sizes appear in `measurements`, with real function-call counts
+separate from other graph nodes. Size alone creates no refactor candidate or
+source marker. Findings support source review; C++ source fixes are manual.
+Use `--config gstyle.toml` with patterns or the TUI to apply
+[codebase pattern thresholds](docs/patterns.md#codebase-settings). Explicit
+`--threshold` takes precedence over the file's mining similarity setting.
+Similarity and coverage settings use percentages from 0 to 100; `80` means 80%.
+Patterns use [general, C++, and Go groups](docs/patterns.md); each frontend
+enables the analyses for which it supplies facts.
 
 ## Explore in the terminal
 

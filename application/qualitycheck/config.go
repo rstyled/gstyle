@@ -7,43 +7,75 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/rstyled/gstyle/adapters/cpp"
+	"github.com/rstyled/gstyle/domain/patterns"
 	"github.com/rstyled/gstyle/domain/quality"
 )
 
 type configFile struct {
 	quality.Config
 	Overrides []toml.Primitive `toml:"overrides"`
+	Patterns  patterns.Config  `toml:"patterns"`
 }
 
-var repositoryKeys = []string{"guard", "risk", "prefixes", "grouping", "overrides"}
+var repositoryKeys = []string{"guard", "risk", "prefixes", "grouping", "overrides", "patterns"}
 
 func LoadConfig(path string) (quality.Config, error) {
-	config := quality.DefaultConfig()
+	return LoadConfigWithDefaults(path, quality.DefaultConfig())
+}
+
+func LoadAnalysisConfig(path string, cpg bool) (quality.Config, error) {
+	if cpg {
+		return LoadConfigWithDefaults(path, cpp.DefaultQualityConfig())
+	}
+	return LoadConfig(path)
+}
+
+func LoadConfigWithDefaults(path string, config quality.Config) (quality.Config, error) {
+	file, err := loadConfigFile(path, config)
+	return file.Config, err
+}
+
+func LoadPatternConfig(path string) (patterns.Config, error) {
+	file, err := loadConfigFile(path, quality.DefaultConfig())
+	return file.Patterns, err
+}
+
+func loadConfigFile(path string, config quality.Config) (configFile, error) {
+	file := configFile{Config: config, Patterns: patterns.DefaultConfig()}
 	if path == "" {
-		return config, nil
+		return file, nil
 	}
 	source, err := os.ReadFile(path)
 	if err != nil {
-		return config, fmt.Errorf("read quality config: %w", err)
+		return file, fmt.Errorf("read quality config: %w", err)
 	}
 	// Decode into a config without prefixes so user prefixes extend the
 	// defaults instead of replacing them.
 	defaults := config.Prefixes
 	config.Prefixes = nil
-	file := configFile{Config: config}
+	file.Config = config
 	metadata, err := toml.Decode(string(source), &file)
 	if err != nil {
-		return config, fmt.Errorf("decode quality config: %w", err)
+		return file, fmt.Errorf("decode quality config: %w", err)
 	}
 	config = file.Config
 	config.Prefixes = append(defaults, config.Prefixes...)
 	if config.Scopes, err = decodeOverrides(metadata, file.Overrides, config); err != nil {
-		return config, err
+		return file, err
 	}
 	if err := rejectUndecoded(metadata); err != nil {
-		return config, err
+		return file, err
 	}
-	return config, config.Validate()
+	file.Config = config
+	return file, file.validate()
+}
+
+func (file configFile) validate() error {
+	if err := file.Config.Validate(); err != nil {
+		return err
+	}
+	return file.Patterns.Validate()
 }
 
 type override struct {

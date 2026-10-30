@@ -6,16 +6,19 @@ package patterns
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/rstyled/gstyle/domain/pdg"
 	"reflect"
 	"slices"
 	"sort"
 	"strings"
+
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 // PatternsReport is the full output of the patterns miner.
 type PatternsReport struct {
-	AnalysisCoverage []AnalysisCoverage `json:"analysis_coverage,omitempty"`
+	AnalysisCoverage []AnalysisCoverage      `json:"analysis_coverage,omitempty"`
+	Measurements     []DependencyMeasurement `json:"measurements,omitempty"`
+	Configuration    *Config                 `json:"configuration,omitempty"`
 	// SignatureGroups are the layer-1 groups, best first.
 	SignatureGroups []SigGroup `json:"signature_groups"`
 	// Candidates are the ranked layer-2 abstraction proposals, best first.
@@ -76,53 +79,6 @@ type singleFunctionBuilder struct {
 	build func(prepared []*MiningFacts, options Options) []Candidate
 }
 
-// singleFunctionBuilders runs in FixKindOrder so detection respects
-// dependencies: guards simplify control flow first, primitive types are
-// created before value objects bundle them, factories run after the
-// type-creating passes. Detection-only kinds sort last.
-var singleFunctionBuilders = []singleFunctionBuilder{
-	{GuardClause, func(prepared []*MiningFacts, options Options) []Candidate { return guardCandidates(prepared) }},
-	{OffsetFallback, func(_ []*MiningFacts, options Options) []Candidate { return options.OffsetFallbacks }},
-	{PrimitiveObsession, func(prepared []*MiningFacts, options Options) []Candidate {
-		return primitiveObsessionCandidates(prepared)
-	}},
-	{ValueObject, func(prepared []*MiningFacts, options Options) []Candidate { return valueObjectCandidates(prepared) }},
-	{Factory, func(prepared []*MiningFacts, options Options) []Candidate { return factoryCandidates(prepared) }},
-	{Specification, func(prepared []*MiningFacts, options Options) []Candidate { return specificationCandidates(prepared) }},
-	{MissingIdentity, func(prepared []*MiningFacts, options Options) []Candidate {
-		return missingIdentityCandidates(options.MissingIdentities)
-	}},
-	{EntityIdentity, func(prepared []*MiningFacts, options Options) []Candidate { return entityIdentityCandidates(prepared) }},
-	{DomainService, func(prepared []*MiningFacts, options Options) []Candidate {
-		return domainServiceCandidates(options.DomainServices)
-	}},
-	{AnemicModel, func(prepared []*MiningFacts, options Options) []Candidate {
-		return anemicModelCandidates(options.AnemicModels, options.DomainServices)
-	}},
-	{DeclarationOrder, func(_ []*MiningFacts, options Options) []Candidate { return options.DeclarationOrders }},
-	{MutableIdentity, func(prepared []*MiningFacts, options Options) []Candidate { return mutableIdentityCandidates(prepared) }},
-	{Aggregate, func(prepared []*MiningFacts, options Options) []Candidate { return aggregateCandidates(prepared) }},
-	{Repository, func(prepared []*MiningFacts, options Options) []Candidate { return repositoryCandidates(prepared) }},
-	{NilErr, func(prepared []*MiningFacts, options Options) []Candidate { return nilErrCandidates(prepared) }},
-	{ForceTypeAssert, func(prepared []*MiningFacts, options Options) []Candidate { return forceTypeAssertCandidates(prepared) }},
-	{TypedNil, func(prepared []*MiningFacts, options Options) []Candidate { return typedNilCandidates(prepared) }},
-	{NilGuard, func(_ []*MiningFacts, options Options) []Candidate { return options.NilGuards }},
-	{NegativeIndex, func(_ []*MiningFacts, options Options) []Candidate { return options.NegativeIndices }},
-	{LiteralIndex, func(_ []*MiningFacts, options Options) []Candidate { return options.LiteralIndices }},
-	{ConstantBoolReturn, func(prepared []*MiningFacts, _ Options) []Candidate { return constantBoolReturnCandidates(prepared) }},
-	{TaintFlowKind, func(prepared []*MiningFacts, options Options) []Candidate {
-		if options.semantic != nil {
-			return options.semantic.candidates(TaintFlowKind)
-		}
-		flows := FindTaintFlows(prepared)
-		return TaintFlowCandidates(flows, prepared)
-	}},
-	{Obligation, func(prepared []*MiningFacts, options Options) []Candidate {
-		violations := FindObligationViolations(prepared)
-		return ObligationCandidates(violations, prepared)
-	}},
-}
-
 // Build keeps groups at or above minScoreMilli, then the first top (all when
 // top is nil). Candidates and suppressed start empty; Run fills them in.
 func Build(groups []SigGroup, minScoreMilli uint32, top *int) PatternsReport {
@@ -137,25 +93,17 @@ func Build(groups []SigGroup, minScoreMilli uint32, top *int) PatternsReport {
 // targets, hide implements), layer 1 (signature groups), layer 2
 // (candidates), then filter and rank.
 func RunMining(facts []*MiningFacts, options Options) PatternsReport {
+	return RunGoMining(facts, options)
+}
+
+func runMining(facts []*MiningFacts, options Options, builders []singleFunctionBuilder) PatternsReport {
 	prepared := hideImplements(mergeFacts(facts), options.HideImplements)
 	groups := MineGroups(prepared) // layer 1: sigmine
 	// Layer 2: candidates. NOTE: candidates.go is ported in parallel with the
 	// contract `func Mine(facts []*MiningFacts, groups []SigGroup, params Params) Mined`,
 	// which collides with sigmine.go's `func Mine`; see the commit report.
 	mined := MineCached(prepared, groups, defaultParams(options.Params), options.WlCache)
-	// Type switches: same-method arms want interface dispatch, also
-	// single-pass and fixed-score.
-	if tss := typeSwitchCandidates(prepared); len(tss) > 0 {
-		mined.Candidates = append(mined.Candidates, tss...)
-		sortMined(&mined)
-	}
-	// Enum dispatch: value switches that want to be dispatch tables,
-	// single-pass AST findings, fixed score.
-	if eds := enumDispatchCandidates(prepared); len(eds) > 0 {
-		mined.Candidates = append(mined.Candidates, eds...)
-		sortMined(&mined)
-	}
-	addSingleFunctionCandidates(&mined, prepared, options)
+	addSingleFunctionCandidates(&mined, prepared, options, builders)
 	return PatternsReport{
 		SignatureGroups: keepGroups(groups, options.MinScoreMilli, options.Top),
 		Candidates:      keepCandidates(mined.Candidates, options.MinScoreMilli, options.Top),
@@ -163,11 +111,8 @@ func RunMining(facts []*MiningFacts, options Options) PatternsReport {
 	}
 }
 
-// addSingleFunctionCandidates appends fixed-score candidates that need no
-// clustering. Builders run in FixKindOrder (see singleFunctionBuilders)
-// so detection respects pattern dependencies.
-func addSingleFunctionCandidates(mined *Mined, prepared []*MiningFacts, options Options) {
-	for _, b := range singleFunctionBuilders {
+func addSingleFunctionCandidates(mined *Mined, prepared []*MiningFacts, options Options, builders []singleFunctionBuilder) {
+	for _, b := range builders {
 		if cands := b.build(prepared, options); len(cands) > 0 {
 			mined.Candidates = append(mined.Candidates, cands...)
 			sortMined(mined)
@@ -188,6 +133,7 @@ func Text(report *PatternsReport) string {
 	parts := []string{
 		section(fmt.Sprintf("%d signature groups", len(groups)), groups),
 		section(fmt.Sprintf("%d candidates", len(found)), found),
+		measurementText(report.Measurements),
 		coverageText(report.AnalysisCoverage), suppressedSection(report.Suppressed),
 	}
 	return strings.Join(nonemptyStrings(parts), "\n\n")
@@ -364,9 +310,16 @@ func analysisLines(evidence *AnalysisEvidence) []string {
 		return nil
 	}
 	if len(evidence.Missing) == 0 {
-		return []string{"  analysis: " + evidence.Status}
+		return []string{"  analysis: " + evidence.Status + analysisScope(evidence.Scope)}
 	}
 	return []string{"  analysis: " + evidence.Status, "  coverage gaps: " + strings.Join(evidence.Missing, "; ")}
+}
+
+func analysisScope(scope string) string {
+	if scope == "" {
+		return ""
+	}
+	return " (" + scope + ")"
 }
 
 func suppressedSection(suppressed []Suppressed) string {

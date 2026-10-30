@@ -1,6 +1,14 @@
 [guard.comments]
 mode = "added"
 
+[patterns]
+similarity_threshold = 80
+min_coverage = 80
+
+[patterns.measurements]
+min_source_lines = 3
+min_function_calls = 2
+
 [[guard.files]]
 id = "python_outside_lean"
 extensions = [".py", ".pyi", ".pyw", ".pyc", ".pyo", ".ipynb"]

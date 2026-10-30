@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/rstyled/gstyle/domain"
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
 type Analyzer interface {
@@ -60,6 +61,12 @@ type Model struct {
 	qualityMarkers    []PatternMarker
 	findingLookup     *findingIndex
 	sourceRows        *sourceRowCounter
+	patternConfig     *patterns.Config
+}
+
+func (m Model) WithPatternConfig(config patterns.Config) Model {
+	m.patternConfig = &config
+	return m
 }
 
 func NewModel(analyzer Analyzer, paths []string) Model {

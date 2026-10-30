@@ -202,6 +202,8 @@ func TestClassificationLongestPrefixAndUnknownCoverage(t *testing.T) {
 func TestCalleeNormalizationPreservesPlainAndMalformedNames(t *testing.T) {
 	for _, tc := range []struct{ input, want string }{
 		{"fmt.Println", "fmt.Println"},
+		{"cpp::Box<int>::set:void(int)", "cpp::Box<int>::set:void(int)"},
+		{"cpp::Box<long>::set:void(long)", "cpp::Box<long>::set:void(long)"},
 		{"pkg.語", "pkg.語"},
 		{"Vec::::push", "Vec::push"},
 		{"pkg.Box[T].Set", "pkg.Box.Set"},

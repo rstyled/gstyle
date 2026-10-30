@@ -31,7 +31,7 @@ type patternsMsg struct {
 func (m Model) loadPatternsCmd() tea.Cmd {
 	paths := append([]string(nil), m.paths...)
 	generation := m.patternGeneration
-	load := func() (*patterns.PatternsReport, error) { return loadPatternReport(context.Background(), m.analyzer, paths) }
+	load := m.patternReportLoader(paths)
 	return func() tea.Msg {
 		report, err := load()
 		if err != nil {
@@ -44,13 +44,20 @@ func (m Model) loadPatternsCmd() tea.Cmd {
 	}
 }
 
-func loadPatternReport(ctx context.Context, analyzer Analyzer, paths []string) (*patterns.PatternsReport, error) {
-	if frontend, ok := analyzer.(interface {
-		Patterns(context.Context, []string) (*patterns.PatternsReport, error)
+func (m Model) patternReportLoader(paths []string) func() (*patterns.PatternsReport, error) {
+	ctx := context.Background()
+	if frontend, ok := m.analyzer.(interface {
+		PatternScan(context.Context, []string, patterns.Config) func() (*patterns.PatternsReport, error)
 	}); ok {
-		return frontend.Patterns(ctx, paths)
+		config := patterns.DefaultConfig()
+		if m.patternConfig != nil {
+			config = *m.patternConfig
+		}
+		return frontend.PatternScan(ctx, paths, config)
 	}
-	return patterncheck.GetReport(ctx, paths)
+	return func() (*patterns.PatternsReport, error) {
+		return loadPatternReportWithConfig(ctx, m.analyzer, paths, m.patternConfig)
+	}
 }
 
 // selectedFilePath returns the selected file's path, or "" when none.
@@ -146,4 +153,29 @@ func sourcePatternRows(markers []PatternMarker, width int) []string {
 		}
 	}
 	return rows
+}
+
+func loadPatternReport(ctx context.Context, analyzer Analyzer, paths []string) (*patterns.PatternsReport, error) {
+	return loadPatternReportWithConfig(ctx, analyzer, paths, nil)
+}
+
+func loadPatternReportWithConfig(ctx context.Context, analyzer Analyzer, paths []string, config *patterns.Config) (*patterns.PatternsReport, error) {
+	if config != nil {
+		return configuredPatternReport(ctx, analyzer, paths, *config)
+	}
+	if frontend, ok := analyzer.(interface {
+		Patterns(context.Context, []string) (*patterns.PatternsReport, error)
+	}); ok {
+		return frontend.Patterns(ctx, paths)
+	}
+	return patterncheck.GetReport(ctx, paths)
+}
+
+func configuredPatternReport(ctx context.Context, analyzer Analyzer, paths []string, config patterns.Config) (*patterns.PatternsReport, error) {
+	if frontend, ok := analyzer.(interface {
+		PatternsWithConfig(context.Context, []string, patterns.Config) (*patterns.PatternsReport, error)
+	}); ok {
+		return frontend.PatternsWithConfig(ctx, paths, config)
+	}
+	return patterncheck.GetReportWithConfig(ctx, paths, &config)
 }

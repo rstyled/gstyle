@@ -1,0 +1,62 @@
+package cpp
+
+import (
+	"github.com/rstyled/gstyle/domain/quality"
+)
+
+func (p *projection) parameterIndex(declaration *vertex) *int {
+	index := 0
+	for _, input := range p.inputs {
+		if receiverParameter(input) {
+			if input == declaration {
+				return new(-1)
+			}
+			continue
+		}
+		if input == declaration {
+			return new(index)
+		}
+		index++
+	}
+	return nil
+}
+
+func (p *projection) qualityArguments(call *quality.Call, node *vertex) {
+	for _, child := range node.Children {
+		index := child.number("ARGUMENT_INDEX")
+		if index < 0 {
+			continue
+		}
+		arg, storage := p.qualityArgument(child)
+		if index == 0 {
+			call.Receiver = &storage
+			continue
+		}
+		for len(call.Args) < index {
+			call.Args = append(call.Args, quality.ArgSource{Kind: quality.ArgOther})
+			call.StorageArgs = append(call.StorageArgs, quality.Storage{Provenance: quality.Unknown})
+		}
+		call.Args[index-1], call.StorageArgs[index-1] = arg, storage
+	}
+}
+
+func (p *projection) qualityArgument(node *vertex) (quality.ArgSource, quality.Storage) {
+	arg := quality.ArgSource{Kind: quality.ArgOther}
+	storage := quality.Storage{Provenance: quality.Unknown}
+	if node.Label == "LITERAL" {
+		return quality.ArgSource{Kind: quality.ArgConst}, storage
+	}
+	root := storageRoot(node)
+	if root == nil || len(root.Out["REF"]) != 1 {
+		return arg, storage
+	}
+	storage.Parameter = p.parameterIndex(root.Out["REF"][0])
+	if storage.Parameter != nil {
+		arg.Kind, arg.Param = quality.ArgParam, *storage.Parameter
+		storage.Provenance = quality.External
+	}
+	if fieldOperation(node) {
+		arg.Kind = quality.ArgField
+	}
+	return arg, storage
+}

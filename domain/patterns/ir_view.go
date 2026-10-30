@@ -4,22 +4,7 @@ import "github.com/rstyled/gstyle/domain/pdg"
 
 // Run derives a temporary matching view from the canonical IR.
 func Run(facts []*FuncFacts, options Options) PatternsReport {
-	views := make([]*MiningFacts, 0, len(facts))
-	labels := sharedBaseLabels(facts)
-	for _, f := range facts {
-		if f == nil {
-			continue
-		}
-		view := miningFacts(f)
-		labels.attach(view.Pdg)
-		views = append(views, view)
-	}
-	options.semantic = nativeSemanticResults(mergeFacts(views), options.Callables)
-	options.Callables = nil
-	for _, view := range views {
-		view.Canonical = nil
-	}
-	return RunMining(views, options)
+	return RunGo(facts, options)
 }
 
 func miningFacts(f *FuncFacts) *MiningFacts {

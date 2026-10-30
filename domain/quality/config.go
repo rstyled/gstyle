@@ -146,6 +146,7 @@ type Prefix struct {
 	exact           bool
 	memoryWriter    bool
 	localMemoryRead bool
+	ForeignOnly     bool   `toml:"foreign_only"`
 	Path            string `toml:"path"`
 	Kind            Kind   `toml:"kind"`
 }

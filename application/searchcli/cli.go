@@ -10,15 +10,16 @@ import (
 	"io"
 	"strings"
 
+	"github.com/rstyled/gstyle/adapters/cpp"
 	"github.com/rstyled/gstyle/adapters/gocyclo"
 	"github.com/rstyled/gstyle/adapters/goquality"
-	"github.com/rstyled/gstyle/adapters/joern"
 	"github.com/rstyled/gstyle/application"
 	"github.com/rstyled/gstyle/application/qualitycheck"
 )
 
 type options struct {
 	cpg                  bool
+	cpgSource            string
 	query                application.SearchQuery
 	config, format, tags string
 	tests                bool
@@ -28,7 +29,8 @@ func NewCommand() (*flag.FlagSet, func(context.Context, []string, io.Writer) err
 	opts := options{}
 	flags := flag.NewFlagSet("search", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	flags.BoolVar(&opts.cpg, "cpg", false, "read a Joern full GraphSON export instead of Go source")
+	flags.BoolVar(&opts.cpg, "cpg", false, "read a full C++ CPG GraphSON export instead of Go source")
+	flags.StringVar(&opts.cpgSource, "cpg-source", "", "source root for files missing from a C++ export")
 	flags.StringVar(&opts.query.Query, "query", "", "literal search in path, package, function, source, and finding text (case-insensitive)")
 	flags.StringVar(&opts.query.Path, "path", "", "literal path substring (case-insensitive)")
 	flags.StringVar(&opts.query.Rule, "rule", "", "exact quality rule ID; implies findings-only")
@@ -70,9 +72,17 @@ func (opts options) run(ctx context.Context, paths []string, output io.Writer) e
 		return err
 	}
 	if opts.cpg {
-		return opts.execute(ctx, joern.Analyzer{Context: ctx}, paths, output)
+		return opts.runCPP(ctx, paths, output)
 	}
 	return opts.runGo(ctx, paths, output)
+}
+
+func (opts options) runCPP(ctx context.Context, paths []string, output io.Writer) error {
+	config, err := qualitycheck.LoadConfigWithDefaults(opts.config, cpp.DefaultQualityConfig())
+	if err != nil {
+		return err
+	}
+	return opts.execute(ctx, cpp.Analyzer{Context: ctx, SourceRoot: opts.cpgSource, Config: &config}, paths, output)
 }
 
 func (opts options) runGo(ctx context.Context, paths []string, output io.Writer) error {
@@ -91,8 +101,8 @@ func (opts options) runGo(ctx context.Context, paths []string, output io.Writer)
 }
 
 func (opts options) validate() error {
-	if opts.invalidCPGOptions() {
-		return fmt.Errorf("--cpg does not support Go build tags or typed quality policies")
+	if err := opts.validateInput(); err != nil {
+		return err
 	}
 	if err := opts.query.Validate(); err != nil {
 		return err
@@ -103,8 +113,18 @@ func (opts options) validate() error {
 	return nil
 }
 
+func (opts options) validateInput() error {
+	if opts.cpgSource != "" && !opts.cpg {
+		return fmt.Errorf("--cpg-source requires --cpg")
+	}
+	if opts.invalidCPGOptions() {
+		return fmt.Errorf("--cpg does not support Go build tags")
+	}
+	return nil
+}
+
 func (opts options) invalidCPGOptions() bool {
-	return opts.cpg && (opts.tags != "" || opts.config != "")
+	return opts.cpg && opts.tags != ""
 }
 
 func (opts options) execute(ctx context.Context, analyzer application.Analyzer, paths []string, output io.Writer) error {

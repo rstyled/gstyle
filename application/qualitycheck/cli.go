@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/rstyled/gstyle/adapters/cpp"
 	"github.com/rstyled/gstyle/adapters/gitchanged"
 	"github.com/rstyled/gstyle/adapters/goquality"
 	"github.com/rstyled/gstyle/domain/quality"
@@ -21,7 +22,10 @@ var ErrFindings = errors.New("quality guardrails exceeded")
 
 const usage = `Usage: gstyle check [OPTIONS] [DIRECTORIES OR GO FILES...]
 
-Extract typed Go facts and evaluate code quality guardrails. Defaults to .
+Evaluate shared code quality guardrails from Go source or C++ CPG facts.
+Defaults to . for Go source.
+  --cpg             read one full C++ CPG GraphSON export
+  --cpg-source ROOT source root for files missing from the export
   --config PATH     TOML policy; unspecified values retain defaults
   --format FORMAT   text (default), json, sarif, or facts (save extraction only)
   --facts-in PATH   evaluate saved facts without loading Go packages
@@ -38,10 +42,15 @@ Unclassified calls are unknown, not pure. Facts export version 2; version 1 rema
 type options struct {
 	config, format, factsIn, tags, base string
 	tests, changed                      bool
+	cpg                                 bool
+	cpgSource                           string
 	paths                               []string
 }
 
 func (opts options) validate() error {
+	if err := opts.validateCPG(); err != nil {
+		return err
+	}
 	if !slices.Contains([]string{"text", "json", "sarif", "facts"}, opts.format) {
 		return fmt.Errorf("format must be text, json, sarif, or facts")
 	}
@@ -49,6 +58,20 @@ func (opts options) validate() error {
 		return fmt.Errorf("facts-in cannot be combined with source paths, tests, tags, or facts export")
 	}
 	return nil
+}
+
+func (opts options) validateCPG() error {
+	if opts.cpgSource != "" && !opts.cpg {
+		return fmt.Errorf("--cpg-source requires --cpg")
+	}
+	if opts.cpg && opts.cpgConflicts() {
+		return fmt.Errorf("--cpg cannot combine source selection with Go build flags, saved facts, or Go changed-source selection")
+	}
+	return nil
+}
+
+func (opts options) cpgConflicts() bool {
+	return opts.tests || opts.tags != "" || opts.factsIn != "" || opts.changed
 }
 
 func (opts options) hasSourceOptions() bool {
@@ -73,7 +96,7 @@ func Run(ctx context.Context, args []string, output io.Writer) error {
 }
 
 func execute(ctx context.Context, opts options, output io.Writer) error {
-	config, err := LoadConfig(opts.config)
+	config, err := LoadAnalysisConfig(opts.config, opts.cpg)
 	if err != nil {
 		return err
 	}
@@ -140,6 +163,8 @@ func Flags() *flag.FlagSet { return flagsFor(&options{}) }
 func flagsFor(result *options) *flag.FlagSet {
 	flags := flag.NewFlagSet("check", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
+	flags.BoolVar(&result.cpg, "cpg", false, "read a C++ CPG GraphSON export")
+	flags.StringVar(&result.cpgSource, "cpg-source", "", "source root for files missing from a C++ export")
 	flags.StringVar(&result.config, "config", "", "TOML config")
 	flags.StringVar(&result.format, "format", "text", "output format")
 	flags.StringVar(&result.factsIn, "facts-in", "", "saved facts")
@@ -161,6 +186,13 @@ func parseOptions(args []string) (options, error) {
 }
 
 func inputFacts(ctx context.Context, opts options) ([]quality.Function, error) {
+	if opts.cpg {
+		extracted, err := cpp.ExtractFrom(ctx, opts.paths, opts.cpgSource)
+		if err != nil {
+			return nil, err
+		}
+		return extracted.QualityFacts(), nil
+	}
 	if opts.factsIn != "" {
 		return readFacts(opts.factsIn)
 	}

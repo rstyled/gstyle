@@ -51,7 +51,8 @@ func TestPatternsJSONFormat(t *testing.T) {
 func TestPatternsRejectsBadOptions(t *testing.T) {
 	for _, args := range [][]string{
 		{"--format", "yaml"},
-		{"--threshold", "1001"},
+		{"--threshold", "101"},
+		{"--threshold", "800"},
 	} {
 		var output strings.Builder
 		if err := Run(context.Background(), args, &output); err == nil {

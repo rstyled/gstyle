@@ -11,6 +11,7 @@ import (
 
 // Coverage is analysis completeness, not a probability that a finding is a bug.
 type AnalysisEvidence struct {
+	Scope       string              `json:"scope,omitempty"`
 	Related     []*AnalysisEvidence `json:"related_functions,omitempty"`
 	FunctionID  string              `json:"function_id,omitempty"`
 	Conformance string              `json:"graph_conformance,omitempty"`
@@ -20,13 +21,17 @@ type AnalysisEvidence struct {
 }
 
 type AnalysisCoverage struct {
+	Scope       string        `json:"scope,omitempty"`
 	Reason      string        `json:"reason,omitempty"`
 	Kind        CandidateKind `json:"analysis"`
+	Output      string        `json:"output,omitempty"`
 	Complete    int           `json:"complete"`
 	Partial     int           `json:"partial"`
 	Unknown     int           `json:"not_evaluated"`
 	Unavailable int           `json:"unavailable"`
 }
+
+const ImportedGraphScope = "imported_graph"
 
 var semanticAnalysisKinds = []CandidateKind{TaintFlowKind, BarrierSliceKind, ThinSliceKind, ChopKind}
 
@@ -146,14 +151,11 @@ func semanticCoverage(facts []*MiningFacts) []AnalysisCoverage {
 }
 
 func functionCoverageStatus(f *MiningFacts, kind CandidateKind) string {
-	if f == nil || f.Pdg == nil {
+	if f == nil || (f.Pdg == nil && f.Canonical == nil) {
 		return "unavailable"
 	}
 	if f.Canonical == nil {
 		return "not_evaluated"
-	}
-	if !supportedCapability(graphCapability(f.Canonical, "node_extraction")) {
-		return "partial"
 	}
 	if len(analysisGaps(f.Canonical, kind)) != 0 {
 		return "partial"
@@ -168,6 +170,12 @@ func coverageText(coverage []AnalysisCoverage) string {
 	lines := []string{"Dependency analysis coverage (no findings does not prove clean flow):"}
 	for _, row := range coverage {
 		lines = append(lines, fmt.Sprintf("  %s: %d complete, %d partial, %d not evaluated, %d unavailable", row.Kind, row.Complete, row.Partial, row.Unknown, row.Unavailable))
+		if row.Output != "" {
+			lines = append(lines, "    output: "+row.Output)
+		}
+		if row.Scope != "" {
+			lines = append(lines, "    scope: "+row.Scope)
+		}
 		if row.Reason != "" {
 			lines = append(lines, "    "+row.Reason)
 		}
@@ -183,6 +191,8 @@ func specificRequirements(kind CandidateKind) []string {
 	switch kind {
 	case BarrierSliceKind, ChopKind:
 		return []string{"control_dependencies"}
+	case DependenceCluster:
+		return []string{"control_dependencies", "loop_carried_dependencies"}
 	case TaintFlowKind:
 		return []string{"calls"}
 	default:
@@ -204,7 +214,7 @@ func semanticDependency(edge pdg.EdgeKind, kind CandidateKind) bool {
 	if edge == pdg.Data {
 		return true
 	}
-	return kind == BarrierSliceKind || kind == ChopKind
+	return slices.Contains([]CandidateKind{BarrierSliceKind, ChopKind, DependenceCluster}, kind)
 }
 
 func graphConformanceName(status pdg.ConformanceStatus) string {
@@ -225,11 +235,15 @@ func HasIncompleteAnalysis(coverage []AnalysisCoverage) bool {
 		return true
 	}
 	for _, row := range coverage {
-		if row.Partial != 0 || row.Unknown != 0 || row.Unavailable != 0 {
+		if !completeSourceCoverage(row) {
 			return true
 		}
 	}
 	return false
+}
+
+func completeSourceCoverage(row AnalysisCoverage) bool {
+	return row.Scope != ImportedGraphScope && row.Partial == 0 && row.Unknown == 0 && row.Unavailable == 0
 }
 
 func sourceFeatureRequirements(graph *pdg.Graph) []string {

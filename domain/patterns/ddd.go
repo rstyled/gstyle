@@ -193,7 +193,11 @@ func repositoryCandidates(facts []*MiningFacts) []Candidate {
 // doesn't qualify — the factory must encapsulate validation, defaults,
 // or error handling to be worth the indirection.
 func factoryCandidates(facts []*MiningFacts) []Candidate {
-	byType, firstLine := groupFactoryLits(facts)
+	return factoryCandidatesWithLimit(facts, factoryMaxFields)
+}
+
+func factoryCandidatesWithLimit(facts []*MiningFacts, maximum int) []Candidate {
+	byType, firstLine := groupFactoryLits(facts, maximum)
 	var out []Candidate
 	for k, funcs := range byType {
 		if len(funcs) < 2 {
@@ -213,12 +217,12 @@ func factoryCandidates(facts []*MiningFacts) []Candidate {
 // groupFactoryLits groups factory hits by struct type, tracking the
 // functions that build each type and the first literal line. Only hits
 // with construction logic are counted — plain field assignment is skipped.
-func groupFactoryLits(facts []*MiningFacts) (map[factoryTypeKey]map[string]bool, map[factoryTypeKey]int) {
+func groupFactoryLits(facts []*MiningFacts, maximum int) (map[factoryTypeKey]map[string]bool, map[factoryTypeKey]int) {
 	byType := map[factoryTypeKey]map[string]bool{}
 	firstLine := map[factoryTypeKey]int{}
 	for _, f := range facts {
 		for _, h := range f.FactoryLits {
-			if !factoryHitQualifies(h) {
+			if !factoryHitQualifies(h, maximum) {
 				continue
 			}
 			k := factoryTypeKey{h.TypeName, h.DeclFile}
@@ -236,10 +240,10 @@ func groupFactoryLits(facts []*MiningFacts) (map[factoryTypeKey]map[string]bool,
 // and construction logic to warrant a factory. Structs with more than 4
 // fields are skipped: the factory would need more than 4 params, violating
 // the fn_params quality gate.
-func factoryHitQualifies(h FactoryHit) bool {
+func factoryHitQualifies(h FactoryHit, maximum int) bool {
 	return h.TypeName != "" &&
 		h.NumFields >= factoryMinFields &&
-		h.NumFields <= factoryMaxFields &&
+		(maximum < 0 || h.NumFields <= maximum) &&
 		h.HasLogic
 }
 

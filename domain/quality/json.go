@@ -14,7 +14,7 @@ func (call Call) HasPlainJSON() bool {
 }
 
 func (call Call) policyKind(prefixes []Prefix) (Kind, bool) {
-	prefix, configured := selectedPrefix(NormalizeCallee(call.Callee), prefixes)
+	prefix, configured := call.effectPrefix(prefixes)
 	if prefix.refinesMemoryRead(call) {
 		return None, true
 	}
@@ -25,6 +25,14 @@ func (call Call) policyKind(prefixes []Prefix) (Kind, bool) {
 		return call.memoryWriteKind(), true
 	}
 	return prefix.Kind, configured
+}
+
+func (call Call) effectPrefix(prefixes []Prefix) (Prefix, bool) {
+	prefix, configured := selectedPrefix(NormalizeCallee(call.Callee), prefixes)
+	if prefix.ForeignOnly && call.Local {
+		return Prefix{}, false
+	}
+	return prefix, configured
 }
 
 func (call Call) validJSONDecode() bool {

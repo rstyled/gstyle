@@ -251,8 +251,8 @@ func TestSingleFunctionBuildersInFixKindOrder(t *testing.T) {
 	// (simplify control flow), type-creating passes next, factories after
 	// the types they use, detection-only kinds last. This mirrors the
 	// fixer order (FixKindOrder) so detection and fixing agree.
-	for i := 1; i < len(singleFunctionBuilders); i++ {
-		prev, curr := singleFunctionBuilders[i-1].kind, singleFunctionBuilders[i].kind
+	for i := 1; i < len(goPatternBuilders); i++ {
+		prev, curr := goPatternBuilders[i-1].kind, goPatternBuilders[i].kind
 		if FixKindRank(prev) >= FixKindRank(curr) {
 			t.Errorf("builder %d (%q, rank %d) not before builder %d (%q, rank %d)",
 				i-1, prev, FixKindRank(prev), i, curr, FixKindRank(curr))

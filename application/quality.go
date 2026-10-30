@@ -203,17 +203,17 @@ func mutationQualityLines(mutations []quality.Mutation) []string {
 	return lines
 }
 
-func qualityBadge(function domain.Function) string {
-	if function.Quality == nil {
-		return ""
-	}
-	return amber.Render(fmt.Sprintf(" · Q %d", len(knownDiagnostics(function.Quality))))
-}
-
 func mutationQualityLine(mutation quality.Mutation) string {
 	target := mutation.Root
 	if mutation.FieldPath != "" {
 		target += "." + mutation.FieldPath
 	}
 	return fmt.Sprintf("L%d mutation: %s (%s)", mutation.Line, target, mutation.Provenance)
+}
+
+func qualityBadge(function domain.Function) string {
+	if function.Quality == nil {
+		return ""
+	}
+	return amber.Render(fmt.Sprintf(" · Q %d", len(knownDiagnostics(function.Quality))))
 }

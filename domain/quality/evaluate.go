@@ -329,6 +329,9 @@ func effectWeight(effects []Effect, weights Weights) (int64, bool) {
 
 // NormalizeCallee removes balanced Go or Rust generic arguments.
 func NormalizeCallee(callee string) string {
+	if strings.HasPrefix(callee, "cpp::") {
+		return callee
+	}
 	if strings.ContainsAny(callee, "[]<>") || !utf8.ValidString(callee) {
 		callee = withoutGenericArguments(callee)
 	}

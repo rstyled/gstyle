@@ -1,11 +1,13 @@
 package application
 
 import (
+	"context"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/rstyled/gstyle/adapters/cpp"
 	"github.com/rstyled/gstyle/domain/patterns"
 )
 
@@ -54,6 +56,32 @@ func TestPatternMarkersFromReportNil(t *testing.T) {
 	}
 	if got := patternMarkersFromReport(&patterns.PatternsReport{}); len(got) != 0 {
 		t.Fatalf("expected empty, got %v", got)
+	}
+}
+
+func TestDependencyMeasurementsDoNotMarkSource(t *testing.T) {
+	report := &patterns.PatternsReport{Measurements: []patterns.DependencyMeasurement{{Kind: patterns.ThinSliceKind, GraphNodes: 11, Calls: 1, Site: patterns.Site{Path: "guard.cpp", Line: 1}}}}
+	if len(patternMarkersFromReport(report)) != 0 {
+		t.Fatal("a dependency measurement becomes a source warning")
+	}
+}
+
+func TestCPGTUIPatternsUseConfiguredThresholds(t *testing.T) {
+	config := patterns.DefaultConfig()
+	config.Measurements.MinFunctionCalls, config.Measurements.MinSourceLines = 2, 3
+	analyzer := cpp.Analyzer{Context: context.Background()}
+	model := NewModel(analyzer, nil).WithPatternConfig(config)
+	report, err := loadPatternReportWithConfig(context.Background(), analyzer, []string{"../adapters/cpp/testdata/features.graphson.json"}, model.patternConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Configuration == nil || *report.Configuration != config || len(report.AnalysisCoverage) != 27 {
+		t.Fatal("TUI pattern loading loses codebase settings")
+	}
+	for _, measurement := range report.Measurements {
+		if measurement.Calls < 2 || len(measurement.SourceLines) < 3 {
+			t.Fatalf("TUI ignores pattern thresholds: %+v", measurement)
+		}
 	}
 }
 
@@ -157,5 +185,21 @@ func TestPatternsMsgUpdate(t *testing.T) {
 	}
 	if len(nm.patternMarkers) != 1 {
 		t.Fatalf("expected 1 marker, got %d", len(nm.patternMarkers))
+	}
+}
+
+func TestCPGPatternLoaderUsesImportedGraph(t *testing.T) {
+	ctx := context.Background()
+	report, err := loadPatternReport(ctx, cpp.Analyzer{Context: ctx}, []string{"../adapters/cpp/testdata/sample.graphson.json"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Candidates) == 0 || len(report.AnalysisCoverage) != 27 {
+		t.Fatal("CPG provider did not return its enabled patterns and coverage")
+	}
+	for _, coverage := range report.AnalysisCoverage {
+		if coverage.Complete != 20 || coverage.Partial != 0 || coverage.Scope != patterns.ImportedGraphScope {
+			t.Fatalf("CPG provider does not report complete scoped queries: %+v", coverage)
+		}
 	}
 }

@@ -264,6 +264,7 @@ var FixKindOrder = []CandidateKind{
 	ChopKind,
 	AlattinRule,
 	Obligation,
+	CPPEmptyCatch,
 }
 
 // Site is one function that shows the pattern.

@@ -14,7 +14,7 @@ import (
 	"slices"
 
 	"github.com/rstyled/gstyle/adapters/gopatterns"
-	"github.com/rstyled/gstyle/adapters/joern"
+	"github.com/rstyled/gstyle/application/qualitycheck"
 	"github.com/rstyled/gstyle/domain/patterns"
 )
 
@@ -26,8 +26,9 @@ inverted conditionals that want to be guard clauses.
 Similarity, size and usage statistics alone do not produce findings.
 Informational only: always exits 0, never a quality gate.
   --format FORMAT   text (default), json report, sarif, or pdg-json graph export
-  --cpg             read one Joern full GraphSON export instead of Go source
-  --threshold N     minimum WL similarity (0-1000) for clustering [default 600]
+  --cpg             read one full C++ CPG GraphSON export instead of Go source
+  --config PATH     read pattern settings from a gstyle.toml policy
+  --threshold N     minimum WL similarity percent (0-100) [default 60]
   --cache           reuse WL refinements from .gstyle/patterns-cache.json,
                     speeding up repeat runs on large repos
 
@@ -38,16 +39,20 @@ analysis failure.
 const wlCachePath = ".gstyle/patterns-cache.json"
 
 type options struct {
-	cpg       bool
-	format    string
-	threshold uint
-	useCache  bool
-	paths     []string
+	cpg          bool
+	cpgSource    string
+	format       string
+	threshold    uint
+	useCache     bool
+	paths        []string
+	config       string
+	settings     patterns.Config
+	thresholdSet bool
 }
 
 func (opts options) validate() error {
-	if opts.invalidCPGOptions() {
-		return fmt.Errorf("--cpg does not support Go mining cache or threshold options")
+	if err := opts.validateCPGOptions(); err != nil {
+		return err
 	}
 	if !slices.Contains([]string{"text", "json", "sarif", "pdg-json"}, opts.format) {
 		return fmt.Errorf("format must be text, json, sarif or pdg-json")
@@ -55,14 +60,17 @@ func (opts options) validate() error {
 	if opts.format == "pdg-json" && opts.useCache {
 		return fmt.Errorf("--cache is not available for pdg-json export")
 	}
-	if opts.threshold > 1000 {
-		return fmt.Errorf("threshold must be between 0 and 1000")
+	if opts.threshold > 100 {
+		return fmt.Errorf("threshold must be between 0 and 100 percent")
 	}
 	return nil
 }
 
-func (opts options) invalidCPGOptions() bool {
-	return opts.cpg && (opts.useCache || opts.threshold != 600)
+func (opts options) validateCPGOptions() error {
+	if opts.cpgSource != "" && !opts.cpg {
+		return fmt.Errorf("--cpg-source requires --cpg")
+	}
+	return nil
 }
 
 // Run extracts PDGs for paths, mines them for abstraction candidates, and
@@ -107,19 +115,32 @@ func writeReport(output io.Writer, report *patterns.PatternsReport, format strin
 // GetReport runs the pattern pipeline and returns the report.
 // Exported for `gstyle next` and `gstyle score`.
 func GetReport(ctx context.Context, args []string) (*patterns.PatternsReport, error) {
+	return GetReportWithConfig(ctx, args, nil)
+}
+
+func GetReportWithConfig(ctx context.Context, args []string, config *patterns.Config) (*patterns.PatternsReport, error) {
 	opts, err := parseOptions(args)
 	if err != nil {
 		return nil, err
 	}
+	if config != nil {
+		opts = opts.withSettings(*config)
+	}
+	if err := opts.settings.Validate(); err != nil {
+		return nil, err
+	}
+	return getReport(ctx, opts)
+}
+
+func getReport(ctx context.Context, opts options) (*patterns.PatternsReport, error) {
 	if opts.cpg {
-		return (joern.Analyzer{Context: ctx}).Patterns(ctx, opts.paths)
+		return cpgReport(ctx, opts)
 	}
 	pdgs, err := gopatterns.Extract(ctx, "", opts.paths)
 	if err != nil {
 		return nil, err
 	}
-	params := patterns.DefaultParams()
-	params.ThresholdMilli = uint32(opts.threshold)
+	params := opts.settings.MiningParams()
 	cache, saveCache, err := openWlCache(opts.useCache)
 	if err != nil {
 		return nil, err
@@ -128,7 +149,7 @@ func GetReport(ctx context.Context, args []string) (*patterns.PatternsReport, er
 	// Extraction's AST and type-checking data are no longer needed. Reclaim
 	// that large temporary phase before allocating the mining graphs.
 	runtime.GC()
-	report := patterns.Run(pdgs.PatternFacts(), patterns.Options{
+	report := patterns.RunGo(pdgs.PatternFacts(), patterns.Options{
 		Callables:         pdgs.Callables,
 		DeclarationOrders: pdgs.DeclarationOrders,
 		OffsetFallbacks:   pdgs.OffsetFallbacks,
@@ -141,6 +162,7 @@ func GetReport(ctx context.Context, args []string) (*patterns.PatternsReport, er
 		DomainServices:    pdgs.DomainServices,
 		WlCache:           cache,
 	})
+	report.Configuration = &opts.settings
 	gopatterns.VerifyValueGroups(&report, pdgs)
 	if err := gopatterns.VerifyParameterizations(&report, pdgs); err != nil {
 		return nil, fmt.Errorf("verify parameterization: %w", err)
@@ -170,9 +192,11 @@ func Flags() *flag.FlagSet { return flagsFor(&options{}) }
 func flagsFor(result *options) *flag.FlagSet {
 	flags := flag.NewFlagSet("patterns", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	flags.BoolVar(&result.cpg, "cpg", false, "read a Joern full GraphSON export instead of Go source")
+	flags.BoolVar(&result.cpg, "cpg", false, "read a full C++ CPG GraphSON export instead of Go source")
+	flags.StringVar(&result.cpgSource, "cpg-source", "", "source root for files missing from a C++ export")
+	flags.StringVar(&result.config, "config", "", "TOML pattern policy")
 	flags.StringVar(&result.format, "format", "text", "output format")
-	flags.UintVar(&result.threshold, "threshold", 600, "minimum WL similarity (0-1000)")
+	flags.UintVar(&result.threshold, "threshold", 60, "minimum WL similarity percent (0-100)")
 	flags.BoolVar(&result.useCache, "cache", false, "reuse WL refinements from .gstyle/patterns-cache.json")
 	return flags
 }
@@ -184,5 +208,30 @@ func parseOptions(args []string) (options, error) {
 		return options{}, err
 	}
 	result.paths = flags.Args()
-	return result, result.validate()
+	flags.Visit(func(flag *flag.Flag) {
+		if flag.Name == "threshold" {
+			result.thresholdSet = true
+		}
+	})
+	if err := result.validate(); err != nil {
+		return options{}, err
+	}
+	return configureOptions(result)
+}
+
+func configureOptions(opts options) (options, error) {
+	settings, err := qualitycheck.LoadPatternConfig(opts.config)
+	if err != nil {
+		return options{}, err
+	}
+	opts = opts.withSettings(settings)
+	return opts, opts.settings.Validate()
+}
+
+func (opts options) withSettings(settings patterns.Config) options {
+	if opts.thresholdSet {
+		settings.SimilarityThreshold = uint32(opts.threshold)
+	}
+	opts.settings = settings
+	return opts
 }

@@ -248,11 +248,12 @@ func ThinSliceCandidates(findings []ThinSliceFinding, facts []*MiningFacts) []Ca
 			Analysis:   analysisEvidence(f, ThinSliceKind, fl.SeedNode),
 			ScoreMilli: sliceScore(fl.SliceSize),
 			Observation: fmt.Sprintf(
-				"return at line %d has a %d-node producer chain",
+				"return at line %d has recorded data dependencies on %d graph operations",
 				fl.SeedLine, fl.SliceSize,
 			),
-			Inference:        "a long producer chain means the value passes through many transformations",
-			PossibleRefactor: "consider naming intermediate values or extracting the computation",
+			Inference:        "these operations contribute to the return through recorded producer dependencies; the set may branch",
+			PossibleRefactor: "inspect the contributing values when this return is difficult to understand",
+			CounterEvidence:  []string{"graph-operation count alone does not establish a defect or a need to refactor"},
 			Sites: []Site{
 				{Path: f.Path, Line: fl.SeedLine, Name: f.Name},
 			},

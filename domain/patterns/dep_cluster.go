@@ -117,6 +117,10 @@ func (t *tarjan) popSCC(v int) {
 
 // FindDepClusters finds dependence clusters (large SCCs) in function PDGs.
 func FindDepClusters(facts []*MiningFacts) []DepCluster {
+	return findDepClustersWithLimits(facts, DefaultConfig().Measurements)
+}
+
+func findDepClustersWithLimits(facts []*MiningFacts, limits MeasurementLimits) []DepCluster {
 	var out []DepCluster
 	for _, f := range facts {
 		if f.Pdg == nil || len(f.Pdg.Nodes) == 0 {
@@ -124,7 +128,7 @@ func FindDepClusters(facts []*MiningFacts) []DepCluster {
 		}
 		sccs := stronglyConnected(f.Pdg)
 		for _, scc := range sccs {
-			if !isCluster(scc, len(f.Pdg.Nodes)) {
+			if !isClusterWithLimits(scc, len(f.Pdg.Nodes), limits) {
 				continue
 			}
 			out = append(out, DepCluster{
@@ -140,13 +144,17 @@ func FindDepClusters(facts []*MiningFacts) []DepCluster {
 
 // isCluster reports whether an SCC is large enough to be a dependence cluster.
 func isCluster(scc []int, totalNodes int) bool {
+	return isClusterWithLimits(scc, totalNodes, DefaultConfig().Measurements)
+}
+
+func isClusterWithLimits(scc []int, totalNodes int, limits MeasurementLimits) bool {
 	if len(scc) < 2 {
 		return false // Single node or empty; not a cluster.
 	}
-	if len(scc) >= minClusterSize {
+	if len(scc) >= limits.ClusterMinNodes {
 		return true
 	}
-	return float64(len(scc))/float64(totalNodes) >= clusterSizeFraction
+	return limits.ClusterPercent > 0 && float64(len(scc))/float64(totalNodes) >= float64(limits.ClusterPercent)/100
 }
 
 // clusterLines returns the sorted source lines for a cluster.
@@ -192,10 +200,12 @@ func DepClusterCandidates(clusters []DepCluster, facts []*MiningFacts) []Candida
 		}
 		out = append(out, Candidate{
 			Kind:             DependenceCluster,
+			Analysis:         analysisEvidence(f, DependenceCluster),
 			ScoreMilli:       650, // High: tangles resist testing.
-			Observation:      fmt.Sprintf("%d mutually-dependent statements (%.0f%% of function)", len(c.Nodes), c.Fraction*100),
-			Inference:        "everything affects everything here; the code resists testing and comprehension",
-			PossibleRefactor: "break the cycle: extract the cluster into smaller functions with clear inputs/outputs",
+			Observation:      fmt.Sprintf("%d graph operations form a recorded dependency cycle (%.0f%% of function operations)", len(c.Nodes), c.Fraction*100),
+			Inference:        "these operations are mutually reachable through recorded data and control dependencies",
+			PossibleRefactor: "inspect whether the cycle contains computations with a useful independent boundary",
+			CounterEvidence:  []string{"loops and approximate alias dependencies can create cycles; cycle size alone does not establish a defect"},
 			Sites: []Site{
 				{Path: f.Path, Line: c.Lines[0], Name: f.Name},
 			},

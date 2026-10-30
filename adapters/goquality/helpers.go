@@ -2,7 +2,6 @@ package goquality
 
 import (
 	"slices"
-	"strings"
 
 	"github.com/rstyled/gstyle/domain/quality"
 )
@@ -25,26 +24,10 @@ func attachHelpers(facts, available []quality.Function) []quality.Function {
 }
 
 func reachableHelpers(function quality.Function, index map[string]quality.Function) []quality.Helper {
-	seen := map[string]bool{quality.NormalizeCallee(function.Name): true}
-	pending := slices.Clone(function.Calls)
-	var helpers []quality.Helper
-	for len(pending) > 0 {
-		call := pending[len(pending)-1]
-		pending = pending[:len(pending)-1]
-		if !call.Local || call.Dynamic {
-			continue
-		}
-		name := quality.NormalizeCallee(call.Callee)
+	return quality.ReachableHelpers(function.Name, function.Calls, func(name string) (quality.Helper, bool) {
 		target, found := index[name]
-		if !found || seen[name] {
-			continue
-		}
-		seen[name] = true
-		helpers = append(helpers, quality.Helper{Name: target.Name, Params: target.Params, HasSelf: target.HasSelf, Mutations: target.Mutations, Calls: target.Calls, Effects: target.Effects})
-		pending = append(pending, target.Calls...)
-	}
-	slices.SortFunc(helpers, func(a, b quality.Helper) int { return strings.Compare(a.Name, b.Name) })
-	return helpers
+		return quality.Helper{Name: target.Name, Params: target.Params, HasSelf: target.HasSelf, Mutations: target.Mutations, Calls: target.Calls, Effects: target.Effects}, found
+	})
 }
 
 // Cross-package bodies retain panics, known writes, and writes bound to formals.

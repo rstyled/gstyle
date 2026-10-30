@@ -9,9 +9,9 @@ import (
 	"os"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/rstyled/gstyle/adapters/cpp"
 	"github.com/rstyled/gstyle/adapters/gocyclo"
 	"github.com/rstyled/gstyle/adapters/goquality"
-	"github.com/rstyled/gstyle/adapters/joern"
 	"github.com/rstyled/gstyle/adapters/sqlite"
 	"github.com/rstyled/gstyle/application"
 	"github.com/rstyled/gstyle/application/changerisk"
@@ -23,6 +23,7 @@ const defaultControlPort = 8197
 
 type runOptions struct {
 	cpg         bool
+	cpgSource   string
 	controlPort int
 	paths       []string
 	config      string
@@ -64,7 +65,7 @@ func findingsExitCode(command string, err error) int {
 }
 
 func runTUI(options runOptions, output io.Writer) (result error) {
-	config, err := qualitycheck.LoadConfig(options.config)
+	config, err := loadRunConfig(options)
 	if err != nil {
 		return err
 	}
@@ -85,11 +86,12 @@ func runTUI(options runOptions, output io.Writer) (result error) {
 		return err
 	}
 
-	var analyzer application.Analyzer = goquality.ReportAnalyzer{Complexity: gocyclo.NewAnalyzer(), Config: config, Tests: true}
+	var analyzer application.Analyzer = goquality.ReportAnalyzer{Complexity: gocyclo.NewAnalyzer(), Config: config.quality, Tests: true}
 	if options.cpg {
-		analyzer = joern.Analyzer{Context: context.Background()}
+		analyzer = cpp.Analyzer{Context: context.Background(), SourceRoot: options.cpgSource, Config: &config.quality}.Session()
 	}
 	model := application.NewModel(analyzer, options.paths).
+		WithPatternConfig(config.patterns).
 		WithAnnotationStore(store).
 		WithControlPort(control.Port())
 	program := tea.NewProgram(model, tea.WithInput(os.Stdin), tea.WithOutput(output))
@@ -102,9 +104,10 @@ func runTUI(options runOptions, output io.Writer) (result error) {
 func runFlags(result *runOptions) *flag.FlagSet {
 	flags := flag.NewFlagSet("gstyle", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	flags.BoolVar(&result.cpg, "cpg", false, "read a Joern full GraphSON export instead of Go source")
+	flags.BoolVar(&result.cpg, "cpg", false, "read a full C++ CPG GraphSON export instead of Go source")
+	flags.StringVar(&result.cpgSource, "cpg-source", "", "source root for files missing from a C++ export")
 	flags.IntVar(&result.controlPort, "control-port", defaultControlPort, "localhost JSON-RPC port; 0 selects a free port")
-	flags.StringVar(&result.config, "config", "", "quality TOML policy")
+	flags.StringVar(&result.config, "config", "", "TOML quality and pattern policy")
 	flags.BoolVar(&result.skill, "skill", false, "print agent instructions")
 	return flags
 }
@@ -115,15 +118,22 @@ func parseRunOptions(args []string) (runOptions, error) {
 	if err := flags.Parse(args); err != nil {
 		return runOptions{}, err
 	}
-	if result.controlPort < 0 || result.controlPort > 65535 {
-		return runOptions{}, errors.New("control port must be between 0 and 65535")
-	}
-
 	result.paths = flags.Args()
-	if result.cpg && result.config != "" {
-		return runOptions{}, errors.New("--cpg does not support typed quality policies")
+	return result, result.validate()
+}
+
+func (result runOptions) validate() error {
+	if result.controlPort < 0 || result.controlPort > 65535 {
+		return errors.New("control port must be between 0 and 65535")
 	}
-	return result, nil
+	return result.validateCPG()
+}
+
+func (result runOptions) validateCPG() error {
+	if result.cpgSource != "" && !result.cpg {
+		return errors.New("--cpg-source requires --cpg")
+	}
+	return nil
 }
 
 func writeSkill(args []string, output io.Writer) error {
