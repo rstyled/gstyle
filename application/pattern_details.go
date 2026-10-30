@@ -3,6 +3,8 @@ package application
 import (
 	"fmt"
 	"strings"
+
+	"github.com/rstyled/gstyle/domain/patterns"
 )
 
 func (marker FindingMarker) key() FindingMarker {
@@ -30,7 +32,7 @@ func (marker FindingMarker) uncachedDetailMessages() []string {
 	if candidate == nil {
 		return nil
 	}
-	var messages []string
+	messages := marker.patternScopeMessages()
 	for _, field := range [][2]string{
 		{"Observed", candidate.Observation},
 		{"Inference", candidate.Inference},
@@ -47,6 +49,16 @@ func (marker FindingMarker) uncachedDetailMessages() []string {
 	return messages
 }
 
+func (marker FindingMarker) patternScopeMessages() []string {
+	if marker.Kind != string(patterns.CCGraphClone) && marker.Kind != string(patterns.InconsistentClone) {
+		return nil
+	}
+	if marker.EndLine > marker.Line {
+		return []string{fmt.Sprintf("Scope: whole function (lines %d-%d)", marker.Line, marker.EndLine)}
+	}
+	return []string{"Scope: whole function"}
+}
+
 func (marker FindingMarker) relatedMessages() []string {
 	var messages []string
 	seen := make(map[string]bool)
@@ -54,7 +66,7 @@ func (marker FindingMarker) relatedMessages() []string {
 		if patternPathMatches(site.Path, marker.Path) && site.Line == marker.Line {
 			continue
 		}
-		location := fmt.Sprintf("%s:%d", site.Path, site.Line)
+		location := patternSiteLocation(site)
 		if seen[location] {
 			continue
 		}
@@ -62,6 +74,14 @@ func (marker FindingMarker) relatedMessages() []string {
 		messages = append(messages, fmt.Sprintf("Related: %s (%s)", site.Name, location))
 	}
 	return messages
+}
+
+func patternSiteLocation(site patterns.Site) string {
+	location := fmt.Sprintf("%s:%d", site.Path, site.Line)
+	if site.EndLine > site.Line {
+		return fmt.Sprintf("%s-%d", location, site.EndLine)
+	}
+	return location
 }
 
 func (m Model) scrollFindingDetails(delta int) (Model, bool) {

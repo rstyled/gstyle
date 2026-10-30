@@ -59,6 +59,40 @@ func TestSameKindFindingsAtOneLineKeepTheirOwnDetails(t *testing.T) {
 	}
 }
 
+func TestCloneNotesIdentifyWholeFunctionAndRelatedRange(t *testing.T) {
+	report := &patterns.PatternsReport{Candidates: []patterns.Candidate{{
+		Kind: patterns.CCGraphClone, Observation: "2 function bodies have similar dependency graphs",
+		Sites: []patterns.Site{
+			{ID: "reader", Name: "Reader.decode", Path: "reader.go", Line: 929, EndLine: 954},
+			{ID: "our-reader", Name: "OurReader.decode", Path: "reader.go", Line: 1900, EndLine: 1925},
+		},
+	}}}
+	markers := patternMarkersFromReport(report)
+	for _, test := range []struct {
+		line        int
+		scope, peer string
+	}{
+		{929, "lines 929-954", "OurReader.decode (reader.go:1900-1925)"},
+		{1900, "lines 1900-1925", "Reader.decode (reader.go:929-954)"},
+	} {
+		at := patternMarkersStartingAt(markers, "reader.go", test.line)
+		plain := ansi.Strip(strings.Join(sourcePatternRows(at, 150), "\n"))
+		if !containsAll(plain, "Scope: whole function ("+test.scope+")", "Related: "+test.peer) {
+			t.Fatalf("clone note hides its function scope or counterpart:\n%s", plain)
+		}
+		if len(patternMarkersAtLine(markers, "reader.go", test.line+10)) != 1 {
+			t.Fatal("clone highlight loses the function body range")
+		}
+	}
+	if len(patternMarkersAtLine(markers, "reader.go", 1926)) != 0 {
+		t.Fatal("clone highlight extends past the closing brace")
+	}
+	guard := FindingMarker{Kind: string(patterns.GuardClause), Line: 1903, EndLine: 1906}
+	if len(guard.patternScopeMessages()) != 0 {
+		t.Fatal("statement finding is labeled as a whole-function comparison")
+	}
+}
+
 func TestPatternDetailRowsMatchSourceScrollMeasurements(t *testing.T) {
 	m := sourceWorkspaceModel()
 	report := &patterns.PatternsReport{Candidates: []patterns.Candidate{{
