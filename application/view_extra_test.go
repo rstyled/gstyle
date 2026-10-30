@@ -84,7 +84,7 @@ func TestWideViewUsesAnalyticsTablesAndSource(t *testing.T) {
 		"SUM",
 		"MAX COG",
 		"FUNCTION",
-		"CC COG LINES",
+		"CC COG LINE",
 		"Source",
 		"return \"branchy\"",
 	} {
@@ -190,7 +190,7 @@ func TestScrollablePanesShowAMutedThumb(t *testing.T) {
 	model := Model{report: domain.Report{Files: files}}
 	fileLines := model.fileTable(48, 6)
 	assertMutedScrollbar(t, fileLines, 2)
-	if row := ansi.Strip(fileLines[2]); !strings.Contains(row, "214  3.4   9  10 █") {
+	if row := ansi.Strip(fileLines[2]); !strings.Contains(row, "214  3.4   9  10   - █") {
 		t.Fatalf("scrollbar clips file metrics: %q", row)
 	}
 
@@ -203,7 +203,7 @@ func TestScrollablePanesShowAMutedThumb(t *testing.T) {
 	model = Model{report: domain.Report{Files: []domain.File{{Functions: functions}}}}
 	functionLines := model.functionTable(39, 6)
 	assertMutedScrollbar(t, functionLines, 2)
-	if row := ansi.Strip(functionLines[2]); !strings.Contains(row, "  7   2     2 █") {
+	if row := ansi.Strip(functionLines[2]); !strings.Contains(row, "  7   2     2   - █") {
 		t.Fatalf("scrollbar clips function metrics: %q", row)
 	}
 
@@ -271,7 +271,7 @@ func TestSelectedFileAndFunctionStayVisibleWhileSourceIsFocused(t *testing.T) {
 	}
 
 	file := model.fileRow(model.report.Files[0], 40, true)
-	function := model.functionRow(model.report.Files[0].Functions[0], 40, true)
+	function := model.functionRow(model.report.Files[0].Functions[0], 44, true)
 	if !strings.HasPrefix(ansi.Strip(file), "› application/view.go") {
 		t.Fatalf("inactive file selection is hidden: %q", ansi.Strip(file))
 	}
@@ -478,10 +478,10 @@ func TestFunctionTableShowsFunctionLength(t *testing.T) {
 	row := ansi.Strip((Model{}).functionRow(function, 40, false))
 	fields := strings.Fields(row)
 
-	if got := fields[len(fields)-1]; got != "16" {
+	if got := fields[len(fields)-2]; got != "16" {
 		t.Fatalf("function length = %s, want 16: %q", got, row)
 	}
-	if !strings.HasSuffix(strings.TrimSpace(functionTableHeader(40)), "CC COG LINES") {
+	if !strings.HasSuffix(strings.TrimSpace(functionTableHeader(40)), "CC COG LINES PAT") {
 		t.Fatalf("function table header does not describe its length: %q", functionTableHeader(40))
 	}
 	if !strings.Contains((Model{}).functionRow(function, 40, false), "38;2;167;139;250") {

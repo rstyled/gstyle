@@ -86,7 +86,7 @@ func TestSkillExplainsAnnotationNavigation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, text := range []string{"change files from any pane", "previous or next note across the report", "amber diamonds"} {
+	for _, text := range []string{"change files from any pane", "previous or next note or finding", "Hidden patterns are skipped", "`PAT`", "related locations", "amber diamonds", "Patterns load automatically", "guardrail findings appear inline"} {
 		if !strings.Contains(output.String(), text) {
 			t.Fatalf("skill does not explain %q:\n%s", text, output.String())
 		}

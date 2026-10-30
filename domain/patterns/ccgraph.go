@@ -5,8 +5,9 @@ import (
 	"math"
 	"runtime"
 	"sort"
-	"strings"
 	"sync"
+
+	"github.com/rstyled/gstyle/domain/pdg"
 )
 
 // Gstyle's CCGraph-style adaptation combines characteristic/name admission,
@@ -481,11 +482,7 @@ func makeCCGraphCandidate(group []string, factByID map[string]*MiningFacts) (Can
 		if f == nil {
 			continue
 		}
-		sites = append(sites, Site{
-			Path: f.Path,
-			Line: f.Line,
-			Name: f.Name,
-		})
+		sites = append(sites, cloneSite(f))
 	}
 	if len(sites) < 2 {
 		return Candidate{}, false
@@ -502,12 +499,19 @@ func makeCCGraphCandidate(group []string, factByID map[string]*MiningFacts) (Can
 
 // ccObservation describes a CCGraph clone group for the report.
 func ccObservation(sites []Site) string {
-	names := make([]string, 0, len(sites))
-	for _, s := range sites {
-		names = append(names, s.Name)
+	return fmt.Sprintf("CCGraph found %d function bodies with similar dependency graphs", len(sites))
+}
+
+func cloneSite(f *MiningFacts) Site {
+	site := makeSite(f)
+	graph := f.Canonical
+	if graph == nil || graph.Tables == nil || graph.Function.QualifiedName.Status != pdg.Known {
+		return site
 	}
-	sort.Strings(names)
-	return fmt.Sprintf("CCGraph found %d similar functions: %s", len(sites), strings.Join(names, ", "))
+	if name := graph.Tables.Text(graph.Function.QualifiedName.Value); name != "" {
+		site.Name = name
+	}
+	return site
 }
 
 // ccGraphInputs builds the PDG, name, and AST-type maps CCGraphClones

@@ -1,6 +1,7 @@
 package application
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -66,39 +67,18 @@ func TestPatternPathMatches(t *testing.T) {
 		{"pkg/a.go", "a.go", true},
 		{"a.go", "pkg/a.go", true},
 		{"a.go", "b.go", false},
+		{"src/a.go", "/repo/src/a.go", true},
+		{"/repo/src/a.go", "src/a.go", true},
+		{"othersrc/a.go", "src/a.go", false},
 		{"aa.go", "a.go", false},
 	}
 	for _, c := range cases {
 		if got := patternPathMatches(c.a, c.b); got != c.want {
 			t.Errorf("patternPathMatches(%q, %q) = %v, want %v", c.a, c.b, got, c.want)
 		}
-	}
-}
-
-func TestPatternMarkersAtLine(t *testing.T) {
-	markers := patternMarkersFromReport(testPatternsReport())
-	// Line 11 is inside the 10-12 range.
-	got := patternMarkersAtLine(markers, "a.go", 11)
-	if len(got) != 1 || got[0].Kind != "guard_clause" {
-		t.Fatalf("expected guard_clause at line 11, got %+v", got)
-	}
-	// Line 30 has no EndLine; matches exactly.
-	got = patternMarkersAtLine(markers, "a.go", 30)
-	if len(got) != 1 {
-		t.Fatalf("expected 1 marker at line 30, got %+v", got)
-	}
-	// No markers on other files.
-	if got := patternMarkersAtLine(markers, "c.go", 10); len(got) != 0 {
-		t.Fatalf("expected no markers, got %+v", got)
-	}
-	// Dedupes by kind.
-	dupes := []PatternMarker{
-		{Kind: "guard_clause", Path: "a.go", Line: 10},
-		{Kind: "guard_clause", Path: "a.go", Line: 10},
-		{Kind: "typednil", Path: "a.go", Line: 10},
-	}
-	if got := patternMarkersAtLine(dupes, "a.go", 10); len(got) != 2 {
-		t.Fatalf("expected 2 deduped markers, got %+v", got)
+		if allocations := testing.AllocsPerRun(100, func() { patternPathMatches(c.a, c.b) }); allocations != 0 {
+			t.Fatalf("path matching allocates %g objects", allocations)
+		}
 	}
 }
 
@@ -117,18 +97,6 @@ func TestTogglePatterns(t *testing.T) {
 	}
 }
 
-func TestHighlightPatternLine(t *testing.T) {
-	rendered := "some code"
-	if got := highlightPatternLine(rendered, nil); got != rendered {
-		t.Fatal("expected unchanged with no markers")
-	}
-	markers := []PatternMarker{{Kind: "guard_clause", Path: "a.go", Line: 1}}
-	got := highlightPatternLine(rendered, markers)
-	if got == rendered || len(got) <= len(rendered) {
-		t.Fatal("expected background-wrapped output")
-	}
-}
-
 func TestSourcePatternRows(t *testing.T) {
 	if rows := sourcePatternRows(nil, 80); rows != nil {
 		t.Fatal("expected nil for no markers")
@@ -141,44 +109,18 @@ func TestSourcePatternRows(t *testing.T) {
 	if len(rows) == 0 {
 		t.Fatal("expected rows")
 	}
-	// Kinds sorted: ccgraph_clone before guard_clause.
-	found := false
-	for _, r := range rows {
-		if containsAll(r, "ccgraph_clone", "guard_clause") {
-			found = true
-		}
-	}
-	if !found {
-		t.Fatalf("expected both kinds in rows: %v", rows)
+	if len(rows) != 2 || !containsAll(rows[0], "▲ ", "ccgraph_clone") || !containsAll(rows[1], "▲ ", "guard_clause") {
+		t.Fatalf("expected distinct sorted finding rows: %v", rows)
 	}
 }
 
 func containsAll(s string, subs ...string) bool {
 	for _, sub := range subs {
-		found := false
-		for i := 0; i+len(sub) <= len(s); i++ {
-			if s[i:i+len(sub)] == sub {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !strings.Contains(s, sub) {
 			return false
 		}
 	}
 	return true
-}
-
-func TestSourcePatternRowCount(t *testing.T) {
-	markers := patternMarkersFromReport(testPatternsReport())
-	// Lines 10-12: one marker row at line 10 (dedupe by kind per line).
-	if got := sourcePatternRowCount(markers, "a.go", 10, 12, 80); got != 1 {
-		t.Fatalf("expected 1 pattern row, got %d", got)
-	}
-	// Wrong path: zero rows.
-	if got := sourcePatternRowCount(markers, "z.go", 10, 12, 80); got != 0 {
-		t.Fatalf("expected 0 pattern rows, got %d", got)
-	}
 }
 
 func TestPToggleKeybinding(t *testing.T) {
@@ -206,7 +148,7 @@ func TestPToggleKeybinding(t *testing.T) {
 }
 
 func TestPatternsMsgUpdate(t *testing.T) {
-	m := Model{patternsLoading: true}
+	m := Model{patternState: patternState{patternsLoading: true}}
 	markers := []PatternMarker{{Kind: "guard_clause", Path: "a.go", Line: 1}}
 	updated, _ := m.Update(patternsMsg{markers: markers})
 	nm := updated.(Model)

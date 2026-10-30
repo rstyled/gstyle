@@ -34,11 +34,12 @@ var (
 const scrollbarGutterWidth = 2
 
 func (m Model) View() tea.View {
+	indexed := m.ensureFindingIndex().ensureSourceRows()
 	var content string
-	if m.width > 0 && m.width < wideMinimum {
-		content = m.narrowView()
+	if indexed.width > 0 && indexed.width < wideMinimum {
+		content = indexed.narrowView()
 	} else {
-		content = m.wideView()
+		content = indexed.wideView()
 	}
 
 	view := tea.NewView(content)
@@ -126,6 +127,7 @@ func (m Model) header(width int) string {
 		summary += fmt.Sprintf(" · RPC :%d", m.controlPort)
 	}
 	summary += m.qualityHeader()
+	summary += m.analysisLoadingLabel()
 	right := muted.Render(summary)
 
 	return joinSides(left, right, width)
@@ -147,7 +149,7 @@ func (m Model) footer(width int) string {
 		keys := green.Render("tab") + muted.Render(" panes · ") +
 			green.Render("j/k") + muted.Render(" move · ") +
 			green.Render(",/.") + muted.Render(" files · ") +
-			green.Render("[/]") + muted.Render(m.annotationNavigationLabel()+" · ") +
+			green.Render("[/]") + muted.Render(m.reviewNavigationLabel()+" · ") +
 			green.Render("r") + muted.Render(" · ") + green.Render("q")
 		if m.focus == detailsPane {
 			keys += muted.Render(" · ") + green.Render("v/a/d") + muted.Render(" source")
@@ -158,7 +160,7 @@ func (m Model) footer(width int) string {
 	keys := green.Render("tab/shift+tab") + muted.Render(" panes · ") +
 		green.Render("j/k") + muted.Render(" move · ") +
 		green.Render(",/.") + muted.Render(" files · ") +
-		green.Render("[/]") + muted.Render(m.annotationNavigationLabel()+" · ") +
+		green.Render("[/]") + muted.Render(m.reviewNavigationLabel()+" · ") +
 		green.Render("r") + muted.Render(" refresh · ") +
 		green.Render("p") + muted.Render(" patterns · ") +
 		green.Render("q") + muted.Render(" quit")
@@ -183,40 +185,52 @@ func (m Model) fileTable(width int, height int) []string {
 		return fitPaneLines(append(lines, muted.Render("No Go files")), width, height)
 	}
 
-	for index, file := range m.report.Files {
-		lines = append(lines, m.fileRow(file, tableWidth, index == m.fileIndex))
+	start, end := tableRowRange(len(m.report.Files), m.fileIndex, height)
+	for index := start; index < end; index++ {
+		lines = append(lines, m.fileRow(m.report.Files[index], tableWidth, index == m.fileIndex))
 	}
 
-	return tableWindow(lines, m.fileIndex, width, height)
+	return tableWindow(fitPaneLines(lines, width, height), start, width, len(m.report.Files))
 }
 
 func (m Model) fileRow(file domain.File, width int, selected bool) string {
-	if width < 30 {
+	row := fileMetricsRow(m.report.Root, file, width) + m.patternCountCell(m.filePatternCount(file.Path))
+	return m.selection(row, filesPane, selected, m.fileAnnotationCount(file.Path) > 0)
+}
+
+func fileMetricsRow(root string, file domain.File, width int) string {
+	if width < 26 {
 		nameWidth := max(width-10, 1)
-		path := fileTablePath(m.report.Root, file.Path, nameWidth)
+		path := fileTablePath(root, file.Path, nameWidth)
+		name := text.Render(padText(path, nameWidth))
+		return name + metricStyle(file.Peak).Render(fmt.Sprintf(" %3d", file.Peak))
+	}
+	if width < 30 {
+		nameWidth := max(width-14, 1)
+		path := fileTablePath(root, file.Path, nameWidth)
 		name := text.Render(padText(path, nameWidth))
 		peak := metricStyle(file.Peak).Render(fmt.Sprintf(" %3d", file.Peak))
 		load := cognitive.Render(fmt.Sprintf(" %3d", file.CognitivePeak))
-		return m.selection(name+peak+load, filesPane, selected, m.fileAnnotationCount(file.Path) > 0)
+		return name + peak + load
 	}
 	if width < 42 {
-		nameWidth := max(width-15, 1)
-		path := fileTablePath(m.report.Root, file.Path, nameWidth)
+		nameWidth := max(width-19, 1)
+		path := fileTablePath(root, file.Path, nameWidth)
 		name := text.Render(padText(path, nameWidth))
 		total := muted.Render(fmt.Sprintf(" %3d ", file.Total))
 		peak := metricStyle(file.Peak).Render(fmt.Sprintf("%3d", file.Peak))
 		load := cognitive.Render(fmt.Sprintf(" %3d", file.CognitivePeak))
-		return m.selection(name+total+peak+load, filesPane, selected, m.fileAnnotationCount(file.Path) > 0)
+		return name + total + peak + load
 	}
 
-	nameWidth := max(width-21, 1)
-	path := fileTablePath(m.report.Root, file.Path, nameWidth)
+	nameWidth := max(width-25, 1)
+	path := fileTablePath(root, file.Path, nameWidth)
 	name := text.Render(padText(path, nameWidth))
 	values := muted.Render(fmt.Sprintf(" %5d %4.1f ", file.Total, file.Average))
 	peak := metricStyle(file.Peak).Render(fmt.Sprintf("%3d", file.Peak))
 	load := cognitive.Render(fmt.Sprintf(" %3d", file.CognitivePeak))
 
-	return m.selection(name+values+peak+load, filesPane, selected, m.fileAnnotationCount(file.Path) > 0)
+	return name + values + peak + load
 }
 
 func (m Model) functionTable(width int, height int) []string {
@@ -230,25 +244,28 @@ func (m Model) functionTable(width int, height int) []string {
 		return fitPaneLines(append(lines, muted.Render("No functions")), width, height)
 	}
 
-	for index, function := range file.Functions {
-		lines = append(lines, m.functionRow(function, tableWidth, index == m.functionIndex))
+	start, end := tableRowRange(len(file.Functions), m.functionIndex, height)
+	for index := start; index < end; index++ {
+		lines = append(lines, m.functionRow(file.Functions[index], tableWidth, index == m.functionIndex))
 	}
 
-	return tableWindow(lines, m.functionIndex, width, height)
+	return tableWindow(fitPaneLines(lines, width, height), start, width, len(file.Functions))
 }
 
 func (m Model) functionRow(function domain.Function, width int, selected bool) string {
-	nameWidth := max(width-16, 1)
+	ccWidth, lineWidth := functionMetricWidths(width)
+	nameWidth := max(width-ccWidth-lineWidth-12, 1)
 	count := 0
 	if file, ok := m.selectedFile(); ok {
 		count = m.functionAnnotationCount(file.Path, function)
 	}
 	name := text.Render(padText(truncate(function.Name, nameWidth), nameWidth))
-	complexity := metricStyle(function.Complexity).Render(fmt.Sprintf(" %3d", function.Complexity))
+	complexity := metricStyle(function.Complexity).Render(fmt.Sprintf(" %*d", ccWidth, function.Complexity))
 	load := cognitive.Render(fmt.Sprintf(" %3d", function.CognitiveComplexity))
-	lines := muted.Render(fmt.Sprintf(" %5d", functionLineCount(function)))
+	lines := muted.Render(fmt.Sprintf(" %*d", lineWidth, functionLineCount(function)))
+	patterns := m.patternCountCell(m.functionPatternCount(m.selectedFilePath(), function))
 
-	return m.selection(name+complexity+load+lines, functionsPane, selected, count > 0)
+	return m.selection(name+complexity+load+lines+patterns, functionsPane, selected, count > 0)
 }
 
 func (m Model) sourceLines(width int, height int, title string) []string {
@@ -286,12 +303,7 @@ func (m Model) sourceTitle(title string, function domain.Function) string {
 		}
 		line += muted.Render(" · ") + amber.Bold(true).Render(fmt.Sprintf("◆ %d %s", count, noun))
 	}
-	if m.patternsLoading {
-		line += muted.Render(" · ") + amber.Render("▲ patterns loading…")
-	} else if pcount := len(m.visiblePatternMarkers()); pcount > 0 && m.showPatterns {
-		line += muted.Render(" · ") + amber.Bold(true).Render(fmt.Sprintf("▲ %d patterns", pcount))
-	}
-	return line + qualityBadge(function) + diffTitle(m.report.DiffBase, function.DiffLines)
+	return line + m.patternSourceBadge(function) + qualityBadge(function) + diffTitle(m.report.DiffBase, function.DiffLines)
 }
 
 func (m Model) sourceBody(lines []string, function domain.Function, width int, height int) []string {
@@ -306,8 +318,8 @@ func (m Model) sourceBody(lines []string, function domain.Function, width int, h
 	if height == 0 {
 		return rendered
 	}
-	counter := m.sourceRowCounter()
-	position := counter.count(0, m.sourceOffset-1)
+	counter := m.sourceRowsAtWidth(paneContentWidth(width))
+	position := counter.count(0, m.sourceOffset-1) + m.findingRowsOffset(function.Line+m.sourceOffset)
 	contentLength := counter.count(0, len(code)-1)
 	return verticalScrollbar(rendered, contentStart, position, contentLength, available, width)
 }
@@ -318,11 +330,11 @@ func (m Model) selectedSourceCodeLines(function domain.Function) []string {
 		return lines
 	}
 	annotations := m.visibleAnnotations()
-	path := m.selectedFilePath()
-	pmarks := m.visiblePatternMarkers()
 	for index := range lines {
 		lineNumber := function.Line + index
-		lines[index] = highlightPatternLine(lines[index], patternMarkersAtLine(pmarks, path, lineNumber))
+		if m.hasFindingAtLine(lineNumber) {
+			lines[index] = withBackground(lines[index], patternBackground)
+		}
 		lines[index] = m.highlightSourceLine(lineNumber, lines[index], annotations)
 	}
 	return lines
@@ -364,12 +376,12 @@ func (m Model) sourceDisplayWindow(lines []string, function domain.Function, wid
 
 	result := make([]string, 0, height)
 	annotations := m.visibleAnnotations()
-	path := m.selectedFilePath()
-	patterns := m.patternMarkersForDisplay()
+	findings := m.sourceRowsAtWidth(width).findings
 	for index := min(m.sourceOffset, len(lines)); index < len(lines) && len(result) < height; index++ {
 		lineNumber := function.Line + index
 		rows := sourceRowsAtLine(function, lineNumber, lines[index], width, index == len(lines)-1, annotations)
-		rows = appendPatternRows(rows, patterns, path, lineNumber, width)
+		rows = append(rows, findings[lineNumber]...)
+		rows = rows[min(m.findingRowsOffset(lineNumber), len(rows)):]
 		remaining := height - len(result)
 		if len(rows) > remaining {
 			return append(result, rows[:remaining]...)
@@ -377,15 +389,6 @@ func (m Model) sourceDisplayWindow(lines []string, function domain.Function, wid
 		result = append(result, rows...)
 	}
 	return result
-}
-
-// patternMarkersForDisplay returns markers for row rendering, or nil when
-// pattern highlights are disabled.
-func (m Model) patternMarkersForDisplay() []PatternMarker {
-	if !m.showPatterns {
-		return nil
-	}
-	return m.patternMarkers
 }
 
 func (m Model) highlightSourceLine(line int, rendered string, annotations []Annotation) string {
@@ -493,16 +496,24 @@ func workspaceWidths(width int) []int {
 }
 
 func fileTableHeader(width int) string {
-	if width < 30 {
+	return fileMetricsHeader(width) + " PAT"
+}
+
+func fileMetricsHeader(width int) string {
+	if width < 26 {
 		nameWidth := max(width-10, 1)
+		return fmt.Sprintf("  %-*s %3s", nameWidth, "FILE", "CC")
+	}
+	if width < 30 {
+		nameWidth := max(width-14, 1)
 		return fmt.Sprintf("  %-*s %3s %3s", nameWidth, "FILE", "CC", "COG")
 	}
 	if width < 42 {
-		nameWidth := max(width-15, 1)
+		nameWidth := max(width-19, 1)
 		return fmt.Sprintf("  %-*s %3s %3s %3s", nameWidth, "FILE", "SUM", "MAX", "COG")
 	}
 
-	nameWidth := max(width-21, 1)
+	nameWidth := max(width-25, 1)
 	return fmt.Sprintf("  %-*s %5s %4s %3s %3s", nameWidth, "FILE", "SUM", "AVG", "MAX", "COG")
 }
 
@@ -516,8 +527,16 @@ func fileTablePath(root string, path string, width int) string {
 }
 
 func functionTableHeader(width int) string {
-	nameWidth := max(width-16, 1)
-	return fmt.Sprintf("  %-*s %3s %3s %5s", nameWidth, "FUNCTION", "CC", "COG", "LINES")
+	ccWidth, lineWidth := functionMetricWidths(width)
+	nameWidth := max(width-ccWidth-lineWidth-12, 1)
+	return fmt.Sprintf("  %-*s %*s %3s %*s %3s", nameWidth, truncate("FUNCTION", nameWidth), ccWidth, "CC", "COG", lineWidth, truncate("LINES", lineWidth), "PAT")
+}
+
+func functionMetricWidths(width int) (int, int) {
+	if width < 28 {
+		return 2, 4
+	}
+	return 3, 5
 }
 
 func functionLineCount(function domain.Function) int {
@@ -575,14 +594,6 @@ func normalizedSourceText(source string) string {
 	source = strings.ReplaceAll(source, "\r\n", "\n")
 	source = strings.TrimSuffix(source, "\r")
 	return strings.ReplaceAll(source, "\t", "    ")
-}
-
-// appendPatternRows appends the pattern label row for the line, if any.
-func appendPatternRows(rows []string, markers []PatternMarker, path string, line int, width int) []string {
-	if len(markers) == 0 {
-		return rows
-	}
-	return append(rows, sourcePatternRows(patternMarkersStartingAt(markers, path, line), width)...)
 }
 
 func sourceRowsAtLine(
@@ -810,19 +821,17 @@ func cognitiveBearingLine(diagnostics []domain.CognitiveDiagnostic, line int) bo
 	return false
 }
 
-func tableWindow(lines []string, selected int, width int, height int) []string {
-	if height == 0 || len(lines) <= height {
-		return fitPaneLines(lines, width, height)
+func tableWindow(lines []string, start int, width int, total int) []string {
+	return verticalScrollbar(lines, 2, start, total, max(len(lines)-2, 0), width)
+}
+
+func tableRowRange(count, selected, height int) (int, int) {
+	if height == 0 {
+		return 0, count
 	}
-
-	data := lines[2:]
 	available := max(height-2, 0)
-	start := min(max(selected-available/2, 0), max(len(data)-available, 0))
-	end := min(start+available, len(data))
-	visible := append([]string{}, lines[:2]...)
-	visible = append(visible, data[start:end]...)
-
-	return verticalScrollbar(fitPaneLines(visible, width, height), 2, start, len(data), available, width)
+	start := min(max(selected-available/2, 0), max(count-available, 0))
+	return start, min(start+available, count)
 }
 
 func paneContentWidth(width int) int {

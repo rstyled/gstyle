@@ -96,11 +96,7 @@ func makeInconsistentCandidate(group []string, factByID map[string]*MiningFacts)
 		if f == nil {
 			continue
 		}
-		sites = append(sites, Site{
-			Path: f.Path,
-			Line: f.Line,
-			Name: f.Name,
-		})
+		sites = append(sites, cloneSite(f))
 	}
 	if len(sites) < 2 {
 		return Candidate{}, false

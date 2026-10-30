@@ -14,16 +14,15 @@ type sourceWorkspace struct {
 	lineSelection         *LineSelection
 	visualSelectionActive bool
 	activeAnnotationID    string
+	activeFindingLine     int
+	findingDetailOffset   int
 	annotating            bool
 	annotationDraft       string
 }
 
 // clearSelection drops any active line selection.
 func (w sourceWorkspace) clearSelection() sourceWorkspace {
-	w.lineSelection = nil
-	w.visualSelectionActive = false
-	w.activeAnnotationID = ""
-	return w
+	return w.withSelection(nil)
 }
 
 // withSelection replaces the line selection, clearing visual-select state.
@@ -31,6 +30,8 @@ func (w sourceWorkspace) withSelection(selection *LineSelection) sourceWorkspace
 	w.lineSelection = selection
 	w.visualSelectionActive = false
 	w.activeAnnotationID = ""
+	w.activeFindingLine = 0
+	w.findingDetailOffset = 0
 	return w
 }
 
@@ -51,6 +52,10 @@ func (w sourceWorkspace) focusAnnotation(annotation Annotation, locate bool) sou
 		w.sourceCursor = annotation.EndLine - annotation.FunctionLine
 	}
 	return w
+}
+
+func (w sourceWorkspace) focusFinding(line, base int) sourceWorkspace {
+	return sourceWorkspace{sourceCursor: line - base, sourceOffset: line - base, activeFindingLine: line}
 }
 
 // stopAnnotating leaves annotation composition mode, keeping the draft.
