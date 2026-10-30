@@ -37,14 +37,6 @@ func (doc *document) patternOptions(groups map[*vertex][]*vertex) patterns.Optio
 	return result
 }
 
-func domainService(method *vertex, names []string) bool {
-	return len(names) >= 2 && freeFunction(method)
-}
-
-func freeFunction(method *vertex) bool {
-	return !slices.ContainsFunc(method.Children, receiverParameter)
-}
-
 func (doc *document) orderedRecords() []*cppRecord {
 	var result []*cppRecord
 	for _, node := range doc.Nodes {
@@ -84,10 +76,6 @@ func (doc *document) comparedRecords(nodes []*vertex) []*cppRecord {
 	return result
 }
 
-func recordEnd(record *cppRecord) int {
-	return max(1, record.node.number("LINE_NUMBER")) + strings.Count(record.node.text("CODE"), "\n")
-}
-
 func (doc *document) methodRecords(nodes []*vertex) map[*cppRecord]bool {
 	result := map[*cppRecord]bool{}
 	for _, node := range nodes {
@@ -100,4 +88,16 @@ func (doc *document) methodRecords(nodes []*vertex) map[*cppRecord]bool {
 		}
 	}
 	return result
+}
+
+func domainService(method *vertex, names []string) bool {
+	return len(names) >= 2 && freeFunction(method)
+}
+
+func freeFunction(method *vertex) bool {
+	return !slices.ContainsFunc(method.Children, receiverParameter)
+}
+
+func recordEnd(record *cppRecord) int {
+	return max(1, record.node.number("LINE_NUMBER")) + strings.Count(record.node.text("CODE"), "\n")
 }

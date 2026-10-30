@@ -9,14 +9,6 @@ import (
 	"github.com/rstyled/gstyle/domain/quality"
 )
 
-func DefaultQualityConfig() quality.Config {
-	config := quality.DefaultConfig()
-	config.Prefixes = cppEffectPrefixes()
-	return config
-}
-
-func qualityName(name string) string { return "cpp::" + name }
-
 func (p *projection) qualityFunction(nodes []*vertex, score domain.Function) quality.Function {
 	fact := quality.Function{Location: quality.Location{Path: p.path(), Line: score.Line, Column: score.Column, Name: qualityName(score.Name)}, Source: score.Source, CodeLines: codeLines(score.Source)}
 	for _, input := range p.inputs {
@@ -34,26 +26,6 @@ func (p *projection) qualityFunction(nodes []*vertex, score domain.Function) qua
 		p.qualityNode(&fact, node)
 	}
 	return fact
-}
-
-func methodBody(method *vertex) bool {
-	return slices.ContainsFunc(method.Children, func(node *vertex) bool {
-		return node.Label == "BLOCK" && node.number("LINE_NUMBER") > 0 && node.text("CODE") != "<empty>"
-	})
-}
-
-func referenceUses(nodes []*vertex, method *vertex) int {
-	count := 0
-	for _, node := range nodes {
-		if node.Label == "IDENTIFIER" && node.Owner == method {
-			count++
-		}
-	}
-	return count
-}
-
-func receiverParameter(node *vertex) bool {
-	return node.text("NAME") == "this" && node.number("INDEX") == 0
 }
 
 func (p *projection) qualityNode(fact *quality.Function, node *vertex) {
@@ -117,40 +89,6 @@ func (p *projection) uncertainOperation(node *vertex) bool {
 	return false
 }
 
-func opaqueObject(node *vertex) bool {
-	switch node.Label {
-	case "UNKNOWN":
-		return true
-	case "RETURN":
-		return node.Owner != nil && objectValueType(methodResultType(node.Owner))
-	case "LOCAL", "METHOD_PARAMETER_IN":
-		return !strings.HasPrefix(node.text("CODE"), "<unknown>") && objectValueType(node.text("TYPE_FULL_NAME"))
-	default:
-		return false
-	}
-}
-
-func uncertainOperationDetail(node *vertex) string {
-	switch node.Label {
-	case "LOCAL", "METHOD_PARAMETER_IN":
-		return "unresolved C++ object lifetime: " + node.text("NAME")
-	case "RETURN":
-		return "unresolved C++ return copy or move"
-	case "UNKNOWN":
-		return "unsupported C++ source: " + node.text("CODE")
-	default:
-		return "unresolved C++ operation: " + node.text("CODE")
-	}
-}
-
-func objectValueType(typ string) bool {
-	if strings.ContainsAny(typ, "*&") {
-		return false
-	}
-	base, _, _ := strings.Cut(typ, "[")
-	return !scalarType(base)
-}
-
 func (p *projection) expressionType(node *vertex) string {
 	if typ, exists := p.types[node]; exists {
 		return typ
@@ -190,30 +128,6 @@ func (p *projection) opaqueOperator(node *vertex) bool {
 	return false
 }
 
-func valueOperator(node *vertex) bool {
-	return operatorCall(node) && category(node) != pdg.Call && node.text("NAME") != "<operator>.fieldAccess"
-}
-func nonvalueOperand(node *vertex) bool {
-	return node.Label == "FIELD_IDENTIFIER" || node.Label == "TYPE_REF"
-}
-func operationValueType(typ string) bool {
-	return typ == "std::size_t" || localValueType(strings.TrimRight(typ, "& ")) || strings.Contains(typ, "[")
-}
-
-func scalarType(name string) bool {
-	name = strings.TrimSpace(name)
-	if strings.ContainsAny(name, "*&[") {
-		return false
-	}
-	parts := strings.Fields(name)
-	if len(parts) == 0 {
-		return false
-	}
-	return !slices.ContainsFunc(parts, func(part string) bool {
-		return !slices.Contains(strings.Fields("const volatile signed unsigned short long bool char wchar_t char8_t char16_t char32_t int float double void _Bool"), part)
-	})
-}
-
 func (e *Extraction) QualityFacts() []quality.Function {
 	facts := make([]quality.Function, len(e.Functions))
 	counts := map[string]int{}
@@ -242,6 +156,94 @@ func (e *Extraction) qualityHelpers(facts []quality.Function, counts map[string]
 		}
 	}
 	return catalog
+}
+
+func DefaultQualityConfig() quality.Config {
+	config := quality.DefaultConfig()
+	config.Prefixes = cppEffectPrefixes()
+	return config
+}
+
+func qualityName(name string) string { return "cpp::" + name }
+
+func methodBody(method *vertex) bool {
+	return slices.ContainsFunc(method.Children, func(node *vertex) bool {
+		return node.Label == "BLOCK" && node.number("LINE_NUMBER") > 0 && node.text("CODE") != "<empty>"
+	})
+}
+
+func referenceUses(nodes []*vertex, method *vertex) int {
+	count := 0
+	for _, node := range nodes {
+		if node.Label == "IDENTIFIER" && node.Owner == method {
+			count++
+		}
+	}
+	return count
+}
+
+func receiverParameter(node *vertex) bool {
+	return node.text("NAME") == "this" && node.number("INDEX") == 0
+}
+
+func opaqueObject(node *vertex) bool {
+	switch node.Label {
+	case "UNKNOWN":
+		return true
+	case "RETURN":
+		return node.Owner != nil && objectValueType(methodResultType(node.Owner))
+	case "LOCAL", "METHOD_PARAMETER_IN":
+		return !strings.HasPrefix(node.text("CODE"), "<unknown>") && objectValueType(node.text("TYPE_FULL_NAME"))
+	default:
+		return false
+	}
+}
+
+func uncertainOperationDetail(node *vertex) string {
+	switch node.Label {
+	case "LOCAL", "METHOD_PARAMETER_IN":
+		return "unresolved C++ object lifetime: " + node.text("NAME")
+	case "RETURN":
+		return "unresolved C++ return copy or move"
+	case "UNKNOWN":
+		return "unsupported C++ source: " + node.text("CODE")
+	default:
+		return "unresolved C++ operation: " + node.text("CODE")
+	}
+}
+
+func objectValueType(typ string) bool {
+	if strings.ContainsAny(typ, "*&") {
+		return false
+	}
+	base, _, _ := strings.Cut(typ, "[")
+	return !scalarType(base)
+}
+
+func valueOperator(node *vertex) bool {
+	return operatorCall(node) && category(node) != pdg.Call && node.text("NAME") != "<operator>.fieldAccess"
+}
+
+func nonvalueOperand(node *vertex) bool {
+	return node.Label == "FIELD_IDENTIFIER" || node.Label == "TYPE_REF"
+}
+
+func operationValueType(typ string) bool {
+	return typ == "std::size_t" || localValueType(strings.TrimRight(typ, "& ")) || strings.Contains(typ, "[")
+}
+
+func scalarType(name string) bool {
+	name = strings.TrimSpace(name)
+	if strings.ContainsAny(name, "*&[") {
+		return false
+	}
+	parts := strings.Fields(name)
+	if len(parts) == 0 {
+		return false
+	}
+	return !slices.ContainsFunc(parts, func(part string) bool {
+		return !slices.Contains(strings.Fields("const volatile signed unsigned short long bool char wchar_t char8_t char16_t char32_t int float double void _Bool"), part)
+	})
 }
 
 func sourceQualityCalls(calls []quality.Call, counts map[string]int) []quality.Call {

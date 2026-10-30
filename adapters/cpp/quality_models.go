@@ -8,6 +8,18 @@ import (
 	"github.com/rstyled/gstyle/domain/quality"
 )
 
+var ctypeNames = strings.Fields("isalnum isalpha isblank iscntrl isdigit isgraph islower isprint ispunct isspace isupper isxdigit tolower toupper")
+
+func (p *projection) modeledCtype(node *vertex) string {
+	name := standardCtypeName(node)
+	for _, target := range p.doc.Callables[name+":int(int)"] {
+		if !target.flag("IS_EXTERNAL") {
+			return ""
+		}
+	}
+	return name
+}
+
 func cppEffectPrefixes() []quality.Prefix {
 	models := []struct {
 		kind  quality.Kind
@@ -32,18 +44,6 @@ func cppEffectPrefixes() []quality.Prefix {
 		}
 	}
 	return result
-}
-
-var ctypeNames = strings.Fields("isalnum isalpha isblank iscntrl isdigit isgraph islower isprint ispunct isspace isupper isxdigit tolower toupper")
-
-func (p *projection) modeledCtype(node *vertex) string {
-	name := standardCtypeName(node)
-	for _, target := range p.doc.Callables[name+":int(int)"] {
-		if !target.flag("IS_EXTERNAL") {
-			return ""
-		}
-	}
-	return name
 }
 
 func standardCtypeName(node *vertex) string {

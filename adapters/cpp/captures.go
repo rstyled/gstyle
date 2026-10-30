@@ -7,6 +7,12 @@ import (
 	"github.com/rstyled/gstyle/domain/pdg"
 )
 
+type captureFact struct {
+	ID          string   `json:"id"`
+	Strategy    string   `json:"strategy"`
+	Declaration []string `json:"declarations"`
+}
+
 func (p *projection) jsonExtension(name string, value any) pdg.Extension {
 	data, _ := json.Marshal(value)
 	return pdg.Extension{Name: p.pool.Text(name), Value: p.pool.Text(string(data))}
@@ -27,6 +33,27 @@ func (p *projection) importExternalBinding(target *vertex) {
 	}
 	if role, ok := externalRole(target); ok {
 		p.externalBinding(target, role)
+	}
+}
+
+func (p *projection) externalBinding(node *vertex, role pdg.Role) {
+	identity := strconv.FormatUint(node.ID, 10)
+	p.graph.Symbols = append(p.graph.Symbols, pdg.Symbol{ID: p.pool.Text("s" + identity), Name: p.pool.Known(node.text("NAME")), Type: p.pool.Known(node.text("TYPE_FULL_NAME")), Role: role,
+		Extensions: []pdg.Extension{p.jsonExtension("gstyle.cpp:external-declaration", map[string]any{"id": identity, "properties": node.Props})}})
+	p.symbols[node] = pdg.Ref(len(p.graph.Symbols))
+}
+
+func (p *projection) captureFacts(nodes []*vertex) {
+	for _, node := range nodes {
+		bindings := node.Out["CAPTURE"]
+		if node.Label == "LOCAL" {
+			bindings = p.doc.Captures[node.text("CLOSURE_BINDING_ID")]
+		}
+		if len(bindings) == 0 {
+			continue
+		}
+		captures := importedCaptures(bindings)
+		p.attrs[p.refs[node]-1].Extensions = append(p.attrs[p.refs[node]-1].Extensions, p.jsonExtension("gstyle.cpp:captures", captures))
 	}
 }
 
@@ -51,33 +78,6 @@ func memberRole(node *vertex) pdg.Role {
 		return pdg.GlobalRole
 	}
 	return pdg.OtherRole
-}
-
-func (p *projection) externalBinding(node *vertex, role pdg.Role) {
-	identity := strconv.FormatUint(node.ID, 10)
-	p.graph.Symbols = append(p.graph.Symbols, pdg.Symbol{ID: p.pool.Text("s" + identity), Name: p.pool.Known(node.text("NAME")), Type: p.pool.Known(node.text("TYPE_FULL_NAME")), Role: role,
-		Extensions: []pdg.Extension{p.jsonExtension("gstyle.cpp:external-declaration", map[string]any{"id": identity, "properties": node.Props})}})
-	p.symbols[node] = pdg.Ref(len(p.graph.Symbols))
-}
-
-type captureFact struct {
-	ID          string   `json:"id"`
-	Strategy    string   `json:"strategy"`
-	Declaration []string `json:"declarations"`
-}
-
-func (p *projection) captureFacts(nodes []*vertex) {
-	for _, node := range nodes {
-		bindings := node.Out["CAPTURE"]
-		if node.Label == "LOCAL" {
-			bindings = p.doc.Captures[node.text("CLOSURE_BINDING_ID")]
-		}
-		if len(bindings) == 0 {
-			continue
-		}
-		captures := importedCaptures(bindings)
-		p.attrs[p.refs[node]-1].Extensions = append(p.attrs[p.refs[node]-1].Extensions, p.jsonExtension("gstyle.cpp:captures", captures))
-	}
 }
 
 func importedCaptures(bindings []*vertex) []captureFact {

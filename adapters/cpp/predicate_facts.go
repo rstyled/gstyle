@@ -8,6 +8,12 @@ import (
 	"github.com/rstyled/gstyle/domain/pdg"
 )
 
+type fieldEquality struct {
+	record      *cppRecord
+	left, right *vertex
+	field       string
+}
+
 func (p *projection) predicateFacts(fact *patterns.MiningFacts, nodes []*vertex) {
 	for _, node := range nodes {
 		if logical(node) == "" || node.Parent != nil && logical(node.Parent) != "" {
@@ -16,18 +22,6 @@ func (p *projection) predicateFacts(fact *patterns.MiningFacts, nodes []*vertex)
 		p.entityPredicate(fact, node)
 		p.specificationPredicate(fact, node)
 	}
-}
-
-func predicateNodes(node *vertex) []*vertex {
-	var result []*vertex
-	queue := []*vertex{node}
-	for len(queue) > 0 {
-		n := queue[len(queue)-1]
-		queue = queue[:len(queue)-1]
-		result = append(result, n)
-		queue = append(queue, n.Children...)
-	}
-	return result
 }
 
 func (p *projection) specificationPredicate(fact *patterns.MiningFacts, node *vertex) {
@@ -57,22 +51,6 @@ func (p *projection) predicateRecord(node *vertex) (*cppRecord, *vertex) {
 	return record, root
 }
 
-func samePredicateRoot(left, right *vertex) bool { return left == nil || left == right }
-
-func predicateKey(node, root *vertex) string {
-	if node.Label == "IDENTIFIER" && len(node.Out["REF"]) == 1 && node.Out["REF"][0] == root {
-		return "$"
-	}
-	if len(node.Children) == 0 {
-		return node.Label + ":" + node.text("CODE")
-	}
-	parts := []string{node.text("NAME")}
-	for _, child := range node.Children {
-		parts = append(parts, predicateKey(child, root))
-	}
-	return strings.Join(parts, "|")
-}
-
 func (p *projection) entityPredicate(fact *patterns.MiningFacts, node *vertex) {
 	comparisons := equalFields(p.doc, node)
 	if len(comparisons) < 2 {
@@ -97,14 +75,36 @@ func (p *projection) entityPredicate(fact *patterns.MiningFacts, node *vertex) {
 	fact.EntityIdentities = append(fact.EntityIdentities, patterns.EntityIdentityHit{Line: max(1, node.number("LINE_NUMBER")), TypeName: first.record.node.text("FULL_NAME"), IDField: first.record.identity, Fields: names, Left: first.left.text("NAME"), Right: first.right.text("NAME"), StructPath: first.record.node.text("FILENAME"), StructLine: max(1, first.record.node.number("LINE_NUMBER"))})
 }
 
-func sameEqualityOrigin(left, right fieldEquality) bool {
-	return left.record == right.record && left.left == right.left && left.right == right.right
+func predicateNodes(node *vertex) []*vertex {
+	var result []*vertex
+	queue := []*vertex{node}
+	for len(queue) > 0 {
+		n := queue[len(queue)-1]
+		queue = queue[:len(queue)-1]
+		result = append(result, n)
+		queue = append(queue, n.Children...)
+	}
+	return result
 }
 
-type fieldEquality struct {
-	record      *cppRecord
-	left, right *vertex
-	field       string
+func samePredicateRoot(left, right *vertex) bool { return left == nil || left == right }
+
+func predicateKey(node, root *vertex) string {
+	if node.Label == "IDENTIFIER" && len(node.Out["REF"]) == 1 && node.Out["REF"][0] == root {
+		return "$"
+	}
+	if len(node.Children) == 0 {
+		return node.Label + ":" + node.text("CODE")
+	}
+	parts := []string{node.text("NAME")}
+	for _, child := range node.Children {
+		parts = append(parts, predicateKey(child, root))
+	}
+	return strings.Join(parts, "|")
+}
+
+func sameEqualityOrigin(left, right fieldEquality) bool {
+	return left.record == right.record && left.left == right.left && left.right == right.right
 }
 
 func equalFields(doc *document, node *vertex) []fieldEquality {
@@ -143,6 +143,7 @@ func sameComparedField(record *cppRecord, left, right string) bool {
 func fieldOperands(left, right *vertex) bool {
 	return left != nil && right != nil && fieldOperation(left) && fieldOperation(right)
 }
+
 func sameRecordPair(left, right *cppRecord, lroot, rroot *vertex) bool {
 	return left != nil && left == right && lroot != rroot
 }

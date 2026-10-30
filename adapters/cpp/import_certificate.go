@@ -11,6 +11,15 @@ import (
 
 const importCapability = "cpg_method_projection"
 
+type projectedRelation struct {
+	ID         uint64 `json:"id"`
+	Source     uint64 `json:"source"`
+	Target     uint64 `json:"target"`
+	Kind       string `json:"kind"`
+	Variable   string `json:"variable"`
+	Properties string `json:"properties"`
+}
+
 func (p *projection) recordRelations() {
 	var relations []map[string]any
 	for _, link := range p.doc.MethodEdges[p.method] {
@@ -96,15 +105,6 @@ func (p *projection) verifyProperties(source *vertex, attrs pdg.Attributes) erro
 	return fmt.Errorf("CPG node %d loses source properties", source.ID)
 }
 
-type projectedRelation struct {
-	ID         uint64 `json:"id"`
-	Source     uint64 `json:"source"`
-	Target     uint64 `json:"target"`
-	Kind       string `json:"kind"`
-	Variable   string `json:"variable"`
-	Properties string `json:"properties"`
-}
-
 func (p *projection) projectedRelations() (map[uint64]projectedRelation, error) {
 	result := map[uint64]projectedRelation{}
 	for _, link := range p.graph.Edges {
@@ -136,14 +136,6 @@ func (p *projection) projectedExtension(result map[uint64]projectedRelation, ext
 	return nil
 }
 
-func relationExtension(name string) bool {
-	switch name {
-	case "gstyle.cpp:cfg", "gstyle.cpp:cross-method-dependencies", "gstyle.cpp:relations":
-		return true
-	}
-	return false
-}
-
 func (p *projection) projectedDependency(result map[uint64]projectedRelation, link pdg.Edge) error {
 	kind := p.pool.Tables.Text(link.Subkind)
 	if kind != "CDG" && kind != "REACHING_DEF" {
@@ -157,14 +149,6 @@ func (p *projection) projectedDependency(result map[uint64]projectedRelation, li
 		return err
 	}
 	return addProjectedRelation(result, relation)
-}
-
-func sourceEdgeID(value string) (uint64, error) {
-	text, found := strings.CutPrefix(value, "cpp:e")
-	if !found {
-		return 0, fmt.Errorf("CPG dependency loses original edge identity")
-	}
-	return strconv.ParseUint(text, 10, 64)
 }
 
 func (p *projection) decodeDependency(link pdg.Edge, kind string) (projectedRelation, error) {
@@ -204,10 +188,6 @@ func (p *projection) projectedEndpoints(link pdg.Edge) (uint64, uint64, error) {
 	return source, target, err
 }
 
-func dependencyKindMatches(source string, kind pdg.EdgeKind) bool {
-	return (source == "CDG" && kind == pdg.ControlEdge) || (source == "REACHING_DEF" && kind == pdg.Data)
-}
-
 func (p *projection) projectedVariable(link pdg.Edge) (string, error) {
 	if link.Annotations == 0 {
 		return "", nil
@@ -222,14 +202,6 @@ func (p *projection) projectedVariable(link pdg.Edge) (string, error) {
 	return "", nil
 }
 
-func addProjectedRelation(result map[uint64]projectedRelation, link projectedRelation) error {
-	if _, exists := result[link.ID]; exists {
-		return fmt.Errorf("CPG relation %d is projected more than once", link.ID)
-	}
-	result[link.ID] = link
-	return nil
-}
-
 func (p *projection) verifyRelations(actual map[uint64]projectedRelation) error {
 	expected := p.doc.MethodEdges[p.method]
 	if len(actual) != len(expected) {
@@ -241,5 +213,33 @@ func (p *projection) verifyRelations(actual map[uint64]projectedRelation) error 
 			return fmt.Errorf("CPG relation %d changes direction, kind, variable, or identity", link.ID)
 		}
 	}
+	return nil
+}
+
+func relationExtension(name string) bool {
+	switch name {
+	case "gstyle.cpp:cfg", "gstyle.cpp:cross-method-dependencies", "gstyle.cpp:relations":
+		return true
+	}
+	return false
+}
+
+func sourceEdgeID(value string) (uint64, error) {
+	text, found := strings.CutPrefix(value, "cpp:e")
+	if !found {
+		return 0, fmt.Errorf("CPG dependency loses original edge identity")
+	}
+	return strconv.ParseUint(text, 10, 64)
+}
+
+func dependencyKindMatches(source string, kind pdg.EdgeKind) bool {
+	return (source == "CDG" && kind == pdg.ControlEdge) || (source == "REACHING_DEF" && kind == pdg.Data)
+}
+
+func addProjectedRelation(result map[uint64]projectedRelation, link projectedRelation) error {
+	if _, exists := result[link.ID]; exists {
+		return fmt.Errorf("CPG relation %d is projected more than once", link.ID)
+	}
+	result[link.ID] = link
 	return nil
 }

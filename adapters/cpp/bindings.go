@@ -37,17 +37,6 @@ func (p *projection) declaration(node *vertex) {
 	}
 }
 
-func declarationRole(node *vertex) (pdg.Role, bool) {
-	if node.Label == "LOCAL" && staticStorage(node) {
-		return pdg.GlobalRole, true
-	}
-	if node.Label == "LOCAL" && node.text("CLOSURE_BINDING_ID") != "" {
-		return pdg.CaptureRole, true
-	}
-	role, exists := map[string]pdg.Role{"LOCAL": pdg.LocalRole, "METHOD_PARAMETER_IN": pdg.ParameterRole}[node.Label]
-	return role, exists
-}
-
 func (p *projection) readBinding(node *vertex) {
 	if node.Label != "IDENTIFIER" {
 		return
@@ -101,4 +90,15 @@ func (p *projection) reachingIdentity(edge *pdg.Edge, variable string) {
 		edge.Symbol, edge.Definition = definition.Symbol, ref
 		return
 	}
+}
+
+func declarationRole(node *vertex) (pdg.Role, bool) {
+	if node.Label == "LOCAL" && staticStorage(node) {
+		return pdg.GlobalRole, true
+	}
+	if node.Label == "LOCAL" && node.text("CLOSURE_BINDING_ID") != "" {
+		return pdg.CaptureRole, true
+	}
+	role, exists := map[string]pdg.Role{"LOCAL": pdg.LocalRole, "METHOD_PARAMETER_IN": pdg.ParameterRole}[node.Label]
+	return role, exists
 }

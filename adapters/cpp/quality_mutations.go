@@ -8,6 +8,29 @@ import (
 	"github.com/rstyled/gstyle/domain/quality"
 )
 
+func (p *projection) qualityMutation(node *vertex) quality.Mutation {
+	target := argument(node, 1)
+	mutation := quality.Mutation{Site: int(p.refs[node]), Root: "indirect C++ storage", RootID: strconv.FormatUint(node.ID, 10), Line: max(1, node.number("LINE_NUMBER")), Provenance: quality.Unknown}
+	if field := p.doc.staticMember(target); field != nil {
+		return quality.Mutation{Site: mutation.Site, Line: mutation.Line, Root: field.Parent.text("FULL_NAME"), RootID: strconv.FormatUint(field.ID, 10), FieldPath: field.text("NAME"), Provenance: quality.External}
+	}
+	root := storageRoot(target)
+	if root == nil {
+		return mutation
+	}
+	symbol := p.referredSymbol(root)
+	if symbol == 0 {
+		return mutation
+	}
+	binding := p.graph.Symbols[symbol-1]
+	provenance := mutationProvenance(binding, target == root, p.pool.Tables.Text(binding.Type.Value))
+	var parameter *int
+	if provenance == quality.External && len(root.Out["REF"]) == 1 {
+		parameter = p.parameterIndex(root.Out["REF"][0])
+	}
+	return quality.Mutation{Site: mutation.Site, Line: mutation.Line, Root: p.pool.Tables.Text(binding.Name.Value), RootID: p.pool.Tables.Text(binding.ID), FieldPath: memberName(target), Provenance: provenance, Parameter: parameter}
+}
+
 func localInitializer(node *vertex) bool {
 	if node.text("NAME") != "<operator>.assignment" {
 		return false
@@ -33,31 +56,6 @@ func assignedLocal(node *vertex) *vertex {
 func sameDeclarator(node, declaration *vertex) bool {
 	start, end := node.number("OFFSET"), node.number("OFFSET_END")
 	return start >= 0 && end > start && declaration.number("OFFSET") == start && declaration.number("OFFSET_END") == end
-}
-
-func (p *projection) qualityMutation(node *vertex) quality.Mutation {
-	target := argument(node, 1)
-	mutation := quality.Mutation{Site: int(p.refs[node]), Root: "indirect C++ storage", RootID: strconv.FormatUint(node.ID, 10), Line: max(1, node.number("LINE_NUMBER")), Provenance: quality.Unknown}
-	if field := p.doc.staticMember(target); field != nil {
-		mutation.Root, mutation.RootID, mutation.FieldPath, mutation.Provenance = field.Parent.text("FULL_NAME"), strconv.FormatUint(field.ID, 10), field.text("NAME"), quality.External
-		return mutation
-	}
-	root := storageRoot(target)
-	if root == nil {
-		return mutation
-	}
-	symbol := p.referredSymbol(root)
-	if symbol == 0 {
-		return mutation
-	}
-	binding := p.graph.Symbols[symbol-1]
-	mutation.Root, mutation.RootID = p.pool.Tables.Text(binding.Name.Value), p.pool.Tables.Text(binding.ID)
-	mutation.FieldPath = memberName(target)
-	mutation.Provenance = mutationProvenance(binding, target == root, p.pool.Tables.Text(binding.Type.Value))
-	if mutation.Provenance == quality.External && len(root.Out["REF"]) == 1 {
-		mutation.Parameter = p.parameterIndex(root.Out["REF"][0])
-	}
-	return mutation
 }
 
 func storageRoot(node *vertex) *vertex {

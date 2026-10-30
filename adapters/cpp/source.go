@@ -34,6 +34,25 @@ func newSourceFile(content string) *sourceFile {
 	return file
 }
 
+func (f *sourceFile) position(line, column int) (int, bool) {
+	if !f.hasPosition(line, column) {
+		return 0, false
+	}
+	start := f.lines[line-1]
+	end := len(f.content)
+	if line < len(f.lines) {
+		end = f.lines[line] - 1
+	}
+	if column-1 > end-start {
+		return 0, false
+	}
+	return start + column - 1, true
+}
+
+func (f *sourceFile) hasPosition(line, column int) bool {
+	return f != nil && line >= 1 && line <= len(f.lines) && column >= 1
+}
+
 func (p *projection) source() {
 	p.file = p.doc.Files[p.path()]
 	if p.file == nil || p.file.content == "" {
@@ -88,25 +107,6 @@ func (p *projection) offsetSpan(node *vertex) (pdg.Span, bool) {
 		return pdg.Span{}, false
 	}
 	return pdg.Span{Source: 1, Start: uint32(start), End: uint32(end)}, true
-}
-
-func (f *sourceFile) position(line, column int) (int, bool) {
-	if !f.hasPosition(line, column) {
-		return 0, false
-	}
-	start := f.lines[line-1]
-	end := len(f.content)
-	if line < len(f.lines) {
-		end = f.lines[line] - 1
-	}
-	if column-1 > end-start {
-		return 0, false
-	}
-	return start + column - 1, true
-}
-
-func (f *sourceFile) hasPosition(line, column int) bool {
-	return f != nil && line >= 1 && line <= len(f.lines) && column >= 1
 }
 
 func methodSource(method *vertex, file *sourceFile) string {

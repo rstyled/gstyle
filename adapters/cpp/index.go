@@ -12,7 +12,170 @@ import (
 )
 
 var textProperties = strings.Fields("NAME FULL_NAME FILENAME CODE TYPE_FULL_NAME METHOD_FULL_NAME SIGNATURE CONTROL_STRUCTURE_TYPE DISPATCH_TYPE CONTENT LANGUAGE VERSION ROOT EdgeProperty VARIABLE CLOSURE_BINDING_ID EVALUATION_STRATEGY CANONICAL_NAME AST_PARENT_TYPE AST_PARENT_FULL_NAME MODIFIER_TYPE")
+
 var numberProperties = strings.Fields("LINE_NUMBER COLUMN_NUMBER LINE_NUMBER_END COLUMN_NUMBER_END ORDER ARGUMENT_INDEX INDEX OFFSET OFFSET_END")
+
+func (n *vertex) text(name string) string { text, _ := n.Props[name].(string); return text }
+
+func (n *vertex) flag(name string) bool { flag, _ := n.Props[name].(bool); return flag }
+
+func (n *vertex) number(name string) int {
+	text, ok := n.Props[name].(json.Number)
+	if !ok {
+		return -1
+	}
+	integer, _ := text.Int64()
+	return int(integer)
+}
+
+func (n *vertex) assignOwner() {
+	if n.Parent != nil {
+		n.Owner = n.Parent.Owner
+	}
+	if n.Label == "METHOD" {
+		n.Owner = n
+	}
+}
+
+func (d *document) indexVertices(raw []wireNode) (map[uint64]*vertex, error) {
+	nodes := make(map[uint64]*vertex, len(raw))
+	for _, item := range raw {
+		node, err := indexVertex(item, nodes)
+		if err != nil {
+			return nil, err
+		}
+		d.Nodes = append(d.Nodes, node)
+	}
+	return nodes, nil
+}
+
+func (d *document) indexSources() {
+	d.indexCallables()
+	d.indexRecords()
+	d.indexUnboundUses()
+	methodEdges := map[*vertex][]edge{}
+	referrers := map[*vertex][]*vertex{}
+	for _, link := range d.Edges {
+		if link.Label == "REF" {
+			referrers[link.Target] = append(referrers[link.Target], link.Source)
+		}
+		methodEdges[link.Source.Owner] = append(methodEdges[link.Source.Owner], link)
+		if link.Source.Owner != link.Target.Owner {
+			methodEdges[link.Target.Owner] = append(methodEdges[link.Target.Owner], link)
+		}
+	}
+	files := map[string]*sourceFile{}
+	for _, node := range d.Nodes {
+		if node.Label == "FILE" {
+			files[node.text("NAME")] = newSourceFile(node.text("CONTENT"))
+		}
+	}
+	d.MethodEdges, d.Referrers = methodEdges, referrers
+	d.Sources, d.Files = pdg.NewSourceContext(d.Metadata.text("ROOT"), nil), files
+}
+
+func (d *document) indexUnboundUses() {
+	d.UnboundUses = map[*vertex]map[string]bool{}
+	for _, node := range d.Nodes {
+		if node.Label != "IDENTIFIER" || len(node.Out["REF"]) == 1 {
+			continue
+		}
+		if d.UnboundUses[node.Owner] == nil {
+			d.UnboundUses[node.Owner] = map[string]bool{}
+		}
+		d.UnboundUses[node.Owner][node.text("NAME")] = true
+	}
+}
+
+func (d *document) indexCallables() {
+	d.Callables = map[string][]*vertex{}
+	d.Captures = map[string][]*vertex{}
+	for _, node := range d.Nodes {
+		switch node.Label {
+		case "METHOD":
+			d.Callables[node.text("FULL_NAME")] = append(d.Callables[node.text("FULL_NAME")], node)
+		case "CLOSURE_BINDING":
+			id := node.text("CLOSURE_BINDING_ID")
+			d.Captures[id] = append(d.Captures[id], node)
+		}
+	}
+}
+
+func (d *document) indexEdges(raw []wireEdge, nodes map[uint64]*vertex) error {
+	seen := map[uint64]bool{}
+	for _, item := range raw {
+		link, err := indexEdge(item, nodes)
+		if err != nil {
+			return err
+		}
+		if seen[link.ID] {
+			return fmt.Errorf("duplicate edge ID: %d", link.ID)
+		}
+		seen[link.ID] = true
+		d.Edges = append(d.Edges, link)
+		link.Source.Out[link.Label] = append(link.Source.Out[link.Label], link.Target)
+	}
+	return nil
+}
+
+func (d *document) indexAST() error {
+	for _, link := range d.Edges {
+		if link.Label != "AST" {
+			continue
+		}
+		if link.Target.Parent != nil {
+			return fmt.Errorf("AST node %d has multiple parents", link.Target.ID)
+		}
+		link.Target.Parent = link.Source
+		link.Source.Children = append(link.Source.Children, link.Target)
+	}
+	return d.owners()
+}
+
+func (d *document) owners() error {
+	var queue []*vertex
+	for _, node := range d.Nodes {
+		if node.Parent == nil {
+			queue = append(queue, node)
+		}
+	}
+	for i := 0; i < len(queue); i++ {
+		node := queue[i]
+		if err := validateOperands(node); err != nil {
+			return err
+		}
+		node.assignOwner()
+		slices.SortFunc(node.Children, sourceOrder)
+		queue = append(queue, node.Children...)
+	}
+	if len(queue) != len(d.Nodes) {
+		return fmt.Errorf("CPG AST contains a cycle")
+	}
+	return nil
+}
+
+func (d *document) metadata() error {
+	for _, node := range d.Nodes {
+		if err := d.metadataNode(node); err != nil {
+			return err
+		}
+		if sourceMethod(node) {
+			d.Methods = append(d.Methods, node)
+		}
+	}
+	return validateMetadata(d.Metadata)
+}
+
+func (d *document) metadataNode(node *vertex) error {
+	if node.Label != "META_DATA" {
+		return nil
+	}
+	if d.Metadata != nil {
+		return fmt.Errorf("CPG has multiple META_DATA nodes")
+	}
+	d.Metadata = node
+	return nil
+}
 
 func validateProperties(props map[string]any) error {
 	for _, name := range textProperties {
@@ -61,17 +224,6 @@ func validateFlags(props map[string]any) error {
 	return nil
 }
 
-func (n *vertex) text(name string) string { text, _ := n.Props[name].(string); return text }
-func (n *vertex) flag(name string) bool   { flag, _ := n.Props[name].(bool); return flag }
-func (n *vertex) number(name string) int {
-	text, ok := n.Props[name].(json.Number)
-	if !ok {
-		return -1
-	}
-	integer, _ := text.Int64()
-	return int(integer)
-}
-
 func indexGraph(ctx context.Context, wire wireGraph) (*document, error) {
 	doc := &document{}
 	nodes, err := doc.indexVertices(wire.Value.Vertices)
@@ -94,69 +246,6 @@ func indexGraph(ctx context.Context, wire wireGraph) (*document, error) {
 	return doc, nil
 }
 
-func (d *document) indexVertices(raw []wireNode) (map[uint64]*vertex, error) {
-	nodes := make(map[uint64]*vertex, len(raw))
-	for _, item := range raw {
-		node, err := indexVertex(item, nodes)
-		if err != nil {
-			return nil, err
-		}
-		d.Nodes = append(d.Nodes, node)
-	}
-	return nodes, nil
-}
-
-func (d *document) indexSources() {
-	d.indexCallables()
-	d.indexRecords()
-	d.indexUnboundUses()
-	d.MethodEdges = map[*vertex][]edge{}
-	d.Referrers = map[*vertex][]*vertex{}
-	for _, link := range d.Edges {
-		if link.Label == "REF" {
-			d.Referrers[link.Target] = append(d.Referrers[link.Target], link.Source)
-		}
-		d.MethodEdges[link.Source.Owner] = append(d.MethodEdges[link.Source.Owner], link)
-		if link.Source.Owner != link.Target.Owner {
-			d.MethodEdges[link.Target.Owner] = append(d.MethodEdges[link.Target.Owner], link)
-		}
-	}
-	d.Sources = pdg.NewSourceContext(d.Metadata.text("ROOT"), nil)
-	d.Files = map[string]*sourceFile{}
-	for _, node := range d.Nodes {
-		if node.Label == "FILE" {
-			d.Files[node.text("NAME")] = newSourceFile(node.text("CONTENT"))
-		}
-	}
-}
-
-func (d *document) indexUnboundUses() {
-	d.UnboundUses = map[*vertex]map[string]bool{}
-	for _, node := range d.Nodes {
-		if node.Label != "IDENTIFIER" || len(node.Out["REF"]) == 1 {
-			continue
-		}
-		if d.UnboundUses[node.Owner] == nil {
-			d.UnboundUses[node.Owner] = map[string]bool{}
-		}
-		d.UnboundUses[node.Owner][node.text("NAME")] = true
-	}
-}
-
-func (d *document) indexCallables() {
-	d.Callables = map[string][]*vertex{}
-	d.Captures = map[string][]*vertex{}
-	for _, node := range d.Nodes {
-		switch node.Label {
-		case "METHOD":
-			d.Callables[node.text("FULL_NAME")] = append(d.Callables[node.text("FULL_NAME")], node)
-		case "CLOSURE_BINDING":
-			id := node.text("CLOSURE_BINDING_ID")
-			d.Captures[id] = append(d.Captures[id], node)
-		}
-	}
-}
-
 func indexVertex(raw wireNode, nodes map[uint64]*vertex) (*vertex, error) {
 	id, err := identifier(raw.ID)
 	if err != nil {
@@ -172,23 +261,6 @@ func indexVertex(raw wireNode, nodes map[uint64]*vertex) (*vertex, error) {
 	node := &vertex{ID: id, Label: raw.Label, Props: props, Out: map[string][]*vertex{}}
 	nodes[id] = node
 	return node, nil
-}
-
-func (d *document) indexEdges(raw []wireEdge, nodes map[uint64]*vertex) error {
-	seen := map[uint64]bool{}
-	for _, item := range raw {
-		link, err := indexEdge(item, nodes)
-		if err != nil {
-			return err
-		}
-		if seen[link.ID] {
-			return fmt.Errorf("duplicate edge ID: %d", link.ID)
-		}
-		seen[link.ID] = true
-		d.Edges = append(d.Edges, link)
-		link.Source.Out[link.Label] = append(link.Source.Out[link.Label], link.Target)
-	}
-	return nil
 }
 
 func indexEdge(raw wireEdge, nodes map[uint64]*vertex) (edge, error) {
@@ -244,42 +316,6 @@ func edgeVariable(props map[string]any) string {
 	return variable
 }
 
-func (d *document) indexAST() error {
-	for _, link := range d.Edges {
-		if link.Label != "AST" {
-			continue
-		}
-		if link.Target.Parent != nil {
-			return fmt.Errorf("AST node %d has multiple parents", link.Target.ID)
-		}
-		link.Target.Parent = link.Source
-		link.Source.Children = append(link.Source.Children, link.Target)
-	}
-	return d.owners()
-}
-
-func (d *document) owners() error {
-	var queue []*vertex
-	for _, node := range d.Nodes {
-		if node.Parent == nil {
-			queue = append(queue, node)
-		}
-	}
-	for i := 0; i < len(queue); i++ {
-		node := queue[i]
-		if err := validateOperands(node); err != nil {
-			return err
-		}
-		node.assignOwner()
-		slices.SortFunc(node.Children, sourceOrder)
-		queue = append(queue, node.Children...)
-	}
-	if len(queue) != len(d.Nodes) {
-		return fmt.Errorf("CPG AST contains a cycle")
-	}
-	return nil
-}
-
 func validateOperands(node *vertex) error {
 	if logical(node) != "" && len(node.Children) != 2 {
 		return fmt.Errorf("logical operator %d requires two AST operands", node.ID)
@@ -302,15 +338,6 @@ func validateMethod(node *vertex) error {
 	return fmt.Errorf("source METHOD %d has no AST body; require a full export", node.ID)
 }
 
-func (n *vertex) assignOwner() {
-	if n.Parent != nil {
-		n.Owner = n.Parent.Owner
-	}
-	if n.Label == "METHOD" {
-		n.Owner = n
-	}
-}
-
 func sourceOrder(a, b *vertex) int {
 	if result := a.number("ORDER") - b.number("ORDER"); result != 0 {
 		return result
@@ -328,18 +355,6 @@ func compareID(a, b uint64) int {
 	return 0
 }
 
-func (d *document) metadata() error {
-	for _, node := range d.Nodes {
-		if err := d.metadataNode(node); err != nil {
-			return err
-		}
-		if sourceMethod(node) {
-			d.Methods = append(d.Methods, node)
-		}
-	}
-	return validateMetadata(d.Metadata)
-}
-
 func validateMetadata(node *vertex) error {
 	if node == nil || node.text("LANGUAGE") == "" {
 		return fmt.Errorf("CPG META_DATA with LANGUAGE is required")
@@ -351,17 +366,6 @@ func validateMetadata(node *vertex) error {
 	if version != "1.1" && !strings.HasPrefix(version, "4.") {
 		return fmt.Errorf("unsupported CPG VERSION %q; require schema 1.1 or a 4.x producer", version)
 	}
-	return nil
-}
-
-func (d *document) metadataNode(node *vertex) error {
-	if node.Label != "META_DATA" {
-		return nil
-	}
-	if d.Metadata != nil {
-		return fmt.Errorf("CPG has multiple META_DATA nodes")
-	}
-	d.Metadata = node
 	return nil
 }
 

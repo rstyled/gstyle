@@ -67,6 +67,8 @@ type wireGraph struct {
 	} `json:"@value"`
 }
 
+var scalarNames = scalarPropertyNames()
+
 func Load(ctx context.Context, path string) (*Extraction, error) {
 	return LoadFrom(ctx, path, "")
 }
@@ -234,8 +236,6 @@ func scalarProperty(name string, decoded any) (any, error) {
 	}
 	return items[0], nil
 }
-
-var scalarNames = scalarPropertyNames()
 
 func scalarPropertyNames() map[string]bool {
 	result := map[string]bool{"IS_EXTERNAL": true, "IS_VARIADIC": true}

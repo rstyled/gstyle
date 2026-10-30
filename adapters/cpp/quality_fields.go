@@ -15,14 +15,6 @@ func (p *projection) typeQualifierLocal(node *vertex) bool {
 	return len(uses) > 0 && !slices.ContainsFunc(uses, func(use *vertex) bool { return !typeQualifierUse(use) })
 }
 
-func typeQualifierUse(node *vertex) bool {
-	parent := node.Parent
-	if parent == nil || !fieldOperation(parent) || argument(parent, 1) != node {
-		return false
-	}
-	return strings.HasPrefix(strings.TrimSpace(strings.TrimPrefix(parent.text("CODE"), node.text("CODE"))), "::")
-}
-
 func (p *projection) qualityFieldEffect(fact *quality.Function, node *vertex) {
 	if !fieldOperation(node) {
 		return
@@ -39,4 +31,12 @@ func (p *projection) qualityFieldEffect(fact *quality.Function, node *vertex) {
 	if strings.Contains(field.text("CODE")+" "+field.text("TYPE_FULL_NAME"), "volatile") {
 		fact.Effects = append(fact.Effects, quality.Effect{Site: int(p.refs[node]), Line: max(1, node.number("LINE_NUMBER")), Kind: quality.UnknownEffect, Detail: "volatile C++ member access"})
 	}
+}
+
+func typeQualifierUse(node *vertex) bool {
+	parent := node.Parent
+	if parent == nil || !fieldOperation(parent) || argument(parent, 1) != node {
+		return false
+	}
+	return strings.HasPrefix(strings.TrimSpace(strings.TrimPrefix(parent.text("CODE"), node.text("CODE"))), "::")
 }

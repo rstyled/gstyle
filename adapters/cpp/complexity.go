@@ -18,28 +18,6 @@ type scorer struct {
 	function domain.Function
 }
 
-var structural = map[string]bool{"IF": true, "FOR": true, "WHILE": true, "DO": true, "SWITCH": true, "CATCH": true}
-var cyclomaticControl = map[string]bool{"IF": true, "FOR": true, "WHILE": true, "DO": true, "CATCH": true}
-
-func scoreMethod(method *vertex, recursive bool, source *sourceFile) domain.Function {
-	s := scorer{method: method, function: domain.Function{Package: "cpp", Name: method.text("FULL_NAME"), Line: max(1, method.number("LINE_NUMBER")), EndLine: max(1, method.number("LINE_NUMBER_END")), Column: max(1, method.number("COLUMN_NUMBER")), Source: methodSource(method, source)}}
-	s.cyclomatic(method, "function")
-	queue := []scoreFrame{{node: method}}
-	for len(queue) != 0 {
-		frame := queue[len(queue)-1]
-		queue = queue[:len(queue)-1]
-		if frame.node.Owner != method {
-			continue
-		}
-		queue = append(queue, s.visit(frame)...)
-	}
-	if recursive {
-		s.cognitive(method, "recursion", 0)
-	}
-	s.function.EndLine = max(s.function.Line, s.function.EndLine)
-	return s.function
-}
-
 func (s *scorer) visit(frame scoreFrame) []scoreFrame {
 	node := frame.node
 	if node.Label == "CONTROL_STRUCTURE" {
@@ -52,14 +30,6 @@ func (s *scorer) visit(frame scoreFrame) []scoreFrame {
 		return s.expression(frame)
 	}
 	return childFrames(node, frame.depth)
-}
-
-func childFrames(node *vertex, depth int) []scoreFrame {
-	frames := make([]scoreFrame, 0, len(node.Children))
-	for i := len(node.Children) - 1; i >= 0; i-- {
-		frames = append(frames, scoreFrame{node: node.Children[i], depth: depth})
-	}
-	return frames
 }
 
 func (s *scorer) control(frame scoreFrame) []scoreFrame {
@@ -87,17 +57,6 @@ func (s *scorer) control(frame scoreFrame) []scoreFrame {
 	return frames
 }
 
-func predicateDepth(node *vertex, depth int, frames []scoreFrame) {
-	if len(node.Out["CONDITION"]) != 1 {
-		return
-	}
-	for i := range frames {
-		if frames[i].node == node.Out["CONDITION"][0] {
-			frames[i].depth = depth
-		}
-	}
-}
-
 func (s *scorer) ifAlternatives(node *vertex, depth int, frames []scoreFrame) {
 	if len(node.Children) < 3 {
 		return
@@ -108,37 +67,6 @@ func (s *scorer) ifAlternatives(node *vertex, depth int, frames []scoreFrame) {
 		return
 	}
 	s.cognitive(node.Children[len(node.Children)-1], "else", 0)
-}
-
-func elseIfBranch(node *vertex) *vertex {
-	if isIf(node) {
-		return node
-	}
-	if node.Label != "BLOCK" || len(node.Children) != 1 {
-		return nil
-	}
-	if strings.HasPrefix(strings.TrimSpace(node.text("CODE")), "{") {
-		return nil
-	}
-	if isIf(node.Children[0]) {
-		return node.Children[0]
-	}
-	return nil
-}
-
-func isIf(node *vertex) bool {
-	return node.Label == "CONTROL_STRUCTURE" && node.text("CONTROL_STRUCTURE_TYPE") == "IF"
-}
-
-func logical(node *vertex) string {
-	if node.Label != "CALL" || category(node) != pdg.Computation {
-		return ""
-	}
-	name := node.text("NAME")
-	if name == "<operator>.logicalAnd" || name == "<operator>.logicalOr" {
-		return name
-	}
-	return ""
 }
 
 func (s *scorer) expression(frame scoreFrame) []scoreFrame {
@@ -191,4 +119,77 @@ func (s *scorer) cyclomatic(node *vertex, kind string) {
 func (s *scorer) cognitive(node *vertex, kind string, nesting int) {
 	s.function.CognitiveComplexity += nesting + 1
 	s.function.CognitiveDiagnostics = append(s.function.CognitiveDiagnostics, domain.CognitiveDiagnostic{Kind: kind, Increment: nesting + 1, Nesting: nesting, Line: max(1, node.number("LINE_NUMBER")), Column: max(1, node.number("COLUMN_NUMBER"))})
+}
+
+var structural = map[string]bool{"IF": true, "FOR": true, "WHILE": true, "DO": true, "SWITCH": true, "CATCH": true}
+
+var cyclomaticControl = map[string]bool{"IF": true, "FOR": true, "WHILE": true, "DO": true, "CATCH": true}
+
+func scoreMethod(method *vertex, recursive bool, source *sourceFile) domain.Function {
+	s := scorer{method: method, function: domain.Function{Package: "cpp", Name: method.text("FULL_NAME"), Line: max(1, method.number("LINE_NUMBER")), EndLine: max(1, method.number("LINE_NUMBER_END")), Column: max(1, method.number("COLUMN_NUMBER")), Source: methodSource(method, source)}}
+	s.cyclomatic(method, "function")
+	queue := []scoreFrame{{node: method}}
+	for len(queue) != 0 {
+		frame := queue[len(queue)-1]
+		queue = queue[:len(queue)-1]
+		if frame.node.Owner != method {
+			continue
+		}
+		queue = append(queue, s.visit(frame)...)
+	}
+	if recursive {
+		s.cognitive(method, "recursion", 0)
+	}
+	s.function.EndLine = max(s.function.Line, s.function.EndLine)
+	return s.function
+}
+
+func childFrames(node *vertex, depth int) []scoreFrame {
+	frames := make([]scoreFrame, 0, len(node.Children))
+	for i := len(node.Children) - 1; i >= 0; i-- {
+		frames = append(frames, scoreFrame{node: node.Children[i], depth: depth})
+	}
+	return frames
+}
+
+func predicateDepth(node *vertex, depth int, frames []scoreFrame) {
+	if len(node.Out["CONDITION"]) != 1 {
+		return
+	}
+	for i := range frames {
+		if frames[i].node == node.Out["CONDITION"][0] {
+			frames[i].depth = depth
+		}
+	}
+}
+
+func elseIfBranch(node *vertex) *vertex {
+	if isIf(node) {
+		return node
+	}
+	if node.Label != "BLOCK" || len(node.Children) != 1 {
+		return nil
+	}
+	if strings.HasPrefix(strings.TrimSpace(node.text("CODE")), "{") {
+		return nil
+	}
+	if isIf(node.Children[0]) {
+		return node.Children[0]
+	}
+	return nil
+}
+
+func isIf(node *vertex) bool {
+	return node.Label == "CONTROL_STRUCTURE" && node.text("CONTROL_STRUCTURE_TYPE") == "IF"
+}
+
+func logical(node *vertex) string {
+	if node.Label != "CALL" || category(node) != pdg.Computation {
+		return ""
+	}
+	name := node.text("NAME")
+	if name == "<operator>.logicalAnd" || name == "<operator>.logicalOr" {
+		return name
+	}
+	return ""
 }

@@ -13,10 +13,25 @@ type cppRecord struct {
 	constructor bool
 }
 
-func recordType(name string) string {
-	name = strings.TrimSpace(name)
-	name = strings.TrimSpace(strings.TrimPrefix(name, "const "))
-	return strings.TrimSpace(strings.TrimRight(name, "*& "))
+func (r *cppRecord) recordMethod(method *vertex) {
+	if method.flag("IS_EXTERNAL") {
+		return
+	}
+	if method.text("NAME") == r.node.text("NAME") {
+		r.constructor = true
+		return
+	}
+	r.methods++
+}
+
+func (record *cppRecord) instanceFields() int {
+	count := 0
+	for _, field := range record.fields {
+		if !staticStorage(field) {
+			count++
+		}
+	}
+	return count
 }
 
 func (d *document) indexRecords() {
@@ -43,10 +58,6 @@ func (d *document) indexRecord(node *vertex, ambiguous map[string]bool) {
 		ambiguous[name] = true
 	}
 	d.Records[name] = recordDefinitionFacts(node)
-}
-
-func instanceMember(record *cppRecord, name string) bool {
-	return record != nil && record.fields[name] != nil && !staticStorage(record.fields[name])
 }
 
 func (d *document) staticMember(node *vertex) *vertex {
@@ -76,6 +87,28 @@ func (d *document) enumSwitch(node *vertex) bool {
 		return false
 	}
 	return d.Enums[recordType(condition.Out["REF"][0].text("TYPE_FULL_NAME"))]
+}
+
+func (d *document) accessedRecord(node *vertex) (*cppRecord, *vertex) {
+	root := argument(node, 1)
+	if root == nil || root.Label != "IDENTIFIER" || len(root.Out["REF"]) != 1 {
+		return nil, nil
+	}
+	declaration := root.Out["REF"][0]
+	if node.text("NAME") == "<operator>.indirectFieldAccess" && !strings.Contains(declaration.text("TYPE_FULL_NAME"), "*") {
+		return nil, nil
+	}
+	return d.Records[recordType(declaration.text("TYPE_FULL_NAME"))], declaration
+}
+
+func recordType(name string) string {
+	name = strings.TrimSpace(name)
+	name = strings.TrimSpace(strings.TrimPrefix(name, "const "))
+	return strings.TrimSpace(strings.TrimRight(name, "*& "))
+}
+
+func instanceMember(record *cppRecord, name string) bool {
+	return record != nil && record.fields[name] != nil && !staticStorage(record.fields[name])
 }
 
 func recordDefinition(node *vertex) bool {
@@ -124,17 +157,6 @@ func declarationHeader(node *vertex) string {
 	return code[start:offset] + node.text("CODE")
 }
 
-func (r *cppRecord) recordMethod(method *vertex) {
-	if method.flag("IS_EXTERNAL") {
-		return
-	}
-	if method.text("NAME") == r.node.text("NAME") {
-		r.constructor = true
-		return
-	}
-	r.methods++
-}
-
 func identityField(name string) bool {
 	name = strings.ToLower(strings.TrimPrefix(name, "m_"))
 	return name == "id" || name == "uuid" || name == "guid"
@@ -151,29 +173,7 @@ func memberName(node *vertex) string {
 	return field.text("CANONICAL_NAME")
 }
 
-func (d *document) accessedRecord(node *vertex) (*cppRecord, *vertex) {
-	root := argument(node, 1)
-	if root == nil || root.Label != "IDENTIFIER" || len(root.Out["REF"]) != 1 {
-		return nil, nil
-	}
-	declaration := root.Out["REF"][0]
-	if node.text("NAME") == "<operator>.indirectFieldAccess" && !strings.Contains(declaration.text("TYPE_FULL_NAME"), "*") {
-		return nil, nil
-	}
-	return d.Records[recordType(declaration.text("TYPE_FULL_NAME"))], declaration
-}
-
 func fieldOperation(node *vertex) bool {
 	name := node.text("NAME")
 	return name == "<operator>.fieldAccess" || name == "<operator>.indirectFieldAccess"
-}
-
-func (record *cppRecord) instanceFields() int {
-	count := 0
-	for _, field := range record.fields {
-		if !staticStorage(field) {
-			count++
-		}
-	}
-	return count
 }

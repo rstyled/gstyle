@@ -47,36 +47,6 @@ type projection struct {
 	types   map[*vertex]string
 }
 
-func convert(ctx context.Context, doc *document) (*Extraction, error) {
-	result := &Extraction{Root: doc.Metadata.text("ROOT"), Language: doc.Metadata.text("LANGUAGE")}
-	groups := methodNodes(doc)
-	recursive := recursiveMethods(doc)
-	for _, method := range doc.Methods {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		builder := newProjection(doc, method)
-		graph, err := builder.convert(groups[method])
-		if err != nil {
-			return nil, fmt.Errorf("method %s: %w", method.text("FULL_NAME"), err)
-		}
-		score := scoreMethod(method, recursive[method], builder.file)
-		result.Functions = append(result.Functions, Function{Path: builder.path(), Score: score, Graph: graph, Quality: builder.qualityFunction(groups[method], score), source: detectSourcePatterns(method, groups[method]), mining: builder.miningFacts(groups[method]), body: methodBody(method)})
-	}
-	result.sourceOptions = doc.patternOptions(groups)
-	return result, nil
-}
-
-func methodNodes(doc *document) map[*vertex][]*vertex {
-	groups := map[*vertex][]*vertex{}
-	for _, node := range doc.Nodes {
-		if node.Owner != nil {
-			groups[node.Owner] = append(groups[node.Owner], node)
-		}
-	}
-	return groups
-}
-
 func newProjection(doc *document, method *vertex) *projection {
 	pool := pdg.NewBuilder()
 	return &projection{doc: doc, method: method, pool: pool, graph: &pdg.Graph{Tables: pool.Tables}, refs: map[*vertex]pdg.Ref{}, symbols: map[*vertex]pdg.Ref{}, types: map[*vertex]string{}}
@@ -152,45 +122,6 @@ func (p *projection) extension(name string, value any) {
 	p.graph.Extensions = append(p.graph.Extensions, pdg.Extension{Name: p.pool.Text(name), Value: p.pool.Text(string(data))})
 }
 
-var categories = map[string]pdg.Category{
-	"METHOD": pdg.Entry, "METHOD_PARAMETER_IN": pdg.FormalInput,
-	"METHOD_PARAMETER_OUT": pdg.FormalOutput, "METHOD_RETURN": pdg.FormalOutput,
-	"RETURN": pdg.Return, "IDENTIFIER": pdg.Read, "LOCAL": pdg.Declaration,
-	"CONTROL_STRUCTURE": pdg.Control, "LITERAL": pdg.Computation, "CALL": pdg.Call,
-}
-
-func category(node *vertex) pdg.Category {
-	if macroCall(node) {
-		return pdg.Computation
-	}
-	if voidReturn(node) {
-		return pdg.Exit
-	}
-	if runtimeCall(node) {
-		return pdg.Call
-	}
-	if operatorCall(node) {
-		return operatorCategory(node.text("NAME"))
-	}
-	if kind, exists := categories[node.Label]; exists {
-		return kind
-	}
-	return pdg.Other
-}
-
-func voidReturn(node *vertex) bool {
-	return node.Label == "METHOD_RETURN" && node.text("TYPE_FULL_NAME") == "void"
-}
-
-func operatorCategory(name string) pdg.Category {
-	if strings.HasPrefix(name, "<operator>.assignment") || updateOperators[name] {
-		return pdg.Assignment
-	}
-	return pdg.Computation
-}
-
-var updateOperators = map[string]bool{"<operator>.postIncrement": true, "<operator>.preIncrement": true, "<operator>.postDecrement": true, "<operator>.preDecrement": true}
-
 func (p *projection) node(node *vertex) {
 	b := p.pool
 	attrs := p.attributes(node)
@@ -256,20 +187,6 @@ func (p *projection) operands(node *vertex) {
 	}
 }
 
-func operandRelation(node, operand *vertex) string {
-	if node.text("NAME") == "<operator>.assignment" && operand.number("ARGUMENT_INDEX") == 1 {
-		return "write-address"
-	}
-	return "value-operand"
-}
-
-func valueOperand(node, operand *vertex) bool {
-	if operand.Label == "FIELD_IDENTIFIER" || operand.Label == "TYPE_REF" {
-		return false
-	}
-	return !(node.text("NAME") == "<operator>.assignment" && operand.number("ARGUMENT_INDEX") == 1 && operand.Label == "IDENTIFIER")
-}
-
 func (p *projection) dependencies() {
 	var cfg, cross []map[string]any
 	for _, link := range p.doc.MethodEdges[p.method] {
@@ -288,22 +205,6 @@ func (p *projection) dependencies() {
 	}
 	p.extension("gstyle.cpp:cfg", cfg)
 	p.extension("gstyle.cpp:cross-method-dependencies", cross)
-}
-
-func externalDependency(link edge, method *vertex) bool {
-	return link.Source.Owner != method || link.Target.Owner != method
-}
-
-func sourceLink(link edge) map[string]any {
-	return map[string]any{"id": link.ID, "source": link.Source.ID, "target": link.Target.ID, "kind": link.Label, "variable": link.Variable, "properties": link.Properties}
-}
-
-type dependency struct {
-	Source, Target        *vertex
-	Kind                  pdg.EdgeKind
-	ID, Subkind, Variable string
-	Properties            string
-	Position              int
 }
 
 func (p *projection) addEdge(input dependency) {
@@ -358,12 +259,6 @@ func (p *projection) capability(name string) (pdg.Status, string) {
 	return pdg.Unknown, "CPG import does not establish this source-semantic capability"
 }
 
-func importedCapability(name string) bool {
-	return name == "node_extraction" || name == "parameters" || name == "returns"
-}
-
-var capabilityOverlays = map[string]string{"scalar_reaching_definitions": "dataflowOss", "control_dependencies": "controlflow", "calls": "callgraph"}
-
 func (p *projection) hasOverlay(name string) bool {
 	if name == "" {
 		return false
@@ -375,4 +270,111 @@ func (p *projection) hasOverlay(name string) bool {
 		}
 	}
 	return false
+}
+
+var categories = map[string]pdg.Category{
+	"METHOD": pdg.Entry, "METHOD_PARAMETER_IN": pdg.FormalInput,
+	"METHOD_PARAMETER_OUT": pdg.FormalOutput, "METHOD_RETURN": pdg.FormalOutput,
+	"RETURN": pdg.Return, "IDENTIFIER": pdg.Read, "LOCAL": pdg.Declaration,
+	"CONTROL_STRUCTURE": pdg.Control, "LITERAL": pdg.Computation, "CALL": pdg.Call,
+}
+
+var updateOperators = map[string]bool{"<operator>.postIncrement": true, "<operator>.preIncrement": true, "<operator>.postDecrement": true, "<operator>.preDecrement": true}
+
+type dependency struct {
+	Source, Target        *vertex
+	Kind                  pdg.EdgeKind
+	ID, Subkind, Variable string
+	Properties            string
+	Position              int
+}
+
+var capabilityOverlays = map[string]string{"scalar_reaching_definitions": "dataflowOss", "control_dependencies": "controlflow", "calls": "callgraph"}
+
+func convert(ctx context.Context, doc *document) (*Extraction, error) {
+	result := &Extraction{Root: doc.Metadata.text("ROOT"), Language: doc.Metadata.text("LANGUAGE")}
+	groups := methodNodes(doc)
+	recursive := recursiveMethods(doc)
+	for _, method := range doc.Methods {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		builder := newProjection(doc, method)
+		graph, err := builder.convert(groups[method])
+		if err != nil {
+			return nil, fmt.Errorf("method %s: %w", method.text("FULL_NAME"), err)
+		}
+		score := scoreMethod(method, recursive[method], builder.file)
+		function := Function{Path: builder.path(), Score: score, Graph: graph, Quality: builder.qualityFunction(groups[method], score), source: detectSourcePatterns(method, groups[method]), body: methodBody(method)}
+		function.mining = builder.miningFacts(groups[method], function)
+		result.Functions = append(result.Functions, function)
+	}
+	result.sourceOptions = doc.patternOptions(groups)
+	return result, nil
+}
+
+func methodNodes(doc *document) map[*vertex][]*vertex {
+	groups := map[*vertex][]*vertex{}
+	for _, node := range doc.Nodes {
+		if node.Owner != nil {
+			groups[node.Owner] = append(groups[node.Owner], node)
+		}
+	}
+	return groups
+}
+
+func category(node *vertex) pdg.Category {
+	if macroCall(node) {
+		return pdg.Computation
+	}
+	if voidReturn(node) {
+		return pdg.Exit
+	}
+	if runtimeCall(node) {
+		return pdg.Call
+	}
+	if operatorCall(node) {
+		return operatorCategory(node.text("NAME"))
+	}
+	if kind, exists := categories[node.Label]; exists {
+		return kind
+	}
+	return pdg.Other
+}
+
+func voidReturn(node *vertex) bool {
+	return node.Label == "METHOD_RETURN" && node.text("TYPE_FULL_NAME") == "void"
+}
+
+func operatorCategory(name string) pdg.Category {
+	if strings.HasPrefix(name, "<operator>.assignment") || updateOperators[name] {
+		return pdg.Assignment
+	}
+	return pdg.Computation
+}
+
+func operandRelation(node, operand *vertex) string {
+	if node.text("NAME") == "<operator>.assignment" && operand.number("ARGUMENT_INDEX") == 1 {
+		return "write-address"
+	}
+	return "value-operand"
+}
+
+func valueOperand(node, operand *vertex) bool {
+	if operand.Label == "FIELD_IDENTIFIER" || operand.Label == "TYPE_REF" {
+		return false
+	}
+	return !(node.text("NAME") == "<operator>.assignment" && operand.number("ARGUMENT_INDEX") == 1 && operand.Label == "IDENTIFIER")
+}
+
+func externalDependency(link edge, method *vertex) bool {
+	return link.Source.Owner != method || link.Target.Owner != method
+}
+
+func sourceLink(link edge) map[string]any {
+	return map[string]any{"id": link.ID, "source": link.Source.ID, "target": link.Target.ID, "kind": link.Label, "variable": link.Variable, "properties": link.Properties}
+}
+
+func importedCapability(name string) bool {
+	return name == "node_extraction" || name == "parameters" || name == "returns"
 }

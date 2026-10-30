@@ -22,6 +22,7 @@ func (p *projection) parameterIndex(declaration *vertex) *int {
 }
 
 func (p *projection) qualityArguments(call *quality.Call, node *vertex) {
+	args, storageArgs, receiver := call.Args, call.StorageArgs, call.Receiver
 	for _, child := range node.Children {
 		index := child.number("ARGUMENT_INDEX")
 		if index < 0 {
@@ -29,15 +30,16 @@ func (p *projection) qualityArguments(call *quality.Call, node *vertex) {
 		}
 		arg, storage := p.qualityArgument(child)
 		if index == 0 {
-			call.Receiver = &storage
+			receiver = &storage
 			continue
 		}
-		for len(call.Args) < index {
-			call.Args = append(call.Args, quality.ArgSource{Kind: quality.ArgOther})
-			call.StorageArgs = append(call.StorageArgs, quality.Storage{Provenance: quality.Unknown})
+		for len(args) < index {
+			args = append(args, quality.ArgSource{Kind: quality.ArgOther})
+			storageArgs = append(storageArgs, quality.Storage{Provenance: quality.Unknown})
 		}
-		call.Args[index-1], call.StorageArgs[index-1] = arg, storage
+		args[index-1], storageArgs[index-1] = arg, storage
 	}
+	call.Args, call.StorageArgs, call.Receiver = args, storageArgs, receiver
 }
 
 func (p *projection) qualityArgument(node *vertex) (quality.ArgSource, quality.Storage) {

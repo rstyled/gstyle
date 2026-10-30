@@ -13,6 +13,39 @@ type sourcePatterns struct {
 	emptyCatches []patterns.CPPEmptyCatchHit
 }
 
+func (p *sourcePatterns) guard(node *vertex) {
+	if isElseIf(node) {
+		return
+	}
+	then, otherwise := ifBranches(node)
+	if singleReturn(otherwise) == nil {
+		return
+	}
+	count := statementCount(then)
+	if count < 3 {
+		return
+	}
+	p.guards = append(p.guards, patterns.GuardClauseHit{Line: node.number("LINE_NUMBER"), BodyStmts: count})
+}
+
+func (p *sourcePatterns) boolean(node *vertex) {
+	then, otherwise := ifBranches(node)
+	value, known := literalBool(returnedExpression(singleReturn(then)))
+	if !known {
+		return
+	}
+	otherReturn := singleReturn(otherwise)
+	if otherwise == nil {
+		otherReturn = nextReturn(node)
+	}
+	other, known := literalBool(returnedExpression(otherReturn))
+	if !known || value != other {
+		return
+	}
+	end := max(node.number("LINE_NUMBER_END"), otherReturn.number("LINE_NUMBER"))
+	p.booleans = append(p.booleans, patterns.ConstantBoolReturnHit{Line: node.number("LINE_NUMBER"), EndLine: end, Value: value})
+}
+
 func detectSourcePatterns(method *vertex, nodes []*vertex) sourcePatterns {
 	var result sourcePatterns
 	boolean := booleanMethod(method)
@@ -135,21 +168,6 @@ func statementCount(block *vertex) int {
 	return count
 }
 
-func (p *sourcePatterns) guard(node *vertex) {
-	if isElseIf(node) {
-		return
-	}
-	then, otherwise := ifBranches(node)
-	if singleReturn(otherwise) == nil {
-		return
-	}
-	count := statementCount(then)
-	if count < 3 {
-		return
-	}
-	p.guards = append(p.guards, patterns.GuardClauseHit{Line: node.number("LINE_NUMBER"), BodyStmts: count})
-}
-
 func isElseBranch(node *vertex) bool {
 	parent := node.Parent
 	return parent != nil && isIf(parent) && len(parent.Children) == 3 && parent.Children[2] == node
@@ -202,24 +220,6 @@ func nextReturn(node *vertex) *vertex {
 		}
 	}
 	return nil
-}
-
-func (p *sourcePatterns) boolean(node *vertex) {
-	then, otherwise := ifBranches(node)
-	value, known := literalBool(returnedExpression(singleReturn(then)))
-	if !known {
-		return
-	}
-	otherReturn := singleReturn(otherwise)
-	if otherwise == nil {
-		otherReturn = nextReturn(node)
-	}
-	other, known := literalBool(returnedExpression(otherReturn))
-	if !known || value != other {
-		return
-	}
-	end := max(node.number("LINE_NUMBER_END"), otherReturn.number("LINE_NUMBER"))
-	p.booleans = append(p.booleans, patterns.ConstantBoolReturnHit{Line: node.number("LINE_NUMBER"), EndLine: end, Value: value})
 }
 
 func emptyCatch(node *vertex) bool {

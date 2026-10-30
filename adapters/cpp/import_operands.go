@@ -14,10 +14,6 @@ type operandWitness struct {
 	Subkind        string
 }
 
-func operandID(source, target *vertex) string {
-	return "operand:" + strconv.FormatUint(source.ID, 10) + ":" + strconv.FormatUint(target.ID, 10)
-}
-
 func (p *projection) expectedOperands(node *vertex, expected map[string]operandWitness) {
 	if node.Label != "CALL" && node.Label != "RETURN" {
 		return
@@ -28,13 +24,6 @@ func (p *projection) expectedOperands(node *vertex, expected map[string]operandW
 		}
 		expected[operandID(operand, node)] = operandWitness{Source: p.refs[operand], Target: p.refs[node], Position: importedPosition(operand.number("ARGUMENT_INDEX")), Subkind: operandRelation(node, operand)}
 	}
-}
-
-func importedPosition(index int) pdg.Position {
-	if index < 0 {
-		return 0
-	}
-	return pdg.Position(index + 1)
 }
 
 func (p *projection) verifyOperands(nodes []*vertex) error {
@@ -66,4 +55,15 @@ func (p *projection) verifyOperand(link pdg.Edge, expected map[string]operandWit
 	}
 	delete(expected, id)
 	return nil
+}
+
+func operandID(source, target *vertex) string {
+	return "operand:" + strconv.FormatUint(source.ID, 10) + ":" + strconv.FormatUint(target.ID, 10)
+}
+
+func importedPosition(index int) pdg.Position {
+	if index < 0 {
+		return 0
+	}
+	return pdg.Position(index + 1)
 }

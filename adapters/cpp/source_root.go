@@ -40,10 +40,6 @@ func (d *document) supplementMethod(root *os.Root, method *vertex) error {
 	return nil
 }
 
-func (f *sourceFile) embedded() bool {
-	return f != nil && f.content != "" && !f.supplemental
-}
-
 func (d *document) supplementFile(root *os.Root, name string) (*sourceFile, error) {
 	if file := d.Files[name]; file != nil && file.content != "" {
 		return file, nil
@@ -54,6 +50,10 @@ func (d *document) supplementFile(root *os.Root, name string) (*sourceFile, erro
 	}
 	d.Files[name] = file
 	return file, nil
+}
+
+func (f *sourceFile) embedded() bool {
+	return f != nil && f.content != "" && !f.supplemental
 }
 
 func sourceFromRoot(root *os.Root, name string) (*sourceFile, error) {

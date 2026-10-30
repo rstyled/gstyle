@@ -17,17 +17,6 @@ type Analyzer struct {
 	session    *extractionSession
 }
 
-func Extract(ctx context.Context, paths []string) (*Extraction, error) {
-	return ExtractFrom(ctx, paths, "")
-}
-
-func ExtractFrom(ctx context.Context, paths []string, sourceRoot string) (*Extraction, error) {
-	if len(paths) != 1 {
-		return nil, fmt.Errorf("--cpg requires exactly one C++ CPG GraphSON file or export directory")
-	}
-	return LoadFrom(ctx, paths[0], sourceRoot)
-}
-
 func (a Analyzer) Analyze(paths []string) (domain.Report, error) {
 	ctx := a.Context
 	if ctx == nil {
@@ -86,12 +75,33 @@ func (e *Extraction) ReportWithConfig(config quality.Config) domain.Report {
 	return report
 }
 
+func (e *Extraction) Graphs() []*pdg.Graph {
+	graphs := make([]*pdg.Graph, 0, len(e.Functions))
+	for _, function := range e.Functions {
+		graphs = append(graphs, function.Graph)
+	}
+	return graphs
+}
+
+func Extract(ctx context.Context, paths []string) (*Extraction, error) {
+	return ExtractFrom(ctx, paths, "")
+}
+
+func ExtractFrom(ctx context.Context, paths []string, sourceRoot string) (*Extraction, error) {
+	if len(paths) != 1 {
+		return nil, fmt.Errorf("--cpg requires exactly one C++ CPG GraphSON file or export directory")
+	}
+	return LoadFrom(ctx, paths[0], sourceRoot)
+}
+
 func appendFunction(file *domain.File, function domain.Function) {
-	file.Functions = append(file.Functions, function)
-	file.Total += function.Complexity
-	file.CognitiveTotal += function.CognitiveComplexity
-	file.Peak, file.CognitivePeak = max(file.Peak, function.Complexity), max(file.CognitivePeak, function.CognitiveComplexity)
-	file.Average, file.CognitiveAverage = average(file.Total, len(file.Functions)), average(file.CognitiveTotal, len(file.Functions))
+	functions := append(file.Functions, function)
+	total, cognitive := file.Total+function.Complexity, file.CognitiveTotal+function.CognitiveComplexity
+	*file = domain.File{
+		Path: file.Path, Functions: functions, Total: total, CognitiveTotal: cognitive,
+		Peak: max(file.Peak, function.Complexity), CognitivePeak: max(file.CognitivePeak, function.CognitiveComplexity),
+		Average: average(total, len(functions)), CognitiveAverage: average(cognitive, len(functions)),
+	}
 }
 
 func average(total, count int) float64 {
@@ -99,12 +109,4 @@ func average(total, count int) float64 {
 		return 0
 	}
 	return float64(total) / float64(count)
-}
-
-func (e *Extraction) Graphs() []*pdg.Graph {
-	graphs := make([]*pdg.Graph, 0, len(e.Functions))
-	for _, function := range e.Functions {
-		graphs = append(graphs, function.Graph)
-	}
-	return graphs
 }
