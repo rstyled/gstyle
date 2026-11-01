@@ -92,7 +92,7 @@ func TestWideViewUsesAnalyticsTablesAndSource(t *testing.T) {
 			t.Fatalf("analytics view is missing %q:\n%s", text, view)
 		}
 	}
-	if strings.Contains(view, "return\n") {
+	if strings.Contains(view, "func Simple()") {
 		t.Fatalf("source pane shows the wrong function:\n%s", view)
 	}
 }

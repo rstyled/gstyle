@@ -31,7 +31,11 @@ var (
 	border              = lipgloss.NewStyle().Foreground(lipgloss.Color("#3a464a"))
 )
 
-const scrollbarGutterWidth = 2
+const (
+	scrollbarGutterWidth = 2
+	annotationBackground = "\x1b[48;2;44;34;14m"
+	selectionBackground  = "\x1b[48;2;45;52;54m"
+)
 
 func (m Model) View() tea.View {
 	indexed := m.ensureFindingIndex().ensureSourceRows()
@@ -65,20 +69,15 @@ func (m Model) wideView() string {
 		m.detailsLines(widths[2], workspaceHeight, "Source"),
 	}
 	lines = append(lines, joinedRows(panes, widths)...)
-	lines = append(lines, m.footer(width))
+	lines = append(lines, m.footerLines(width)...)
 
 	return m.renderFrame(lines)
 }
 
 func (m Model) narrowView() string {
 	width := max(m.width, 1)
-	height := 0
-	if m.height > 0 {
-		height = max(m.height-2, 2)
-	}
-
-	lines := append([]string{m.header(width)}, m.activePaneLines(width, height)...)
-	return m.renderFrame(append(lines, m.footer(width)))
+	lines := append([]string{m.header(width)}, m.activePaneLines(width, m.narrowPaneHeight())...)
+	return m.renderFrame(append(lines, m.footerLines(width)...))
 }
 
 func (m Model) activePaneLines(width int, height int) []string {
@@ -105,7 +104,7 @@ func (m Model) showAnalytics(width int) bool {
 
 func (m Model) workspaceHeight(linesAbove int) int {
 	if m.height > 0 {
-		return max(m.height-linesAbove-1, 5)
+		return max(m.height-linesAbove-m.footerHeight(), 5)
 	}
 
 	return 24
@@ -398,11 +397,11 @@ func (m Model) sourceDisplayWindow(lines []string, function domain.Function, wid
 
 func (m Model) highlightSourceLine(line int, rendered string, annotations []Annotation) string {
 	if m.lineSelection.contains(line) {
-		return withBackground(rendered, "\x1b[48;2;45;52;54m")
+		return withBackground(rendered, selectionBackground)
 	}
 	for _, annotation := range annotations {
 		if annotation.StartLine <= line && line <= annotation.EndLine {
-			return withBackground(rendered, "\x1b[48;2;44;34;14m")
+			return withBackground(rendered, annotationBackground)
 		}
 	}
 	return rendered
@@ -413,7 +412,7 @@ func (m Model) sourceViewportHeight() int {
 		return m.selectedSourceLineCount()
 	}
 	if m.width > 0 && m.width < wideMinimum {
-		return max(max(m.height-2, 2)-m.sourceHeaderHeight(), 0)
+		return max(m.narrowPaneHeight()-m.sourceHeaderHeight(), 0)
 	}
 
 	width := m.terminalWidth()
@@ -474,8 +473,8 @@ func (m Model) renderFrame(lines []string) string {
 		return strings.Join(lines, "\n")
 	}
 
-	footerLine := lines[len(lines)-1]
-	lines = append(lines[:m.height-1], footerLine)
+	footerHeight := min(m.footerHeight(), m.height)
+	lines = append(lines[:m.height-footerHeight], lines[len(lines)-footerHeight:]...)
 	return strings.Join(lines, "\n")
 }
 

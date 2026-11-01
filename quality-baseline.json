@@ -1,29 +1,29 @@
 {
   "version": 1,
-  "generated_at": "2026-11-01T22:28:47Z",
-  "commit": "2d31d31",
-  "functions": 5667,
+  "generated_at": "2026-11-01T22:40:06Z",
+  "commit": "3f5b743",
+  "functions": 5671,
   "tolerance": 0.05,
   "rules": {
     "aggregate": {
       "excess": 18,
-      "per_1000_functions": 3.1762837480148227
+      "per_1000_functions": 3.174043378592841
     },
     "fn_params": {
       "excess": 26,
-      "per_1000_functions": 4.587965413799188
+      "per_1000_functions": 4.584729324634104
     },
     "mutated_targets": {
       "excess": 60,
-      "per_1000_functions": 10.587612493382743
+      "per_1000_functions": 10.58014459530947
     },
     "mutation_per_target": {
       "excess": 162,
-      "per_1000_functions": 28.586553732133403
+      "per_1000_functions": 28.566390407335568
     },
     "side_effect_density": {
-      "excess": 238563,
-      "per_1000_functions": 42096.87665431445
+      "excess": 239396,
+      "per_1000_functions": 42214.07159231176
     }
   }
 }

@@ -44,6 +44,7 @@ Press `e` to toggle blue quality highlights and inline `Q` labels in the source,
 or `p` to toggle patterns. The source cursor, selection, and pane focus stay in
 place. Use `j/k` to move through the source and scroll finding details. Type errors
 leave the syntax-based complexity view available.
+The footer legend shows source background colors separately from text colors.
 
 Use your quality policy in the TUI:
 
