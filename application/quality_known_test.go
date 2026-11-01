@@ -25,7 +25,7 @@ func TestUnknownOnlyDensityDoesNotCreateCountsOrNavigationStops(t *testing.T) {
 		t.Fatal("hiding unknown effects changes the raw JSON evidence")
 	}
 	plain := ansi.Strip(strings.Join(m.sourceLines(130, 100, "Source"), "\n"))
-	if len(m.findingTargets()) != 0 || ansi.Strip(qualityBadge(m.report.Files[0].Functions[0])) != " · Q 0" || m.qualityHeader() != " · Q 0" {
+	if len(m.findingTargets()) != 0 || ansi.Strip(m.qualityBadge(m.report.Files[0].Functions[0])) != " · Q 0 · e quality on" || m.qualityHeader() != " · Q 0" {
 		t.Fatal("unknown-only density affects badges or bracket navigation")
 	}
 	if strings.Contains(plain, "quality:") || strings.Contains(plain, "unresolved") || strings.Contains(strings.Join(m.qualityBody(), "\n"), "2166") {

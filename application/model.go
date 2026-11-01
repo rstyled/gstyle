@@ -50,6 +50,7 @@ type Model struct {
 	fileIndex        int
 	functionIndex    int
 	qualityView      bool
+	showQuality      bool
 	annotations      []Annotation
 	nextAnnotationID int
 	annotationStore  AnnotationStore
@@ -72,6 +73,7 @@ func NewModel(analyzer Analyzer, paths []string) Model {
 		paths:        append([]string(nil), paths...),
 		refreshing:   true,
 		showPatterns: true,
+		showQuality:  true,
 	}
 }
 
@@ -213,7 +215,7 @@ func (m Model) togglePatternsKey() (Model, tea.Cmd, bool) {
 func (m Model) updateFocusKey(key string) (Model, bool) {
 	switch key {
 	case "e":
-		return m.toggleQualityView(), true
+		return m.toggleQualityHighlights(), true
 	case "tab":
 		m = m.setFocus(nextPane(m.focus, 1))
 	case "shift+tab":

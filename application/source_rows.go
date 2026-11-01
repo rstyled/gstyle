@@ -7,6 +7,7 @@ type sourceRowKey struct {
 	file, function  int
 	width           int
 	patterns        bool
+	quality         bool
 }
 
 type sourceRowCounter struct {
@@ -39,7 +40,7 @@ func (m Model) sourceRowKey() sourceRowKey {
 	key := sourceRowKey{
 		findings: m.findingLookup, annotationCount: len(m.annotations),
 		file: m.fileIndex, function: m.functionIndex,
-		width: paneContentWidth(m.sourcePaneWidth()), patterns: m.showPatterns,
+		width: paneContentWidth(m.sourcePaneWidth()), patterns: m.showPatterns, quality: m.showQuality,
 	}
 	if len(m.annotations) > 0 {
 		key.annotations = &m.annotations[0]

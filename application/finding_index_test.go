@@ -60,7 +60,7 @@ func largeFindingModel() Model {
 		}
 		report.Files = append(report.Files, file)
 	}
-	m := Model{width: 160, height: 48, showPatterns: true}.applyReport(report)
+	m := Model{width: 160, height: 48, showPatterns: true, showQuality: true}.applyReport(report)
 	return m.withPatterns(patternsMsg{markers: markers})
 }
 

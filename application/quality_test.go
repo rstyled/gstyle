@@ -15,13 +15,13 @@ func qualityModel() Model {
 	loc := quality.Location{Path: "sample.go", Line: 10, Column: 1, Name: "sample.Change"}
 	d := quality.Diagnostic{Location: loc, RuleID: "mutation_per_target", Actual: 4, Limit: 3, Message: "mutation_per_target: 4 exceeds 3"}
 	q := &domain.FunctionQuality{FunctionResult: quality.FunctionResult{Location: loc, DensityMilli: 1000, Mutations: 4, MutatedTargets: 1, Complete: false, UnclassifiedCalls: 1, Effects: []quality.Effect{{Kind: quality.UnknownEffect, Detail: "callback", Line: 12}}}, Diagnostics: []quality.Diagnostic{d}, MutationEvents: []quality.Mutation{{Root: "state", FieldPath: "count", Line: 11, Provenance: quality.External}}}
-	return Model{width: 100, height: 30, report: domain.Report{Root: "/workspace", Quality: &domain.QualityAnalysis{Status: "ready", Report: &quality.Report{SchemaVersion: 1, Functions: []quality.FunctionResult{q.FunctionResult}, Diagnostics: q.Diagnostics}}, Files: []domain.File{{Path: "sample.go", Functions: []domain.Function{{Name: "Change", Line: 10, EndLine: 14, Column: 1, Source: "func Change() {\n one\n two\n three\n}", Quality: q}}}}}}
+	return Model{width: 100, height: 30, showQuality: true, report: domain.Report{Root: "/workspace", Quality: &domain.QualityAnalysis{Status: "ready", Report: &quality.Report{SchemaVersion: 1, Functions: []quality.FunctionResult{q.FunctionResult}, Diagnostics: q.Diagnostics}}, Files: []domain.File{{Path: "sample.go", Functions: []domain.Function{{Name: "Change", Line: 10, EndLine: 14, Column: 1, Source: "func Change() {\n one\n two\n three\n}", Quality: q}}}}}}
 }
 
-func TestQualityToggleShowsEvidenceAndPreservesSourceCursor(t *testing.T) {
+func TestQualityEvidenceControlPreservesSourceCursor(t *testing.T) {
 	m := qualityModel()
 	m.focus, m.sourceCursor = detailsPane, 2
-	m, _ = m.updateFocusKey("e")
+	m = m.setDetailsView("quality")
 	if !m.qualityView || m.sourceCursor != 2 {
 		t.Fatal("toggle loses source position")
 	}
@@ -48,7 +48,7 @@ func TestQualityToggleShowsEvidenceAndPreservesSourceCursor(t *testing.T) {
 	if m.revision != revision {
 		t.Fatal("quality scroll advances beyond final page")
 	}
-	m, _ = m.updateFocusKey("e")
+	m = m.setDetailsView("source")
 	if m.qualityView || m.sourceCursor != 2 {
 		t.Fatal("source cursor not restored")
 	}

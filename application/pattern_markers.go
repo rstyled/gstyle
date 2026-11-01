@@ -15,6 +15,8 @@ import (
 // the user-annotation bronze (44;34;14) and the selection slate (45;52;54).
 const patternBackground = "\x1b[48;2;66;54;20m"
 
+const qualityBackground = "\x1b[48;2;22;42;54m"
+
 // PatternMarker is one visual marker for a pattern finding site.
 type PatternMarker = FindingMarker
 
@@ -56,6 +58,10 @@ func (m Model) selectedFilePath() string {
 // togglePatterns flips pattern highlight visibility.
 func (m Model) togglePatterns() Model {
 	m.showPatterns = !m.showPatterns
+	return m.updateFindingVisibility()
+}
+
+func (m Model) updateFindingVisibility() Model {
 	m.findingDetailOffset = 0
 	if len(m.findingsStartingAt(m.activeFindingLine)) == 0 {
 		m.activeFindingLine = 0
@@ -127,14 +133,24 @@ func sourcePatternRows(markers []PatternMarker, width int) []string {
 	slices.SortStableFunc(markers, func(a, b PatternMarker) int { return cmp.Compare(a.Kind, b.Kind) })
 	var rows []string
 	for _, marker := range markers {
-		prefix := muted.Render("      ╰─") + amber.Bold(true).Render(marker.symbol())
-		if marker.Scope != "source evidence" {
-			rows = append(rows, annotationMessageRows(marker.label(), prefix, width)...)
-			prefix = "          "
-		}
-		for _, message := range marker.detailMessages() {
-			rows = append(rows, annotationMessageRows(message, prefix, width)...)
-		}
+		rows = append(rows, sourceFindingRows(marker, width)...)
+	}
+	return rows
+}
+
+func sourceFindingRows(marker FindingMarker, width int) []string {
+	style := amber
+	if marker.Diagnostic != nil {
+		style = blue
+	}
+	prefix := muted.Render("      ╰─") + style.Bold(true).Render(marker.symbol())
+	var rows []string
+	if marker.Scope != "source evidence" {
+		rows = append(rows, sourceMessageRows(marker.label(), prefix, width, style)...)
+		prefix = "          "
+	}
+	for _, message := range marker.detailMessages() {
+		rows = append(rows, sourceMessageRows(message, prefix, width, style)...)
 	}
 	return rows
 }

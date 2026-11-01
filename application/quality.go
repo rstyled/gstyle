@@ -18,7 +18,7 @@ func (m Model) detailsLines(width, height int, title string) []string {
 }
 
 func (m Model) qualityLines(width, height int) []string {
-	lines := []string{m.paneTitle("Quality · e source", detailsPane)}
+	lines := []string{m.paneTitle("Quality · e highlights", detailsPane)}
 	function, ok := m.selectedFunction()
 	if ok {
 		lines = append(lines, text.Bold(true).Render(function.Name))
@@ -110,13 +110,11 @@ func (m Model) setDetailsView(view string) Model {
 	return m
 }
 
-func (m Model) toggleQualityView() Model {
-	view := "quality"
-	if m.qualityView {
-		view = "source"
-	}
-	m = m.setDetailsView(view)
-	return m.setFocus(detailsPane)
+func (m Model) toggleQualityHighlights() Model {
+	m.showQuality = !m.showQuality
+	m.qualityView = false
+	m = m.updateFindingVisibility()
+	return m.keepSourceCursorVisible()
 }
 
 func (m Model) moveDetails(delta int) Model {
@@ -193,11 +191,15 @@ func mutationQualityLines(mutations []quality.Mutation) []string {
 	return lines
 }
 
-func qualityBadge(function domain.Function) string {
+func (m Model) qualityBadge(function domain.Function) string {
 	if function.Quality == nil {
 		return ""
 	}
-	return amber.Render(fmt.Sprintf(" · Q %d", len(knownDiagnostics(function.Quality))))
+	state := "off"
+	if m.showQuality {
+		state = "on"
+	}
+	return blue.Render(fmt.Sprintf(" · Q %d · e quality %s", len(knownDiagnostics(function.Quality)), state))
 }
 
 func mutationQualityLine(mutation quality.Mutation) string {

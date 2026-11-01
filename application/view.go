@@ -162,6 +162,7 @@ func (m Model) footer(width int) string {
 		green.Render(",/.") + muted.Render(" files · ") +
 		green.Render("[/]") + muted.Render(m.reviewNavigationLabel()+" · ") +
 		green.Render("r") + muted.Render(" refresh · ") +
+		green.Render("e") + muted.Render(" quality · ") +
 		green.Render("p") + muted.Render(" patterns · ") +
 		green.Render("q") + muted.Render(" quit")
 	if m.focus == detailsPane {
@@ -303,7 +304,7 @@ func (m Model) sourceTitle(title string, function domain.Function) string {
 		}
 		line += muted.Render(" · ") + amber.Bold(true).Render(fmt.Sprintf("◆ %d %s", count, noun))
 	}
-	return line + m.patternSourceBadge(function) + qualityBadge(function) + diffTitle(m.report.DiffBase, function.DiffLines)
+	return line + m.patternSourceBadge(function) + m.qualityBadge(function) + diffTitle(m.report.DiffBase, function.DiffLines)
 }
 
 func (m Model) sourceBody(lines []string, function domain.Function, width int, height int) []string {
@@ -311,7 +312,7 @@ func (m Model) sourceBody(lines []string, function domain.Function, width int, h
 	contentStart := len(lines)
 	available := max(height-len(lines), 0)
 	if height == 0 {
-		available = len(code)
+		available = m.sourceRowsAtWidth(paneContentWidth(width)).count(0, len(code)-1)
 	}
 	lines = append(lines, m.sourceDisplayWindow(code, function, paneContentWidth(width), available)...)
 	rendered := fitPaneLines(lines, width, height)
@@ -333,7 +334,11 @@ func (m Model) selectedSourceCodeLines(function domain.Function) []string {
 	for index := range lines {
 		lineNumber := function.Line + index
 		if m.hasFindingAtLine(lineNumber) {
-			lines[index] = withBackground(lines[index], patternBackground)
+			background := patternBackground
+			if m.hasQualityAtLine(lineNumber) {
+				background = qualityBackground
+			}
+			lines[index] = withBackground(lines[index], background)
 		}
 		lines[index] = m.highlightSourceLine(lineNumber, lines[index], annotations)
 	}
@@ -682,12 +687,16 @@ func sourceAnnotationPrefix(index int, count int) string {
 }
 
 func annotationMessageRows(message string, prefix string, width int) []string {
+	return sourceMessageRows(message, prefix, width, amber)
+}
+
+func sourceMessageRows(message string, prefix string, width int, style lipgloss.Style) []string {
 	prefixWidth := ansi.StringWidth(prefix)
 	indent := strings.Repeat(" ", prefixWidth)
 	messageWidth := max(width-prefixWidth, 1)
 	rows := strings.Split(ansi.Wrap(message, messageWidth, ""), "\n")
 	for index, row := range rows {
-		rows[index] = prefix + amber.Render(row)
+		rows[index] = prefix + style.Render(row)
 		prefix = indent
 	}
 	return rows
