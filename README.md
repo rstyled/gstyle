@@ -40,8 +40,11 @@ color shows cognitive complexity from green to red. Click a tile to inspect its
 source and scores. The map appears at 100 columns by 30 rows or larger.
 
 Inside Git, gstyle shows added and deleted source lines against `main` or `master`.
-Press `e` to switch between source and quality evidence, and `j/k` to scroll the
-quality pane. Type errors leave the syntax-based complexity view available.
+Press `e` to toggle blue quality highlights and inline `Q` labels in the source,
+or `p` to toggle patterns. The source cursor, selection, and pane focus stay in
+place. Use `j/k` to move through the source and scroll finding details. Type errors
+leave the syntax-based complexity view available.
+The footer legend shows source background colors separately from text colors.
 
 Use your quality policy in the TUI:
 

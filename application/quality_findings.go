@@ -25,7 +25,7 @@ type findingDetails struct {
 
 func (marker FindingMarker) symbol() string {
 	if marker.Diagnostic != nil {
-		return "■ "
+		return "Q "
 	}
 	return "▲ "
 }

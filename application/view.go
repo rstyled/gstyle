@@ -31,7 +31,11 @@ var (
 	border              = lipgloss.NewStyle().Foreground(lipgloss.Color("#3a464a"))
 )
 
-const scrollbarGutterWidth = 2
+const (
+	scrollbarGutterWidth = 2
+	annotationBackground = "\x1b[48;2;44;34;14m"
+	selectionBackground  = "\x1b[48;2;45;52;54m"
+)
 
 func (m Model) View() tea.View {
 	indexed := m.ensureFindingIndex().ensureSourceRows()
@@ -65,20 +69,15 @@ func (m Model) wideView() string {
 		m.detailsLines(widths[2], workspaceHeight, "Source"),
 	}
 	lines = append(lines, joinedRows(panes, widths)...)
-	lines = append(lines, m.footer(width))
+	lines = append(lines, m.footerLines(width)...)
 
 	return m.renderFrame(lines)
 }
 
 func (m Model) narrowView() string {
 	width := max(m.width, 1)
-	height := 0
-	if m.height > 0 {
-		height = max(m.height-2, 2)
-	}
-
-	lines := append([]string{m.header(width)}, m.activePaneLines(width, height)...)
-	return m.renderFrame(append(lines, m.footer(width)))
+	lines := append([]string{m.header(width)}, m.activePaneLines(width, m.narrowPaneHeight())...)
+	return m.renderFrame(append(lines, m.footerLines(width)...))
 }
 
 func (m Model) activePaneLines(width int, height int) []string {
@@ -105,7 +104,7 @@ func (m Model) showAnalytics(width int) bool {
 
 func (m Model) workspaceHeight(linesAbove int) int {
 	if m.height > 0 {
-		return max(m.height-linesAbove-1, 5)
+		return max(m.height-linesAbove-m.footerHeight(), 5)
 	}
 
 	return 24
@@ -162,6 +161,7 @@ func (m Model) footer(width int) string {
 		green.Render(",/.") + muted.Render(" files · ") +
 		green.Render("[/]") + muted.Render(m.reviewNavigationLabel()+" · ") +
 		green.Render("r") + muted.Render(" refresh · ") +
+		green.Render("e") + muted.Render(" quality · ") +
 		green.Render("p") + muted.Render(" patterns · ") +
 		green.Render("q") + muted.Render(" quit")
 	if m.focus == detailsPane {
@@ -303,7 +303,7 @@ func (m Model) sourceTitle(title string, function domain.Function) string {
 		}
 		line += muted.Render(" · ") + amber.Bold(true).Render(fmt.Sprintf("◆ %d %s", count, noun))
 	}
-	return line + m.patternSourceBadge(function) + qualityBadge(function) + diffTitle(m.report.DiffBase, function.DiffLines)
+	return line + m.patternSourceBadge(function) + m.qualityBadge(function) + diffTitle(m.report.DiffBase, function.DiffLines)
 }
 
 func (m Model) sourceBody(lines []string, function domain.Function, width int, height int) []string {
@@ -311,7 +311,7 @@ func (m Model) sourceBody(lines []string, function domain.Function, width int, h
 	contentStart := len(lines)
 	available := max(height-len(lines), 0)
 	if height == 0 {
-		available = len(code)
+		available = m.sourceRowsAtWidth(paneContentWidth(width)).count(0, len(code)-1)
 	}
 	lines = append(lines, m.sourceDisplayWindow(code, function, paneContentWidth(width), available)...)
 	rendered := fitPaneLines(lines, width, height)
@@ -333,7 +333,11 @@ func (m Model) selectedSourceCodeLines(function domain.Function) []string {
 	for index := range lines {
 		lineNumber := function.Line + index
 		if m.hasFindingAtLine(lineNumber) {
-			lines[index] = withBackground(lines[index], patternBackground)
+			background := patternBackground
+			if m.hasQualityAtLine(lineNumber) {
+				background = qualityBackground
+			}
+			lines[index] = withBackground(lines[index], background)
 		}
 		lines[index] = m.highlightSourceLine(lineNumber, lines[index], annotations)
 	}
@@ -393,11 +397,11 @@ func (m Model) sourceDisplayWindow(lines []string, function domain.Function, wid
 
 func (m Model) highlightSourceLine(line int, rendered string, annotations []Annotation) string {
 	if m.lineSelection.contains(line) {
-		return withBackground(rendered, "\x1b[48;2;45;52;54m")
+		return withBackground(rendered, selectionBackground)
 	}
 	for _, annotation := range annotations {
 		if annotation.StartLine <= line && line <= annotation.EndLine {
-			return withBackground(rendered, "\x1b[48;2;44;34;14m")
+			return withBackground(rendered, annotationBackground)
 		}
 	}
 	return rendered
@@ -408,7 +412,7 @@ func (m Model) sourceViewportHeight() int {
 		return m.selectedSourceLineCount()
 	}
 	if m.width > 0 && m.width < wideMinimum {
-		return max(max(m.height-2, 2)-m.sourceHeaderHeight(), 0)
+		return max(m.narrowPaneHeight()-m.sourceHeaderHeight(), 0)
 	}
 
 	width := m.terminalWidth()
@@ -469,8 +473,8 @@ func (m Model) renderFrame(lines []string) string {
 		return strings.Join(lines, "\n")
 	}
 
-	footerLine := lines[len(lines)-1]
-	lines = append(lines[:m.height-1], footerLine)
+	footerHeight := min(m.footerHeight(), m.height)
+	lines = append(lines[:m.height-footerHeight], lines[len(lines)-footerHeight:]...)
 	return strings.Join(lines, "\n")
 }
 
@@ -682,12 +686,16 @@ func sourceAnnotationPrefix(index int, count int) string {
 }
 
 func annotationMessageRows(message string, prefix string, width int) []string {
+	return sourceMessageRows(message, prefix, width, amber)
+}
+
+func sourceMessageRows(message string, prefix string, width int, style lipgloss.Style) []string {
 	prefixWidth := ansi.StringWidth(prefix)
 	indent := strings.Repeat(" ", prefixWidth)
 	messageWidth := max(width-prefixWidth, 1)
 	rows := strings.Split(ansi.Wrap(message, messageWidth, ""), "\n")
 	for index, row := range rows {
-		rows[index] = prefix + amber.Render(row)
+		rows[index] = prefix + style.Render(row)
 		prefix = indent
 	}
 	return rows

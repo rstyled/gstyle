@@ -13,6 +13,7 @@ type findingIndex struct {
 	quality        map[string]findingFile
 	targets        []reviewTarget
 	qualityTargets []reviewTarget
+	patternTargets []reviewTarget
 	qualityCount   int
 }
 
@@ -26,6 +27,7 @@ func (m Model) indexFindings() Model {
 		quality:        m.indexFindingFiles(m.qualityMarkers),
 		targets:        m.collectFindingTargets(all),
 		qualityTargets: m.collectFindingTargets(m.qualityMarkers),
+		patternTargets: m.collectFindingTargets(m.patternMarkers),
 		qualityCount:   len(uniquePatternMarkers(m.qualityMarkers)),
 	}
 	return m
@@ -68,7 +70,10 @@ func (m Model) patternFile(path string) findingFile {
 func (m Model) findingsStartingAt(line int) []PatternMarker {
 	m = m.ensureFindingIndex()
 	path := m.selectedFilePath()
-	markers := m.findingLookup.quality[path].starts[line]
+	var markers []PatternMarker
+	if m.showQuality {
+		markers = m.findingLookup.quality[path].starts[line]
+	}
 	if !m.showPatterns {
 		return markers
 	}
@@ -78,8 +83,16 @@ func (m Model) findingsStartingAt(line int) []PatternMarker {
 func (m Model) hasFindingAtLine(line int) bool {
 	m = m.ensureFindingIndex()
 	path := m.selectedFilePath()
-	if len(m.findingLookup.quality[path].starts[line]) > 0 {
+	if m.hasQualityAtLine(line) {
 		return true
 	}
 	return m.showPatterns && slices.ContainsFunc(m.findingLookup.patterns[path].markers, func(marker PatternMarker) bool { return marker.covers(path, line) })
+}
+
+func (m Model) hasQualityAtLine(line int) bool {
+	if !m.showQuality {
+		return false
+	}
+	m = m.ensureFindingIndex()
+	return len(m.findingLookup.quality[m.selectedFilePath()].starts[line]) > 0
 }

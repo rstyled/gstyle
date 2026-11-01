@@ -56,10 +56,16 @@ func (m Model) reviewTargets() []reviewTarget {
 
 func (m Model) findingTargets() []reviewTarget {
 	m = m.ensureFindingIndex()
-	if !m.showPatterns {
+	if m.showPatterns && m.showQuality {
+		return m.findingLookup.targets
+	}
+	if m.showPatterns {
+		return m.findingLookup.patternTargets
+	}
+	if m.showQuality {
 		return m.findingLookup.qualityTargets
 	}
-	return m.findingLookup.targets
+	return nil
 }
 
 func (m Model) collectFindingTargets(markers []PatternMarker) []reviewTarget {
