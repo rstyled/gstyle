@@ -7,6 +7,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -15,11 +16,12 @@ import (
 )
 
 type repoIndex struct {
-	Root     string        `json:"root"`
-	Module   string        `json:"module"`
-	Lines    int           `json:"lines"`
-	Packages []repoPackage `json:"packages"`
-	Symbols  []repoSymbol  `json:"symbols"`
+	Root           string        `json:"root"`
+	Module         string        `json:"module"`
+	Lines          int           `json:"lines"`
+	CallResolution string        `json:"call_resolution"`
+	Packages       []repoPackage `json:"packages"`
+	Symbols        []repoSymbol  `json:"symbols"`
 }
 type repoPackage struct {
 	ID      string   `json:"id"`
@@ -28,22 +30,24 @@ type repoPackage struct {
 	Imports []string `json:"imports"`
 }
 type repoSymbol struct {
-	Role    string     `json:"role,omitempty"`
-	ID      string     `json:"id"`
-	Name    string     `json:"name"`
-	Package string     `json:"package"`
-	File    string     `json:"file"`
-	Line    int        `json:"line"`
-	EndLine int        `json:"end_line"`
-	Start   int        `json:"start"`
-	End     int        `json:"end"`
-	Digest  string     `json:"digest"`
-	Calls   []repoCall `json:"calls"`
+	Role       string     `json:"role,omitempty"`
+	Resolution string     `json:"call_resolution"`
+	ID         string     `json:"id"`
+	Name       string     `json:"name"`
+	Package    string     `json:"package"`
+	File       string     `json:"file"`
+	Line       int        `json:"line"`
+	EndLine    int        `json:"end_line"`
+	Start      int        `json:"start"`
+	End        int        `json:"end"`
+	Digest     string     `json:"digest"`
+	Calls      []repoCall `json:"calls"`
 }
 type repoCall struct {
 	Spelling string `json:"spelling"`
 	Target   string `json:"target,omitempty"`
-	Key      string `json:"-"`
+	Kind     string `json:"kind,omitempty"`
+	Package  string `json:"package,omitempty"`
 }
 type indexBuilder struct {
 	index    *repoIndex
@@ -67,7 +71,7 @@ func indexRepository(root string) (*repoIndex, error) {
 	if err != nil {
 		return nil, err
 	}
-	index := &repoIndex{Root: abs, Module: module, Packages: []repoPackage{}, Symbols: []repoSymbol{}}
+	index := &repoIndex{Root: abs, Module: module, CallResolution: "unavailable", Packages: []repoPackage{}, Symbols: []repoSymbol{}}
 	builder := indexBuilder{index: index, packages: map[string]*repoPackage{}}
 	err = filepath.WalkDir(abs, func(path string, d fs.DirEntry, walkErr error) error {
 		return builder.visitSource(path, d, walkErr)
@@ -80,7 +84,9 @@ func indexRepository(root string) (*repoIndex, error) {
 		index.Packages = append(index.Packages, *p)
 	}
 	sort.Slice(index.Packages, func(i, j int) bool { return index.Packages[i].ID < index.Packages[j].ID })
-	resolveCalls(index)
+	if err := resolveTypedCalls(index); err != nil {
+		slog.Warn("some call links unavailable", "error", err)
+	}
 	return index, nil
 }
 
@@ -105,7 +111,7 @@ func (b indexBuilder) visitSource(path string, d fs.DirEntry, err error) error {
 		return err
 	}
 	if d.IsDir() {
-		return skipDirectory(d.Name())
+		return b.directory(path, d.Name())
 	}
 	if !isSource(d.Name()) {
 		return nil
@@ -118,12 +124,30 @@ func (b indexBuilder) visitSource(path string, d fs.DirEntry, err error) error {
 	return nil
 }
 
+// gstyle-allow(side_effect_density): The walk stays in the requested Go module and skips generated distribution trees.
+func (b indexBuilder) directory(path, name string) error {
+	if path == b.index.Root {
+		return nil
+	}
+	if err := skipDirectory(name); err != nil {
+		return err
+	}
+	_, err := os.Stat(filepath.Join(path, "go.mod"))
+	if err == nil {
+		return filepath.SkipDir
+	}
+	if !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
 // gstyle-allow(side_effect_density): filepath.SkipDir is an immutable walk-control sentinel, not mutable global state.
 func skipDirectory(name string) error {
 	if strings.HasPrefix(name, ".") {
 		return filepath.SkipDir
 	}
-	if name == "vendor" || name == "node_modules" {
+	if name == "vendor" || name == "node_modules" || name == "testdata" || name == "dist" {
 		return filepath.SkipDir
 	}
 	return nil
@@ -162,31 +186,26 @@ func (b indexBuilder) addIndexFile(f indexedFile) {
 		p = &repoPackage{ID: pkg, Imports: []string{}}
 		b.packages[pkg] = p
 	}
-	aliases := accumulateFile(p, f)
+	accumulateFile(p, f)
 	b.index.Lines += strings.Count(string(f.data), "\n") + 1
 	for _, decl := range f.tree.Decls {
-		b.indexDeclaration(f, pkg, aliases, decl)
+		b.indexDeclaration(f, pkg, decl)
 	}
 }
 
 // gstyle-allow(side_effect_density): This scan-owned package accumulator records file counts and imports; helper summaries include local map writes.
-func accumulateFile(p *repoPackage, f indexedFile) map[string]string {
+func accumulateFile(p *repoPackage, f indexedFile) {
 	p.Files++
 	p.Lines += strings.Count(string(f.data), "\n") + 1
-	return indexImports(p, f.tree.Imports)
+	indexImports(p, f.tree.Imports)
 }
-func indexImports(p *repoPackage, imports []*ast.ImportSpec) map[string]string {
-	aliases := map[string]string{}
+
+// gstyle-allow(side_effect_density): Accumulates imports into the scan-owned package; the mutations are local index construction.
+func indexImports(p *repoPackage, imports []*ast.ImportSpec) {
 	for _, imp := range imports {
 		path, _ := strconv.Unquote(imp.Path.Value)
-		alias := filepath.Base(path)
-		if imp.Name != nil {
-			alias = imp.Name.Name
-		}
-		aliases[alias] = path
 		p.Imports = appendUnique(p.Imports, path)
 	}
-	return aliases
 }
 func appendUnique(items []string, value string) []string {
 	for _, item := range items {
@@ -197,8 +216,8 @@ func appendUnique(items []string, value string) []string {
 	return append(items, value)
 }
 
-// gstyle-allow(side_effect_density): The syntax visitor appends call and function records to the scan-owned index.
-func (b indexBuilder) indexDeclaration(f indexedFile, pkg string, aliases map[string]string, decl ast.Decl) {
+// gstyle-allow(side_effect_density): The syntax visitor appends function declarations to the scan-owned index.
+func (b indexBuilder) indexDeclaration(f indexedFile, pkg string, decl ast.Decl) {
 	fn, ok := decl.(*ast.FuncDecl)
 	if !ok {
 		return
@@ -206,8 +225,7 @@ func (b indexBuilder) indexDeclaration(f indexedFile, pkg string, aliases map[st
 	name := declarationName(fn)
 	start := f.positions.Position(fn.Pos())
 	end := f.positions.Position(fn.End())
-	symbol := repoSymbol{ID: fmt.Sprintf("%s:%d", f.path, start.Line), Name: name, Role: declarationRole(fn, f.tree.Name.Name), Package: pkg, File: f.path, Line: start.Line, EndLine: end.Line, Start: start.Offset, End: end.Offset, Digest: fmt.Sprintf("%x", sha256.Sum256(f.data)), Calls: []repoCall{}}
-	ast.Inspect(fn.Body, func(n ast.Node) bool { recordCall(&symbol, aliases, n); return true })
+	symbol := repoSymbol{ID: fmt.Sprintf("%s:%d", f.path, f.positions.Position(fn.Name.Pos()).Offset), Name: name, Role: declarationRole(fn, f.tree.Name.Name), Package: pkg, File: f.path, Line: start.Line, EndLine: end.Line, Start: start.Offset, End: end.Offset, Digest: fmt.Sprintf("%x", sha256.Sum256(f.data)), Resolution: "unavailable", Calls: []repoCall{}}
 	b.index.Symbols = append(b.index.Symbols, symbol)
 }
 func declarationName(fn *ast.FuncDecl) string {
@@ -222,46 +240,6 @@ func declarationName(fn *ast.FuncDecl) string {
 		return id.Name + "." + fn.Name.Name
 	}
 	return "(receiver)." + fn.Name.Name
-}
-func recordCall(s *repoSymbol, aliases map[string]string, n ast.Node) {
-	call, ok := n.(*ast.CallExpr)
-	if !ok {
-		return
-	}
-	if id, ok := call.Fun.(*ast.Ident); ok {
-		s.Calls = append(s.Calls, repoCall{Spelling: id.Name, Key: s.Package + "/" + id.Name})
-		return
-	}
-	selector, ok := call.Fun.(*ast.SelectorExpr)
-	if !ok {
-		return
-	}
-	recordSelector(s, aliases, selector)
-}
-func recordSelector(s *repoSymbol, aliases map[string]string, selector *ast.SelectorExpr) {
-	id, ok := selector.X.(*ast.Ident)
-	if !ok {
-		return
-	}
-	key := ""
-	if pkg := aliases[id.Name]; pkg != "" {
-		key = pkg + "/" + selector.Sel.Name
-	}
-	s.Calls = append(s.Calls, repoCall{Spelling: id.Name + "." + selector.Sel.Name, Key: key})
-}
-func resolveCalls(index *repoIndex) {
-	targets := map[string][]string{}
-	for _, s := range index.Symbols {
-		key := s.Package + "/" + s.Name
-		targets[key] = append(targets[key], s.ID)
-	}
-	for i := range index.Symbols {
-		for j, c := range index.Symbols[i].Calls {
-			if matches := targets[c.Key]; len(matches) == 1 {
-				index.Symbols[i].Calls[j].Target = matches[0]
-			}
-		}
-	}
 }
 
 // declarationRole recognizes language-defined startup functions, not graph roots.

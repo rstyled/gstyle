@@ -1,4 +1,4 @@
-// Command pdg-viewer renders gstyle PDG exports as a standalone 3D patch panel.
+// Command pdg-viewer renders gstyle PDG exports as a standalone page, or serves a repository atlas.
 package main
 
 import (
@@ -13,17 +13,23 @@ import (
 	"strings"
 )
 
-//go:embed page.html
-var page string
-
-//go:embed iso-kit.mjs
-var kit string
+//go:embed app.html
+var appPage string
 
 //go:embed graph-layout.js
-var graphScript string
+var layoutScript string
 
-//go:embed viewer.js
-var viewer string
+//go:embed model.js
+var modelScript string
+
+//go:embed overview.js
+var overviewScript string
+
+//go:embed cpg.js
+var cpgScript string
+
+//go:embed app.js
+var appScript string
 
 type node struct {
 	ID string `json:"id"`
@@ -43,9 +49,10 @@ type graph struct {
 func main() {
 	root := flag.String("source-root", "", "include source files from this directory")
 	repo := flag.String("repo", "", "serve a codebase explorer for this Go repository")
+	backend := flag.String("rstyle", "rstyle", "rstyle executable for CPG extraction and analysis")
 	port := flag.Int("port", 8090, "localhost explorer port")
 	flag.Parse()
-	if err := execute(*repo, *port, *root); err != nil {
+	if err := execute(*repo, *port, *root, *backend); err != nil {
 		slog.Error("PDG viewer failed", "error", err)
 		os.Exit(1)
 	}
@@ -68,26 +75,31 @@ func run(input io.Reader, output io.Writer, root string) error {
 	return err
 }
 
-// gstyle-allow(side_effect_density): Embedded assets are immutable inputs; JSON encoding escapes untrusted graph content.
-func render(data []byte) (string, error) {
+// page assembles the app. Go's JSON encoder escapes "<", so data cannot close its script.
+// gstyle-allow(side_effect_density): Embedded assets are immutable inputs.
+func page(data []byte) string {
+	scripts := layoutScript + "\n" + modelScript + "\n" + overviewScript + "\n" + cpgScript + "\n" + appScript
+	html := strings.Replace(appPage, "/* SCRIPTS */", scripts, 1)
+	return strings.Replace(html, "__PDG_JSON__", string(data), 1)
+}
+
+// prepare validates a PDG array and optionally attaches source text from root.
+// gstyle-allow(side_effect_density): This export boundary validates JSON and optionally reads confined source files; JSON encoding and IO are deliberate.
+func prepare(data []byte, root string) ([]byte, error) {
 	var docs []json.RawMessage
 	if err := json.Unmarshal(data, &docs); err != nil {
-		return "", fmt.Errorf("decode PDG array: %w", err)
+		return nil, fmt.Errorf("decode PDG array: %w", err)
 	}
 	if len(docs) == 0 {
-		return "", fmt.Errorf("PDG array is empty")
+		return nil, fmt.Errorf("PDG array is empty")
 	}
 	if err := validateDocuments(docs); err != nil {
-		return "", err
+		return nil, err
 	}
-	safe, err := json.Marshal(docs)
-	if err != nil {
-		return "", fmt.Errorf("encode PDGs: %w", err)
+	if root != "" {
+		return attachSources(data, root)
 	}
-	html := strings.ReplaceAll(page, "/* KIT */", strings.ReplaceAll(kit, "</script", "<\\/script"))
-	html = strings.ReplaceAll(html, "/* GRAPH */", graphScript)
-	html = strings.ReplaceAll(html, "/* VIEWER */", viewer)
-	return strings.ReplaceAll(html, "__PDG_JSON__", string(safe)), nil
+	return json.Marshal(docs)
 }
 
 func validateDocuments(docs []json.RawMessage) error {
@@ -134,27 +146,17 @@ func validateEdges(edges []edge, ids map[string]bool) error {
 
 // gstyle-allow(side_effect_density): This command coordinator optionally loads source text; required file IO propagates through helper summaries.
 func buildDocument(data []byte, root string) (string, error) {
-	if root == "" {
-		return render(data)
-	}
-	var docs []json.RawMessage
-	if err := json.Unmarshal(data, &docs); err != nil {
-		return "", err
-	}
-	if err := validateDocuments(docs); err != nil {
-		return "", err
-	}
-	enriched, err := attachSources(data, root)
+	safe, err := prepare(data, root)
 	if err != nil {
 		return "", err
 	}
-	return render(enriched)
+	return page(safe), nil
 }
 
 // gstyle-allow(side_effect_density): Selects the authorized command IO boundary: repository server or standalone export renderer.
-func execute(repo string, port int, root string) error {
+func execute(repo string, port int, root, backend string) error {
 	if repo != "" {
-		return serveRepository(repo, port)
+		return serveRepository(repo, port, backend)
 	}
 	return run(os.Stdin, os.Stdout, root)
 }

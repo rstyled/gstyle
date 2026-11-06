@@ -17,7 +17,7 @@ func TestRenderRejectsInvalidGraphs(t *testing.T) {
 		`[{"nodes":[{"id":"x"}],"edges":[{"source":"x","target":"x","kind":"bogus"}]}]`,
 	} {
 		t.Run(input, func(t *testing.T) {
-			if _, err := render([]byte(input)); err == nil {
+			if _, err := buildDocument([]byte(input), ""); err == nil {
 				t.Fatal("invalid graph accepted")
 			}
 		})
@@ -26,7 +26,7 @@ func TestRenderRejectsInvalidGraphs(t *testing.T) {
 
 func TestRenderContainsSafeStandaloneScripts(t *testing.T) {
 	input := `[{"nodes":[{"id":"</script><script>alert(1)</script>"}],"edges":[]}]`
-	html, err := render([]byte(input))
+	html, err := buildDocument([]byte(input), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,10 +34,10 @@ func TestRenderContainsSafeStandaloneScripts(t *testing.T) {
 		t.Fatal("input can inject a script")
 	}
 	if strings.Count(html, "</script>") != 2 {
-		t.Fatal("embedded kit closes its script early")
+		t.Fatal("embedded scripts close early")
 	}
-	if strings.Contains(html, "/* VIEWER */") {
-		t.Fatal("viewer is missing")
+	if strings.Contains(html, "/* SCRIPTS */") || strings.Contains(html, "__PDG_JSON__") {
+		t.Fatal("app is not assembled")
 	}
 }
 

@@ -1,0 +1,534 @@
+{
+  "check": {
+    "diagnostics": [
+      {
+        "path": "flow.go",
+        "line": 3,
+        "column": 1,
+        "rule_id": "mutation_per_target",
+        "message": "function `Forward` mutates one target too many times",
+        "actual": 2,
+        "limit": 1,
+        "details": [
+          {
+            "label": "y",
+            "count": 2,
+            "lines": [
+              6,
+              7
+            ]
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "functions": 2,
+      "violations": 1,
+      "complexity_measured": 2,
+      "complexity_unavailable": 0,
+      "mean_density_milli": 0,
+      "max_density_milli": 0,
+      "effect_counts": {}
+    },
+    "fix_groups": [
+      {
+        "id": 1,
+        "functions": [
+          {
+            "path": "flow.go",
+            "line": 3,
+            "name": "Forward",
+            "rules": [
+              "mutation_per_target"
+            ]
+          }
+        ]
+      }
+    ],
+    "functions": [
+      {
+        "id": "go::example.com/flow.Forward",
+        "name": "Forward",
+        "path": "flow.go",
+        "line": 3,
+        "column": 1,
+        "complexity": {
+          "policy_version": 1,
+          "cyclomatic": 2,
+          "cognitive": 1,
+          "contributions": [
+            {
+              "kind": "branch",
+              "line": 4,
+              "column": 2,
+              "cyclomatic": 1,
+              "cognitive": 1,
+              "nesting": 0
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "patterns": {
+    "signature_groups": [],
+    "candidates": [],
+    "suppressed": [],
+    "ignored": [],
+    "ignored_count": 0
+  },
+  "runtime_bounds": {
+    "schema": "rstyle.cpg-runtime-bounds-report/1",
+    "input_complete": true,
+    "limitations": [
+      "Bounds count loop-body entries and modeled call-site invocations; whole runtime remains unknown.",
+      "Compiler-resolved collection length and traversal adapters are abstracted, excluded from modeled call counts.",
+      "Resolved standard iterator chains over stable extents or primitive ranges are synthetic scans; callbacks are inlined and counted at most once per pulled item.",
+      "Partial results are sound bounds relative to opaque factors: ?loop(site) is the number of header executions of an unproven loop per entry of its enclosing loop, ?call and ?invocations the work and calls of an unsummarized callee; whole-owner failures stay unknown.",
+      "Composed results add resolved workspace callee summaries; standard-library bodies are outside that cost unit, and recursive, unresolved or unmappable callees contribute opaque ?call or ?input factors.",
+      "Library steps sum data contracts for keyed standard operations, such as log(len(map)) per B-tree lookup, up to each contract's constant factor; uncontracted operations contribute ?library factors and never change the composed verdict.",
+      "An upper bound does not establish tightness; high polynomial degree alone is not repeated-scan evidence."
+    ],
+    "rows": [
+      {
+        "name": "Forward",
+        "path": "flow.go",
+        "capture_status": "captured",
+        "inputs": [
+          "x"
+        ],
+        "result": {
+          "Proven": {
+            "cost_scope": "loop-body-entries-and-modeled-call-counts",
+            "loop_body_entries": {
+              "Const": 0
+            },
+            "loops": [],
+            "calls": [],
+            "whole_runtime": "unknown: loop and call counts do not bound operation costs"
+          }
+        },
+        "composed": {
+          "Proven": {
+            "cost_scope": "workspace-loop-body-entries-and-invocations-through-resolved-calls",
+            "loop_body_entries": {
+              "Const": 0
+            },
+            "workspace_invocations": {
+              "Const": 0
+            },
+            "library_steps": {
+              "Const": 0
+            },
+            "resolved_callees": [],
+            "excluded_library_callees": [],
+            "assumptions": [
+              "Standard-library bodies are outside the cost unit only when no callable argument or workspace-typed trait bound lets them call back into workspace code; others stay unresolved.",
+              "Argument sizes are replaced by a per-invocation maximum; bounds are monotone, so totals are upper bounds but may be loose.",
+              "Modeled standard iterator scans count as the owner's own loop-body entries.",
+              "Composed counts still do not bound operation costs or whole runtime.",
+              "Library steps add per-invocation contract bounds for keyed library operations; each contract holds up to a constant factor and excludes the cost of every element operation it counts."
+            ]
+          }
+        }
+      },
+      {
+        "name": "Other",
+        "path": "flow.go",
+        "capture_status": "captured",
+        "inputs": [
+          "x"
+        ],
+        "result": {
+          "Proven": {
+            "cost_scope": "loop-body-entries-and-modeled-call-counts",
+            "loop_body_entries": {
+              "Const": 0
+            },
+            "loops": [],
+            "calls": [
+              {
+                "node": 2,
+                "callee": "Forward",
+                "target": {
+                  "Resolved": "example.com/flow/go::example.com/flow.Forward"
+                },
+                "source": {
+                  "file": "flow.go",
+                  "line": 13,
+                  "column": 32,
+                  "evidence": "live typed HIR; primitive unsigned semantics; no iterator trait size contract"
+                },
+                "count": {
+                  "Const": 1
+                },
+                "arguments": [
+                  {
+                    "Scalar": {
+                      "Max": [
+                        {
+                          "Input": "x"
+                        },
+                        {
+                          "Const": 0
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ],
+            "whole_runtime": "unknown: loop and call counts do not bound operation costs"
+          }
+        },
+        "composed": {
+          "Proven": {
+            "cost_scope": "workspace-loop-body-entries-and-invocations-through-resolved-calls",
+            "loop_body_entries": {
+              "Const": 0
+            },
+            "workspace_invocations": {
+              "Const": 1
+            },
+            "library_steps": {
+              "Const": 0
+            },
+            "resolved_callees": [
+              "example.com/flow/go::example.com/flow.Forward"
+            ],
+            "excluded_library_callees": [],
+            "assumptions": [
+              "Standard-library bodies are outside the cost unit only when no callable argument or workspace-typed trait bound lets them call back into workspace code; others stay unresolved.",
+              "Argument sizes are replaced by a per-invocation maximum; bounds are monotone, so totals are upper bounds but may be loose.",
+              "Modeled standard iterator scans count as the owner's own loop-body entries.",
+              "Composed counts still do not bound operation costs or whole runtime.",
+              "Library steps add per-invocation contract bounds for keyed library operations; each contract holds up to a constant factor and excludes the cost of every element operation it counts."
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "flow": {
+    "functions": [
+      {
+        "function": "f0",
+        "name": "Forward",
+        "path": "flow.go",
+        "flow": {
+          "standing": "known",
+          "assumptions": [
+            "Unwinding and exceptions are not transfers here"
+          ],
+          "dominators": {
+            "f0.exit": "f0.n2",
+            "f0.n1": "f0.n0",
+            "f0.n10": "f0.n8",
+            "f0.n11": "f0.n10",
+            "f0.n12": "f0.n13",
+            "f0.n13": "f0.n11",
+            "f0.n14": "f0.n12",
+            "f0.n15": "f0.n14",
+            "f0.n16": "f0.n15",
+            "f0.n17": "f0.n16",
+            "f0.n2": "f0.n1",
+            "f0.n20": "f0.n2",
+            "f0.n21": "f0.n20",
+            "f0.n22": "f0.n21",
+            "f0.n23": "f0.n22",
+            "f0.n3": "f0.n2",
+            "f0.n4": "f0.n3",
+            "f0.n5": "f0.n4",
+            "f0.n6": "f0.n5",
+            "f0.n7": "f0.n6",
+            "f0.n8": "f0.n9",
+            "f0.n9": "f0.n7"
+          },
+          "post_dominators": {
+            "f0.entry": "f0.n0",
+            "f0.n0": "f0.n1",
+            "f0.n1": "f0.n2",
+            "f0.n10": "f0.n11",
+            "f0.n11": "f0.n13",
+            "f0.n12": "f0.n14",
+            "f0.n13": "f0.n12",
+            "f0.n14": "f0.n15",
+            "f0.n15": "f0.n16",
+            "f0.n16": "f0.n17",
+            "f0.n17": "f0.exit",
+            "f0.n2": "f0.exit",
+            "f0.n20": "f0.n21",
+            "f0.n21": "f0.n22",
+            "f0.n22": "f0.n23",
+            "f0.n23": "f0.exit",
+            "f0.n3": "f0.n4",
+            "f0.n4": "f0.n5",
+            "f0.n5": "f0.n6",
+            "f0.n6": "f0.n7",
+            "f0.n7": "f0.n9",
+            "f0.n8": "f0.n10",
+            "f0.n9": "f0.n8"
+          },
+          "data": [
+            {
+              "source": "f0.entry",
+              "target": "f0.n0",
+              "symbol": "f0.s0"
+            },
+            {
+              "source": "f0.entry",
+              "target": "f0.n4",
+              "symbol": "f0.s0"
+            },
+            {
+              "source": "f0.n6",
+              "target": "f0.n8",
+              "symbol": "f0.s1"
+            },
+            {
+              "source": "f0.n8",
+              "target": "f0.n12",
+              "symbol": "f0.s1"
+            },
+            {
+              "source": "f0.n12",
+              "target": "f0.n16",
+              "symbol": "f0.s1"
+            }
+          ],
+          "control": [
+            {
+              "source": "f0.n2",
+              "target": "f0.n3",
+              "kind": "true"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n4",
+              "kind": "true"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n5",
+              "kind": "true"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n6",
+              "kind": "true"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n7",
+              "kind": "true"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n9",
+              "kind": "true"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n8",
+              "kind": "true"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n10",
+              "kind": "true"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n11",
+              "kind": "true"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n13",
+              "kind": "true"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n12",
+              "kind": "true"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n14",
+              "kind": "true"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n15",
+              "kind": "true"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n16",
+              "kind": "true"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n17",
+              "kind": "true"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n20",
+              "kind": "false"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n21",
+              "kind": "false"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n22",
+              "kind": "false"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n23",
+              "kind": "false"
+            }
+          ],
+          "execution": [
+            {
+              "source": "f0.n0",
+              "target": "f0.n1"
+            },
+            {
+              "source": "f0.n1",
+              "target": "f0.n2"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n20"
+            },
+            {
+              "source": "f0.n20",
+              "target": "f0.n21"
+            },
+            {
+              "source": "f0.n21",
+              "target": "f0.n22"
+            },
+            {
+              "source": "f0.n22",
+              "target": "f0.n23"
+            },
+            {
+              "source": "f0.n2",
+              "target": "f0.n3"
+            },
+            {
+              "source": "f0.n3",
+              "target": "f0.n4"
+            },
+            {
+              "source": "f0.n4",
+              "target": "f0.n5"
+            },
+            {
+              "source": "f0.n5",
+              "target": "f0.n6"
+            },
+            {
+              "source": "f0.n6",
+              "target": "f0.n7"
+            },
+            {
+              "source": "f0.n7",
+              "target": "f0.n9"
+            },
+            {
+              "source": "f0.n9",
+              "target": "f0.n8"
+            },
+            {
+              "source": "f0.n8",
+              "target": "f0.n10"
+            },
+            {
+              "source": "f0.n10",
+              "target": "f0.n11"
+            },
+            {
+              "source": "f0.n11",
+              "target": "f0.n13"
+            },
+            {
+              "source": "f0.n13",
+              "target": "f0.n12"
+            },
+            {
+              "source": "f0.n12",
+              "target": "f0.n14"
+            },
+            {
+              "source": "f0.n14",
+              "target": "f0.n15"
+            },
+            {
+              "source": "f0.n15",
+              "target": "f0.n16"
+            },
+            {
+              "source": "f0.n16",
+              "target": "f0.n17"
+            }
+          ],
+          "loops": {}
+        }
+      },
+      {
+        "function": "f1",
+        "name": "Other",
+        "path": "flow.go",
+        "flow": {
+          "standing": "known",
+          "assumptions": [
+            "Unwinding and exceptions are not transfers here"
+          ],
+          "dominators": {
+            "f1.exit": "f1.n3",
+            "f1.n1": "f1.n0",
+            "f1.n2": "f1.n1",
+            "f1.n3": "f1.n2"
+          },
+          "post_dominators": {
+            "f1.entry": "f1.n0",
+            "f1.n0": "f1.n1",
+            "f1.n1": "f1.n2",
+            "f1.n2": "f1.n3",
+            "f1.n3": "f1.exit"
+          },
+          "data": [
+            {
+              "source": "f1.entry",
+              "target": "f1.n1",
+              "symbol": "f1.s0"
+            }
+          ],
+          "control": [],
+          "execution": [
+            {
+              "source": "f1.n0",
+              "target": "f1.n1"
+            },
+            {
+              "source": "f1.n1",
+              "target": "f1.n2"
+            },
+            {
+              "source": "f1.n2",
+              "target": "f1.n3"
+            }
+          ],
+          "loops": {}
+        }
+      }
+    ]
+  }
+}

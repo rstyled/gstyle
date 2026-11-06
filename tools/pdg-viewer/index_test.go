@@ -29,7 +29,10 @@ func TestRepositoryNavigationAndLazyPDG(t *testing.T) {
 	}
 	use := index.Symbols[1]
 	if use.Calls[0].Target != index.Symbols[0].ID {
-		t.Fatal("local syntax candidate is missing")
+		t.Fatal("local typed call is missing")
+	}
+	if index.CallResolution != "typed" {
+		t.Fatalf("resolution: %s", index.CallResolution)
 	}
 	app := explorer{index: index, extraction: make(chan struct{}, 1)}
 	response := httptest.NewRecorder()
@@ -37,12 +40,12 @@ func TestRepositoryNavigationAndLazyPDG(t *testing.T) {
 	if response.Code != 200 || !strings.Contains(response.Body.String(), "return Feed(x)") {
 		t.Fatal(response.Body.String())
 	}
-	html, err := app.symbolPDG(context.Background(), use)
+	data, err := app.symbolPDG(context.Background(), use)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(html, "pdg-data") {
-		t.Fatal("PDG was not rendered")
+	if !strings.Contains(string(data), "return Feed(x)") {
+		t.Fatal("PDG source was not attached")
 	}
 	write("demo.go", "package demo\n")
 	if _, err := app.symbolSource(use); err == nil {

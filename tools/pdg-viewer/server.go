@@ -10,36 +10,35 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/rstyled/gstyle/adapters/gopatterns"
 	"github.com/rstyled/gstyle/adapters/pdgjson"
 )
 
-//go:embed program-graph.js
-var programScript string
-
-//go:embed atlas.html
-var atlasPage string
-
 type explorer struct {
 	index      *repoIndex
 	extraction chan struct{}
+	rstyle     rstyleStore
 }
 
 // gstyle-allow(side_effect_density): This explicit localhost server boundary indexes the selected repo and serves read-only navigation.
-func serveRepository(root string, port int) error {
+func serveRepository(root string, port int, backend string) error {
 	index, err := indexRepository(root)
 	if err != nil {
 		return err
 	}
-	app := &explorer{index: index, extraction: make(chan struct{}, 1)}
+	slog.Info("capturing rstyle CPG and findings", "root", index.Root, "backend", backend)
+	snapshot, err := captureRstyle(index.Root, backend)
+	if err != nil {
+		return err
+	}
+	app := &explorer{index: index, extraction: make(chan struct{}, 1), rstyle: snapshot}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /", app.home)
 	mux.HandleFunc("GET /api/index", app.summary)
 	mux.HandleFunc("GET /api/source", app.source)
-	mux.HandleFunc("GET /pdg", app.detail)
+	mux.HandleFunc("GET /api/pdg", app.detail)
 	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		return err
@@ -56,8 +55,8 @@ func (e *explorer) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	html := strings.ReplaceAll(atlasPage, "/* GRAPH */", graphScript)
-	fmt.Fprint(w, strings.ReplaceAll(html, "/* PROGRAM */", programScript))
+	w.Header().Set("Cache-Control", "no-store")
+	fmt.Fprint(w, page([]byte("null")))
 }
 
 // gstyle-allow(side_effect_density): HTTP JSON response boundary.
@@ -121,41 +120,49 @@ func (e *explorer) detail(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "A PDG is loading. Retry after it completes.", http.StatusServiceUnavailable)
 		return
 	}
-	html, err := e.symbolPDG(r.Context(), symbol)
+	data, err := e.symbolPDG(r.Context(), symbol)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, html)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
 }
 
 // gstyle-allow(side_effect_density): Typed extraction loads the selected package and its dependencies; source hash checks prevent stale navigation.
-func (e *explorer) symbolPDG(ctx context.Context, s repoSymbol) (string, error) {
+func (e *explorer) symbolPDG(ctx context.Context, s repoSymbol) ([]byte, error) {
 	if _, err := e.symbolSource(s); err != nil {
-		return "", err
+		return nil, err
 	}
+	if e.rstyle != nil {
+		return e.rstyle.document(s)
+	}
+	return e.legacySymbolPDG(ctx, s)
+}
+
+// gstyle-allow(side_effect_density): Compatibility path for legacy embedded PDG callers; the repository server always supplies rstyle.
+func (e *explorer) legacySymbolPDG(ctx context.Context, s repoSymbol) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
 	extracted, err := gopatterns.Extract(ctx, e.index.Root, []string{"./" + filepath.ToSlash(filepath.Dir(s.File))})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	for _, f := range extracted.Funcs {
 		if filepath.ToSlash(f.Path) == filepath.ToSlash(s.File) && f.Line == s.Line {
-			return renderFunction(&f, e.index.Root)
+			return functionDocument(&f, e.index.Root)
 		}
 	}
-	return "", fmt.Errorf("function not in active Go build; it may be excluded by build tags")
+	return nil, fmt.Errorf("function not in active Go build; it may be excluded by build tags")
 }
 
-// gstyle-allow(side_effect_density): Encodes a single validated native graph for the standalone viewer.
-func renderFunction(f *gopatterns.FuncPdg, root string) (string, error) {
+// gstyle-allow(side_effect_density): Encodes a single validated graph with its source text.
+func functionDocument(f *gopatterns.FuncPdg, root string) ([]byte, error) {
 	var data bytes.Buffer
 	data.WriteString("[")
 	if err := pdgjson.Write(&data, &f.Pdg); err != nil {
-		return "", err
+		return nil, err
 	}
 	data.WriteString("]")
-	return buildDocument(data.Bytes(), root)
+	return prepare(data.Bytes(), root)
 }
