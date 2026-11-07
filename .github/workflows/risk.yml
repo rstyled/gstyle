@@ -17,7 +17,7 @@ jobs:
       contents: read
     outputs:
       report: ${{ steps.report.outputs.text }}
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     timeout-minutes: 15
     defaults:
       run:
@@ -83,7 +83,7 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       pull-requests: write
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     timeout-minutes: 5
     steps:
       - name: Update the PR description

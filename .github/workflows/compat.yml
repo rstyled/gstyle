@@ -24,7 +24,7 @@ jobs:
   controls:
     name: Reject corrupt producer graphs
     needs: compatibility
-    runs-on: ubuntu-24.04
+    runs-on: warp-ubuntu-latest-x64-4x
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6

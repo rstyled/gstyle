@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   guard:
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v6
         with:
@@ -25,7 +25,7 @@ jobs:
         run: make guard
 
   lint:
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -39,7 +39,7 @@ jobs:
         run: make lint
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     strategy:
       matrix:
         go-version: ['1.26.x', '1.27.x']
@@ -56,7 +56,7 @@ jobs:
         run: make test
 
   test-race:
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -82,7 +82,7 @@ jobs:
         run: make test-race
 
   gstyle-check:
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -96,7 +96,7 @@ jobs:
         run: make gstyle-check
 
   quality-gate:
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -111,7 +111,7 @@ jobs:
 
   verify-programs:
     name: Lean / exhaustive scalar programs
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -159,7 +159,7 @@ jobs:
 
   verify-cache:
     name: Lean / source, axioms and cache
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     outputs:
       matrix: ${{ steps.cached.outputs.matrix }}
       has-misses: ${{ steps.cached.outputs.has-misses }}
@@ -232,7 +232,7 @@ jobs:
     name: Lean / ${{ matrix.profile }} / ${{ matrix.shard }}
     needs: verify-cache
     if: needs.verify-cache.outputs.has-misses == 'true'
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.verify-cache.outputs.matrix) }}
@@ -296,7 +296,7 @@ jobs:
   verify-length:
     needs: [verify-cache, verify-core]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - name: Require every Lean profile to pass
         env:
@@ -331,7 +331,7 @@ jobs:
           key: lean-mutation-bundle-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}-${{ github.run_attempt }}
 
   sarif:
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -344,7 +344,7 @@ jobs:
         run: make verify-sarif
 
   sast:
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
