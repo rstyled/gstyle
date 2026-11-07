@@ -222,7 +222,7 @@ func findPrimitiveConcepts(f *ast.File) []primitiveConceptInfo {
 	var out []primitiveConceptInfo
 	for _, decl := range f.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
-		if !ok || fn.Type.Params == nil {
+		if !ok || fn.Body == nil || fn.Type.Params == nil {
 			continue
 		}
 		out = append(out, funcConcepts(fn)...)

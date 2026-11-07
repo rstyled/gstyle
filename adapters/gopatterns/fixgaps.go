@@ -247,8 +247,8 @@ func groupByNormalizedBody(fset *token.FileSet, funcs []*ast.FuncDecl, src []byt
 	// For simplicity, we compare the printed body with type idents normalized.
 	groups := make(map[string][]*ast.FuncDecl)
 	for _, fn := range funcs {
-		if fn.Recv != nil {
-			continue // skip methods
+		if fn.Recv != nil || fn.Body == nil {
+			continue
 		}
 		key := normalizedBodyKey(fset, fn, src)
 		groups[key] = append(groups[key], fn)

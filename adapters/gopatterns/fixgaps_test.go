@@ -145,3 +145,40 @@ func subFloat(a, b float64) float64 {
 		t.Error("expected error for different bodies")
 	}
 }
+
+func TestGenericFnFixSkipsBodylessDeclarations(t *testing.T) {
+	src := `package main
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func maxFloat(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func nanotime() int64
+`
+	spec := &patterns.FixSpec{
+		Kind: patterns.GenericFn,
+		File: "test.go",
+		Line: 3,
+	}
+	out, err := applyProjectedFix(t, spec, []byte(src))
+	if err != nil {
+		t.Fatalf("applyGenericFnFix failed: %v", err)
+	}
+	outStr := string(out)
+	if !strings.Contains(outStr, "func max[T") {
+		t.Errorf("expected generic function, got:\n%s", outStr)
+	}
+	if !strings.Contains(outStr, "func nanotime() int64") {
+		t.Errorf("expected bodyless declaration to remain, got:\n%s", outStr)
+	}
+}

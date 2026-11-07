@@ -2,10 +2,13 @@ package gopatterns
 
 import (
 	"bytes"
+	"context"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"go/types"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -99,5 +102,39 @@ func page(items []int, offset int) []int {
 	}
 	if len(offsetFallbackTestSource(t, string(fixed))) != 0 {
 		t.Fatal("fixed source still reports the pattern")
+	}
+}
+
+func TestOffsetFallbackSkipsBodylessDeclarations(t *testing.T) {
+	root := t.TempDir()
+	files := map[string]string{
+		"go.mod":     "module example\n\ngo 1.24\n",
+		"page.go":    "package example\nfunc nanotime() int64\nfunc page(items []int, offset int) []int { if offset > 0 && offset <= len(items) { items = items[offset:] }; return items }\n",
+		"nanotime.s": "",
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, mode := range []string{"normal", "bounded", "cached"} {
+		t.Run(mode, func(t *testing.T) {
+			var extraction *Extraction
+			var err error
+			switch mode {
+			case "normal":
+				extraction, err = Extract(context.Background(), root, []string{"."})
+			case "bounded":
+				extraction, err = ExtractForFix(context.Background(), root, []string{"."})
+			default:
+				extraction, err = (&FixExtractor{}).Extract(context.Background(), root, []string{"."}, SourceOverlay{})
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(extraction.OffsetFallbacks) != 1 {
+				t.Fatalf("got %d offset fallbacks, want 1", len(extraction.OffsetFallbacks))
+			}
+		})
 	}
 }
