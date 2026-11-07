@@ -47,9 +47,10 @@ func offsetFallbacksForFile(pkg *packages.Package, file *ast.File, root string, 
 	var out []patterns.Candidate
 	for _, decl := range file.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
-		if ok {
-			out = append(out, offsetFallbackCandidates(fn, source)...)
+		if !ok || fn.Body == nil {
+			continue
 		}
+		out = append(out, offsetFallbackCandidates(fn, source)...)
 	}
 	return out
 }

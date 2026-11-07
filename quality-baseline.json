@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generated_at": "2026-11-01T22:40:06Z",
-  "commit": "3f5b743",
+  "generated_at": "2026-11-07T23:05:45Z",
+  "commit": "581dfe4",
   "functions": 5671,
   "tolerance": 0.05,
   "rules": {

@@ -207,3 +207,27 @@ func g(name string) bool { return name != "" }
 		t.Errorf("expected 1 fix for constant comparisons, got %d", len(fixes))
 	}
 }
+
+func TestFixPrimitiveObsessionSkipsBodylessDeclarations(t *testing.T) {
+	src := `package p
+
+func SendEmail(email string) {}
+func ValidateEmail(email string) bool { return email != "" }
+func hashEmail(email string) uint64
+`
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	out, fixes, err := FixPrimitiveObsession(fset, f, []byte(src))
+	if err != nil {
+		t.Fatalf("fix: %v", err)
+	}
+	if len(fixes) != 1 {
+		t.Fatalf("expected 1 fix, got %d", len(fixes))
+	}
+	if !strings.Contains(string(out), "func hashEmail(email string) uint64") {
+		t.Errorf("bodyless declaration should keep its signature, got:\n%s", out)
+	}
+}
